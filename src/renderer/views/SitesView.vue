@@ -14,28 +14,65 @@
     <p v-if="successMessage" class="sites-success">{{ successMessage }}</p>
 
     <form class="sites-form" @submit.prevent="onCreateSite">
-      <label class="sites-field">
-        <span>Name</span>
-        <input v-model="createForm.name" type="text" required />
-      </label>
-      <label class="sites-field">
-        <span>Bench ID</span>
-        <input v-model="createForm.benchId" type="text" required />
-      </label>
-      <label class="sites-field sites-field--full">
-        <span>Path</span>
-        <input v-model="createForm.path" type="text" required />
-      </label>
-      <label class="sites-field">
-        <span>Group ID (optional)</span>
-        <input v-model="createForm.groupId" type="text" />
-      </label>
-      <label class="sites-field">
-        <span>Apps (comma separated)</span>
-        <input v-model="createForm.appsText" type="text" placeholder="frappe, erpnext" />
-      </label>
+      <div class="site-wizard-steps sites-field--full">
+        <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 1 }">1. Select bench</p>
+        <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 2 }">2. Configure site</p>
+        <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 3 }">3. Confirm</p>
+      </div>
+
+      <p v-if="wizardErrors.length > 0" class="sites-error sites-field--full">{{ wizardErrors.join(' ') }}</p>
+
+      <template v-if="wizardStep === 1">
+        <label class="sites-field sites-field--full">
+          <span>Bench</span>
+          <select v-model="createForm.benchId" :disabled="benchLoading">
+            <option value="">Select a bench</option>
+            <option v-for="bench in availableBenches" :key="bench.id" :value="bench.id">
+              {{ bench.name }} ({{ bench.status }})
+            </option>
+          </select>
+        </label>
+      </template>
+
+      <template v-if="wizardStep === 2">
+        <label class="sites-field">
+          <span>Name</span>
+          <input v-model="createForm.name" type="text" required />
+        </label>
+        <label class="sites-field">
+          <span>Group ID (optional)</span>
+          <input v-model="createForm.groupId" type="text" />
+        </label>
+        <label class="sites-field sites-field--full">
+          <span>Path</span>
+          <input v-model="createForm.path" type="text" required />
+        </label>
+        <label class="sites-field sites-field--full">
+          <span>Apps (comma separated)</span>
+          <input v-model="createForm.appsText" type="text" placeholder="frappe, erpnext" />
+        </label>
+      </template>
+
+      <template v-if="wizardStep === 3">
+        <div class="site-wizard-summary sites-field--full">
+          <p><strong>Bench:</strong> {{ selectedBench?.name ?? createForm.benchId }}</p>
+          <p><strong>Site:</strong> {{ createForm.name }}</p>
+          <p><strong>Path:</strong> {{ createForm.path }}</p>
+          <p><strong>Group:</strong> {{ createForm.groupId || 'None' }}</p>
+          <p><strong>Apps:</strong> {{ parsedApps.length > 0 ? parsedApps.join(', ') : 'None' }}</p>
+        </div>
+      </template>
+
       <div class="sites-actions sites-field--full">
-        <button class="sites-create" type="submit" :disabled="creating || loading">
+        <button v-if="wizardStep > 1" class="sites-create" type="button" @click="onPreviousStep">
+          Back
+        </button>
+
+        <button v-if="wizardStep < 3" class="sites-create" type="button" @click="onNextStep">
+          Next
+        </button>
+
+        <button v-if="wizardStep === 3" class="sites-create" type="submit" :disabled="creating || loading">
           {{ creating ? 'Creating…' : 'Create site' }}
         </button>
       </div>
@@ -137,8 +174,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
+import {
+  buildSiteCreatePayload,
+  getSiteWizardStepErrors,
+  parseAppsText,
+  suggestSitePath,
+  type SiteWizardStep,
+} from '../site-wizard';
 
 const {
   sites,
@@ -166,25 +211,90 @@ const createForm = reactive({
   appsText: '',
 });
 
-const onCreateSite = async () => {
-  const apps = createForm.appsText
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+const wizardStep = ref<SiteWizardStep>(1);
+const wizardErrors = ref<string[]>([]);
+const availableBenches = ref<Awaited<ReturnType<ReturnType<typeof useIpc>['listBenches']>>>([]);
+const benchLoading = ref(false);
 
-  await create({
-    name: createForm.name,
-    benchId: createForm.benchId,
-    groupId: createForm.groupId.trim() ? createForm.groupId.trim() : null,
-    path: createForm.path,
-    apps,
-  });
+const selectedBench = computed(() => availableBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
+const parsedApps = computed(() => parseAppsText(createForm.appsText));
+
+const loadBenchOptions = async () => {
+  benchLoading.value = true;
+
+  try {
+    const ipc = useIpc();
+    const benches = await ipc.listBenches();
+    availableBenches.value = benches.filter((bench) => bench.status === 'running' || bench.status === 'success');
+  } catch (err) {
+    wizardErrors.value = [String(err)];
+  } finally {
+    benchLoading.value = false;
+  }
+};
+
+const applyPathDefault = () => {
+  if (!selectedBench.value || !createForm.name.trim()) {
+    return;
+  }
+
+  if (!createForm.path.trim()) {
+    createForm.path = suggestSitePath(selectedBench.value.path, createForm.name);
+  }
+};
+
+watch(
+  () => createForm.benchId,
+  () => {
+    applyPathDefault();
+  }
+);
+
+watch(
+  () => createForm.name,
+  () => {
+    applyPathDefault();
+  }
+);
+
+const onNextStep = () => {
+  const errors = getSiteWizardStepErrors(wizardStep.value, createForm);
+  wizardErrors.value = errors;
+
+  if (errors.length > 0) {
+    return;
+  }
+
+  if (wizardStep.value < 3) {
+    wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
+  }
+};
+
+const onPreviousStep = () => {
+  wizardErrors.value = [];
+  if (wizardStep.value > 1) {
+    wizardStep.value = (wizardStep.value - 1) as SiteWizardStep;
+  }
+};
+
+const onCreateSite = async () => {
+  const result = buildSiteCreatePayload(createForm);
+  wizardErrors.value = result.errors;
+
+  if (!result.payload) {
+    return;
+  }
+
+  await create(result.payload);
 
   createForm.name = '';
   createForm.benchId = '';
   createForm.groupId = '';
   createForm.path = '';
   createForm.appsText = '';
+  wizardStep.value = 1;
+  wizardErrors.value = [];
+  await loadBenchOptions();
 };
 
 const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
@@ -224,4 +334,8 @@ const onLoadSiteLogs = async (id: string) => {
 const onOpenSiteFolder = async (id: string) => {
   await openFolder(id);
 };
+
+onMounted(() => {
+  void loadBenchOptions();
+});
 </script>

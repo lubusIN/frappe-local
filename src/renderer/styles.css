@@ -671,6 +671,46 @@ body {
 
   .sites-actions {
     display: flex;
+    gap: 8px;
+  }
+
+  .site-wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .site-wizard-step {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9a7a5a;
+    border: 1px solid #d8cbbd;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #fff8ee;
+  }
+
+  .site-wizard-step--active {
+    color: #2f2116;
+    border-color: #b79f86;
+    background: #f8ead7;
+  }
+
+  .site-wizard-summary {
+    border: 1px solid #d8cbbd;
+    border-radius: 12px;
+    background: #fff8ee;
+    padding: 12px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .site-wizard-summary p {
+    margin: 0;
+    color: #3c2a1d;
+    font-size: 14px;
   }
 
   .sites-create {
