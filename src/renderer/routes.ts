@@ -2,6 +2,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import BenchesView from './views/BenchesView.vue';
 import ConsoleView from './views/ConsoleView.vue';
 import DashboardView from './views/DashboardView.vue';
+import ImportExportView from './views/ImportExportView.vue';
 import { appRouteDefinitions, navigationItems } from './navigation';
 import SettingsView from './views/SettingsView.vue';
 import SitesView from './views/SitesView.vue';
@@ -13,6 +14,7 @@ const componentMap = {
   sites: SitesView,
   workspaces: WorkspacesView,
   console: ConsoleView,
+  importExport: ImportExportView,
   settings: SettingsView,
 } as const;
 

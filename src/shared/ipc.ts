@@ -17,6 +17,9 @@ export const ipcChannels = {
   sitesOpenFolder: 'sites:open-folder',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  exportSitePackage: 'export:site-package',
+  importValidatePackage: 'import:validate-package',
+  importExecutePackage: 'import:execute-package',
   workspacesList: 'workspaces:list',
   workspacesCreate: 'workspaces:create',
   workspacesUpdate: 'workspaces:update',
@@ -132,6 +135,66 @@ export type SettingsItem = {
   readonly autoUpdateEnabled: boolean;
 };
 
+export type ImportValidationIssue = {
+  readonly severity: 'error' | 'warning';
+  readonly code: string;
+  readonly message: string;
+};
+
+export type ImportPackageSummary = {
+  readonly packageVersion: number;
+  readonly exportedAt: string;
+  readonly siteName: string;
+  readonly benchName: string;
+  readonly benchRuntime: 'docker' | 'podman';
+  readonly benchFrappeVersion: string;
+  readonly requiredAppIds: string[];
+};
+
+export type ImportValidateInput = {
+  readonly artifactDirectory: string;
+  readonly benchId?: string | null;
+};
+
+export type ImportValidationResponse = {
+  readonly canImport: boolean;
+  readonly summary: ImportPackageSummary;
+  readonly issues: ImportValidationIssue[];
+};
+
+export type ExportSitePackageInput = {
+  readonly siteId: string;
+  readonly outputDirectory: string;
+};
+
+export type ExportSitePackageResponse = {
+  readonly artifactDirectory: string;
+  readonly manifestPath: string;
+  readonly payloadPath: string;
+};
+
+export type ImportConflictPolicy = 'block' | 'rename';
+
+export type ImportExecuteInput = {
+  readonly artifactDirectory: string;
+  readonly benchId: string;
+  readonly conflictPolicy: ImportConflictPolicy;
+};
+
+export type ImportExecutionStep = {
+  readonly name: string;
+  readonly status: 'success' | 'warning' | 'failed';
+  readonly message: string;
+};
+
+export type ImportExecutionResponse = {
+  readonly success: boolean;
+  readonly createdSiteId: string | null;
+  readonly siteName: string;
+  readonly conflictPolicyApplied: ImportConflictPolicy;
+  readonly steps: ImportExecutionStep[];
+};
+
 export type WorkspaceListItem = {
   readonly id: string;
   readonly name: string;
@@ -212,6 +275,9 @@ export type RendererBridge = {
   readonly openSiteFolder: (id: string) => Promise<boolean>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
+  readonly exportSitePackage: (input: ExportSitePackageInput) => Promise<ExportSitePackageResponse>;
+  readonly validateImportPackage: (input: ImportValidateInput) => Promise<ImportValidationResponse>;
+  readonly executeImportPackage: (input: ImportExecuteInput) => Promise<ImportExecutionResponse>;
   readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;
   readonly createWorkspace: (input: WorkspaceCreateInput) => Promise<WorkspaceListItem>;
   readonly updateWorkspace: (id: string, input: WorkspaceUpdateInput) => Promise<WorkspaceListItem | null>;

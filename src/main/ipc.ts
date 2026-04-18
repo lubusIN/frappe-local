@@ -3,6 +3,11 @@ import type {
   BenchCreateInput,
   BenchListItem,
   BenchUpdateInput,
+  ImportExecuteInput,
+  ImportExecutionResponse,
+  ImportValidationResponse,
+  ExportSitePackageInput,
+  ExportSitePackageResponse,
   CatalogAppItem,
   LifecycleLogItem,
   SettingsItem,
@@ -44,6 +49,9 @@ import {
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
 import { orchestrateSiteCreation } from './site-orchestration';
+import { parseImportPackage, validateImportCompatibility } from './import-package-validator';
+import { executeImportPackage } from './import-execution';
+import { exportSitePackage } from './export-package-writer';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -554,6 +562,125 @@ export const registerIpcHandlers = (
     const parsed = SettingsSchema.parse(input);
     const settings = await repositories.settings.set(parsed);
     return toSettingsItem(settings);
+  });
+
+  ipcMainLike.handle(ipcChannels.importValidatePackage, async (_event: unknown, input: unknown) => {
+    const payload = input as { artifactDirectory?: unknown; benchId?: unknown };
+    if (typeof payload?.artifactDirectory !== 'string' || payload.artifactDirectory.trim().length === 0) {
+      throw new Error('Import package path is required.');
+    }
+
+    const parsedPackage = await parseImportPackage(payload.artifactDirectory.trim());
+    const [settings, appCatalog] = await Promise.all([
+      repositories.settings.get(),
+      repositories.appCatalog.findAll(),
+    ]);
+
+    const selectedBench = typeof payload.benchId === 'string'
+      ? await repositories.benches.findById(payload.benchId)
+      : null;
+
+    const compatibility = validateImportCompatibility(parsedPackage, {
+      targetRuntime: selectedBench?.runtime ?? settings?.runtimePreference,
+      targetFrappeVersion: selectedBench?.frappeVersion ?? settings?.defaultFrappeVersion,
+      availableAppIds: appCatalog.map((item) => item.id),
+    });
+
+    const response: ImportValidationResponse = {
+      canImport: compatibility.canImport,
+      summary: {
+        packageVersion: parsedPackage.manifest.packageVersion,
+        exportedAt: parsedPackage.manifest.exportedAt,
+        siteName: parsedPackage.manifest.site.name,
+        benchName: parsedPackage.manifest.bench.name,
+        benchRuntime: parsedPackage.manifest.bench.runtime,
+        benchFrappeVersion: parsedPackage.manifest.bench.frappeVersion,
+        requiredAppIds: parsedPackage.manifest.requiredApps.map((item) => item.id),
+      },
+      issues: compatibility.issues,
+    };
+
+    return response;
+  });
+
+  ipcMainLike.handle(ipcChannels.importExecutePackage, async (_event: unknown, input: unknown) => {
+    const payload = input as ImportExecuteInput;
+    if (typeof payload?.artifactDirectory !== 'string' || payload.artifactDirectory.trim().length === 0) {
+      throw new Error('Import package path is required.');
+    }
+
+    if (typeof payload?.benchId !== 'string' || payload.benchId.trim().length === 0) {
+      throw new Error('Target bench is required for import execution.');
+    }
+
+    if (payload.conflictPolicy !== 'block' && payload.conflictPolicy !== 'rename') {
+      throw new Error('Unsupported conflict policy.');
+    }
+
+    const result = await executeImportPackage(
+      {
+        benches: repositories.benches,
+        sites: repositories.sites,
+        groups: repositories.groups,
+        settings: repositories.settings,
+        appCatalog: repositories.appCatalog,
+      },
+      {
+        artifactDirectory: payload.artifactDirectory.trim(),
+        benchId: payload.benchId,
+        conflictPolicy: payload.conflictPolicy,
+      }
+    );
+
+    if (result.success && result.createdSiteId) {
+      operations.trackSiteOperation?.(result.createdSiteId, 'create');
+    }
+
+    const response: ImportExecutionResponse = {
+      success: result.success,
+      createdSiteId: result.createdSiteId,
+      siteName: result.siteName,
+      conflictPolicyApplied: result.conflictPolicyApplied,
+      steps: result.steps,
+    };
+
+    return response;
+  });
+
+  ipcMainLike.handle(ipcChannels.exportSitePackage, async (_event: unknown, input: unknown) => {
+    const payload = input as ExportSitePackageInput;
+    if (typeof payload?.siteId !== 'string' || payload.siteId.trim().length === 0) {
+      throw new Error('Site ID is required for export.');
+    }
+
+    if (typeof payload?.outputDirectory !== 'string' || payload.outputDirectory.trim().length === 0) {
+      throw new Error('Output directory is required for export.');
+    }
+
+    const result = await exportSitePackage(
+      {
+        benches: repositories.benches,
+        sites: repositories.sites,
+        groups: repositories.groups,
+        appCatalog: repositories.appCatalog,
+      },
+      {
+        siteId: payload.siteId.trim(),
+        outputDirectory: payload.outputDirectory.trim(),
+      }
+    );
+
+    const response: ExportSitePackageResponse = {
+      artifactDirectory: result.artifactDirectory,
+      manifestPath: path.join(result.artifactDirectory, 'manifest.json'),
+      payloadPath: path.join(result.artifactDirectory, 'payload.json'),
+    };
+
+    if (result.site.id) {
+      operations.trackSiteOperation?.(result.site.id, 'export');
+    }
+
+    return response;
   });
 
   ipcMainLike.handle(ipcChannels.workspacesList, async () => {
