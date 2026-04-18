@@ -46,6 +46,7 @@ function makeStubBenchRepo() {
       },
     }),
     update: async () => null,
+    delete: async () => false,
   };
 }
 
@@ -102,6 +103,14 @@ function makeStubSiteRepo(items: Site[] = sites) {
       };
       current[index] = updated;
       return updated;
+    },
+    delete: async (id: string) => {
+      const exists = current.some((site) => site.id === id);
+      if (!exists) {
+        return false;
+      }
+      current = current.filter((site) => site.id !== id);
+      return true;
     },
   };
 }
@@ -218,7 +227,12 @@ describe('sites IPC handlers', () => {
       {
         appCatalog: makeStubCatalogRepo(),
         benches: makeStubBenchRepo(),
-        sites: makeStubSiteRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            status: 'stopped',
+          },
+        ]),
         settings: makeStubSettingsRepo(),
         groups: makeStubGroupRepo(),
       }
@@ -231,5 +245,55 @@ describe('sites IPC handlers', () => {
       id: 'site-001',
       status: 'stopped',
     });
+  });
+
+  it('sites:delete deletes a stopped site', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            status: 'stopped',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const deleteHandler = handlers.get(ipcChannels.sitesDelete);
+    const deleted = await deleteHandler?.(undefined, 'site-001');
+
+    expect(deleted).toBe(true);
+  });
+
+  it('sites:delete is blocked when site is running', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            status: 'running',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const deleteHandler = handlers.get(ipcChannels.sitesDelete);
+    const deleted = await deleteHandler?.(undefined, 'site-001');
+
+    expect(deleted).toBe(false);
   });
 });

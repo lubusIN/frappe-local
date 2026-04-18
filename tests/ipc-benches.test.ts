@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
-import type { AppCatalogItem, Bench, Settings } from '../src/shared/domain/models';
+import type { AppCatalogItem, Bench, Settings, Site } from '../src/shared/domain/models';
 
 const benches: Bench[] = [
   {
@@ -81,12 +81,20 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       current[index] = updated;
       return updated;
     },
+    delete: async (id: string) => {
+      const exists = current.some((bench) => bench.id === id);
+      if (!exists) {
+        return false;
+      }
+      current = current.filter((bench) => bench.id !== id);
+      return true;
+    },
   };
 }
 
-function makeStubSiteRepo() {
+function makeStubSiteRepo(items: Site[] = []) {
   return {
-    findAll: async () => [],
+    findAll: async () => items,
     create: async (input: {
       name: string;
       benchId: string;
@@ -103,6 +111,7 @@ function makeStubSiteRepo() {
       },
     }),
     update: async () => null,
+    delete: async () => false,
   };
 }
 
@@ -218,7 +227,12 @@ describe('benches IPC handlers', () => {
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
       {
         appCatalog: makeStubCatalogRepo(),
-        benches: makeStubBenchRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            status: 'stopped',
+          },
+        ]),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
         groups: makeStubGroupRepo(),
@@ -232,5 +246,69 @@ describe('benches IPC handlers', () => {
       id: 'bench-001',
       status: 'stopped',
     });
+  });
+
+  it('benches:delete deletes a stopped bench with no sites attached', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            status: 'stopped',
+          },
+        ]),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const deleteHandler = handlers.get(ipcChannels.benchesDelete);
+    const deleted = await deleteHandler?.(undefined, 'bench-001');
+
+    expect(deleted).toBe(true);
+  });
+
+  it('benches:delete is blocked when sites are attached', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            status: 'stopped',
+          },
+        ]),
+        sites: makeStubSiteRepo([
+          {
+            id: 'site-001',
+            name: 'demo.localhost',
+            benchId: 'bench-001',
+            groupId: null,
+            apps: ['frappe'],
+            status: 'stopped',
+            path: '/Users/dev/frappe-bench/sites/demo.localhost',
+            timestamps: {
+              createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
+            },
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const deleteHandler = handlers.get(ipcChannels.benchesDelete);
+    const deleted = await deleteHandler?.(undefined, 'bench-001');
+
+    expect(deleted).toBe(false);
   });
 });

@@ -40,6 +40,7 @@ function makeStubBenchRepo() {
       },
     }),
     update: async () => null,
+    delete: async () => false,
   };
 }
 
@@ -62,6 +63,7 @@ function makeStubSiteRepo() {
       },
     }),
     update: async () => null,
+    delete: async () => false,
   };
 }
 

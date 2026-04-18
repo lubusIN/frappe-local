@@ -18,6 +18,10 @@ describe('ipc contract', () => {
     expect(ipcChannels.benchesUpdate).toBe('benches:update');
   });
 
+  it('uses a stable channel name for bench delete', () => {
+    expect(ipcChannels.benchesDelete).toBe('benches:delete');
+  });
+
   it('uses a stable channel name for sites listing', () => {
     expect(ipcChannels.sitesList).toBe('sites:list');
   });
@@ -28,6 +32,10 @@ describe('ipc contract', () => {
 
   it('uses a stable channel name for site update', () => {
     expect(ipcChannels.sitesUpdate).toBe('sites:update');
+  });
+
+  it('uses a stable channel name for site delete', () => {
+    expect(ipcChannels.sitesDelete).toBe('sites:delete');
   });
 
   it('uses stable channel names for settings operations', () => {

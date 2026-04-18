@@ -59,6 +59,7 @@ function makeStubBenchRepo() {
       };
       return current;
     },
+    delete: async () => true,
   };
 }
 
@@ -109,6 +110,7 @@ function makeStubSiteRepo() {
       };
       return current;
     },
+    delete: async () => true,
   };
 }
 
