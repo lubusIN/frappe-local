@@ -195,3 +195,100 @@ body {
     flex-direction: column;
   }
 }
+
+  /* ── Dashboard ──────────────────────────────────────────────────── */
+
+  .dashboard {
+    display: grid;
+    gap: 36px;
+  }
+
+  .dashboard-section {
+    display: grid;
+    gap: 16px;
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: #2f2116;
+  }
+
+  .card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .health-card {
+    flex: 1 1 280px;
+    max-width: 380px;
+    padding: 20px 24px;
+    border-radius: 18px;
+    background: #fffaf3;
+    border: 1px solid #d3c5b5;
+    box-shadow: 0 4px 16px rgba(40, 24, 8, 0.07);
+  }
+
+  .health-card--ok { border-color: #8fbb9f; }
+  .health-card--error { border-color: #c97a7a; }
+  .health-card--loading { opacity: 0.7; }
+
+  .card-eyebrow {
+    margin: 0 0 8px;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #9a7a5a;
+  }
+
+  .card-value {
+    margin: 0 0 12px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #2f2116;
+  }
+
+  .card-value.ok { color: #3a7d54; }
+  .card-value.error { color: #9b3535; }
+  .card-value.muted { color: #9a7a5a; }
+
+  .card-meta {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: #6b5240;
+  }
+
+  .card-error {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #9b3535;
+  }
+
+  .action-card {
+    flex: 1 1 160px;
+    max-width: 220px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: #fffaf3;
+    border: 1px solid #d3c5b5;
+    text-decoration: none;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+  }
+
+  .action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(40, 24, 8, 0.1);
+  }
+
+  .card-label {
+    margin: 4px 0 0;
+    font-size: 15px;
+    color: #2f2116;
+    font-weight: 500;
+  }
