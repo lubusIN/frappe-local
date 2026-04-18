@@ -48,8 +48,13 @@
           <input v-model="createForm.path" type="text" required />
         </label>
         <label class="sites-field sites-field--full">
-          <span>Apps (comma separated)</span>
-          <input v-model="createForm.appsText" type="text" placeholder="frappe, erpnext" />
+          <span>Apps</span>
+          <AppPicker
+            v-model="createForm.appsSelected"
+            :disabled="creating || loading"
+            :runtime="selectedBench?.runtime"
+            :frappe-version="selectedBench?.frappeVersion"
+          />
         </label>
       </template>
 
@@ -59,7 +64,7 @@
           <p><strong>Site:</strong> {{ createForm.name }}</p>
           <p><strong>Path:</strong> {{ createForm.path }}</p>
           <p><strong>Group:</strong> {{ createForm.groupId || 'None' }}</p>
-          <p><strong>Apps:</strong> {{ parsedApps.length > 0 ? parsedApps.join(', ') : 'None' }}</p>
+          <p><strong>Apps:</strong> {{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</p>
         </div>
       </template>
 
@@ -214,12 +219,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
+import AppPicker from '../components/AppPicker.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import {
   buildSiteCreatePayload,
   getSiteWizardStepErrors,
-  parseAppsText,
   suggestSitePath,
   type SiteWizardStep,
 } from '../site-wizard';
@@ -251,6 +256,7 @@ const createForm = reactive({
   groupId: '',
   path: '',
   appsText: '',
+  appsSelected: [] as string[],
 });
 
 const wizardStep = ref<SiteWizardStep>(1);
@@ -260,7 +266,7 @@ const benchLoading = ref(false);
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 
 const selectedBench = computed(() => allBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
-const parsedApps = computed(() => parseAppsText(createForm.appsText));
+const selectedApps = computed(() => createForm.appsSelected);
 const siteFilters = reactive({
   benchId: '',
   status: '',
@@ -341,6 +347,7 @@ const onCreateSite = async () => {
   createForm.groupId = '';
   createForm.path = '';
   createForm.appsText = '';
+  createForm.appsSelected = [];
   wizardStep.value = 1;
   wizardErrors.value = [];
   await loadBenchOptions();

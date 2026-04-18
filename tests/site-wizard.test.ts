@@ -59,4 +59,17 @@ describe('site wizard helpers', () => {
       apps: ['frappe', 'erpnext'],
     });
   });
+
+  it('prefers selected apps from picker when present', () => {
+    const result = buildSiteCreatePayload({
+      benchId: 'bench-001',
+      name: 'demo.localhost',
+      path: '/Users/dev/frappe-bench/sites/demo.localhost',
+      groupId: '',
+      appsText: 'legacy-text-app',
+      appsSelected: ['frappe', 'erpnext'],
+    });
+
+    expect(result.payload?.apps).toEqual(['frappe', 'erpnext']);
+  });
 });

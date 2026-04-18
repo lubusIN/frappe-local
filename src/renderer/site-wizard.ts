@@ -8,6 +8,7 @@ export type SiteWizardDraft = {
   readonly path: string;
   readonly groupId: string;
   readonly appsText: string;
+  readonly appsSelected?: string[];
 };
 
 export type SiteWizardBuildResult = {
@@ -68,13 +69,15 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
     };
   }
 
+  const selectedApps = (draft.appsSelected ?? []).map((item) => item.trim()).filter(Boolean);
+
   return {
     payload: {
       benchId: draft.benchId.trim(),
       name: draft.name.trim(),
       path: draft.path.trim(),
       groupId: draft.groupId.trim() ? draft.groupId.trim() : null,
-      apps: parseAppsText(draft.appsText),
+      apps: selectedApps.length > 0 ? selectedApps : parseAppsText(draft.appsText),
     },
     errors: [],
   };
