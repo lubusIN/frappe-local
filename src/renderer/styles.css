@@ -1290,6 +1290,82 @@ body {
     word-break: break-all;
   }
 
+  .app-picker {
+    border: 1px solid #d8ccbf;
+    border-radius: 12px;
+    background: #fffaf2;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .app-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .app-picker-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #5c4330;
+  }
+
+  .app-picker-search {
+    border: 1px solid #d3c5b5;
+    border-radius: 8px;
+    background: #fff;
+    color: #2f2116;
+    padding: 6px 8px;
+    width: 180px;
+  }
+
+  .app-picker-error {
+    margin: 0;
+    color: #8f2e2e;
+    font-size: 12px;
+  }
+
+  .app-picker-empty {
+    margin: 0;
+    color: #7d6653;
+    font-size: 12px;
+  }
+
+  .app-picker-grid {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    max-height: 160px;
+    overflow: auto;
+  }
+
+  .app-picker-item label {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #ebdfd1;
+  }
+
+  .app-picker-item-name {
+    color: #2f2116;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .app-picker-item-version {
+    color: #7b624d;
+    font-size: 11px;
+  }
+
   @media (max-width: 920px) {
     .catalog-header {
       flex-direction: column;

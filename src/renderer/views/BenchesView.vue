@@ -34,8 +34,8 @@
         <input v-model="createForm.frappeVersion" type="text" required />
       </label>
       <label class="benches-field">
-        <span>Apps (comma separated)</span>
-        <input v-model="createForm.appsText" type="text" placeholder="frappe, erpnext" />
+        <span>Apps</span>
+        <AppPicker v-model="createForm.appsSelected" :disabled="creating || loading" />
       </label>
       <div class="benches-actions benches-field--full">
         <button class="benches-create" type="submit" :disabled="creating || loading">
@@ -141,6 +141,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
+import AppPicker from '../components/AppPicker.vue';
 import { useBenches } from '../composables/useBenches';
 
 const {
@@ -166,26 +167,21 @@ const createForm = reactive({
   path: '',
   frappeVersion: '15.0.0',
   runtime: 'docker' as 'docker' | 'podman',
-  appsText: '',
+  appsSelected: [] as string[],
 });
 
 const onCreateBench = async () => {
-  const apps = createForm.appsText
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
   await create({
     name: createForm.name,
     path: createForm.path,
     frappeVersion: createForm.frappeVersion,
     runtime: createForm.runtime,
-    apps,
+    apps: [...createForm.appsSelected],
   });
 
   createForm.name = '';
   createForm.path = '';
-  createForm.appsText = '';
+  createForm.appsSelected = [];
 };
 
 const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
