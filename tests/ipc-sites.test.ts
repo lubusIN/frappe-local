@@ -222,7 +222,7 @@ describe('sites IPC handlers', () => {
         settings: makeStubSettingsRepo(),
         groups: makeStubGroupRepo(),
       },
-      { openPath: async () => false, trackSiteOperation }
+      { openPath: async () => false, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
     );
 
     const createHandler = handlers.get(ipcChannels.sitesCreate);
@@ -239,7 +239,7 @@ describe('sites IPC handlers', () => {
       benchId: 'bench-001',
       groupId: null,
       status: 'stopped',
-      appCount: 1,
+      { openPath, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
     });
     expect(trackSiteOperation).toHaveBeenCalledWith(expect.any(String), 'create');
   });

@@ -25,6 +25,42 @@ const rendererBridge: RendererBridge = {
 	createWorkspace: async (input) => ipcRenderer.invoke(ipcChannels.workspacesCreate, input),
 	updateWorkspace: async (id, input) => ipcRenderer.invoke(ipcChannels.workspacesUpdate, id, input),
 	deleteWorkspace: async (id) => ipcRenderer.invoke(ipcChannels.workspacesDelete, id),
+	terminalCreate: async (benchId, siteId = null) =>
+		ipcRenderer.invoke(ipcChannels.terminalCreate, benchId, siteId),
+	terminalWrite: async (sessionId, data) => ipcRenderer.invoke(ipcChannels.terminalWrite, sessionId, data),
+	terminalClose: async (sessionId, force = false) =>
+		ipcRenderer.invoke(ipcChannels.terminalClose, sessionId, force),
+	terminalClear: async (sessionId) => ipcRenderer.invoke(ipcChannels.terminalClear, sessionId),
+	terminalResize: async (sessionId, dimensions) =>
+		ipcRenderer.invoke(ipcChannels.terminalResize, sessionId, dimensions),
+	terminalInspect: async (sessionId) => ipcRenderer.invoke(ipcChannels.terminalInspect, sessionId),
+	terminalOpenFolder: async (benchId, siteId = null) =>
+		ipcRenderer.invoke(ipcChannels.terminalOpenFolder, benchId, siteId),
+	terminalOpenEditor: async (benchId, siteId = null) =>
+		ipcRenderer.invoke(ipcChannels.terminalOpenEditor, benchId, siteId),
+	terminalOpenDevcontainer: async (benchId) =>
+		ipcRenderer.invoke(ipcChannels.terminalOpenDevcontainer, benchId),
+	onTerminalOutput: (listener) => {
+		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
+		ipcRenderer.on(ipcChannels.terminalOutputEvent, handler);
+		return () => {
+			ipcRenderer.removeListener(ipcChannels.terminalOutputEvent, handler);
+		};
+	},
+	onTerminalError: (listener) => {
+		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
+		ipcRenderer.on(ipcChannels.terminalErrorEvent, handler);
+		return () => {
+			ipcRenderer.removeListener(ipcChannels.terminalErrorEvent, handler);
+		};
+	},
+	onTerminalStateChange: (listener) => {
+		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
+		ipcRenderer.on(ipcChannels.terminalStateChangeEvent, handler);
+		return () => {
+			ipcRenderer.removeListener(ipcChannels.terminalStateChangeEvent, handler);
+		};
+	},
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);

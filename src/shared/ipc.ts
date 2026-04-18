@@ -21,6 +21,18 @@ export const ipcChannels = {
   workspacesCreate: 'workspaces:create',
   workspacesUpdate: 'workspaces:update',
   workspacesDelete: 'workspaces:delete',
+  terminalCreate: 'terminal:create',
+  terminalWrite: 'terminal:write',
+  terminalClose: 'terminal:close',
+  terminalClear: 'terminal:clear',
+  terminalResize: 'terminal:resize',
+  terminalInspect: 'terminal:inspect',
+  terminalOpenFolder: 'terminal:open-folder',
+  terminalOpenEditor: 'terminal:open-editor',
+  terminalOpenDevcontainer: 'terminal:open-devcontainer',
+  terminalOutputEvent: 'terminal:output-event',
+  terminalErrorEvent: 'terminal:error-event',
+  terminalStateChangeEvent: 'terminal:state-change-event',
 } as const;
 
 export type AppHealthResponse = {
@@ -140,6 +152,47 @@ export type WorkspaceUpdateInput = {
   readonly tags?: string[];
 };
 
+export type TerminalCreateResponse = {
+  readonly sessionId: string;
+  readonly state: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
+  readonly workingDirectory: string;
+};
+
+export type TerminalDimensions = {
+  readonly rows: number;
+  readonly cols: number;
+};
+
+export type TerminalSessionInspection = {
+  readonly sessionId: string;
+  readonly state: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
+  readonly workingDirectory: string;
+  readonly contextBenchId: string;
+  readonly contextSiteId: string | null;
+  readonly createdAt: string;
+  readonly lastActivityAt: string;
+};
+
+export type TerminalOutputEvent = {
+  readonly sessionId: string;
+  readonly output: string;
+  readonly timestamp: string;
+};
+
+export type TerminalErrorEvent = {
+  readonly sessionId: string;
+  readonly code: string;
+  readonly message: string;
+  readonly timestamp: string;
+};
+
+export type TerminalStateChangeEvent = {
+  readonly sessionId: string;
+  readonly previousState: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
+  readonly newState: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
+  readonly timestamp: string;
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
@@ -163,6 +216,18 @@ export type RendererBridge = {
   readonly createWorkspace: (input: WorkspaceCreateInput) => Promise<WorkspaceListItem>;
   readonly updateWorkspace: (id: string, input: WorkspaceUpdateInput) => Promise<WorkspaceListItem | null>;
   readonly deleteWorkspace: (id: string) => Promise<boolean>;
+  readonly terminalCreate: (benchId: string, siteId?: string | null) => Promise<TerminalCreateResponse>;
+  readonly terminalWrite: (sessionId: string, data: string) => Promise<boolean>;
+  readonly terminalClose: (sessionId: string, force?: boolean) => Promise<boolean>;
+  readonly terminalClear: (sessionId: string) => Promise<boolean>;
+  readonly terminalResize: (sessionId: string, dimensions: TerminalDimensions) => Promise<boolean>;
+  readonly terminalInspect: (sessionId: string) => Promise<TerminalSessionInspection | null>;
+  readonly terminalOpenFolder: (benchId: string, siteId?: string | null) => Promise<boolean>;
+  readonly terminalOpenEditor: (benchId: string, siteId?: string | null) => Promise<boolean>;
+  readonly terminalOpenDevcontainer: (benchId: string) => Promise<boolean>;
+  readonly onTerminalOutput: (listener: (event: TerminalOutputEvent) => void) => () => void;
+  readonly onTerminalError: (listener: (event: TerminalErrorEvent) => void) => () => void;
+  readonly onTerminalStateChange: (listener: (event: TerminalStateChangeEvent) => void) => () => void;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

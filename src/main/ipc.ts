@@ -11,10 +11,18 @@ import type {
   SiteUpdateInput,
   WorkspaceCreateInput,
   WorkspaceListItem,
+  TerminalErrorEvent,
+  TerminalSessionInspection,
+  TerminalOutputEvent,
   WorkspaceUpdateInput,
+  TerminalStateChangeEvent,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
+import type { TerminalCreateResponse } from '../shared/ipc';
+import { getTerminalService } from './terminal-service';
 import fs from 'node:fs';
+import path from 'node:path';
+import { BrowserWindow } from 'electron';
 import {
   CreateBenchInputSchema,
   CreateGroupInputSchema,
@@ -39,6 +47,18 @@ import { orchestrateSiteCreation } from './site-orchestration';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
+};
+
+type TerminalServiceLike = {
+  onOutput: (listener: (event: TerminalOutputEvent) => void) => () => void;
+  onError: (listener: (event: TerminalErrorEvent) => void) => () => void;
+  onStateChange: (listener: (event: TerminalStateChangeEvent) => void) => () => void;
+  createSession: ReturnType<typeof getTerminalService>['createSession'];
+  getSession: ReturnType<typeof getTerminalService>['getSession'];
+  write: ReturnType<typeof getTerminalService>['write'];
+  closeSession: ReturnType<typeof getTerminalService>['closeSession'];
+  clear: ReturnType<typeof getTerminalService>['clear'];
+  resize: ReturnType<typeof getTerminalService>['resize'];
 };
 
 export type AppRepositories = {
@@ -82,6 +102,7 @@ export type AppRepositories = {
   };
   readonly benches: {
     findAll: () => Promise<Bench[]>;
+    findById: (id: string) => Promise<Bench | null>;
     create: (input: {
       name: string;
       path: string;
@@ -102,6 +123,7 @@ export type AppRepositories = {
   };
   readonly sites: {
     findAll: () => Promise<Site[]>;
+    findById: (id: string) => Promise<Site | null>;
     create: (input: {
       name: string;
       benchId: string;
@@ -144,6 +166,8 @@ export type AppRepositories = {
 
 export type IpcOperations = {
   readonly openPath: (targetPath: string) => Promise<boolean>;
+  readonly openInEditor: (targetPath: string, editorPreference: string) => Promise<boolean>;
+  readonly pathExists: (targetPath: string) => boolean;
   readonly trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
   readonly trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
 };
@@ -249,15 +273,51 @@ const toLifecycleLogs = (
   return logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 };
 
+const findDevcontainerTarget = (benchPath: string, pathExists: (targetPath: string) => boolean): string | null => {
+  const devcontainerFolder = path.join(benchPath, '.devcontainer');
+  const devcontainerFile = path.join(benchPath, 'devcontainer.json');
+
+  if (pathExists(devcontainerFolder)) {
+    return devcontainerFolder;
+  }
+
+  if (pathExists(devcontainerFile)) {
+    return devcontainerFile;
+  }
+
+  return null;
+};
+
 export const registerIpcHandlers = (
   ipcMainLike: IpcMainLike,
   repositories: AppRepositories,
   operations: IpcOperations = {
     openPath: async () => false,
+    openInEditor: async () => false,
+    pathExists: (targetPath) => fs.existsSync(targetPath),
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
-  }
+  },
+  terminalService: TerminalServiceLike = getTerminalService()
 ): void => {
+  const broadcast = <T>(channel: string, payload: T): void => {
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send(channel, payload);
+    });
+  };
+
+  terminalService.onOutput((event: TerminalOutputEvent) => {
+    broadcast(ipcChannels.terminalOutputEvent, event);
+  });
+
+  terminalService.onError((event: TerminalErrorEvent) => {
+    broadcast(ipcChannels.terminalErrorEvent, event);
+  });
+
+  terminalService.onStateChange((event: TerminalStateChangeEvent) => {
+    broadcast(ipcChannels.terminalStateChangeEvent, event);
+  });
+
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
 
   ipcMainLike.handle(ipcChannels.catalogList, async () => {
@@ -526,5 +586,180 @@ export const registerIpcHandlers = (
     }
 
     return repositories.groups.delete(id);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalCreate, async (_event: unknown, benchId: unknown, siteId: unknown) => {
+    if (typeof benchId !== 'string') {
+      throw new Error('Invalid bench ID');
+    }
+
+    const bench = await repositories.benches.findById(benchId);
+    if (!bench) {
+      throw new Error('Bench not found');
+    }
+
+    let workingDirectory = bench.path;
+    let resolvedSiteId: string | null = null;
+
+    if (typeof siteId === 'string') {
+      const site = await repositories.sites.findById(siteId);
+      if (!site || site.benchId !== benchId) {
+        throw new Error('Site not found for bench');
+      }
+      workingDirectory = site.path;
+      resolvedSiteId = site.id;
+    }
+
+    const result = terminalService.createSession({
+      benchId,
+      siteId: resolvedSiteId,
+      workspacePath: workingDirectory,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error ?? 'Unable to create terminal session');
+    }
+
+    const response: TerminalCreateResponse = {
+      sessionId: result.session!.id,
+      state: result.session!.state,
+      workingDirectory: result.session!.workingDirectory,
+    };
+
+    return response;
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalWrite, async (_event: unknown, sessionId: unknown, data: unknown) => {
+    if (typeof sessionId !== 'string' || typeof data !== 'string') {
+      return false;
+    }
+
+    return terminalService.write(sessionId, data);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalClose, async (_event: unknown, sessionId: unknown, force: unknown) => {
+    if (typeof sessionId !== 'string') {
+      return false;
+    }
+
+    return terminalService.closeSession(sessionId, force === true);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalClear, async (_event: unknown, sessionId: unknown) => {
+    if (typeof sessionId !== 'string') {
+      return false;
+    }
+
+    return terminalService.clear(sessionId);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalResize, async (_event: unknown, sessionId: unknown, dimensions: unknown) => {
+    if (typeof sessionId !== 'string' || !dimensions || typeof dimensions !== 'object') {
+      return false;
+    }
+
+    const terminalDimensions = dimensions as { rows?: unknown; cols?: unknown };
+    if (typeof terminalDimensions.rows !== 'number' || typeof terminalDimensions.cols !== 'number') {
+      return false;
+    }
+
+    return terminalService.resize(sessionId, terminalDimensions.rows, terminalDimensions.cols);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalInspect, async (_event: unknown, sessionId: unknown) => {
+    if (typeof sessionId !== 'string') {
+      return null;
+    }
+
+    const session = terminalService.getSession(sessionId);
+    if (!session) {
+      return null;
+    }
+
+    const response: TerminalSessionInspection = {
+      sessionId: session.id,
+      state: session.state,
+      workingDirectory: session.workingDirectory,
+      contextBenchId: session.contextBenchId,
+      contextSiteId: session.contextSiteId,
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
+    };
+
+    return response;
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalOpenFolder, async (_event: unknown, benchId: unknown, siteId: unknown) => {
+    if (typeof benchId !== 'string') {
+      return false;
+    }
+
+    const bench = await repositories.benches.findById(benchId);
+    if (!bench) {
+      return false;
+    }
+
+    let targetPath = bench.path;
+    if (typeof siteId === 'string') {
+      const site = await repositories.sites.findById(siteId);
+      if (!site || site.benchId !== benchId) {
+        return false;
+      }
+      targetPath = site.path;
+    }
+
+    if (!operations.pathExists(targetPath)) {
+      return false;
+    }
+
+    return operations.openPath(targetPath);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalOpenEditor, async (_event: unknown, benchId: unknown, siteId: unknown) => {
+    if (typeof benchId !== 'string') {
+      return false;
+    }
+
+    const bench = await repositories.benches.findById(benchId);
+    if (!bench) {
+      return false;
+    }
+
+    let targetPath = bench.path;
+    if (typeof siteId === 'string') {
+      const site = await repositories.sites.findById(siteId);
+      if (!site || site.benchId !== benchId) {
+        return false;
+      }
+      targetPath = site.path;
+    }
+
+    if (!operations.pathExists(targetPath)) {
+      return false;
+    }
+
+    const settings = await repositories.settings.get();
+    const editorPreference = settings?.editorPreference || 'code';
+    return operations.openInEditor(targetPath, editorPreference);
+  });
+
+  ipcMainLike.handle(ipcChannels.terminalOpenDevcontainer, async (_event: unknown, benchId: unknown) => {
+    if (typeof benchId !== 'string') {
+      return false;
+    }
+
+    const bench = await repositories.benches.findById(benchId);
+    if (!bench || !operations.pathExists(bench.path)) {
+      return false;
+    }
+
+    const devcontainerTarget = findDevcontainerTarget(bench.path, operations.pathExists);
+    if (!devcontainerTarget) {
+      return false;
+    }
+
+    const settings = await repositories.settings.get();
+    const editorPreference = settings?.editorPreference || 'code';
+    return operations.openInEditor(devcontainerTarget, editorPreference);
   });
 };

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import type { IpcMain } from 'electron';
 import { BrowserWindow } from 'electron';
 import { shell } from 'electron';
@@ -27,6 +28,30 @@ type BootstrapContext = {
 };
 
 const bootstrapLogger = createMainLogger('bootstrap');
+
+const splitCommand = (commandLine: string): string[] => {
+  return commandLine.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((part) => part.replace(/^"|"$/g, '')) ?? [];
+};
+
+const openInEditor = async (targetPath: string, editorPreference: string): Promise<boolean> => {
+  const [command, ...args] = splitCommand(editorPreference.trim() || 'code');
+  if (!command) {
+    return false;
+  }
+
+  try {
+    const childProcess = spawn(command, [...args, targetPath], {
+      detached: true,
+      stdio: 'ignore',
+      shell: false,
+    });
+    childProcess.unref();
+    return true;
+  } catch (error) {
+    bootstrapLogger.warn(`failed to open editor for ${targetPath}`);
+    return false;
+  }
+};
 
 const buildStartupErrorHtml = (appName: string): string => {
   const safeName = appName.replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -100,6 +125,8 @@ export const runApplicationBootstrap = async (
         const result = await shell.openPath(targetPath);
         return result === '';
       },
+      openInEditor,
+      pathExists: (targetPath: string) => fs.existsSync(targetPath),
       trackBenchOperation: (benchId, operation) => {
         benchAnalytics.track(benchId, operation);
       },
