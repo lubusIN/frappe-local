@@ -3,6 +3,7 @@ export const ipcChannels = {
   catalogList: 'catalog:list',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
+  benchesList: 'benches:list',
 } as const;
 
 export type AppHealthResponse = {
@@ -21,11 +22,24 @@ export type CatalogAppItem = {
   readonly version: string;
 };
 
+export type BenchListItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly path: string;
+  readonly frappeVersion: string;
+  readonly runtime: 'docker' | 'podman';
+  readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+  readonly appCount: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
+  readonly listBenches: () => Promise<BenchListItem[]>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

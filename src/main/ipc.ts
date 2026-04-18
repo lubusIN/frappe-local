@@ -1,13 +1,20 @@
-import type { AppHealthResponse, CatalogAppItem } from '../shared/ipc';
+import type { AppHealthResponse, BenchListItem, CatalogAppItem } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
-import type { AppCatalogRepository } from './storage/repositories/app-catalog-repository';
+import type { Bench } from '../shared/domain/models';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
 };
 
 export type AppRepositories = {
-  readonly appCatalog: AppCatalogRepository;
+  readonly appCatalog: {
+    findAll: () => Promise<Array<{ id: string; name: string; description: string; source: string; version: string }>>;
+    findById: (id: string) => Promise<{ id: string; name: string; description: string; source: string; version: string } | null>;
+    search: (query: string) => Promise<Array<{ id: string; name: string; description: string; source: string; version: string }>>;
+  };
+  readonly benches: {
+    findAll: () => Promise<Bench[]>;
+  };
 };
 
 export const buildAppHealthResponse = (): AppHealthResponse => ({
@@ -24,6 +31,18 @@ const toCatalogAppItem = (item: { id: string; name: string; description: string;
   description: item.description,
   source: item.source,
   version: item.version,
+});
+
+const toBenchListItem = (bench: Bench): BenchListItem => ({
+  id: bench.id,
+  name: bench.name,
+  path: bench.path,
+  frappeVersion: bench.frappeVersion,
+  runtime: bench.runtime,
+  status: bench.status,
+  appCount: bench.apps.length,
+  createdAt: bench.timestamps.createdAt,
+  updatedAt: bench.timestamps.updatedAt,
 });
 
 export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppRepositories): void => {
@@ -44,5 +63,10 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     const q = typeof query === 'string' ? query : '';
     const items = await repositories.appCatalog.search(q);
     return items.map(toCatalogAppItem);
+  });
+
+  ipcMainLike.handle(ipcChannels.benchesList, async () => {
+    const benches = await repositories.benches.findAll();
+    return benches.map(toBenchListItem);
   });
 };

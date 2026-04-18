@@ -6,6 +6,10 @@ describe('ipc contract', () => {
     expect(ipcChannels.appHealthCheck).toBe('app:health:check');
   });
 
+  it('uses a stable channel name for benches listing', () => {
+    expect(ipcChannels.benchesList).toBe('benches:list');
+  });
+
   it('validates app health payload shape', () => {
     const validPayload = {
       appName: 'Frappe Cafe',

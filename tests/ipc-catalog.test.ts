@@ -34,11 +34,20 @@ function makeStubCatalogRepo(items: AppCatalogItem[]): AppCatalogRepository {
   } as AppCatalogRepository;
 }
 
+function makeStubBenchRepo() {
+  return {
+    findAll: async () => [],
+  };
+}
+
 function buildHandlers(items: AppCatalogItem[] = catalogItems) {
   const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
   registerIpcHandlers(
     { handle: (channel, listener) => { handlers.set(channel, listener); } },
-    { appCatalog: makeStubCatalogRepo(items) }
+    {
+      appCatalog: makeStubCatalogRepo(items),
+      benches: makeStubBenchRepo(),
+    }
   );
   return handlers;
 }

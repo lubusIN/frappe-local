@@ -12,13 +12,22 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []): AppCatalogRepository
   } as AppCatalogRepository;
 }
 
+function makeStubBenchRepo() {
+  return {
+    findAll: async () => [],
+  };
+}
+
 describe('ipc roundtrip', () => {
   it('returns app health through the registered handler', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
-      { appCatalog: makeStubCatalogRepo() }
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+      }
     );
 
     const appHealthHandler = handlers.get(ipcChannels.appHealthCheck);

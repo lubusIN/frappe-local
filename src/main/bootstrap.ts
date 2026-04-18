@@ -9,6 +9,7 @@ import { resolveAppRuntimePaths } from './config';
 import { JsonStorageAdapter } from './storage/adapter';
 import { initializeStorage } from './storage/bootstrap';
 import { AppCatalogRepository } from './storage/repositories/app-catalog-repository';
+import { BenchRepository } from './storage/repositories/bench-repository';
 
 type BootstrapContext = {
   readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories) => void;
@@ -74,6 +75,7 @@ export const runApplicationBootstrap = async (
 
     const repositories: AppRepositories = {
       appCatalog: new AppCatalogRepository(adapter),
+      benches: new BenchRepository(adapter),
     };
 
     context.registerHandlers(ipcMain, repositories);
