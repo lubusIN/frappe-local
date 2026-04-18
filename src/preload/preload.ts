@@ -8,6 +8,7 @@ const rendererBridge: RendererBridge = {
 	findCatalogItem: async (id: string) => ipcRenderer.invoke(ipcChannels.catalogFindById, id),
 	searchCatalog: async (query: string) => ipcRenderer.invoke(ipcChannels.catalogSearch, query),
 	listBenches: async () => ipcRenderer.invoke(ipcChannels.benchesList),
+	listSites: async () => ipcRenderer.invoke(ipcChannels.sitesList),
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);

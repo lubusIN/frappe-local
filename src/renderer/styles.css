@@ -439,3 +439,150 @@ body {
     color: #2f2116;
     font-weight: 600;
   }
+
+  /* ── Sites ──────────────────────────────────────────────────────── */
+
+  .sites-view {
+    display: grid;
+    gap: 16px;
+  }
+
+  .sites-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sites-title {
+    margin: 0;
+    font-size: 28px;
+    color: #2f2116;
+  }
+
+  .sites-refresh {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .sites-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .sites-error {
+    margin: 0;
+    color: #9b3535;
+    background: #fff1f1;
+    border: 1px solid #e9b3b3;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .sites-empty {
+    border: 1px dashed #d3c5b5;
+    border-radius: 16px;
+    background: #fffaf3;
+    padding: 20px;
+  }
+
+  .sites-empty-title {
+    margin: 0;
+    font-size: 18px;
+    color: #2f2116;
+  }
+
+  .sites-empty-body {
+    margin: 8px 0 0;
+    color: #6b5240;
+  }
+
+  .sites-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .site-card {
+    border: 1px solid #d3c5b5;
+    border-radius: 16px;
+    padding: 14px;
+    background: #fffaf3;
+  }
+
+  .site-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .site-name {
+    margin: 0;
+    font-size: 18px;
+    color: #2f2116;
+  }
+
+  .site-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .site-status--running,
+  .site-status--success {
+    background: #ecf7ef;
+    color: #2d7a43;
+  }
+
+  .site-status--stopped,
+  .site-status--queued {
+    background: #f4ede0;
+    color: #7c633f;
+  }
+
+  .site-status--failure {
+    background: #fff1f1;
+    color: #9b3535;
+  }
+
+  .site-path {
+    margin: 10px 0;
+    font-size: 12px;
+    color: #6b5240;
+    word-break: break-all;
+  }
+
+  .site-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+  }
+
+  .site-meta dt {
+    font-size: 11px;
+    color: #9a7a5a;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .site-meta dd {
+    margin: 4px 0 0;
+    font-size: 14px;
+    color: #2f2116;
+    font-weight: 600;
+  }

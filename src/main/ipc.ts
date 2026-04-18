@@ -1,6 +1,6 @@
-import type { AppHealthResponse, BenchListItem, CatalogAppItem } from '../shared/ipc';
+import type { AppHealthResponse, BenchListItem, CatalogAppItem, SiteListItem } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
-import type { Bench } from '../shared/domain/models';
+import type { Bench, Site } from '../shared/domain/models';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -14,6 +14,9 @@ export type AppRepositories = {
   };
   readonly benches: {
     findAll: () => Promise<Bench[]>;
+  };
+  readonly sites: {
+    findAll: () => Promise<Site[]>;
   };
 };
 
@@ -45,6 +48,18 @@ const toBenchListItem = (bench: Bench): BenchListItem => ({
   updatedAt: bench.timestamps.updatedAt,
 });
 
+const toSiteListItem = (site: Site): SiteListItem => ({
+  id: site.id,
+  name: site.name,
+  benchId: site.benchId,
+  groupId: site.groupId,
+  status: site.status,
+  path: site.path,
+  appCount: site.apps.length,
+  createdAt: site.timestamps.createdAt,
+  updatedAt: site.timestamps.updatedAt,
+});
+
 export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppRepositories): void => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
 
@@ -68,5 +83,10 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
   ipcMainLike.handle(ipcChannels.benchesList, async () => {
     const benches = await repositories.benches.findAll();
     return benches.map(toBenchListItem);
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesList, async () => {
+    const sites = await repositories.sites.findAll();
+    return sites.map(toSiteListItem);
   });
 };

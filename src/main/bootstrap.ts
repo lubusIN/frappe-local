@@ -10,6 +10,7 @@ import { JsonStorageAdapter } from './storage/adapter';
 import { initializeStorage } from './storage/bootstrap';
 import { AppCatalogRepository } from './storage/repositories/app-catalog-repository';
 import { BenchRepository } from './storage/repositories/bench-repository';
+import { SiteRepository } from './storage/repositories/site-repository';
 
 type BootstrapContext = {
   readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories) => void;
@@ -76,6 +77,7 @@ export const runApplicationBootstrap = async (
     const repositories: AppRepositories = {
       appCatalog: new AppCatalogRepository(adapter),
       benches: new BenchRepository(adapter),
+      sites: new SiteRepository(adapter),
     };
 
     context.registerHandlers(ipcMain, repositories);

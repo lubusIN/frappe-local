@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
-import type { AppCatalogItem, Bench } from '../src/shared/domain/models';
+import type { AppCatalogItem, Site } from '../src/shared/domain/models';
 
-const benches: Bench[] = [
+const sites: Site[] = [
   {
-    id: 'bench-001',
-    name: 'frappe-bench',
-    path: '/Users/dev/frappe-bench',
-    frappeVersion: '15.0.0',
-    runtime: 'docker',
-    status: 'running',
+    id: 'site-001',
+    name: 'demo.localhost',
+    benchId: 'bench-001',
+    groupId: null,
     apps: ['frappe', 'erpnext'],
+    status: 'running',
+    path: '/Users/dev/frappe-bench/sites/demo.localhost',
     timestamps: {
-      createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
-      updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
+      createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
+      updatedAt: new Date('2026-02-02T00:00:00.000Z').toISOString(),
     },
   },
 ];
@@ -27,20 +27,20 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
   };
 }
 
-function makeStubBenchRepo(items: Bench[] = benches) {
-  return {
-    findAll: async () => items,
-  };
-}
-
-function makeStubSiteRepo() {
+function makeStubBenchRepo() {
   return {
     findAll: async () => [],
   };
 }
 
-describe('benches IPC handlers', () => {
-  it('benches:list returns mapped bench list items', async () => {
+function makeStubSiteRepo(items: Site[] = sites) {
+  return {
+    findAll: async () => items,
+  };
+}
+
+describe('sites IPC handlers', () => {
+  it('sites:list returns mapped site list items', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
@@ -52,7 +52,7 @@ describe('benches IPC handlers', () => {
       }
     );
 
-    const listHandler = handlers.get(ipcChannels.benchesList);
+    const listHandler = handlers.get(ipcChannels.sitesList);
 
     expect(listHandler).toBeTypeOf('function');
 
@@ -60,32 +60,32 @@ describe('benches IPC handlers', () => {
 
     expect(result).toEqual([
       {
-        id: 'bench-001',
-        name: 'frappe-bench',
-        path: '/Users/dev/frappe-bench',
-        frappeVersion: '15.0.0',
-        runtime: 'docker',
+        id: 'site-001',
+        name: 'demo.localhost',
+        benchId: 'bench-001',
+        groupId: null,
         status: 'running',
+        path: '/Users/dev/frappe-bench/sites/demo.localhost',
         appCount: 2,
-        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
-        updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
+        createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-02-02T00:00:00.000Z').toISOString(),
       },
     ]);
   });
 
-  it('benches:list returns an empty array when no benches exist', async () => {
+  it('sites:list returns an empty array when no sites exist', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
       {
         appCatalog: makeStubCatalogRepo(),
-        benches: makeStubBenchRepo([]),
-        sites: makeStubSiteRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([]),
       }
     );
 
-    const result = await handlers.get(ipcChannels.benchesList)?.();
+    const result = await handlers.get(ipcChannels.sitesList)?.();
 
     expect(result).toEqual([]);
   });

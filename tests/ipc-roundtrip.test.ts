@@ -18,6 +18,12 @@ function makeStubBenchRepo() {
   };
 }
 
+function makeStubSiteRepo() {
+  return {
+    findAll: async () => [],
+  };
+}
+
 describe('ipc roundtrip', () => {
   it('returns app health through the registered handler', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -27,6 +33,7 @@ describe('ipc roundtrip', () => {
       {
         appCatalog: makeStubCatalogRepo(),
         benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
       }
     );
 
