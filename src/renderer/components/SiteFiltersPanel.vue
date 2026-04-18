@@ -51,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { SiteFilterCriteria } from '../tag-filters';
 
 interface FilterOptions {
@@ -58,11 +59,16 @@ interface FilterOptions {
   tags: string[];
 }
 
-defineProps<{
+interface Group {
+  id: string;
+  name: string;
+}
+
+const props = defineProps<{
   filterCriteria: SiteFilterCriteria;
   selectedTags: string[];
   filterOptions: FilterOptions;
-  groups: any[];
+  groups: Group[];
 }>();
 
 defineEmits<{
@@ -73,14 +79,14 @@ defineEmits<{
   clear: [];
 }>();
 
-const hasActiveFilters = () => {
+const hasActiveFilters = computed(() => {
   return !!(
-    filterCriteria.query ||
-    filterCriteria.groupId !== undefined ||
-    filterCriteria.status ||
-    selectedTags.length > 0
+    props.filterCriteria.query ||
+    props.filterCriteria.groupId !== undefined ||
+    props.filterCriteria.status ||
+    props.selectedTags.length > 0
   );
-};
+});
 </script>
 
 <style scoped>

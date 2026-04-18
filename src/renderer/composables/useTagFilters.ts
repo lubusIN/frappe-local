@@ -3,7 +3,16 @@ import type { Site } from '../../shared/domain/models';
 import { filterSites, getFilterOptions } from '../tag-filters';
 import type { SiteFilterCriteria } from '../tag-filters';
 
-export function useTagFilters(sites: { value: Site[] }, workspaces: { value: any[] }) {
+interface Workspace {
+  id: string;
+  name: string;
+  tags: string[];
+}
+
+export function useTagFilters(
+  sites: { value: Site[] },
+  workspaces: { value: Workspace[] }
+) {
   const filterCriteria = ref<SiteFilterCriteria>({
     query: '',
     groupId: undefined,

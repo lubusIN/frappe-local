@@ -1,6 +1,18 @@
 import { computed } from 'vue';
+import type { Site } from '../../shared/domain/models';
 
-export function useGroupedWorkspaces(workspaces: { value: any[] }, sites: { value: any[] }) {
+interface Workspace {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  siteCount: number;
+}
+
+export function useGroupedWorkspaces(
+  workspaces: { value: Workspace[] },
+  sites: { value: Site[] }
+) {
   // Build workspace summary with counts
   const workspaceSummaries = computed(() => {
     return workspaces.value.map((ws) => {

@@ -79,7 +79,7 @@ interface Workspace {
   siteCount: number;
 }
 
-defineProps<{
+const props = defineProps<{
   sites: Site[];
   workspaces: Workspace[];
   filteredSites: Site[];
@@ -90,12 +90,12 @@ defineEmits<{
   'reset-filters': [];
 }>();
 
-const unassignedSites = computed(() => filteredSites.filter((s) => !s.groupId));
+const unassignedSites = computed(() => props.filteredSites.filter((s) => !s.groupId));
 
 const groupedWorkspaces = computed(() => {
-  return workspaces.map((ws) => ({
+  return props.workspaces.map((ws) => ({
     ...ws,
-    sitesInGroup: filteredSites.filter((s) => s.groupId === ws.id),
+    sitesInGroup: props.filteredSites.filter((s) => s.groupId === ws.id),
   }));
 });
 </script>
