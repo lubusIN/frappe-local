@@ -17,6 +17,7 @@ import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
 import { InMemoryBenchAnalytics } from './bench-analytics';
 import { InMemorySiteAnalytics } from './site-analytics';
+import { getDefaultAppCatalogSeed } from './catalog-provider';
 
 type BootstrapContext = {
   readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories, operations?: IpcOperations) => void;
@@ -78,7 +79,10 @@ export const runApplicationBootstrap = async (
     const storageFilePath = path.join(context.runtimePaths.storagePath, 'storage.json');
     const adapter = new JsonStorageAdapter(storageFilePath);
     await adapter.connect();
-    await initializeStorage(adapter, storageFilePath, { appCatalogSeed: [], appCatalogSeedVersion: 1 });
+    await initializeStorage(adapter, storageFilePath, {
+      appCatalogSeed: getDefaultAppCatalogSeed(),
+      appCatalogSeedVersion: 2,
+    });
 
     const repositories: AppRepositories = {
       appCatalog: new AppCatalogRepository(adapter),
