@@ -900,6 +900,15 @@ body {
     width: 180px;
   }
 
+  .site-logs-level-filter {
+    border: 1px solid #d3c5b5;
+    border-radius: 8px;
+    background: #fffaf3;
+    color: #2f2116;
+    padding: 6px 8px;
+    min-width: 110px;
+  }
+
   .site-logs-list {
     margin: 10px 0 0;
     padding: 0;

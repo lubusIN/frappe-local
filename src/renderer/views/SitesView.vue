@@ -186,6 +186,12 @@
         <section v-if="activeSiteLogId === site.id" class="site-logs-panel">
           <header class="site-logs-header">
             <p class="site-logs-title">Recent logs</p>
+            <button type="button" class="site-action" @click="onCloseSiteLogs">Close</button>
+            <select v-model="siteLogLevel" class="site-logs-level-filter">
+              <option value="all">all levels</option>
+              <option value="info">info</option>
+              <option value="error">error</option>
+            </select>
             <input
               v-model="siteLogFilter"
               class="site-logs-filter"
@@ -207,6 +213,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import type { LifecycleLogItem } from '../../shared/ipc';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import {
@@ -218,6 +225,7 @@ import {
 } from '../site-wizard';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
+import { filterSiteLogs, type LogLevelFilter } from '../site-log-filters';
 
 const {
   sites,
@@ -343,16 +351,12 @@ const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
 };
 
 const activeSiteLogId = ref<string | null>(null);
-const siteLogs = ref<Array<{ id: string; level: string; message: string; timestamp: string }>>([]);
+const siteLogs = ref<LifecycleLogItem[]>([]);
 const siteLogFilter = ref('');
+const siteLogLevel = ref<LogLevelFilter>('all');
 
 const filteredSiteLogs = computed(() => {
-  const query = siteLogFilter.value.trim().toLowerCase();
-  if (!query) {
-    return siteLogs.value;
-  }
-
-  return siteLogs.value.filter((entry) => `${entry.message} ${entry.level}`.toLowerCase().includes(query));
+  return filterSiteLogs(siteLogs.value, siteLogFilter.value, siteLogLevel.value);
 });
 
 const canStartSite = (siteId: string): boolean => {
@@ -374,8 +378,8 @@ const canStopSite = (siteId: string): boolean => {
 };
 
 const onDeleteSite = async (id: string, name: string) => {
-  const confirmed = window.confirm(`Delete site ${name}? This cannot be undone.`);
-  if (!confirmed) {
+  const confirmation = window.prompt(`Type ${name} to confirm deletion.`);
+  if (confirmation !== name) {
     return;
   }
 
@@ -385,7 +389,15 @@ const onDeleteSite = async (id: string, name: string) => {
 const onLoadSiteLogs = async (id: string) => {
   siteLogs.value = await listLogs(id);
   siteLogFilter.value = '';
+  siteLogLevel.value = 'all';
   activeSiteLogId.value = id;
+};
+
+const onCloseSiteLogs = () => {
+  activeSiteLogId.value = null;
+  siteLogs.value = [];
+  siteLogFilter.value = '';
+  siteLogLevel.value = 'all';
 };
 
 const onOpenSiteFolder = async (id: string) => {
