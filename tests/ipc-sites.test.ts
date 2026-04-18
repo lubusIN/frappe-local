@@ -28,8 +28,24 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
 }
 
 function makeStubBenchRepo() {
+  const benches = [
+    {
+      id: 'bench-001',
+      name: 'frappe-bench',
+      path: '/Users/dev/frappe-bench',
+      frappeVersion: '15.0.0',
+      runtime: 'docker' as const,
+      status: 'running' as const,
+      apps: ['frappe'],
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
+      },
+    },
+  ];
+
   return {
-    findAll: async () => [],
+    findAll: async () => benches,
     create: async (input: {
       name: string;
       path: string;
@@ -219,6 +235,33 @@ describe('sites IPC handlers', () => {
     });
   });
 
+  it('sites:create fails when bench does not exist', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([]),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.sitesCreate);
+
+    await expect(
+      createHandler?.(undefined, {
+        name: 'bad.localhost',
+        benchId: 'unknown-bench',
+        groupId: null,
+        path: '/Users/dev/frappe-bench/sites/bad.localhost',
+        apps: ['frappe'],
+      })
+    ).rejects.toThrow('parent bench was not found');
+  });
+
   it('sites:update updates site status and returns list item shape', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
@@ -245,6 +288,26 @@ describe('sites IPC handlers', () => {
       id: 'site-001',
       status: 'stopped',
     });
+  });
+
+  it('sites:update blocks invalid status transition', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const updateHandler = handlers.get(ipcChannels.sitesUpdate);
+    const updated = await updateHandler?.(undefined, 'site-001', { status: 'success' });
+
+    expect(updated).toBeNull();
   });
 
   it('sites:delete deletes a stopped site', async () => {

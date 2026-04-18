@@ -24,6 +24,11 @@ import {
   type Settings,
   type Site,
 } from '../shared/domain/models';
+import {
+  canAttachSiteToBench,
+  canTransitionSiteStatus,
+  isBenchReadyForSiteStatus,
+} from '../shared/domain/site-lifecycle';
 import type { BenchLifecycleOperation } from './bench-analytics';
 
 type IpcMainLike = {
@@ -304,6 +309,17 @@ export const registerIpcHandlers = (
       ...(input as SiteCreateInput),
       status: 'stopped',
     });
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === payload.benchId);
+    if (!bench) {
+      throw new Error('Cannot create site: parent bench was not found.');
+    }
+
+    if (!canAttachSiteToBench(bench.status)) {
+      throw new Error('Cannot create site: parent bench is not ready.');
+    }
+
     const created = await repositories.sites.create(payload);
     return toSiteListItem(created);
   });
@@ -314,6 +330,29 @@ export const registerIpcHandlers = (
     }
 
     const payload = UpdateSiteInputSchema.parse(input as SiteUpdateInput);
+
+    const sites = await repositories.sites.findAll();
+    const existing = sites.find((entry) => entry.id === id);
+    if (!existing) {
+      return null;
+    }
+
+    const targetSiteStatus = payload.status ?? existing.status;
+    if (!canTransitionSiteStatus(existing.status, targetSiteStatus)) {
+      return null;
+    }
+
+    const targetBenchId = payload.benchId ?? existing.benchId;
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === targetBenchId);
+    if (!bench) {
+      return null;
+    }
+
+    if (!isBenchReadyForSiteStatus(bench.status, targetSiteStatus)) {
+      return null;
+    }
+
     const updated = await repositories.sites.update(id, payload);
     return updated ? toSiteListItem(updated) : null;
   });
@@ -326,6 +365,12 @@ export const registerIpcHandlers = (
     const sites = await repositories.sites.findAll();
     const site = sites.find((entry) => entry.id === id);
     if (!site || site.status === 'running') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === site.benchId);
+    if (!bench || !canAttachSiteToBench(bench.status)) {
       return false;
     }
 
