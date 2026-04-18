@@ -11,17 +11,49 @@
     </header>
 
     <p v-if="error" class="benches-error">{{ error }}</p>
+    <p v-if="successMessage" class="benches-success">{{ successMessage }}</p>
 
-    <div v-else-if="loading" class="benches-empty">
+    <form class="benches-form" @submit.prevent="onCreateBench">
+      <label class="benches-field">
+        <span>Name</span>
+        <input v-model="createForm.name" type="text" required />
+      </label>
+      <label class="benches-field">
+        <span>Runtime</span>
+        <select v-model="createForm.runtime">
+          <option value="docker">docker</option>
+          <option value="podman">podman</option>
+        </select>
+      </label>
+      <label class="benches-field benches-field--full">
+        <span>Path</span>
+        <input v-model="createForm.path" type="text" required />
+      </label>
+      <label class="benches-field">
+        <span>Frappe Version</span>
+        <input v-model="createForm.frappeVersion" type="text" required />
+      </label>
+      <label class="benches-field">
+        <span>Apps (comma separated)</span>
+        <input v-model="createForm.appsText" type="text" placeholder="frappe, erpnext" />
+      </label>
+      <div class="benches-actions benches-field--full">
+        <button class="benches-create" type="submit" :disabled="creating || loading">
+          {{ creating ? 'Creating…' : 'Create bench' }}
+        </button>
+      </div>
+    </form>
+
+    <div v-if="!error && loading" class="benches-empty">
       <p class="benches-empty-title">Loading benches…</p>
     </div>
 
-    <div v-else-if="benches.length === 0" class="benches-empty">
+    <div v-if="!error && !loading && benches.length === 0" class="benches-empty">
       <p class="benches-empty-title">No benches yet.</p>
       <p class="benches-empty-body">Create your first bench in the next checkpoint flow.</p>
     </div>
 
-    <ul v-else class="benches-grid">
+    <ul v-if="!error && !loading && benches.length > 0" class="benches-grid">
       <li v-for="bench in benches" :key="bench.id" class="bench-card">
         <div class="bench-card-top">
           <h4 class="bench-name">{{ bench.name }}</h4>
@@ -48,7 +80,35 @@
 </template>
 
 <script setup lang="ts">
+import { reactive } from 'vue';
 import { useBenches } from '../composables/useBenches';
 
-const { benches, loading, error, refresh } = useBenches();
+const { benches, loading, creating, error, successMessage, create, refresh } = useBenches();
+
+const createForm = reactive({
+  name: '',
+  path: '',
+  frappeVersion: '15.0.0',
+  runtime: 'docker' as 'docker' | 'podman',
+  appsText: '',
+});
+
+const onCreateBench = async () => {
+  const apps = createForm.appsText
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  await create({
+    name: createForm.name,
+    path: createForm.path,
+    frappeVersion: createForm.frappeVersion,
+    runtime: createForm.runtime,
+    apps,
+  });
+
+  createForm.name = '';
+  createForm.path = '';
+  createForm.appsText = '';
+};
 </script>

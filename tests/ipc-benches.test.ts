@@ -28,14 +28,50 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
 }
 
 function makeStubBenchRepo(items: Bench[] = benches) {
+  let current = [...items];
+
   return {
-    findAll: async () => items,
+    findAll: async () => current,
+    create: async (input: {
+      name: string;
+      path: string;
+      frappeVersion: string;
+      runtime: 'docker' | 'podman';
+      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      apps: string[];
+    }) => {
+      const created: Bench = {
+        id: `bench-${current.length + 1}`,
+        ...input,
+        timestamps: {
+          createdAt: new Date('2026-01-10T00:00:00.000Z').toISOString(),
+          updatedAt: new Date('2026-01-10T00:00:00.000Z').toISOString(),
+        },
+      };
+      current = [created, ...current];
+      return created;
+    },
   };
 }
 
 function makeStubSiteRepo() {
   return {
     findAll: async () => [],
+    create: async (input: {
+      name: string;
+      benchId: string;
+      groupId: string | null;
+      apps: string[];
+      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      path: string;
+    }) => ({
+      id: 'site-stub',
+      ...input,
+      timestamps: {
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    }),
   };
 }
 
@@ -109,5 +145,38 @@ describe('benches IPC handlers', () => {
     const result = await handlers.get(ipcChannels.benchesList)?.();
 
     expect(result).toEqual([]);
+  });
+
+  it('benches:create creates a stopped bench and returns list item shape', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([]),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.benchesCreate);
+    const created = await createHandler?.(undefined, {
+      name: 'new-bench',
+      path: '/Users/dev/new-bench',
+      frappeVersion: '15.0.0',
+      runtime: 'docker',
+      apps: ['frappe'],
+    });
+
+    expect(created).toMatchObject({
+      name: 'new-bench',
+      path: '/Users/dev/new-bench',
+      frappeVersion: '15.0.0',
+      runtime: 'docker',
+      status: 'stopped',
+      appCount: 1,
+    });
   });
 });

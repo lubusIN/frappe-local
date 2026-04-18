@@ -1,13 +1,23 @@
 import type {
   AppHealthResponse,
+  BenchCreateInput,
   BenchListItem,
   CatalogAppItem,
   SettingsItem,
+  SiteCreateInput,
   SiteListItem,
   WorkspaceListItem,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
-import { SettingsSchema, type Bench, type Group, type Settings, type Site } from '../shared/domain/models';
+import {
+  CreateBenchInputSchema,
+  CreateSiteInputSchema,
+  SettingsSchema,
+  type Bench,
+  type Group,
+  type Settings,
+  type Site,
+} from '../shared/domain/models';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -21,9 +31,25 @@ export type AppRepositories = {
   };
   readonly benches: {
     findAll: () => Promise<Bench[]>;
+    create: (input: {
+      name: string;
+      path: string;
+      frappeVersion: string;
+      runtime: 'docker' | 'podman';
+      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      apps: string[];
+    }) => Promise<Bench>;
   };
   readonly sites: {
     findAll: () => Promise<Site[]>;
+    create: (input: {
+      name: string;
+      benchId: string;
+      groupId: string | null;
+      apps: string[];
+      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      path: string;
+    }) => Promise<Site>;
   };
   readonly settings: {
     get: () => Promise<Settings | null>;
@@ -117,9 +143,27 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     return benches.map(toBenchListItem);
   });
 
+  ipcMainLike.handle(ipcChannels.benchesCreate, async (_event: unknown, input: unknown) => {
+    const payload = CreateBenchInputSchema.parse({
+      ...(input as BenchCreateInput),
+      status: 'stopped',
+    });
+    const created = await repositories.benches.create(payload);
+    return toBenchListItem(created);
+  });
+
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
     const sites = await repositories.sites.findAll();
     return sites.map(toSiteListItem);
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesCreate, async (_event: unknown, input: unknown) => {
+    const payload = CreateSiteInputSchema.parse({
+      ...(input as SiteCreateInput),
+      status: 'stopped',
+    });
+    const created = await repositories.sites.create(payload);
+    return toSiteListItem(created);
   });
 
   ipcMainLike.handle(ipcChannels.settingsGet, async () => {

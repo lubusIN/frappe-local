@@ -337,6 +337,65 @@ body {
     padding: 12px;
   }
 
+  .benches-success {
+    margin: 0;
+    color: #2d7a43;
+    background: #ecf7ef;
+    border: 1px solid #b7dbbf;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .benches-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .benches-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .benches-field span {
+    font-size: 13px;
+    color: #6b5240;
+    font-weight: 600;
+  }
+
+  .benches-field input,
+  .benches-field select {
+    width: 100%;
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #2f2116;
+  }
+
+  .benches-field--full {
+    grid-column: 1 / -1;
+  }
+
+  .benches-actions {
+    display: flex;
+  }
+
+  .benches-create {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .benches-create:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   .benches-empty {
     border: 1px dashed #d3c5b5;
     border-radius: 16px;
@@ -482,6 +541,65 @@ body {
     border: 1px solid #e9b3b3;
     border-radius: 12px;
     padding: 12px;
+  }
+
+  .sites-success {
+    margin: 0;
+    color: #2d7a43;
+    background: #ecf7ef;
+    border: 1px solid #b7dbbf;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .sites-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .sites-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .sites-field span {
+    font-size: 13px;
+    color: #6b5240;
+    font-weight: 600;
+  }
+
+  .sites-field input,
+  .sites-field select {
+    width: 100%;
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #2f2116;
+  }
+
+  .sites-field--full {
+    grid-column: 1 / -1;
+  }
+
+  .sites-actions {
+    display: flex;
+  }
+
+  .sites-create {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .sites-create:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   .sites-empty {
@@ -686,6 +804,8 @@ body {
   }
 
   @media (max-width: 920px) {
+    .benches-form,
+    .sites-form,
     .settings-form {
       grid-template-columns: 1fr;
     }

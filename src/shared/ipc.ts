@@ -4,7 +4,9 @@ export const ipcChannels = {
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
   benchesList: 'benches:list',
+  benchesCreate: 'benches:create',
   sitesList: 'sites:list',
+  sitesCreate: 'sites:create',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   workspacesList: 'workspaces:list',
@@ -38,6 +40,14 @@ export type BenchListItem = {
   readonly updatedAt: string;
 };
 
+export type BenchCreateInput = {
+  readonly name: string;
+  readonly path: string;
+  readonly frappeVersion: string;
+  readonly runtime: 'docker' | 'podman';
+  readonly apps: string[];
+};
+
 export type SiteListItem = {
   readonly id: string;
   readonly name: string;
@@ -48,6 +58,14 @@ export type SiteListItem = {
   readonly appCount: number;
   readonly createdAt: string;
   readonly updatedAt: string;
+};
+
+export type SiteCreateInput = {
+  readonly name: string;
+  readonly benchId: string;
+  readonly groupId: string | null;
+  readonly path: string;
+  readonly apps: string[];
 };
 
 export type SettingsItem = {
@@ -74,7 +92,9 @@ export type RendererBridge = {
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
   readonly listBenches: () => Promise<BenchListItem[]>;
+  readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;
   readonly listSites: () => Promise<SiteListItem[]>;
+  readonly createSite: (input: SiteCreateInput) => Promise<SiteListItem>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
   readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;

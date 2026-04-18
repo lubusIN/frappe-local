@@ -11,17 +11,46 @@
     </header>
 
     <p v-if="error" class="sites-error">{{ error }}</p>
+    <p v-if="successMessage" class="sites-success">{{ successMessage }}</p>
 
-    <div v-else-if="loading" class="sites-empty">
+    <form class="sites-form" @submit.prevent="onCreateSite">
+      <label class="sites-field">
+        <span>Name</span>
+        <input v-model="createForm.name" type="text" required />
+      </label>
+      <label class="sites-field">
+        <span>Bench ID</span>
+        <input v-model="createForm.benchId" type="text" required />
+      </label>
+      <label class="sites-field sites-field--full">
+        <span>Path</span>
+        <input v-model="createForm.path" type="text" required />
+      </label>
+      <label class="sites-field">
+        <span>Group ID (optional)</span>
+        <input v-model="createForm.groupId" type="text" />
+      </label>
+      <label class="sites-field">
+        <span>Apps (comma separated)</span>
+        <input v-model="createForm.appsText" type="text" placeholder="frappe, erpnext" />
+      </label>
+      <div class="sites-actions sites-field--full">
+        <button class="sites-create" type="submit" :disabled="creating || loading">
+          {{ creating ? 'Creating…' : 'Create site' }}
+        </button>
+      </div>
+    </form>
+
+    <div v-if="!error && loading" class="sites-empty">
       <p class="sites-empty-title">Loading sites…</p>
     </div>
 
-    <div v-else-if="sites.length === 0" class="sites-empty">
+    <div v-if="!error && !loading && sites.length === 0" class="sites-empty">
       <p class="sites-empty-title">No sites yet.</p>
       <p class="sites-empty-body">Create your first site in the upcoming lifecycle checkpoint.</p>
     </div>
 
-    <ul v-else class="sites-grid">
+    <ul v-if="!error && !loading && sites.length > 0" class="sites-grid">
       <li v-for="site in sites" :key="site.id" class="site-card">
         <div class="site-card-top">
           <h4 class="site-name">{{ site.name }}</h4>
@@ -48,7 +77,37 @@
 </template>
 
 <script setup lang="ts">
+import { reactive } from 'vue';
 import { useSites } from '../composables/useSites';
 
-const { sites, loading, error, refresh } = useSites();
+const { sites, loading, creating, error, successMessage, create, refresh } = useSites();
+
+const createForm = reactive({
+  name: '',
+  benchId: '',
+  groupId: '',
+  path: '',
+  appsText: '',
+});
+
+const onCreateSite = async () => {
+  const apps = createForm.appsText
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  await create({
+    name: createForm.name,
+    benchId: createForm.benchId,
+    groupId: createForm.groupId.trim() ? createForm.groupId.trim() : null,
+    path: createForm.path,
+    apps,
+  });
+
+  createForm.name = '';
+  createForm.benchId = '';
+  createForm.groupId = '';
+  createForm.path = '';
+  createForm.appsText = '';
+};
 </script>

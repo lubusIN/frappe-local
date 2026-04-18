@@ -24,12 +24,42 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
 function makeStubBenchRepo() {
   return {
     findAll: async () => [],
+    create: async (input: {
+      name: string;
+      path: string;
+      frappeVersion: string;
+      runtime: 'docker' | 'podman';
+      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      apps: string[];
+    }) => ({
+      id: 'bench-stub',
+      ...input,
+      timestamps: {
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    }),
   };
 }
 
 function makeStubSiteRepo() {
   return {
     findAll: async () => [],
+    create: async (input: {
+      name: string;
+      benchId: string;
+      groupId: string | null;
+      apps: string[];
+      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      path: string;
+    }) => ({
+      id: 'site-stub',
+      ...input,
+      timestamps: {
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    }),
   };
 }
 

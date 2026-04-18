@@ -10,8 +10,16 @@ describe('ipc contract', () => {
     expect(ipcChannels.benchesList).toBe('benches:list');
   });
 
+  it('uses a stable channel name for bench creation', () => {
+    expect(ipcChannels.benchesCreate).toBe('benches:create');
+  });
+
   it('uses a stable channel name for sites listing', () => {
     expect(ipcChannels.sitesList).toBe('sites:list');
+  });
+
+  it('uses a stable channel name for site creation', () => {
+    expect(ipcChannels.sitesCreate).toBe('sites:create');
   });
 
   it('uses stable channel names for settings operations', () => {
