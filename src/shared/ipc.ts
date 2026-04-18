@@ -7,6 +7,7 @@ export const ipcChannels = {
   sitesList: 'sites:list',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  workspacesList: 'workspaces:list',
 } as const;
 
 export type AppHealthResponse = {
@@ -59,6 +60,14 @@ export type SettingsItem = {
   readonly autoUpdateEnabled: boolean;
 };
 
+export type WorkspaceListItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly tags: string[];
+  readonly siteCount: number;
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
@@ -68,6 +77,7 @@ export type RendererBridge = {
   readonly listSites: () => Promise<SiteListItem[]>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
+  readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

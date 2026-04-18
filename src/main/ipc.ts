@@ -1,6 +1,13 @@
-import type { AppHealthResponse, BenchListItem, CatalogAppItem, SettingsItem, SiteListItem } from '../shared/ipc';
+import type {
+  AppHealthResponse,
+  BenchListItem,
+  CatalogAppItem,
+  SettingsItem,
+  SiteListItem,
+  WorkspaceListItem,
+} from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
-import { SettingsSchema, type Bench, type Settings, type Site } from '../shared/domain/models';
+import { SettingsSchema, type Bench, type Group, type Settings, type Site } from '../shared/domain/models';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -21,6 +28,9 @@ export type AppRepositories = {
   readonly settings: {
     get: () => Promise<Settings | null>;
     set: (input: Settings) => Promise<Settings>;
+  };
+  readonly groups: {
+    findAll: () => Promise<Group[]>;
   };
 };
 
@@ -74,6 +84,14 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   autoUpdateEnabled: settings.autoUpdateEnabled,
 });
 
+const toWorkspaceListItem = (group: Group): WorkspaceListItem => ({
+  id: group.id,
+  name: group.name,
+  description: group.description,
+  tags: group.tags,
+  siteCount: group.siteIds.length,
+});
+
 export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppRepositories): void => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
 
@@ -113,5 +131,10 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     const parsed = SettingsSchema.parse(input);
     const settings = await repositories.settings.set(parsed);
     return toSettingsItem(settings);
+  });
+
+  ipcMainLike.handle(ipcChannels.workspacesList, async () => {
+    const groups = await repositories.groups.findAll();
+    return groups.map(toWorkspaceListItem);
   });
 };

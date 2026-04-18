@@ -44,6 +44,12 @@ function makeStubSettingsRepo(initial: Settings | null = null) {
   };
 }
 
+function makeStubGroupRepo() {
+  return {
+    findAll: async () => [],
+  };
+}
+
 describe('settings IPC handlers', () => {
   it('settings:get returns null when settings are not configured', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -55,6 +61,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
+        groups: makeStubGroupRepo(),
       }
     );
 
@@ -72,6 +79,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
+        groups: makeStubGroupRepo(),
       }
     );
 
@@ -94,6 +102,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
+        groups: makeStubGroupRepo(),
       }
     );
 
@@ -116,6 +125,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
+        groups: makeStubGroupRepo(),
       }
     );
 

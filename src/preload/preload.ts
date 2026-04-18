@@ -11,6 +11,7 @@ const rendererBridge: RendererBridge = {
 	listSites: async () => ipcRenderer.invoke(ipcChannels.sitesList),
 	getSettings: async () => ipcRenderer.invoke(ipcChannels.settingsGet),
 	setSettings: async (settings) => ipcRenderer.invoke(ipcChannels.settingsSet, settings),
+	listWorkspaces: async () => ipcRenderer.invoke(ipcChannels.workspacesList),
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);

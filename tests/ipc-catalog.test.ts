@@ -57,6 +57,12 @@ function makeStubSettingsRepo() {
   };
 }
 
+function makeStubGroupRepo() {
+  return {
+    findAll: async () => [],
+  };
+}
+
 function buildHandlers(items: AppCatalogItem[] = catalogItems) {
   const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
   registerIpcHandlers(
@@ -66,6 +72,7 @@ function buildHandlers(items: AppCatalogItem[] = catalogItems) {
       benches: makeStubBenchRepo(),
       sites: makeStubSiteRepo(),
       settings: makeStubSettingsRepo(),
+      groups: makeStubGroupRepo(),
     }
   );
   return handlers;

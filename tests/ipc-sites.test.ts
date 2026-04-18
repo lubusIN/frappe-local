@@ -50,6 +50,12 @@ function makeStubSettingsRepo() {
   };
 }
 
+function makeStubGroupRepo() {
+  return {
+    findAll: async () => [],
+  };
+}
+
 describe('sites IPC handlers', () => {
   it('sites:list returns mapped site list items', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -61,6 +67,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
       }
     );
 
@@ -95,6 +102,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
       }
     );
 

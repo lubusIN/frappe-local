@@ -690,3 +690,267 @@ body {
       grid-template-columns: 1fr;
     }
   }
+
+  /* ── Workspaces ─────────────────────────────────────────────────── */
+
+  .workspaces-view {
+    display: grid;
+    gap: 16px;
+  }
+
+  .workspaces-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .workspaces-title {
+    margin: 0;
+    font-size: 28px;
+    color: #2f2116;
+  }
+
+  .workspaces-refresh {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .workspaces-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .workspaces-error {
+    margin: 0;
+    color: #9b3535;
+    background: #fff1f1;
+    border: 1px solid #e9b3b3;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .workspaces-empty {
+    border: 1px dashed #d3c5b5;
+    border-radius: 16px;
+    background: #fffaf3;
+    padding: 20px;
+  }
+
+  .workspaces-empty-title {
+    margin: 0;
+    font-size: 18px;
+    color: #2f2116;
+  }
+
+  .workspaces-empty-body {
+    margin: 8px 0 0;
+    color: #6b5240;
+  }
+
+  .workspaces-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .workspace-card {
+    border: 1px solid #d3c5b5;
+    border-radius: 16px;
+    padding: 14px;
+    background: #fffaf3;
+  }
+
+  .workspace-name {
+    margin: 0;
+    font-size: 18px;
+    color: #2f2116;
+  }
+
+  .workspace-description {
+    margin: 8px 0 10px;
+    font-size: 14px;
+    color: #6b5240;
+  }
+
+  .workspace-meta {
+    display: grid;
+    gap: 8px;
+  }
+
+  .workspace-sites {
+    font-size: 13px;
+    color: #2f2116;
+    font-weight: 600;
+  }
+
+  .workspace-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .workspace-tag {
+    display: inline-block;
+    border-radius: 999px;
+    background: #f3eadf;
+    color: #6b5240;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .workspace-tag--empty {
+    background: #efe7da;
+    color: #8d755e;
+  }
+
+  /* ── Catalog ────────────────────────────────────────────────────── */
+
+  .catalog-view {
+    display: grid;
+    gap: 16px;
+  }
+
+  .catalog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .catalog-title {
+    margin: 0;
+    font-size: 28px;
+    color: #2f2116;
+  }
+
+  .catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .catalog-search {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-width: 220px;
+  }
+
+  .catalog-refresh {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .catalog-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .catalog-error {
+    margin: 0;
+    color: #9b3535;
+    background: #fff1f1;
+    border: 1px solid #e9b3b3;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .catalog-empty {
+    border: 1px dashed #d3c5b5;
+    border-radius: 16px;
+    background: #fffaf3;
+    padding: 20px;
+  }
+
+  .catalog-empty-title {
+    margin: 0;
+    font-size: 18px;
+    color: #2f2116;
+  }
+
+  .catalog-empty-body {
+    margin: 8px 0 0;
+    color: #6b5240;
+  }
+
+  .catalog-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .catalog-card {
+    border: 1px solid #d3c5b5;
+    border-radius: 16px;
+    padding: 14px;
+    background: #fffaf3;
+  }
+
+  .catalog-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .catalog-name {
+    margin: 0;
+    font-size: 18px;
+    color: #2f2116;
+  }
+
+  .catalog-version {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #f3eadf;
+    color: #6b5240;
+  }
+
+  .catalog-description {
+    margin: 10px 0;
+    color: #6b5240;
+    font-size: 14px;
+  }
+
+  .catalog-source {
+    color: #6b4a2a;
+    font-size: 12px;
+    word-break: break-all;
+  }
+
+  @media (max-width: 920px) {
+    .catalog-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .catalog-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .catalog-search {
+      min-width: 0;
+    }
+  }
