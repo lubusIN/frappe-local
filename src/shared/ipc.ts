@@ -1,4 +1,5 @@
 import type { TaskProgressEvent } from './domain/task-runner';
+import type { DependencyHealth, DependencyType } from './domain/runtime-health';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
@@ -22,6 +23,8 @@ export const ipcChannels = {
   exportSitePackage: 'export:site-package',
   importValidatePackage: 'import:validate-package',
   importExecutePackage: 'import:execute-package',
+  runtimeGetHealth: 'runtime:health:get',
+  runtimeRepair: 'runtime:repair',
   workspacesList: 'workspaces:list',
   workspacesCreate: 'workspaces:create',
   workspacesUpdate: 'workspaces:update',
@@ -138,6 +141,30 @@ export type SettingsItem = {
   readonly editorPreference: string;
   readonly updateChannel: 'stable' | 'beta';
   readonly autoUpdateEnabled: boolean;
+};
+
+export type RuntimeHealthResponse = {
+  readonly preferredRuntime: 'docker' | 'podman';
+  readonly selectedRuntime: 'docker' | 'podman';
+  readonly fallbackRuntime: 'docker' | 'podman' | null;
+  readonly fallbackApplied: boolean;
+  readonly dependencies: DependencyHealth[];
+  readonly blockingDependencies: DependencyType[];
+  readonly hasBlockingIssues: boolean;
+};
+
+export type RuntimeRepairInput = {
+  readonly runtimePreference?: 'docker' | 'podman';
+  readonly dryRun?: boolean;
+};
+
+export type RuntimeRepairResponse = {
+  readonly taskId: string;
+  readonly preferredRuntime: 'docker' | 'podman';
+  readonly selectedRuntime: 'docker' | 'podman';
+  readonly fallbackApplied: boolean;
+  readonly dryRun: boolean;
+  readonly repairDependencies: DependencyType[];
 };
 
 export type ImportValidationIssue = {
@@ -283,6 +310,8 @@ export type RendererBridge = {
   readonly exportSitePackage: (input: ExportSitePackageInput) => Promise<ExportSitePackageResponse>;
   readonly validateImportPackage: (input: ImportValidateInput) => Promise<ImportValidationResponse>;
   readonly executeImportPackage: (input: ImportExecuteInput) => Promise<ImportExecutionResponse>;
+  readonly getRuntimeHealth: () => Promise<RuntimeHealthResponse>;
+  readonly repairRuntime: (input: RuntimeRepairInput) => Promise<RuntimeRepairResponse>;
   readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;
   readonly createWorkspace: (input: WorkspaceCreateInput) => Promise<WorkspaceListItem>;
   readonly updateWorkspace: (id: string, input: WorkspaceUpdateInput) => Promise<WorkspaceListItem | null>;

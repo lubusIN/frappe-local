@@ -6,6 +6,9 @@ import type {
   ImportExecuteInput,
   ImportExecutionResponse,
   ImportValidationResponse,
+  RuntimeHealthResponse,
+  RuntimeRepairInput,
+  RuntimeRepairResponse,
   ExportSitePackageInput,
   ExportSitePackageResponse,
   CatalogAppItem,
@@ -27,6 +30,7 @@ import { ipcChannels } from '../shared/ipc';
 import type { TerminalCreateResponse } from '../shared/ipc';
 import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
+import { RuntimeService } from './runtime-service';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
@@ -73,6 +77,11 @@ type TerminalServiceLike = {
 
 type TaskRunnerLike = {
   onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
+};
+
+type RuntimeServiceLike = {
+  getHealth: () => Promise<RuntimeHealthResponse>;
+  startRepair: (input: RuntimeRepairInput) => Promise<RuntimeRepairResponse>;
 };
 
 export type AppRepositories = {
@@ -313,7 +322,11 @@ export const registerIpcHandlers = (
     trackSiteOperation: () => undefined,
   },
   terminalService: TerminalServiceLike = getTerminalService(),
-  taskRunner: TaskRunnerLike = getTaskRunner()
+  taskRunner: TaskRunnerLike = getTaskRunner(),
+  runtimeService: RuntimeServiceLike = new RuntimeService({
+    settings: repositories.settings,
+    taskRunner: getTaskRunner(),
+  })
 ): void => {
   let taskEventSubscriptionCount = 0;
 
@@ -587,6 +600,27 @@ export const registerIpcHandlers = (
     const parsed = SettingsSchema.parse(input);
     const settings = await repositories.settings.set(parsed);
     return toSettingsItem(settings);
+  });
+
+  ipcMainLike.handle(ipcChannels.runtimeGetHealth, async (): Promise<RuntimeHealthResponse> => {
+    return runtimeService.getHealth();
+  });
+
+  ipcMainLike.handle(ipcChannels.runtimeRepair, async (_event: unknown, input: unknown): Promise<RuntimeRepairResponse> => {
+    const payload = (input ?? {}) as RuntimeRepairInput;
+    if (
+      payload.runtimePreference !== undefined &&
+      payload.runtimePreference !== 'docker' &&
+      payload.runtimePreference !== 'podman'
+    ) {
+      throw new Error('Unsupported runtime preference.');
+    }
+
+    if (payload.dryRun !== undefined && typeof payload.dryRun !== 'boolean') {
+      throw new Error('Repair dryRun flag must be a boolean.');
+    }
+
+    return runtimeService.startRepair(payload);
   });
 
   ipcMainLike.handle(ipcChannels.importValidatePackage, async (_event: unknown, input: unknown) => {

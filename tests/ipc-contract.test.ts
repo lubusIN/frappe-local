@@ -63,6 +63,11 @@ describe('ipc contract', () => {
     expect(ipcChannels.taskRunnerProgressEvent).toBe('task-runner:progress-event');
   });
 
+  it('uses stable runtime channel names', () => {
+    expect(ipcChannels.runtimeGetHealth).toBe('runtime:health:get');
+    expect(ipcChannels.runtimeRepair).toBe('runtime:repair');
+  });
+
   it('validates app health payload shape', () => {
     const validPayload = {
       appName: 'Frappe Cafe',
