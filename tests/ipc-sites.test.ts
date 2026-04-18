@@ -145,6 +145,12 @@ function makeStubSettingsRepo() {
 function makeStubGroupRepo() {
   return {
     findAll: async () => [],
+    create: async (input: { name: string; description: string; tags: string[]; siteIds: string[] }) => ({
+      id: 'group-new',
+      ...input,
+    }),
+    update: async (id: string, input: { name?: string; description?: string; tags?: string[]; siteIds?: string[] }) => null,
+    delete: async (id: string) => false,
   };
 }
 

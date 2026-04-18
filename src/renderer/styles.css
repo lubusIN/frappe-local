@@ -1086,6 +1086,64 @@ body {
     padding: 12px;
   }
 
+  .workspaces-success {
+    margin: 0;
+    color: #2f5d2f;
+    background: #f1fff1;
+    border: 1px solid #bfe0bf;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .workspaces-form {
+    border: 1px solid #d3c5b5;
+    border-radius: 16px;
+    background: #fffaf3;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .workspaces-field {
+    display: grid;
+    gap: 6px;
+  }
+
+  .workspaces-field--full {
+    grid-column: 1 / -1;
+  }
+
+  .workspaces-field span {
+    font-size: 12px;
+    font-weight: 700;
+    color: #5c4330;
+  }
+
+  .workspaces-field input,
+  .workspace-assignment select {
+    border: 1px solid #d3c5b5;
+    border-radius: 10px;
+    background: #fff;
+    color: #2f2116;
+    padding: 8px 10px;
+  }
+
+  .workspaces-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .workspaces-create {
+    border: 1px solid #6f4f36;
+    background: #6f4f36;
+    color: #fff9f2;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
   .workspaces-empty {
     border: 1px dashed #d3c5b5;
     border-radius: 16px;
@@ -1118,6 +1176,8 @@ body {
     border-radius: 16px;
     padding: 14px;
     background: #fffaf3;
+    display: grid;
+    gap: 10px;
   }
 
   .workspace-name {
@@ -1161,6 +1221,58 @@ body {
   .workspace-tag--empty {
     background: #efe7da;
     color: #8d755e;
+  }
+
+  .workspace-assignment {
+    display: flex;
+    gap: 8px;
+  }
+
+  .workspace-assigned-sites {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+  }
+
+  .workspace-assigned-sites li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e4d8ca;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: #fff;
+  }
+
+  .workspace-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .workspace-action {
+    border: 1px solid #d3c5b5;
+    background: #fff;
+    color: #2f2116;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .workspace-action--subtle {
+    border-color: #e6dccf;
+    color: #6b5240;
+  }
+
+  .workspace-action--danger {
+    border-color: #d9a9a9;
+    color: #8f2e2e;
+    background: #fff4f4;
   }
 
   /* ── Catalog ────────────────────────────────────────────────────── */

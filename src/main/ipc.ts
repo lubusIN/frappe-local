@@ -9,15 +9,19 @@ import type {
   SiteCreateInput,
   SiteListItem,
   SiteUpdateInput,
+  WorkspaceCreateInput,
   WorkspaceListItem,
+  WorkspaceUpdateInput,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
 import fs from 'node:fs';
 import {
   CreateBenchInputSchema,
+  CreateGroupInputSchema,
   CreateSiteInputSchema,
   SettingsSchema,
   UpdateBenchInputSchema,
+  UpdateGroupInputSchema,
   UpdateSiteInputSchema,
   type Bench,
   type Group,
@@ -122,6 +126,19 @@ export type AppRepositories = {
   };
   readonly groups: {
     findAll: () => Promise<Group[]>;
+    create: (input: {
+      name: string;
+      description: string;
+      tags: string[];
+      siteIds: string[];
+    }) => Promise<Group>;
+    update: (id: string, input: {
+      name?: string;
+      description?: string;
+      tags?: string[];
+      siteIds?: string[];
+    }) => Promise<Group | null>;
+    delete: (id: string) => Promise<boolean>;
   };
 };
 
@@ -482,5 +499,32 @@ export const registerIpcHandlers = (
   ipcMainLike.handle(ipcChannels.workspacesList, async () => {
     const groups = await repositories.groups.findAll();
     return groups.map(toWorkspaceListItem);
+  });
+
+  ipcMainLike.handle(ipcChannels.workspacesCreate, async (_event: unknown, input: unknown) => {
+    const payload = CreateGroupInputSchema.parse({
+      ...(input as WorkspaceCreateInput),
+      siteIds: [],
+    });
+    const created = await repositories.groups.create(payload);
+    return toWorkspaceListItem(created);
+  });
+
+  ipcMainLike.handle(ipcChannels.workspacesUpdate, async (_event: unknown, id: unknown, input: unknown) => {
+    if (typeof id !== 'string') {
+      return null;
+    }
+
+    const payload = UpdateGroupInputSchema.parse(input as WorkspaceUpdateInput);
+    const updated = await repositories.groups.update(id, payload);
+    return updated ? toWorkspaceListItem(updated) : null;
+  });
+
+  ipcMainLike.handle(ipcChannels.workspacesDelete, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    return repositories.groups.delete(id);
   });
 };

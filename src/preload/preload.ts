@@ -22,6 +22,9 @@ const rendererBridge: RendererBridge = {
 	getSettings: async () => ipcRenderer.invoke(ipcChannels.settingsGet),
 	setSettings: async (settings) => ipcRenderer.invoke(ipcChannels.settingsSet, settings),
 	listWorkspaces: async () => ipcRenderer.invoke(ipcChannels.workspacesList),
+	createWorkspace: async (input) => ipcRenderer.invoke(ipcChannels.workspacesCreate, input),
+	updateWorkspace: async (id, input) => ipcRenderer.invoke(ipcChannels.workspacesUpdate, id, input),
+	deleteWorkspace: async (id) => ipcRenderer.invoke(ipcChannels.workspacesDelete, id),
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);

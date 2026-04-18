@@ -18,6 +18,9 @@ export const ipcChannels = {
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   workspacesList: 'workspaces:list',
+  workspacesCreate: 'workspaces:create',
+  workspacesUpdate: 'workspaces:update',
+  workspacesDelete: 'workspaces:delete',
 } as const;
 
 export type AppHealthResponse = {
@@ -125,6 +128,18 @@ export type WorkspaceListItem = {
   readonly siteCount: number;
 };
 
+export type WorkspaceCreateInput = {
+  readonly name: string;
+  readonly description: string;
+  readonly tags: string[];
+};
+
+export type WorkspaceUpdateInput = {
+  readonly name?: string;
+  readonly description?: string;
+  readonly tags?: string[];
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
@@ -145,6 +160,9 @@ export type RendererBridge = {
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
   readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;
+  readonly createWorkspace: (input: WorkspaceCreateInput) => Promise<WorkspaceListItem>;
+  readonly updateWorkspace: (id: string, input: WorkspaceUpdateInput) => Promise<WorkspaceListItem | null>;
+  readonly deleteWorkspace: (id: string) => Promise<boolean>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {
