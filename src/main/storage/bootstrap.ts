@@ -2,12 +2,14 @@ import fs from 'node:fs/promises';
 import type { AppCatalogItem } from '../../shared/domain/models';
 import { createMainLogger } from '../logger';
 import type { StorageAdapter } from './adapter';
+import { runStorageMigrations, storageMigrations, type StorageMigration } from './migrations';
 import { reconcileLifecycleSnapshot } from './reconcile';
 import { CURRENT_STORAGE_SCHEMA_VERSION, createDefaultStorageSnapshot, type StorageSnapshot } from './schema';
 
 type InitializeStorageOptions = {
   readonly appCatalogSeed: AppCatalogItem[];
   readonly appCatalogSeedVersion: number;
+  readonly migrations?: readonly StorageMigration[];
 };
 
 const storageLogger = createMainLogger('storage');
@@ -53,10 +55,16 @@ export const initializeStorage = async (
     storageLogger.info(`created new storage snapshot at ${storageFilePath}`);
   }
 
-  if (snapshot.schemaVersion !== CURRENT_STORAGE_SCHEMA_VERSION) {
+  if (snapshot.schemaVersion > CURRENT_STORAGE_SCHEMA_VERSION) {
     throw new Error(
       `Unsupported storage schema version ${snapshot.schemaVersion}. Expected ${CURRENT_STORAGE_SCHEMA_VERSION}.`
     );
+  }
+
+  if (snapshot.schemaVersion < CURRENT_STORAGE_SCHEMA_VERSION) {
+    snapshot = runStorageMigrations(snapshot, CURRENT_STORAGE_SCHEMA_VERSION, options.migrations ?? storageMigrations);
+    await adapter.writeSnapshot(snapshot);
+    storageLogger.info(`migrated storage snapshot to schema version ${CURRENT_STORAGE_SCHEMA_VERSION}`);
   }
 
   const seededSnapshot = applyAppCatalogSeed(snapshot, options.appCatalogSeed, options.appCatalogSeedVersion);

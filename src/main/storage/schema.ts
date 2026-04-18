@@ -1,6 +1,6 @@
 import type { AppCatalogItem, BenchRecord, Group, Settings, Site } from '../../shared/domain/models';
 
-export const CURRENT_STORAGE_SCHEMA_VERSION = 1;
+export const CURRENT_STORAGE_SCHEMA_VERSION = 2;
 
 export const DEFAULT_APP_CATALOG_SEED_VERSION = 1;
 
@@ -8,6 +8,7 @@ export type StorageMetadata = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly appCatalogSeedVersion: number;
+  readonly lastMigratedAt: string | null;
 };
 
 export type StorageSnapshot = {
@@ -32,6 +33,7 @@ export const createDefaultStorageSnapshot = (
       createdAt: timestamp,
       updatedAt: timestamp,
       appCatalogSeedVersion: appCatalogSeedVersion,
+      lastMigratedAt: null,
     },
     benches: [],
     sites: [],

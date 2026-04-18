@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { AppCatalogItem } from '../src/shared/domain/models';
 import { JsonStorageAdapter } from '../src/main/storage/adapter';
 import { initializeStorage } from '../src/main/storage/bootstrap';
+import type { StorageMigration } from '../src/main/storage/migrations';
 import { CURRENT_STORAGE_SCHEMA_VERSION } from '../src/main/storage/schema';
 
 const temporaryDirectories: string[] = [];
@@ -148,5 +149,86 @@ describe('storage bootstrap', () => {
 
     expect(reconciled.benches[0]?.status).toBe('stopped');
     expect(reconciled.sites[0]?.status).toBe('stopped');
+  });
+
+  it('migrates a version 1 snapshot to the current schema version during bootstrap', async () => {
+    const storageFilePath = await createTemporaryStorageFilePath();
+    const adapter = new JsonStorageAdapter(storageFilePath);
+
+    await adapter.connect();
+    await fs.writeFile(
+      storageFilePath,
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          metadata: {
+            createdAt: '2026-04-19T00:00:00.000Z',
+            updatedAt: '2026-04-19T00:00:00.000Z',
+            appCatalogSeedVersion: 1,
+          },
+          benches: [],
+          sites: [],
+          groups: [],
+          settings: null,
+          appCatalog: [],
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    const migratedSnapshot = await initializeStorage(adapter, storageFilePath, {
+      appCatalogSeed: [],
+      appCatalogSeedVersion: 1,
+    });
+
+    expect(migratedSnapshot.schemaVersion).toBe(CURRENT_STORAGE_SCHEMA_VERSION);
+    expect(migratedSnapshot.metadata.lastMigratedAt).not.toBeNull();
+  });
+
+  it('leaves the stored snapshot unchanged when a migration fails', async () => {
+    const storageFilePath = await createTemporaryStorageFilePath();
+    const adapter = new JsonStorageAdapter(storageFilePath);
+
+    await adapter.connect();
+    const originalContents = JSON.stringify(
+      {
+        schemaVersion: 1,
+        metadata: {
+          createdAt: '2026-04-19T00:00:00.000Z',
+          updatedAt: '2026-04-19T00:00:00.000Z',
+          appCatalogSeedVersion: 1,
+        },
+        benches: [],
+        sites: [],
+        groups: [],
+        settings: null,
+        appCatalog: [],
+      },
+      null,
+      2
+    );
+
+    await fs.writeFile(storageFilePath, originalContents, 'utf8');
+
+    const failingMigration: StorageMigration = {
+      fromVersion: 1,
+      toVersion: 2,
+      description: 'Fail intentionally',
+      migrate: () => {
+        throw new Error('intentional migration failure');
+      },
+    };
+
+    await expect(
+      initializeStorage(adapter, storageFilePath, {
+        appCatalogSeed: [],
+        appCatalogSeedVersion: 1,
+        migrations: [failingMigration],
+      })
+    ).rejects.toThrow('intentional migration failure');
+
+    expect(await fs.readFile(storageFilePath, 'utf8')).toBe(originalContents);
   });
 });
