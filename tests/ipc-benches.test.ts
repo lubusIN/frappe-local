@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Bench, Settings, Site } from '../src/shared/domain/models';
@@ -310,5 +310,58 @@ describe('benches IPC handlers', () => {
     const deleted = await deleteHandler?.(undefined, 'bench-001');
 
     expect(deleted).toBe(false);
+  });
+
+  it('benches:logs returns lifecycle entries for a bench', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const logsHandler = handlers.get(ipcChannels.benchesLogs);
+    const logs = await logsHandler?.(undefined, 'bench-001');
+
+    expect(Array.isArray(logs)).toBe(true);
+    expect(logs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entityId: 'bench-001' }),
+      ])
+    );
+  });
+
+  it('benches:open-folder opens when path exists', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const openPath = vi.fn(async () => true);
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            path: process.cwd(),
+          },
+        ]),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      },
+      { openPath }
+    );
+
+    const openFolderHandler = handlers.get(ipcChannels.benchesOpenFolder);
+    const opened = await openFolderHandler?.(undefined, 'bench-001');
+
+    expect(opened).toBe(true);
+    expect(openPath).toHaveBeenCalled();
   });
 });
