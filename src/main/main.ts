@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerIpcHandlers } from './ipc';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +29,7 @@ const createMainWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(async () => {
+  registerIpcHandlers(ipcMain);
   await createMainWindow();
 
   app.on('activate', async () => {
