@@ -25,6 +25,8 @@ export type RuntimeServiceDependencies = {
   readonly detectDependencies?: (runner?: CommandRunner) => Promise<DependencyAggregateHealth>;
   readonly commandRunner?: CommandRunner;
   readonly repairAdapters?: Partial<Record<DependencyType, RuntimeRepairAdapter>>;
+  readonly checkDebounceMs?: number;
+  readonly staleAfterMs?: number;
 };
 
 const fallbackRuntime = (runtime: 'docker' | 'podman'): 'docker' | 'podman' =>
@@ -99,6 +101,11 @@ export class RuntimeService {
   private readonly detectDependencies;
   private readonly commandRunner;
   private readonly repairAdapters;
+  private readonly checkDebounceMs;
+  private readonly staleAfterMs;
+  private cachedHealth: { readonly value: RuntimeHealthResponse; readonly checkedAt: number } | null = null;
+  private inFlightHealthCheck: Promise<RuntimeHealthResponse> | null = null;
+  private lastHealthCheckStartedAt = 0;
 
   constructor(dependencies: RuntimeServiceDependencies) {
     this.settings = dependencies.settings;
@@ -106,9 +113,46 @@ export class RuntimeService {
     this.detectDependencies = dependencies.detectDependencies ?? detectAllDependencies;
     this.commandRunner = dependencies.commandRunner;
     this.repairAdapters = dependencies.repairAdapters ?? {};
+    this.checkDebounceMs = dependencies.checkDebounceMs ?? 1000;
+    this.staleAfterMs = dependencies.staleAfterMs ?? 30_000;
   }
 
   public async getHealth(): Promise<RuntimeHealthResponse> {
+    const now = Date.now();
+    if (this.cachedHealth && now - this.cachedHealth.checkedAt <= this.staleAfterMs) {
+      return this.cachedHealth.value;
+    }
+
+    if (
+      this.inFlightHealthCheck &&
+      now - this.lastHealthCheckStartedAt <= this.checkDebounceMs
+    ) {
+      return this.inFlightHealthCheck;
+    }
+
+    this.lastHealthCheckStartedAt = now;
+    this.inFlightHealthCheck = this.getFreshHealth();
+
+    try {
+      const value = await this.inFlightHealthCheck;
+      this.cachedHealth = { value, checkedAt: Date.now() };
+      return value;
+    } finally {
+      this.inFlightHealthCheck = null;
+    }
+  }
+
+  public invalidateHealthCache(): void {
+    this.cachedHealth = null;
+  }
+
+  public async getHealthForStartup(): Promise<RuntimeHealthResponse> {
+    const health = await this.getHealth();
+    this.invalidateHealthCache();
+    return health;
+  }
+
+  private async getFreshHealth(): Promise<RuntimeHealthResponse> {
     const settings = await this.settings.get();
     const preferredRuntime = settings?.runtimePreference ?? 'docker';
     const aggregate = await this.detectDependencies(this.commandRunner);

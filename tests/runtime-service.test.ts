@@ -195,4 +195,86 @@ describe('runtime service', () => {
       message: 'Podman installation failed.',
     });
   });
+
+  it('reuses in-flight checks and invalidates stale health snapshots', async () => {
+    const taskRunner = new TaskRunner();
+    let detectCallCount = 0;
+
+    const service = new RuntimeService({
+      settings: {
+        get: async () => ({
+          defaultFrappeVersion: '15.0.0',
+          runtimePreference: 'docker',
+          storagePath: '/tmp/frappe-cafe',
+          terminalPreference: 'zsh',
+          editorPreference: 'code',
+          updateChannel: 'stable',
+          autoUpdateEnabled: true,
+        }),
+      },
+      taskRunner,
+      checkDebounceMs: 5000,
+      staleAfterMs: 20,
+      detectDependencies: async () => {
+        detectCallCount += 1;
+        await flushPromises();
+        return createHealthAggregate([
+          { dependency: 'docker-compose', status: 'ready', version: '2.24.6' },
+          { dependency: 'podman', status: 'ready', version: '4.5.1' },
+          { dependency: 'git', status: 'ready', version: '2.40.1' },
+        ]);
+      },
+    });
+
+    const [first, second] = await Promise.all([service.getHealth(), service.getHealth()]);
+    expect(first.selectedRuntime).toBe('docker');
+    expect(second.selectedRuntime).toBe('docker');
+    expect(detectCallCount).toBe(1);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 30));
+    await service.getHealth();
+    expect(detectCallCount).toBe(2);
+
+    service.invalidateHealthCache();
+    await service.getHealth();
+    expect(detectCallCount).toBe(3);
+  });
+
+  it('forces fresh startup health checks by invalidating cache after evaluation', async () => {
+    const taskRunner = new TaskRunner();
+    let detectCallCount = 0;
+
+    const service = new RuntimeService({
+      settings: {
+        get: async () => ({
+          defaultFrappeVersion: '15.0.0',
+          runtimePreference: 'docker',
+          storagePath: '/tmp/frappe-cafe',
+          terminalPreference: 'zsh',
+          editorPreference: 'code',
+          updateChannel: 'stable',
+          autoUpdateEnabled: true,
+        }),
+      },
+      taskRunner,
+      staleAfterMs: 5000,
+      detectDependencies: async () => {
+        detectCallCount += 1;
+        return createHealthAggregate([
+          { dependency: 'docker-compose', status: 'ready', version: '2.24.6' },
+          { dependency: 'podman', status: 'ready', version: '4.5.1' },
+          { dependency: 'git', status: 'ready', version: '2.40.1' },
+        ]);
+      },
+    });
+
+    await service.getHealth();
+    expect(detectCallCount).toBe(1);
+
+    await service.getHealthForStartup();
+    expect(detectCallCount).toBe(1);
+
+    await service.getHealth();
+    expect(detectCallCount).toBe(2);
+  });
 });
