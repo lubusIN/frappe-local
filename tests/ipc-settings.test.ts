@@ -39,6 +39,7 @@ function makeStubBenchRepo() {
         updatedAt: new Date().toISOString(),
       },
     }),
+    update: async () => null,
   };
 }
 
@@ -60,6 +61,7 @@ function makeStubSiteRepo() {
         updatedAt: new Date().toISOString(),
       },
     }),
+    update: async () => null,
   };
 }
 

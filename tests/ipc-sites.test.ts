@@ -45,6 +45,7 @@ function makeStubBenchRepo() {
         updatedAt: new Date().toISOString(),
       },
     }),
+    update: async () => null,
   };
 }
 
@@ -71,6 +72,36 @@ function makeStubSiteRepo(items: Site[] = sites) {
       };
       current = [created, ...current];
       return created;
+    },
+    update: async (id: string, input: {
+      name?: string;
+      benchId?: string;
+      groupId?: string | null;
+      apps?: string[];
+      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      path?: string;
+    }) => {
+      const index = current.findIndex((site) => site.id === id);
+      if (index === -1) {
+        return null;
+      }
+
+      const existing = current[index]!;
+      const updated: Site = {
+        ...existing,
+        name: input.name ?? existing.name,
+        benchId: input.benchId ?? existing.benchId,
+        groupId: input.groupId ?? existing.groupId,
+        apps: input.apps ?? existing.apps,
+        status: input.status ?? existing.status,
+        path: input.path ?? existing.path,
+        timestamps: {
+          ...existing.timestamps,
+          updatedAt: new Date('2026-02-11T00:00:00.000Z').toISOString(),
+        },
+      };
+      current[index] = updated;
+      return updated;
     },
   };
 }
@@ -176,6 +207,29 @@ describe('sites IPC handlers', () => {
       groupId: null,
       status: 'stopped',
       appCount: 1,
+    });
+  });
+
+  it('sites:update updates site status and returns list item shape', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const updateHandler = handlers.get(ipcChannels.sitesUpdate);
+    const updated = await updateHandler?.(undefined, 'site-001', { status: 'stopped' });
+
+    expect(updated).toMatchObject({
+      id: 'site-001',
+      status: 'stopped',
     });
   });
 });

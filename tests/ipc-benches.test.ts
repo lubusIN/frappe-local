@@ -51,6 +51,36 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       current = [created, ...current];
       return created;
     },
+    update: async (id: string, input: {
+      name?: string;
+      path?: string;
+      frappeVersion?: string;
+      runtime?: 'docker' | 'podman';
+      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      apps?: string[];
+    }) => {
+      const index = current.findIndex((bench) => bench.id === id);
+      if (index === -1) {
+        return null;
+      }
+
+      const existing = current[index]!;
+      const updated: Bench = {
+        ...existing,
+        name: input.name ?? existing.name,
+        path: input.path ?? existing.path,
+        frappeVersion: input.frappeVersion ?? existing.frappeVersion,
+        runtime: input.runtime ?? existing.runtime,
+        status: input.status ?? existing.status,
+        apps: input.apps ?? existing.apps,
+        timestamps: {
+          ...existing.timestamps,
+          updatedAt: new Date('2026-01-11T00:00:00.000Z').toISOString(),
+        },
+      };
+      current[index] = updated;
+      return updated;
+    },
   };
 }
 
@@ -72,6 +102,7 @@ function makeStubSiteRepo() {
         updatedAt: new Date().toISOString(),
       },
     }),
+    update: async () => null,
   };
 }
 
@@ -177,6 +208,29 @@ describe('benches IPC handlers', () => {
       runtime: 'docker',
       status: 'stopped',
       appCount: 1,
+    });
+  });
+
+  it('benches:update updates bench status and returns list item shape', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const updateHandler = handlers.get(ipcChannels.benchesUpdate);
+    const updated = await updateHandler?.(undefined, 'bench-001', { status: 'stopped' });
+
+    expect(updated).toMatchObject({
+      id: 'bench-001',
+      status: 'stopped',
     });
   });
 });
