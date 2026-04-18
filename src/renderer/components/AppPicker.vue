@@ -31,11 +31,18 @@
           <input
             type="checkbox"
             :checked="modelValue.includes(item.id)"
-            :disabled="disabled"
+            :disabled="disabled || !getCompatibility(item.id).isCompatible"
             @change="onToggle(item.id)"
           />
           <span class="app-picker-item-name">{{ item.name }}</span>
           <span class="app-picker-item-version">v{{ item.version }}</span>
+          <span
+            v-if="getCompatibility(item.id).status !== 'ok'"
+            class="app-picker-item-compatibility"
+            :class="`app-picker-item-compatibility--${getCompatibility(item.id).status}`"
+          >
+            {{ getCompatibility(item.id).message }}
+          </span>
         </label>
       </li>
     </ul>
@@ -44,13 +51,17 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import type { CatalogAppItem } from '../../shared/ipc';
 import { useAppCatalog } from '../composables/useAppCatalog';
 import { normalizeSelection, toggleAppSelection } from '../app-picker-state';
 import { filterAndSortCatalog, getCatalogSourceHosts, type CatalogSort } from '../catalog-query';
+import { evaluateCatalogCompatibility } from '../catalog-compatibility';
 
 const props = defineProps<{
   modelValue: string[];
   disabled?: boolean;
+  runtime?: 'docker' | 'podman';
+  frappeVersion?: string;
 }>();
 
 const emit = defineEmits<{
@@ -79,5 +90,21 @@ const onSearch = () => {
 const onToggle = (appId: string) => {
   const next = toggleAppSelection(props.modelValue, appId);
   emit('update:modelValue', normalizeSelection(next));
+};
+
+const getCompatibility = (appId: string) => {
+  const item = items.value.find((entry) => entry.id === appId);
+  if (!item) {
+    return {
+      isCompatible: false,
+      status: 'blocked' as const,
+      message: 'Unknown app',
+    };
+  }
+
+  return evaluateCatalogCompatibility(item as CatalogAppItem, {
+    runtime: props.runtime,
+    frappeVersion: props.frappeVersion,
+  });
 };
 </script>

@@ -8,6 +8,9 @@ const catalog = [
     description: 'Core framework',
     source: 'https://github.com/frappe/frappe',
     version: '15.0.0',
+    compatibility: {
+      supportedRuntimes: ['docker', 'podman'],
+    },
   },
   {
     id: 'erpnext',
@@ -15,6 +18,9 @@ const catalog = [
     description: 'ERP app',
     source: 'https://github.com/frappe/erpnext',
     version: '15.1.0',
+    compatibility: {
+      supportedRuntimes: ['docker', 'podman'],
+    },
   },
   {
     id: 'payments',
@@ -22,6 +28,9 @@ const catalog = [
     description: 'Payments module',
     source: 'https://gitlab.example.com/frappe/payments',
     version: '14.9.0',
+    compatibility: {
+      supportedRuntimes: ['docker', 'podman'],
+    },
   },
 ] as const;
 

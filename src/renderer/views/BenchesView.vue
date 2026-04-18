@@ -35,7 +35,12 @@
       </label>
       <label class="benches-field">
         <span>Apps</span>
-        <AppPicker v-model="createForm.appsSelected" :disabled="creating || loading" />
+        <AppPicker
+          v-model="createForm.appsSelected"
+          :disabled="creating || loading"
+          :runtime="createForm.runtime"
+          :frappe-version="createForm.frappeVersion"
+        />
       </label>
       <div class="benches-actions benches-field--full">
         <button class="benches-create" type="submit" :disabled="creating || loading">

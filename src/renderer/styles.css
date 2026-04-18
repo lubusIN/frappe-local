@@ -1374,6 +1374,20 @@ body {
     font-size: 11px;
   }
 
+  .app-picker-item-compatibility {
+    grid-column: 2 / 4;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .app-picker-item-compatibility--warning {
+    color: #8a5a12;
+  }
+
+  .app-picker-item-compatibility--blocked {
+    color: #8f2e2e;
+  }
+
   @media (max-width: 920px) {
     .catalog-header {
       flex-direction: column;

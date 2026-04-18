@@ -39,9 +39,42 @@ type IpcMainLike = {
 
 export type AppRepositories = {
   readonly appCatalog: {
-    findAll: () => Promise<Array<{ id: string; name: string; description: string; source: string; version: string }>>;
-    findById: (id: string) => Promise<{ id: string; name: string; description: string; source: string; version: string } | null>;
-    search: (query: string) => Promise<Array<{ id: string; name: string; description: string; source: string; version: string }>>;
+    findAll: () => Promise<Array<{
+      id: string;
+      name: string;
+      description: string;
+      source: string;
+      version: string;
+      compatibility: {
+        minimumFrappeVersion?: string;
+        maximumFrappeVersion?: string;
+        supportedRuntimes: readonly ('docker' | 'podman')[];
+      };
+    }>>;
+    findById: (id: string) => Promise<{
+      id: string;
+      name: string;
+      description: string;
+      source: string;
+      version: string;
+      compatibility: {
+        minimumFrappeVersion?: string;
+        maximumFrappeVersion?: string;
+        supportedRuntimes: readonly ('docker' | 'podman')[];
+      };
+    } | null>;
+    search: (query: string) => Promise<Array<{
+      id: string;
+      name: string;
+      description: string;
+      source: string;
+      version: string;
+      compatibility: {
+        minimumFrappeVersion?: string;
+        maximumFrappeVersion?: string;
+        supportedRuntimes: readonly ('docker' | 'podman')[];
+      };
+    }>>;
   };
   readonly benches: {
     findAll: () => Promise<Bench[]>;
@@ -106,12 +139,28 @@ export const buildAppHealthResponse = (): AppHealthResponse => ({
   timestamp: new Date().toISOString(),
 });
 
-const toCatalogAppItem = (item: { id: string; name: string; description: string; source: string; version: string }): CatalogAppItem => ({
+const toCatalogAppItem = (item: {
+  id: string;
+  name: string;
+  description: string;
+  source: string;
+  version: string;
+  compatibility: {
+    minimumFrappeVersion?: string;
+    maximumFrappeVersion?: string;
+    supportedRuntimes: readonly ('docker' | 'podman')[];
+  };
+}): CatalogAppItem => ({
   id: item.id,
   name: item.name,
   description: item.description,
   source: item.source,
   version: item.version,
+  compatibility: {
+    minimumFrappeVersion: item.compatibility.minimumFrappeVersion,
+    maximumFrappeVersion: item.compatibility.maximumFrappeVersion,
+    supportedRuntimes: [...item.compatibility.supportedRuntimes],
+  },
 });
 
 const toBenchListItem = (bench: Bench): BenchListItem => ({

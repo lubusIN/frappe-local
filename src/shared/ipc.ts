@@ -34,6 +34,11 @@ export type CatalogAppItem = {
   readonly description: string;
   readonly source: string;
   readonly version: string;
+  readonly compatibility: {
+    readonly minimumFrappeVersion?: string;
+    readonly maximumFrappeVersion?: string;
+    readonly supportedRuntimes: readonly ('docker' | 'podman')[];
+  };
 };
 
 export type BenchListItem = {
