@@ -15,6 +15,7 @@ import { BenchRepository } from './storage/repositories/bench-repository';
 import { GroupRepository } from './storage/repositories/group-repository';
 import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
+import { InMemoryBenchAnalytics } from './bench-analytics';
 
 type BootstrapContext = {
   readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories, operations?: IpcOperations) => void;
@@ -86,10 +87,15 @@ export const runApplicationBootstrap = async (
       groups: new GroupRepository(adapter),
     };
 
+    const benchAnalytics = new InMemoryBenchAnalytics();
+
     context.registerHandlers(ipcMain, repositories, {
       openPath: async (targetPath: string) => {
         const result = await shell.openPath(targetPath);
         return result === '';
+      },
+      trackBenchOperation: (benchId, operation) => {
+        benchAnalytics.track(benchId, operation);
       },
     });
     await context.createMainWindow();

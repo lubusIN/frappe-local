@@ -47,7 +47,7 @@
 
     <div v-if="!error && !loading && sites.length === 0" class="sites-empty">
       <p class="sites-empty-title">No sites yet.</p>
-      <p class="sites-empty-body">Create your first site in the upcoming lifecycle checkpoint.</p>
+      <p class="sites-empty-body">Create your first site to manage runtime status, inspect logs, and open paths quickly.</p>
     </div>
 
     <ul v-if="!error && !loading && sites.length > 0" class="sites-grid">

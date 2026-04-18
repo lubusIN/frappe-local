@@ -96,4 +96,57 @@ describe('storage bootstrap', () => {
     expect(reseededSnapshot.metadata.appCatalogSeedVersion).toBe(2);
     expect(reseededSnapshot.appCatalog[0]?.id).toBe('payments');
   });
+
+  it('reconciles interrupted lifecycle statuses on startup', async () => {
+    const storageFilePath = await createTemporaryStorageFilePath();
+    const adapter = new JsonStorageAdapter(storageFilePath);
+
+    await initializeStorage(adapter, storageFilePath, {
+      appCatalogSeed: [],
+      appCatalogSeedVersion: 1,
+    });
+
+    await adapter.transaction(async (snapshot) => ({
+      snapshot: {
+        ...snapshot,
+        benches: [
+          {
+            id: 'bench-1',
+            name: 'alpha-bench',
+            path: '/tmp/alpha-bench',
+            frappe_version: '15.0.0',
+            runtime: 'docker',
+            status: 'running',
+            apps: ['frappe'],
+            created_at: new Date('2026-04-10T00:00:00.000Z').toISOString(),
+            updated_at: new Date('2026-04-10T00:00:00.000Z').toISOString(),
+          },
+        ],
+        sites: [
+          {
+            id: 'site-1',
+            name: 'alpha.localhost',
+            benchId: 'bench-1',
+            groupId: null,
+            apps: ['frappe'],
+            status: 'queued',
+            path: '/tmp/alpha-bench/sites/alpha.localhost',
+            timestamps: {
+              createdAt: new Date('2026-04-10T00:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-04-10T00:00:00.000Z').toISOString(),
+            },
+          },
+        ],
+      },
+      result: undefined,
+    }));
+
+    const reconciled = await initializeStorage(adapter, storageFilePath, {
+      appCatalogSeed: [],
+      appCatalogSeedVersion: 1,
+    });
+
+    expect(reconciled.benches[0]?.status).toBe('stopped');
+    expect(reconciled.sites[0]?.status).toBe('stopped');
+  });
 });

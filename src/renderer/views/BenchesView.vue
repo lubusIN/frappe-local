@@ -50,7 +50,7 @@
 
     <div v-if="!error && !loading && benches.length === 0" class="benches-empty">
       <p class="benches-empty-title">No benches yet.</p>
-      <p class="benches-empty-body">Create your first bench in the next checkpoint flow.</p>
+      <p class="benches-empty-body">Create your first bench to start lifecycle actions, logs, and folder shortcuts.</p>
     </div>
 
     <ul v-if="!error && !loading && benches.length > 0" class="benches-grid">

@@ -24,6 +24,7 @@ import {
   type Settings,
   type Site,
 } from '../shared/domain/models';
+import type { BenchLifecycleOperation } from './bench-analytics';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -86,6 +87,7 @@ export type AppRepositories = {
 
 export type IpcOperations = {
   readonly openPath: (targetPath: string) => Promise<boolean>;
+  readonly trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
 };
 
 export const buildAppHealthResponse = (): AppHealthResponse => ({
@@ -176,7 +178,10 @@ const toLifecycleLogs = (
 export const registerIpcHandlers = (
   ipcMainLike: IpcMainLike,
   repositories: AppRepositories,
-  operations: IpcOperations = { openPath: async () => false }
+  operations: IpcOperations = {
+    openPath: async () => false,
+    trackBenchOperation: () => undefined,
+  }
 ): void => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
 
@@ -208,6 +213,7 @@ export const registerIpcHandlers = (
       status: 'stopped',
     });
     const created = await repositories.benches.create(payload);
+    operations.trackBenchOperation?.(created.id, 'create');
     return toBenchListItem(created);
   });
 
@@ -218,6 +224,9 @@ export const registerIpcHandlers = (
 
     const payload = UpdateBenchInputSchema.parse(input as BenchUpdateInput);
     const updated = await repositories.benches.update(id, payload);
+    if (updated) {
+      operations.trackBenchOperation?.(updated.id, 'update');
+    }
     return updated ? toBenchListItem(updated) : null;
   });
 
@@ -238,7 +247,11 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    return repositories.benches.delete(id);
+    const deleted = await repositories.benches.delete(id);
+    if (deleted) {
+      operations.trackBenchOperation?.(id, 'delete');
+    }
+    return deleted;
   });
 
   ipcMainLike.handle(ipcChannels.benchesLogs, async (_event: unknown, id: unknown) => {
@@ -252,13 +265,15 @@ export const registerIpcHandlers = (
       return [];
     }
 
-    return toLifecycleLogs(
+    const logs = toLifecycleLogs(
       bench.id,
       bench.status,
       bench.path,
       bench.timestamps.createdAt,
       bench.timestamps.updatedAt
     );
+    operations.trackBenchOperation?.(bench.id, 'logs-read');
+    return logs;
   });
 
   ipcMainLike.handle(ipcChannels.benchesOpenFolder, async (_event: unknown, id: unknown) => {
@@ -272,7 +287,11 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    return operations.openPath(bench.path);
+    const opened = await operations.openPath(bench.path);
+    if (opened) {
+      operations.trackBenchOperation?.(bench.id, 'open-folder');
+    }
+    return opened;
   });
 
   ipcMainLike.handle(ipcChannels.sitesList, async () => {

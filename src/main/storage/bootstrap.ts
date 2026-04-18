@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import type { AppCatalogItem } from '../../shared/domain/models';
 import { createMainLogger } from '../logger';
 import type { StorageAdapter } from './adapter';
+import { reconcileLifecycleSnapshot } from './reconcile';
 import { CURRENT_STORAGE_SCHEMA_VERSION, createDefaultStorageSnapshot, type StorageSnapshot } from './schema';
 
 type InitializeStorageOptions = {
@@ -65,5 +66,13 @@ export const initializeStorage = async (
     storageLogger.info(`updated app catalog seed to version ${options.appCatalogSeedVersion}`);
   }
 
-  return seededSnapshot;
+  const reconciliation = reconcileLifecycleSnapshot(seededSnapshot);
+  if (reconciliation.wasChanged) {
+    await adapter.writeSnapshot(reconciliation.snapshot);
+    storageLogger.info(
+      `reconciled interrupted lifecycle states (benches=${reconciliation.reconciledBenches}, sites=${reconciliation.reconciledSites})`
+    );
+  }
+
+  return reconciliation.snapshot;
 };
