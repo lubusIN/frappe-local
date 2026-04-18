@@ -16,6 +16,7 @@ import { GroupRepository } from './storage/repositories/group-repository';
 import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
 import { InMemoryBenchAnalytics } from './bench-analytics';
+import { InMemorySiteAnalytics } from './site-analytics';
 
 type BootstrapContext = {
   readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories, operations?: IpcOperations) => void;
@@ -88,6 +89,7 @@ export const runApplicationBootstrap = async (
     };
 
     const benchAnalytics = new InMemoryBenchAnalytics();
+    const siteAnalytics = new InMemorySiteAnalytics();
 
     context.registerHandlers(ipcMain, repositories, {
       openPath: async (targetPath: string) => {
@@ -96,6 +98,9 @@ export const runApplicationBootstrap = async (
       },
       trackBenchOperation: (benchId, operation) => {
         benchAnalytics.track(benchId, operation);
+      },
+      trackSiteOperation: (siteId, operation) => {
+        siteAnalytics.track(siteId, operation);
       },
     });
     await context.createMainWindow();

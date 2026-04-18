@@ -205,6 +205,7 @@ describe('sites IPC handlers', () => {
 
   it('sites:create creates a stopped site and returns list item shape', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const trackSiteOperation = vi.fn();
 
     registerIpcHandlers(
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
@@ -214,7 +215,8 @@ describe('sites IPC handlers', () => {
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
         groups: makeStubGroupRepo(),
-      }
+      },
+      { openPath: async () => false, trackSiteOperation }
     );
 
     const createHandler = handlers.get(ipcChannels.sitesCreate);
@@ -233,6 +235,7 @@ describe('sites IPC handlers', () => {
       status: 'stopped',
       appCount: 1,
     });
+    expect(trackSiteOperation).toHaveBeenCalledWith(expect.any(String), 'create');
   });
 
   it('sites:create fails when bench does not exist', async () => {
@@ -388,6 +391,7 @@ describe('sites IPC handlers', () => {
   it('sites:open-folder opens when path exists', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
     const openPath = vi.fn(async () => true);
+    const trackSiteOperation = vi.fn();
 
     registerIpcHandlers(
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
@@ -403,7 +407,7 @@ describe('sites IPC handlers', () => {
         settings: makeStubSettingsRepo(),
         groups: makeStubGroupRepo(),
       },
-      { openPath }
+      { openPath, trackSiteOperation }
     );
 
     const openFolderHandler = handlers.get(ipcChannels.sitesOpenFolder);
@@ -411,5 +415,6 @@ describe('sites IPC handlers', () => {
 
     expect(opened).toBe(true);
     expect(openPath).toHaveBeenCalled();
+    expect(trackSiteOperation).toHaveBeenCalledWith('site-001', 'open-folder');
   });
 });
