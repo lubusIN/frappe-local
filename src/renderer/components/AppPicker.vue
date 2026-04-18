@@ -10,6 +10,15 @@
         :disabled="disabled"
         @input="onSearch"
       />
+      <select v-model="sourceHost" class="app-picker-filter" :disabled="disabled || state.loading">
+        <option value="">All sources</option>
+        <option v-for="host in sourceHosts" :key="host" :value="host">{{ host }}</option>
+      </select>
+      <select v-model="sort" class="app-picker-filter" :disabled="disabled || state.loading">
+        <option value="name-asc">Name A-Z</option>
+        <option value="name-desc">Name Z-A</option>
+        <option value="version-desc">Newest version</option>
+      </select>
     </header>
 
     <p v-if="state.error" class="app-picker-error">{{ state.error }}</p>
@@ -37,6 +46,7 @@
 import { computed, ref } from 'vue';
 import { useAppCatalog } from '../composables/useAppCatalog';
 import { normalizeSelection, toggleAppSelection } from '../app-picker-state';
+import { filterAndSortCatalog, getCatalogSourceHosts, type CatalogSort } from '../catalog-query';
 
 const props = defineProps<{
   modelValue: string[];
@@ -48,9 +58,19 @@ const emit = defineEmits<{
 }>();
 
 const query = ref('');
+const sourceHost = ref('');
+const sort = ref<CatalogSort>('name-asc');
 const { state, reload } = useAppCatalog();
 
-const items = computed(() => state.value.data ?? []);
+const sourceHosts = computed(() => getCatalogSourceHosts(state.value.data ?? []));
+
+const items = computed(() =>
+  filterAndSortCatalog(state.value.data ?? [], {
+    query: query.value,
+    sourceHost: sourceHost.value,
+    sort: sort.value,
+  })
+);
 
 const onSearch = () => {
   void reload(query.value);

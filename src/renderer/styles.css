@@ -1322,6 +1322,14 @@ body {
     width: 180px;
   }
 
+  .app-picker-filter {
+    border: 1px solid #d3c5b5;
+    border-radius: 8px;
+    background: #fff;
+    color: #2f2116;
+    padding: 6px 8px;
+  }
+
   .app-picker-error {
     margin: 0;
     color: #8f2e2e;
