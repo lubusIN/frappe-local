@@ -6,6 +6,18 @@ export const dependencyStatuses = ['ready', 'missing', 'incompatible', 'unknown'
 
 export type DependencyStatus = (typeof dependencyStatuses)[number];
 
+export const dependencyErrorCodes = [
+  'not-found',
+  'permission-denied',
+  'unsupported-version',
+  'execution-timeout',
+  'execution-failed',
+  'unparseable-version',
+  'unknown-error',
+] as const;
+
+export type DependencyErrorCode = (typeof dependencyErrorCodes)[number];
+
 export type DependencyVersion = {
   readonly major: number;
   readonly minor: number;
