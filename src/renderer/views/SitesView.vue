@@ -27,7 +27,7 @@
           <span>Bench</span>
           <select v-model="createForm.benchId" :disabled="benchLoading">
             <option value="">Select a bench</option>
-            <option v-for="bench in availableBenches" :key="bench.id" :value="bench.id">
+            <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
               {{ bench.name }} ({{ bench.status }})
             </option>
           </select>
@@ -92,7 +92,7 @@
         <span>Filter by bench</span>
         <select v-model="siteFilters.benchId">
           <option value="">All benches</option>
-          <option v-for="bench in availableBenches" :key="bench.id" :value="bench.id">
+          <option v-for="bench in allBenches" :key="bench.id" :value="bench.id">
             {{ bench.name }}
           </option>
         </select>
@@ -144,7 +144,7 @@
           <button
             class="site-action"
             type="button"
-            :disabled="updating || site.status === 'running'"
+            :disabled="updating || !canStartSite(site.id)"
             @click="onSetSiteStatus(site.id, 'running')"
           >
             Start
@@ -152,7 +152,7 @@
           <button
             class="site-action"
             type="button"
-            :disabled="updating || site.status === 'stopped'"
+            :disabled="updating || !canStopSite(site.id)"
             @click="onSetSiteStatus(site.id, 'stopped')"
           >
             Stop
@@ -217,6 +217,7 @@ import {
   type SiteWizardStep,
 } from '../site-wizard';
 import { filterSites } from '../site-filters';
+import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
 
 const {
   sites,
@@ -246,10 +247,11 @@ const createForm = reactive({
 
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<string[]>([]);
-const availableBenches = ref<Awaited<ReturnType<ReturnType<typeof useIpc>['listBenches']>>>([]);
+const allBenches = ref<Awaited<ReturnType<ReturnType<typeof useIpc>['listBenches']>>>([]);
 const benchLoading = ref(false);
+const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 
-const selectedBench = computed(() => availableBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
+const selectedBench = computed(() => allBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
 const parsedApps = computed(() => parseAppsText(createForm.appsText));
 const siteFilters = reactive({
   benchId: '',
@@ -264,7 +266,7 @@ const loadBenchOptions = async () => {
   try {
     const ipc = useIpc();
     const benches = await ipc.listBenches();
-    availableBenches.value = benches.filter((bench) => bench.status === 'running' || bench.status === 'success');
+    allBenches.value = benches;
   } catch (err) {
     wizardErrors.value = [String(err)];
   } finally {
@@ -352,6 +354,24 @@ const filteredSiteLogs = computed(() => {
 
   return siteLogs.value.filter((entry) => `${entry.message} ${entry.level}`.toLowerCase().includes(query));
 });
+
+const canStartSite = (siteId: string): boolean => {
+  const site = sites.value.find((entry) => entry.id === siteId);
+  if (!site) {
+    return false;
+  }
+
+  return canStartSiteFromUi(site, allBenches.value);
+};
+
+const canStopSite = (siteId: string): boolean => {
+  const site = sites.value.find((entry) => entry.id === siteId);
+  if (!site) {
+    return false;
+  }
+
+  return canStopSiteFromUi(site);
+};
 
 const onDeleteSite = async (id: string, name: string) => {
   const confirmed = window.confirm(`Delete site ${name}? This cannot be undone.`);
