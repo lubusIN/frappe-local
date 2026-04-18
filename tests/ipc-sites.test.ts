@@ -239,7 +239,7 @@ describe('sites IPC handlers', () => {
       benchId: 'bench-001',
       groupId: null,
       status: 'stopped',
-      { openPath, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
+      path: '/Users/dev/frappe-bench/sites/new.localhost',
     });
     expect(trackSiteOperation).toHaveBeenCalledWith(expect.any(String), 'create');
   });
