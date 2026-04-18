@@ -14,6 +14,11 @@ describe('ipc contract', () => {
     expect(ipcChannels.sitesList).toBe('sites:list');
   });
 
+  it('uses stable channel names for settings operations', () => {
+    expect(ipcChannels.settingsGet).toBe('settings:get');
+    expect(ipcChannels.settingsSet).toBe('settings:set');
+  });
+
   it('validates app health payload shape', () => {
     const validPayload = {
       appName: 'Frappe Cafe',

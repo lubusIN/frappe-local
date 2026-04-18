@@ -1,6 +1,6 @@
-import type { AppHealthResponse, BenchListItem, CatalogAppItem, SiteListItem } from '../shared/ipc';
+import type { AppHealthResponse, BenchListItem, CatalogAppItem, SettingsItem, SiteListItem } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
-import type { Bench, Site } from '../shared/domain/models';
+import { SettingsSchema, type Bench, type Settings, type Site } from '../shared/domain/models';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -17,6 +17,10 @@ export type AppRepositories = {
   };
   readonly sites: {
     findAll: () => Promise<Site[]>;
+  };
+  readonly settings: {
+    get: () => Promise<Settings | null>;
+    set: (input: Settings) => Promise<Settings>;
   };
 };
 
@@ -60,6 +64,16 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   updatedAt: site.timestamps.updatedAt,
 });
 
+const toSettingsItem = (settings: Settings): SettingsItem => ({
+  defaultFrappeVersion: settings.defaultFrappeVersion,
+  runtimePreference: settings.runtimePreference,
+  storagePath: settings.storagePath,
+  terminalPreference: settings.terminalPreference,
+  editorPreference: settings.editorPreference,
+  updateChannel: settings.updateChannel,
+  autoUpdateEnabled: settings.autoUpdateEnabled,
+});
+
 export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppRepositories): void => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
 
@@ -88,5 +102,16 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
     const sites = await repositories.sites.findAll();
     return sites.map(toSiteListItem);
+  });
+
+  ipcMainLike.handle(ipcChannels.settingsGet, async () => {
+    const settings = await repositories.settings.get();
+    return settings ? toSettingsItem(settings) : null;
+  });
+
+  ipcMainLike.handle(ipcChannels.settingsSet, async (_event: unknown, input: unknown) => {
+    const parsed = SettingsSchema.parse(input);
+    const settings = await repositories.settings.set(parsed);
+    return toSettingsItem(settings);
   });
 };

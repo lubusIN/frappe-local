@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogRepository } from '../src/main/storage/repositories/app-catalog-repository';
-import type { AppCatalogItem } from '../src/shared/domain/models';
+import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 
 const catalogItems: AppCatalogItem[] = [
   {
@@ -46,6 +46,17 @@ function makeStubSiteRepo() {
   };
 }
 
+function makeStubSettingsRepo() {
+  let current: Settings | null = null;
+  return {
+    get: async () => current,
+    set: async (input: Settings) => {
+      current = input;
+      return input;
+    },
+  };
+}
+
 function buildHandlers(items: AppCatalogItem[] = catalogItems) {
   const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
   registerIpcHandlers(
@@ -54,6 +65,7 @@ function buildHandlers(items: AppCatalogItem[] = catalogItems) {
       appCatalog: makeStubCatalogRepo(items),
       benches: makeStubBenchRepo(),
       sites: makeStubSiteRepo(),
+      settings: makeStubSettingsRepo(),
     }
   );
   return handlers;

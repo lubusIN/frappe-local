@@ -586,3 +586,107 @@ body {
     color: #2f2116;
     font-weight: 600;
   }
+
+  /* ── Settings ───────────────────────────────────────────────────── */
+
+  .settings-view {
+    display: grid;
+    gap: 16px;
+  }
+
+  .settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .settings-title {
+    margin: 0;
+    font-size: 28px;
+    color: #2f2116;
+  }
+
+  .settings-refresh,
+  .settings-save {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .settings-refresh:disabled,
+  .settings-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .settings-error {
+    margin: 0;
+    color: #9b3535;
+    background: #fff1f1;
+    border: 1px solid #e9b3b3;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .settings-success {
+    margin: 0;
+    color: #2d7a43;
+    background: #ecf7ef;
+    border: 1px solid #b7dbbf;
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .settings-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .settings-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .settings-field--full {
+    grid-column: 1 / -1;
+  }
+
+  .settings-field span,
+  .settings-checkbox span {
+    font-size: 13px;
+    color: #6b5240;
+    font-weight: 600;
+  }
+
+  .settings-field input,
+  .settings-field select {
+    width: 100%;
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #2f2116;
+  }
+
+  .settings-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .settings-actions {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  @media (max-width: 920px) {
+    .settings-form {
+      grid-template-columns: 1fr;
+    }
+  }

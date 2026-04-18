@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
-import type { AppCatalogItem, Bench } from '../src/shared/domain/models';
+import type { AppCatalogItem, Bench, Settings } from '../src/shared/domain/models';
 
 const benches: Bench[] = [
   {
@@ -39,6 +39,17 @@ function makeStubSiteRepo() {
   };
 }
 
+function makeStubSettingsRepo() {
+  let current: Settings | null = null;
+  return {
+    get: async () => current,
+    set: async (input: Settings) => {
+      current = input;
+      return input;
+    },
+  };
+}
+
 describe('benches IPC handlers', () => {
   it('benches:list returns mapped bench list items', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -49,6 +60,7 @@ describe('benches IPC handlers', () => {
         appCatalog: makeStubCatalogRepo(),
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
       }
     );
 
@@ -82,6 +94,7 @@ describe('benches IPC handlers', () => {
         appCatalog: makeStubCatalogRepo(),
         benches: makeStubBenchRepo([]),
         sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
       }
     );
 

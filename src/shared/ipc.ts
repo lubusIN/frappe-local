@@ -5,6 +5,8 @@ export const ipcChannels = {
   catalogSearch: 'catalog:search',
   benchesList: 'benches:list',
   sitesList: 'sites:list',
+  settingsGet: 'settings:get',
+  settingsSet: 'settings:set',
 } as const;
 
 export type AppHealthResponse = {
@@ -47,6 +49,16 @@ export type SiteListItem = {
   readonly updatedAt: string;
 };
 
+export type SettingsItem = {
+  readonly defaultFrappeVersion: string;
+  readonly runtimePreference: 'docker' | 'podman';
+  readonly storagePath: string;
+  readonly terminalPreference: string;
+  readonly editorPreference: string;
+  readonly updateChannel: 'stable' | 'beta';
+  readonly autoUpdateEnabled: boolean;
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
@@ -54,6 +66,8 @@ export type RendererBridge = {
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
   readonly listBenches: () => Promise<BenchListItem[]>;
   readonly listSites: () => Promise<SiteListItem[]>;
+  readonly getSettings: () => Promise<SettingsItem | null>;
+  readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {
