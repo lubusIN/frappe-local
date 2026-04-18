@@ -1,11 +1,12 @@
 import { onMounted, ref } from 'vue';
-import type { SiteCreateInput, SiteListItem } from '../../shared/ipc';
+import type { SiteCreateInput, SiteListItem, SiteUpdateInput } from '../../shared/ipc';
 import { useIpc } from './useIpc';
 
 export const useSites = () => {
   const sites = ref<SiteListItem[]>([]);
   const loading = ref(false);
   const creating = ref(false);
+  const updating = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
@@ -41,6 +42,29 @@ export const useSites = () => {
     }
   };
 
+  const update = async (id: string, input: SiteUpdateInput) => {
+    updating.value = true;
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const updated = await ipc.updateSite(id, input);
+
+      if (!updated) {
+        error.value = 'Unable to update site.';
+        return;
+      }
+
+      sites.value = sites.value.map((site) => (site.id === id ? updated : site));
+      successMessage.value = `Updated site ${updated.name}.`;
+    } catch (err) {
+      error.value = String(err);
+    } finally {
+      updating.value = false;
+    }
+  };
+
   onMounted(() => {
     void load();
   });
@@ -49,9 +73,11 @@ export const useSites = () => {
     sites,
     loading,
     creating,
+    updating,
     error,
     successMessage,
     create,
+    update,
     refresh: load,
   };
 };

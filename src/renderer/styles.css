@@ -499,6 +499,28 @@ body {
     font-weight: 600;
   }
 
+  .bench-card-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .bench-action {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .bench-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
   /* ── Sites ──────────────────────────────────────────────────────── */
 
   .sites-view {
@@ -703,6 +725,28 @@ body {
     font-size: 14px;
     color: #2f2116;
     font-weight: 600;
+  }
+
+  .site-card-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .site-action {
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    color: #2f2116;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .site-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   /* ── Settings ───────────────────────────────────────────────────── */

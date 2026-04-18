@@ -5,8 +5,10 @@ export const ipcChannels = {
   catalogSearch: 'catalog:search',
   benchesList: 'benches:list',
   benchesCreate: 'benches:create',
+  benchesUpdate: 'benches:update',
   sitesList: 'sites:list',
   sitesCreate: 'sites:create',
+  sitesUpdate: 'sites:update',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   workspacesList: 'workspaces:list',
@@ -48,6 +50,15 @@ export type BenchCreateInput = {
   readonly apps: string[];
 };
 
+export type BenchUpdateInput = {
+  readonly name?: string;
+  readonly path?: string;
+  readonly frappeVersion?: string;
+  readonly runtime?: 'docker' | 'podman';
+  readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+  readonly apps?: string[];
+};
+
 export type SiteListItem = {
   readonly id: string;
   readonly name: string;
@@ -66,6 +77,15 @@ export type SiteCreateInput = {
   readonly groupId: string | null;
   readonly path: string;
   readonly apps: string[];
+};
+
+export type SiteUpdateInput = {
+  readonly name?: string;
+  readonly benchId?: string;
+  readonly groupId?: string | null;
+  readonly path?: string;
+  readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+  readonly apps?: string[];
 };
 
 export type SettingsItem = {
@@ -93,8 +113,10 @@ export type RendererBridge = {
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
   readonly listBenches: () => Promise<BenchListItem[]>;
   readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;
+  readonly updateBench: (id: string, input: BenchUpdateInput) => Promise<BenchListItem | null>;
   readonly listSites: () => Promise<SiteListItem[]>;
   readonly createSite: (input: SiteCreateInput) => Promise<SiteListItem>;
+  readonly updateSite: (id: string, input: SiteUpdateInput) => Promise<SiteListItem | null>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
   readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;

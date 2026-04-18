@@ -2,10 +2,12 @@ import type {
   AppHealthResponse,
   BenchCreateInput,
   BenchListItem,
+  BenchUpdateInput,
   CatalogAppItem,
   SettingsItem,
   SiteCreateInput,
   SiteListItem,
+  SiteUpdateInput,
   WorkspaceListItem,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
@@ -13,6 +15,8 @@ import {
   CreateBenchInputSchema,
   CreateSiteInputSchema,
   SettingsSchema,
+  UpdateBenchInputSchema,
+  UpdateSiteInputSchema,
   type Bench,
   type Group,
   type Settings,
@@ -39,6 +43,14 @@ export type AppRepositories = {
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => Promise<Bench>;
+    update: (id: string, input: {
+      name?: string;
+      path?: string;
+      frappeVersion?: string;
+      runtime?: 'docker' | 'podman';
+      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      apps?: string[];
+    }) => Promise<Bench | null>;
   };
   readonly sites: {
     findAll: () => Promise<Site[]>;
@@ -50,6 +62,14 @@ export type AppRepositories = {
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;
     }) => Promise<Site>;
+    update: (id: string, input: {
+      name?: string;
+      benchId?: string;
+      groupId?: string | null;
+      apps?: string[];
+      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      path?: string;
+    }) => Promise<Site | null>;
   };
   readonly settings: {
     get: () => Promise<Settings | null>;
@@ -152,6 +172,16 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     return toBenchListItem(created);
   });
 
+  ipcMainLike.handle(ipcChannels.benchesUpdate, async (_event: unknown, id: unknown, input: unknown) => {
+    if (typeof id !== 'string') {
+      return null;
+    }
+
+    const payload = UpdateBenchInputSchema.parse(input as BenchUpdateInput);
+    const updated = await repositories.benches.update(id, payload);
+    return updated ? toBenchListItem(updated) : null;
+  });
+
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
     const sites = await repositories.sites.findAll();
     return sites.map(toSiteListItem);
@@ -164,6 +194,16 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     });
     const created = await repositories.sites.create(payload);
     return toSiteListItem(created);
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesUpdate, async (_event: unknown, id: unknown, input: unknown) => {
+    if (typeof id !== 'string') {
+      return null;
+    }
+
+    const payload = UpdateSiteInputSchema.parse(input as SiteUpdateInput);
+    const updated = await repositories.sites.update(id, payload);
+    return updated ? toSiteListItem(updated) : null;
   });
 
   ipcMainLike.handle(ipcChannels.settingsGet, async () => {

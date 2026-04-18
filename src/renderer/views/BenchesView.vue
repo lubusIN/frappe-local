@@ -74,6 +74,24 @@
             <dd>{{ bench.appCount }}</dd>
           </div>
         </dl>
+        <div class="bench-card-actions">
+          <button
+            class="bench-action"
+            type="button"
+            :disabled="updating || bench.status === 'running'"
+            @click="onSetBenchStatus(bench.id, 'running')"
+          >
+            Start
+          </button>
+          <button
+            class="bench-action"
+            type="button"
+            :disabled="updating || bench.status === 'stopped'"
+            @click="onSetBenchStatus(bench.id, 'stopped')"
+          >
+            Stop
+          </button>
+        </div>
       </li>
     </ul>
   </section>
@@ -83,7 +101,7 @@
 import { reactive } from 'vue';
 import { useBenches } from '../composables/useBenches';
 
-const { benches, loading, creating, error, successMessage, create, refresh } = useBenches();
+const { benches, loading, creating, updating, error, successMessage, create, update, refresh } = useBenches();
 
 const createForm = reactive({
   name: '',
@@ -110,5 +128,9 @@ const onCreateBench = async () => {
   createForm.name = '';
   createForm.path = '';
   createForm.appsText = '';
+};
+
+const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
+  await update(id, { status });
 };
 </script>

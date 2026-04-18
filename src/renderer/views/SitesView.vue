@@ -71,6 +71,24 @@
             <dd>{{ site.appCount }}</dd>
           </div>
         </dl>
+        <div class="site-card-actions">
+          <button
+            class="site-action"
+            type="button"
+            :disabled="updating || site.status === 'running'"
+            @click="onSetSiteStatus(site.id, 'running')"
+          >
+            Start
+          </button>
+          <button
+            class="site-action"
+            type="button"
+            :disabled="updating || site.status === 'stopped'"
+            @click="onSetSiteStatus(site.id, 'stopped')"
+          >
+            Stop
+          </button>
+        </div>
       </li>
     </ul>
   </section>
@@ -80,7 +98,7 @@
 import { reactive } from 'vue';
 import { useSites } from '../composables/useSites';
 
-const { sites, loading, creating, error, successMessage, create, refresh } = useSites();
+const { sites, loading, creating, updating, error, successMessage, create, update, refresh } = useSites();
 
 const createForm = reactive({
   name: '',
@@ -109,5 +127,9 @@ const onCreateSite = async () => {
   createForm.groupId = '';
   createForm.path = '';
   createForm.appsText = '';
+};
+
+const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
+  await update(id, { status });
 };
 </script>
