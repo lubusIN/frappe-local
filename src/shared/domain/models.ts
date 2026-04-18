@@ -94,6 +94,14 @@ export type Group = z.infer<typeof GroupSchema>;
 export type AppCatalogItem = z.infer<typeof AppSchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
 
+export type CreateBenchInput = z.infer<typeof CreateBenchInputSchema>;
+export type UpdateBenchInput = z.infer<typeof UpdateBenchInputSchema>;
+export type CreateSiteInput = z.infer<typeof CreateSiteInputSchema>;
+export type UpdateSiteInput = z.infer<typeof UpdateSiteInputSchema>;
+export type CreateGroupInput = z.infer<typeof CreateGroupInputSchema>;
+export type UpdateGroupInput = z.infer<typeof UpdateGroupInputSchema>;
+export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
+
 export type BenchRecord = {
   id: string;
   name: string;
