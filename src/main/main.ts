@@ -1,11 +1,15 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { registerIpcHandlers } from './ipc';
+import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
+import { createMainLogger } from './logger';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
+const mainLogger = createMainLogger('main');
 
 const createMainWindow = async (): Promise<void> => {
+  mainLogger.info('creating main window');
+
   const window = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -29,8 +33,8 @@ const createMainWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(async () => {
-  registerIpcHandlers(ipcMain);
-  await createMainWindow();
+  const bootstrapContext = createBootstrapContext(app.getName(), createMainWindow, app);
+  await runApplicationBootstrap(bootstrapContext, ipcMain);
 
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -41,6 +45,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    mainLogger.info('all windows closed, quitting application');
     app.quit();
   }
 });

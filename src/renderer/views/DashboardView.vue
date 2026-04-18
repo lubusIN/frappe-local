@@ -16,6 +16,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import PlaceholderPanel from '../components/PlaceholderPanel.vue';
+import { createRendererLogger } from '../logger';
+
+const dashboardLogger = createRendererLogger('dashboard');
 
 const description = ref(
   'This page reserves space for setup health, recent activity, and fast entry points into bench and site creation.'
@@ -24,16 +27,21 @@ const description = ref(
 const healthSummary = ref('IPC smoke check is pending.');
 
 onMounted(async () => {
+  dashboardLogger.info('running IPC health smoke check');
+
   if (!window.frappeCafe) {
     healthSummary.value = 'IPC smoke check unavailable: preload bridge is missing.';
+    dashboardLogger.warn('preload bridge unavailable on window');
     return;
   }
 
   try {
     const response = await window.frappeCafe.checkAppHealth();
     healthSummary.value = `IPC smoke check passed: ${response.appName} on ${response.platform} (Electron ${response.electronVersion}).`;
+    dashboardLogger.info('IPC health smoke check passed');
   } catch {
     healthSummary.value = 'IPC smoke check failed: unable to reach main process handler.';
+    dashboardLogger.error('IPC health smoke check failed');
   }
 });
 </script>
