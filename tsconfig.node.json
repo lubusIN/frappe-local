@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "outDir": "dist-node"
+  },
+  "include": [
+    "forge.config.ts",
+    "node_modules/@electron-forge/plugin-vite/forge-vite-env.d.ts",
+    "vite.*.config.ts",
+    "src/main/**/*.ts",
+    "src/preload/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "frappe-cafe",
+  "productName": "Frappe Cafe",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Desktop app for managing local Frappe benches and sites.",
+  "main": ".vite/build/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "build": "electron-forge package",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.8.1",
+    "@electron-forge/maker-zip": "^7.8.1",
+    "@electron-forge/plugin-vite": "^7.8.1",
+    "@types/node": "^24.6.0",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "electron": "^35.1.5",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.2"
+  },
+  "dependencies": {
+    "frappe-ui": "^0.1.51",
+    "vue": "^3.5.13"
+  }
+}
