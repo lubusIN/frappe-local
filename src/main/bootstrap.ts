@@ -1,7 +1,9 @@
 import path from 'node:path';
 import type { IpcMain } from 'electron';
 import { BrowserWindow } from 'electron';
+import { shell } from 'electron';
 import type { AppRepositories } from './ipc';
+import type { IpcOperations } from './ipc';
 import { registerIpcHandlers } from './ipc';
 import { createMainLogger } from './logger';
 import type { AppRuntimePaths } from './config';
@@ -15,7 +17,7 @@ import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
 
 type BootstrapContext = {
-  readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories) => void;
+  readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories, operations?: IpcOperations) => void;
   readonly createMainWindow: () => Promise<void>;
   readonly appName: string;
   readonly runtimePaths: AppRuntimePaths;
@@ -84,7 +86,12 @@ export const runApplicationBootstrap = async (
       groups: new GroupRepository(adapter),
     };
 
-    context.registerHandlers(ipcMain, repositories);
+    context.registerHandlers(ipcMain, repositories, {
+      openPath: async (targetPath: string) => {
+        const result = await shell.openPath(targetPath);
+        return result === '';
+      },
+    });
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');
   } catch (error) {

@@ -4,6 +4,7 @@ import type {
   BenchListItem,
   BenchUpdateInput,
   CatalogAppItem,
+  LifecycleLogItem,
   SettingsItem,
   SiteCreateInput,
   SiteListItem,
@@ -11,6 +12,7 @@ import type {
   WorkspaceListItem,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
+import fs from 'node:fs';
 import {
   CreateBenchInputSchema,
   CreateSiteInputSchema,
@@ -82,6 +84,10 @@ export type AppRepositories = {
   };
 };
 
+export type IpcOperations = {
+  readonly openPath: (targetPath: string) => Promise<boolean>;
+};
+
 export const buildAppHealthResponse = (): AppHealthResponse => ({
   appName: 'Frappe Cafe',
   platform: process.platform,
@@ -140,7 +146,38 @@ const toWorkspaceListItem = (group: Group): WorkspaceListItem => ({
   siteCount: group.siteIds.length,
 });
 
-export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppRepositories): void => {
+const toLifecycleLogs = (
+  entityId: string,
+  status: 'queued' | 'running' | 'stopped' | 'success' | 'failure',
+  path: string,
+  createdAt: string,
+  updatedAt: string
+): LifecycleLogItem[] => {
+  const logs: LifecycleLogItem[] = [
+    {
+      id: `${entityId}-created`,
+      entityId,
+      level: 'info',
+      message: `Entity created at ${path}`,
+      timestamp: createdAt,
+    },
+    {
+      id: `${entityId}-status`,
+      entityId,
+      level: status === 'failure' ? 'error' : 'info',
+      message: `Current status: ${status}`,
+      timestamp: updatedAt,
+    },
+  ];
+
+  return logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+};
+
+export const registerIpcHandlers = (
+  ipcMainLike: IpcMainLike,
+  repositories: AppRepositories,
+  operations: IpcOperations = { openPath: async () => false }
+): void => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
 
   ipcMainLike.handle(ipcChannels.catalogList, async () => {
@@ -204,6 +241,40 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     return repositories.benches.delete(id);
   });
 
+  ipcMainLike.handle(ipcChannels.benchesLogs, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return [];
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench) {
+      return [];
+    }
+
+    return toLifecycleLogs(
+      bench.id,
+      bench.status,
+      bench.path,
+      bench.timestamps.createdAt,
+      bench.timestamps.updatedAt
+    );
+  });
+
+  ipcMainLike.handle(ipcChannels.benchesOpenFolder, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench || !fs.existsSync(bench.path)) {
+      return false;
+    }
+
+    return operations.openPath(bench.path);
+  });
+
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
     const sites = await repositories.sites.findAll();
     return sites.map(toSiteListItem);
@@ -240,6 +311,40 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     }
 
     return repositories.sites.delete(id);
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesLogs, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return [];
+    }
+
+    const sites = await repositories.sites.findAll();
+    const site = sites.find((entry) => entry.id === id);
+    if (!site) {
+      return [];
+    }
+
+    return toLifecycleLogs(
+      site.id,
+      site.status,
+      site.path,
+      site.timestamps.createdAt,
+      site.timestamps.updatedAt
+    );
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesOpenFolder, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const sites = await repositories.sites.findAll();
+    const site = sites.find((entry) => entry.id === id);
+    if (!site || !fs.existsSync(site.path)) {
+      return false;
+    }
+
+    return operations.openPath(site.path);
   });
 
   ipcMainLike.handle(ipcChannels.settingsGet, async () => {

@@ -99,17 +99,67 @@
           >
             {{ deleting ? 'Deleting…' : 'Delete' }}
           </button>
+          <button
+            class="bench-action"
+            type="button"
+            :disabled="loadingLogs"
+            @click="onLoadBenchLogs(bench.id)"
+          >
+            {{ loadingLogs ? 'Loading logs…' : 'View logs' }}
+          </button>
+          <button
+            class="bench-action"
+            type="button"
+            :disabled="openingFolder"
+            @click="onOpenBenchFolder(bench.id)"
+          >
+            {{ openingFolder ? 'Opening…' : 'Open folder' }}
+          </button>
         </div>
+
+        <section v-if="activeBenchLogId === bench.id" class="bench-logs-panel">
+          <header class="bench-logs-header">
+            <p class="bench-logs-title">Recent logs</p>
+            <input
+              v-model="benchLogFilter"
+              class="bench-logs-filter"
+              type="text"
+              placeholder="Filter logs"
+            />
+          </header>
+          <ul class="bench-logs-list">
+            <li v-for="entry in filteredBenchLogs" :key="entry.id" class="bench-log-item">
+              <p class="bench-log-message">{{ entry.message }}</p>
+              <p class="bench-log-meta">{{ entry.level }} · {{ entry.timestamp }}</p>
+            </li>
+          </ul>
+        </section>
       </li>
     </ul>
   </section>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useBenches } from '../composables/useBenches';
 
-const { benches, loading, creating, updating, deleting, error, successMessage, create, update, remove, refresh } = useBenches();
+const {
+  benches,
+  loading,
+  creating,
+  updating,
+  deleting,
+  loadingLogs,
+  openingFolder,
+  error,
+  successMessage,
+  create,
+  update,
+  remove,
+  listLogs,
+  openFolder,
+  refresh,
+} = useBenches();
 
 const createForm = reactive({
   name: '',
@@ -142,6 +192,21 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
 };
 
+const activeBenchLogId = ref<string | null>(null);
+const benchLogs = ref<Array<{ id: string; level: string; message: string; timestamp: string }>>([]);
+const benchLogFilter = ref('');
+
+const filteredBenchLogs = computed(() => {
+  const query = benchLogFilter.value.trim().toLowerCase();
+  if (!query) {
+    return benchLogs.value;
+  }
+
+  return benchLogs.value.filter((entry) =>
+    `${entry.message} ${entry.level}`.toLowerCase().includes(query)
+  );
+});
+
 const onDeleteBench = async (id: string, name: string) => {
   const confirmed = window.confirm(`Delete bench ${name}? This cannot be undone.`);
   if (!confirmed) {
@@ -149,5 +214,15 @@ const onDeleteBench = async (id: string, name: string) => {
   }
 
   await remove(id);
+};
+
+const onLoadBenchLogs = async (id: string) => {
+  benchLogs.value = await listLogs(id);
+  benchLogFilter.value = '';
+  activeBenchLogId.value = id;
+};
+
+const onOpenBenchFolder = async (id: string) => {
+  await openFolder(id);
 };
 </script>

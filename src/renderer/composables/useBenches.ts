@@ -1,5 +1,5 @@
 import { onMounted, ref } from 'vue';
-import type { BenchCreateInput, BenchListItem, BenchUpdateInput } from '../../shared/ipc';
+import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '../../shared/ipc';
 import { useIpc } from './useIpc';
 
 export const useBenches = () => {
@@ -8,6 +8,8 @@ export const useBenches = () => {
   const creating = ref(false);
   const updating = ref(false);
   const deleting = ref(false);
+  const loadingLogs = ref(false);
+  const openingFolder = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
@@ -89,6 +91,41 @@ export const useBenches = () => {
     }
   };
 
+  const listLogs = async (id: string): Promise<LifecycleLogItem[]> => {
+    loadingLogs.value = true;
+    error.value = null;
+
+    try {
+      const ipc = useIpc();
+      return await ipc.listBenchLogs(id);
+    } catch (err) {
+      error.value = String(err);
+      return [];
+    } finally {
+      loadingLogs.value = false;
+    }
+  };
+
+  const openFolder = async (id: string) => {
+    openingFolder.value = true;
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const opened = await ipc.openBenchFolder(id);
+      if (!opened) {
+        error.value = 'Unable to open bench folder. Verify the path exists.';
+        return;
+      }
+      successMessage.value = 'Bench folder opened.';
+    } catch (err) {
+      error.value = String(err);
+    } finally {
+      openingFolder.value = false;
+    }
+  };
+
   onMounted(() => {
     void load();
   });
@@ -99,11 +136,15 @@ export const useBenches = () => {
     creating,
     updating,
     deleting,
+    loadingLogs,
+    openingFolder,
     error,
     successMessage,
     create,
     update,
     remove,
+    listLogs,
+    openFolder,
     refresh: load,
   };
 };

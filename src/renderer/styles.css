@@ -527,6 +527,64 @@ body {
     background: #fff4f4;
   }
 
+  .bench-logs-panel {
+    margin-top: 12px;
+    border: 1px solid #dfd2c4;
+    background: #fff8ee;
+    border-radius: 12px;
+    padding: 10px;
+  }
+
+  .bench-logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bench-logs-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4f3827;
+  }
+
+  .bench-logs-filter {
+    border: 1px solid #d3c5b5;
+    border-radius: 8px;
+    background: #fffaf3;
+    color: #2f2116;
+    padding: 6px 8px;
+    width: 180px;
+  }
+
+  .bench-logs-list {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+  }
+
+  .bench-log-item {
+    border: 1px solid #e4d8ca;
+    border-radius: 10px;
+    padding: 8px;
+    background: #fffdf9;
+  }
+
+  .bench-log-message {
+    margin: 0;
+    font-size: 13px;
+    color: #2f2116;
+  }
+
+  .bench-log-meta {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #7b624d;
+  }
+
   /* ── Sites ──────────────────────────────────────────────────────── */
 
   .sites-view {
@@ -759,6 +817,64 @@ body {
     border-color: #d9a9a9;
     color: #8f2e2e;
     background: #fff4f4;
+  }
+
+  .site-logs-panel {
+    margin-top: 12px;
+    border: 1px solid #dfd2c4;
+    background: #fff8ee;
+    border-radius: 12px;
+    padding: 10px;
+  }
+
+  .site-logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .site-logs-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4f3827;
+  }
+
+  .site-logs-filter {
+    border: 1px solid #d3c5b5;
+    border-radius: 8px;
+    background: #fffaf3;
+    color: #2f2116;
+    padding: 6px 8px;
+    width: 180px;
+  }
+
+  .site-logs-list {
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 8px;
+  }
+
+  .site-log-item {
+    border: 1px solid #e4d8ca;
+    border-radius: 10px;
+    padding: 8px;
+    background: #fffdf9;
+  }
+
+  .site-log-message {
+    margin: 0;
+    font-size: 13px;
+    color: #2f2116;
+  }
+
+  .site-log-meta {
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #7b624d;
   }
 
   /* ── Settings ───────────────────────────────────────────────────── */

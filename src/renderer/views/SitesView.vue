@@ -96,17 +96,67 @@
           >
             {{ deleting ? 'Deleting…' : 'Delete' }}
           </button>
+          <button
+            class="site-action"
+            type="button"
+            :disabled="loadingLogs"
+            @click="onLoadSiteLogs(site.id)"
+          >
+            {{ loadingLogs ? 'Loading logs…' : 'View logs' }}
+          </button>
+          <button
+            class="site-action"
+            type="button"
+            :disabled="openingFolder"
+            @click="onOpenSiteFolder(site.id)"
+          >
+            {{ openingFolder ? 'Opening…' : 'Open folder' }}
+          </button>
         </div>
+
+        <section v-if="activeSiteLogId === site.id" class="site-logs-panel">
+          <header class="site-logs-header">
+            <p class="site-logs-title">Recent logs</p>
+            <input
+              v-model="siteLogFilter"
+              class="site-logs-filter"
+              type="text"
+              placeholder="Filter logs"
+            />
+          </header>
+          <ul class="site-logs-list">
+            <li v-for="entry in filteredSiteLogs" :key="entry.id" class="site-log-item">
+              <p class="site-log-message">{{ entry.message }}</p>
+              <p class="site-log-meta">{{ entry.level }} · {{ entry.timestamp }}</p>
+            </li>
+          </ul>
+        </section>
       </li>
     </ul>
   </section>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useSites } from '../composables/useSites';
 
-const { sites, loading, creating, updating, deleting, error, successMessage, create, update, remove, refresh } = useSites();
+const {
+  sites,
+  loading,
+  creating,
+  updating,
+  deleting,
+  loadingLogs,
+  openingFolder,
+  error,
+  successMessage,
+  create,
+  update,
+  remove,
+  listLogs,
+  openFolder,
+  refresh,
+} = useSites();
 
 const createForm = reactive({
   name: '',
@@ -141,6 +191,21 @@ const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
 };
 
+const activeSiteLogId = ref<string | null>(null);
+const siteLogs = ref<Array<{ id: string; level: string; message: string; timestamp: string }>>([]);
+const siteLogFilter = ref('');
+
+const filteredSiteLogs = computed(() => {
+  const query = siteLogFilter.value.trim().toLowerCase();
+  if (!query) {
+    return siteLogs.value;
+  }
+
+  return siteLogs.value.filter((entry) =>
+    `${entry.message} ${entry.level}`.toLowerCase().includes(query)
+  );
+});
+
 const onDeleteSite = async (id: string, name: string) => {
   const confirmed = window.confirm(`Delete site ${name}? This cannot be undone.`);
   if (!confirmed) {
@@ -148,5 +213,15 @@ const onDeleteSite = async (id: string, name: string) => {
   }
 
   await remove(id);
+};
+
+const onLoadSiteLogs = async (id: string) => {
+  siteLogs.value = await listLogs(id);
+  siteLogFilter.value = '';
+  activeSiteLogId.value = id;
+};
+
+const onOpenSiteFolder = async (id: string) => {
+  await openFolder(id);
 };
 </script>
