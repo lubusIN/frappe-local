@@ -1,5 +1,8 @@
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
+  catalogList: 'catalog:list',
+  catalogFindById: 'catalog:find-by-id',
+  catalogSearch: 'catalog:search',
 } as const;
 
 export type AppHealthResponse = {
@@ -10,8 +13,19 @@ export type AppHealthResponse = {
   readonly timestamp: string;
 };
 
+export type CatalogAppItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly source: string;
+  readonly version: string;
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
+  readonly listCatalog: () => Promise<CatalogAppItem[]>;
+  readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
+  readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

@@ -1,13 +1,17 @@
 import path from 'node:path';
 import type { IpcMain } from 'electron';
 import { BrowserWindow } from 'electron';
+import type { AppRepositories } from './ipc';
 import { registerIpcHandlers } from './ipc';
 import { createMainLogger } from './logger';
 import type { AppRuntimePaths } from './config';
 import { resolveAppRuntimePaths } from './config';
+import { JsonStorageAdapter } from './storage/adapter';
+import { initializeStorage } from './storage/bootstrap';
+import { AppCatalogRepository } from './storage/repositories/app-catalog-repository';
 
 type BootstrapContext = {
-  readonly registerHandlers: (ipcMain: IpcMain) => void;
+  readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories) => void;
   readonly createMainWindow: () => Promise<void>;
   readonly appName: string;
   readonly runtimePaths: AppRuntimePaths;
@@ -63,7 +67,16 @@ export const runApplicationBootstrap = async (
   bootstrapLogger.info(`storage path stub: ${path.normalize(context.runtimePaths.storagePath)}`);
 
   try {
-    context.registerHandlers(ipcMain);
+    const storageFilePath = path.join(context.runtimePaths.storagePath, 'storage.json');
+    const adapter = new JsonStorageAdapter(storageFilePath);
+    await adapter.connect();
+    await initializeStorage(adapter, storageFilePath, { appCatalogSeed: [], appCatalogSeedVersion: 1 });
+
+    const repositories: AppRepositories = {
+      appCatalog: new AppCatalogRepository(adapter),
+    };
+
+    context.registerHandlers(ipcMain, repositories);
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');
   } catch (error) {

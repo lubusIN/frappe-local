@@ -4,6 +4,9 @@ import { ipcChannels } from '../shared/ipc';
 
 const rendererBridge: RendererBridge = {
 	checkAppHealth: async () => ipcRenderer.invoke(ipcChannels.appHealthCheck),
+	listCatalog: async () => ipcRenderer.invoke(ipcChannels.catalogList),
+	findCatalogItem: async (id: string) => ipcRenderer.invoke(ipcChannels.catalogFindById, id),
+	searchCatalog: async (query: string) => ipcRenderer.invoke(ipcChannels.catalogSearch, query),
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);
