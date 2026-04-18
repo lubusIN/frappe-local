@@ -51,6 +51,7 @@ export type AppRepositories = {
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps?: string[];
     }) => Promise<Bench | null>;
+    delete: (id: string) => Promise<boolean>;
   };
   readonly sites: {
     findAll: () => Promise<Site[]>;
@@ -70,6 +71,7 @@ export type AppRepositories = {
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path?: string;
     }) => Promise<Site | null>;
+    delete: (id: string) => Promise<boolean>;
   };
   readonly settings: {
     get: () => Promise<Settings | null>;
@@ -182,6 +184,26 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     return updated ? toBenchListItem(updated) : null;
   });
 
+  ipcMainLike.handle(ipcChannels.benchesDelete, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench || bench.status === 'running') {
+      return false;
+    }
+
+    const sites = await repositories.sites.findAll();
+    const hasAttachedSites = sites.some((site) => site.benchId === id);
+    if (hasAttachedSites) {
+      return false;
+    }
+
+    return repositories.benches.delete(id);
+  });
+
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
     const sites = await repositories.sites.findAll();
     return sites.map(toSiteListItem);
@@ -204,6 +226,20 @@ export const registerIpcHandlers = (ipcMainLike: IpcMainLike, repositories: AppR
     const payload = UpdateSiteInputSchema.parse(input as SiteUpdateInput);
     const updated = await repositories.sites.update(id, payload);
     return updated ? toSiteListItem(updated) : null;
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesDelete, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const sites = await repositories.sites.findAll();
+    const site = sites.find((entry) => entry.id === id);
+    if (!site || site.status === 'running') {
+      return false;
+    }
+
+    return repositories.sites.delete(id);
   });
 
   ipcMainLike.handle(ipcChannels.settingsGet, async () => {

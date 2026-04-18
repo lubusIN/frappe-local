@@ -6,9 +6,11 @@ export const ipcChannels = {
   benchesList: 'benches:list',
   benchesCreate: 'benches:create',
   benchesUpdate: 'benches:update',
+  benchesDelete: 'benches:delete',
   sitesList: 'sites:list',
   sitesCreate: 'sites:create',
   sitesUpdate: 'sites:update',
+  sitesDelete: 'sites:delete',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   workspacesList: 'workspaces:list',
@@ -114,9 +116,11 @@ export type RendererBridge = {
   readonly listBenches: () => Promise<BenchListItem[]>;
   readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;
   readonly updateBench: (id: string, input: BenchUpdateInput) => Promise<BenchListItem | null>;
+  readonly deleteBench: (id: string) => Promise<boolean>;
   readonly listSites: () => Promise<SiteListItem[]>;
   readonly createSite: (input: SiteCreateInput) => Promise<SiteListItem>;
   readonly updateSite: (id: string, input: SiteUpdateInput) => Promise<SiteListItem | null>;
+  readonly deleteSite: (id: string) => Promise<boolean>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
   readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;

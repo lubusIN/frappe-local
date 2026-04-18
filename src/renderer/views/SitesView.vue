@@ -88,6 +88,14 @@
           >
             Stop
           </button>
+          <button
+            class="site-action site-action--danger"
+            type="button"
+            :disabled="updating || deleting || site.status === 'running'"
+            @click="onDeleteSite(site.id, site.name)"
+          >
+            {{ deleting ? 'Deleting…' : 'Delete' }}
+          </button>
         </div>
       </li>
     </ul>
@@ -98,7 +106,7 @@
 import { reactive } from 'vue';
 import { useSites } from '../composables/useSites';
 
-const { sites, loading, creating, updating, error, successMessage, create, update, refresh } = useSites();
+const { sites, loading, creating, updating, deleting, error, successMessage, create, update, remove, refresh } = useSites();
 
 const createForm = reactive({
   name: '',
@@ -131,5 +139,14 @@ const onCreateSite = async () => {
 
 const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
+};
+
+const onDeleteSite = async (id: string, name: string) => {
+  const confirmed = window.confirm(`Delete site ${name}? This cannot be undone.`);
+  if (!confirmed) {
+    return;
+  }
+
+  await remove(id);
 };
 </script>

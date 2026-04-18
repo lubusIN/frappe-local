@@ -7,6 +7,7 @@ export const useBenches = () => {
   const loading = ref(false);
   const creating = ref(false);
   const updating = ref(false);
+  const deleting = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
@@ -65,6 +66,29 @@ export const useBenches = () => {
     }
   };
 
+  const remove = async (id: string) => {
+    deleting.value = true;
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const deleted = await ipc.deleteBench(id);
+
+      if (!deleted) {
+        error.value = 'Unable to delete bench. Stop it and remove attached sites first.';
+        return;
+      }
+
+      benches.value = benches.value.filter((bench) => bench.id !== id);
+      successMessage.value = 'Bench deleted.';
+    } catch (err) {
+      error.value = String(err);
+    } finally {
+      deleting.value = false;
+    }
+  };
+
   onMounted(() => {
     void load();
   });
@@ -74,10 +98,12 @@ export const useBenches = () => {
     loading,
     creating,
     updating,
+    deleting,
     error,
     successMessage,
     create,
     update,
+    remove,
     refresh: load,
   };
 };

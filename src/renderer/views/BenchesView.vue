@@ -91,6 +91,14 @@
           >
             Stop
           </button>
+          <button
+            class="bench-action bench-action--danger"
+            type="button"
+            :disabled="updating || deleting || bench.status === 'running'"
+            @click="onDeleteBench(bench.id, bench.name)"
+          >
+            {{ deleting ? 'Deleting…' : 'Delete' }}
+          </button>
         </div>
       </li>
     </ul>
@@ -101,7 +109,7 @@
 import { reactive } from 'vue';
 import { useBenches } from '../composables/useBenches';
 
-const { benches, loading, creating, updating, error, successMessage, create, update, refresh } = useBenches();
+const { benches, loading, creating, updating, deleting, error, successMessage, create, update, remove, refresh } = useBenches();
 
 const createForm = reactive({
   name: '',
@@ -132,5 +140,14 @@ const onCreateBench = async () => {
 
 const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
+};
+
+const onDeleteBench = async (id: string, name: string) => {
+  const confirmed = window.confirm(`Delete bench ${name}? This cannot be undone.`);
+  if (!confirmed) {
+    return;
+  }
+
+  await remove(id);
 };
 </script>

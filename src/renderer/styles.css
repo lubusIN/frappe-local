@@ -521,6 +521,12 @@ body {
     cursor: not-allowed;
   }
 
+  .bench-action--danger {
+    border-color: #d9a9a9;
+    color: #8f2e2e;
+    background: #fff4f4;
+  }
+
   /* ── Sites ──────────────────────────────────────────────────────── */
 
   .sites-view {
@@ -747,6 +753,12 @@ body {
   .site-action:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .site-action--danger {
+    border-color: #d9a9a9;
+    color: #8f2e2e;
+    background: #fff4f4;
   }
 
   /* ── Settings ───────────────────────────────────────────────────── */

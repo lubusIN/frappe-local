@@ -7,6 +7,7 @@ export const useSites = () => {
   const loading = ref(false);
   const creating = ref(false);
   const updating = ref(false);
+  const deleting = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
@@ -65,6 +66,29 @@ export const useSites = () => {
     }
   };
 
+  const remove = async (id: string) => {
+    deleting.value = true;
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const deleted = await ipc.deleteSite(id);
+
+      if (!deleted) {
+        error.value = 'Unable to delete site. Stop it before deleting.';
+        return;
+      }
+
+      sites.value = sites.value.filter((site) => site.id !== id);
+      successMessage.value = 'Site deleted.';
+    } catch (err) {
+      error.value = String(err);
+    } finally {
+      deleting.value = false;
+    }
+  };
+
   onMounted(() => {
     void load();
   });
@@ -74,10 +98,12 @@ export const useSites = () => {
     loading,
     creating,
     updating,
+    deleting,
     error,
     successMessage,
     create,
     update,
+    remove,
     refresh: load,
   };
 };
