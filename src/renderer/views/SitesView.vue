@@ -87,8 +87,40 @@
       <p class="sites-empty-body">Create your first site to manage runtime status, inspect logs, and open paths quickly.</p>
     </div>
 
-    <ul v-if="!error && !loading && sites.length > 0" class="sites-grid">
-      <li v-for="site in sites" :key="site.id" class="site-card">
+    <section v-if="!error && !loading && sites.length > 0" class="sites-filters">
+      <label class="sites-field">
+        <span>Filter by bench</span>
+        <select v-model="siteFilters.benchId">
+          <option value="">All benches</option>
+          <option v-for="bench in availableBenches" :key="bench.id" :value="bench.id">
+            {{ bench.name }}
+          </option>
+        </select>
+      </label>
+      <label class="sites-field">
+        <span>Filter by status</span>
+        <select v-model="siteFilters.status">
+          <option value="">All statuses</option>
+          <option value="running">running</option>
+          <option value="stopped">stopped</option>
+          <option value="queued">queued</option>
+          <option value="success">success</option>
+          <option value="failure">failure</option>
+        </select>
+      </label>
+      <label class="sites-field sites-field--full">
+        <span>Search</span>
+        <input v-model="siteFilters.search" type="text" placeholder="Search by site, bench, or path" />
+      </label>
+    </section>
+
+    <div v-if="!error && !loading && sites.length > 0 && filteredSites.length === 0" class="sites-empty">
+      <p class="sites-empty-title">No matching sites.</p>
+      <p class="sites-empty-body">Adjust filters to see more results.</p>
+    </div>
+
+    <ul v-if="!error && !loading && filteredSites.length > 0" class="sites-grid">
+      <li v-for="site in filteredSites" :key="site.id" class="site-card">
         <div class="site-card-top">
           <h4 class="site-name">{{ site.name }}</h4>
           <span class="site-status" :class="`site-status--${site.status}`">{{ site.status }}</span>
@@ -184,6 +216,7 @@ import {
   suggestSitePath,
   type SiteWizardStep,
 } from '../site-wizard';
+import { filterSites } from '../site-filters';
 
 const {
   sites,
@@ -218,6 +251,12 @@ const benchLoading = ref(false);
 
 const selectedBench = computed(() => availableBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
 const parsedApps = computed(() => parseAppsText(createForm.appsText));
+const siteFilters = reactive({
+  benchId: '',
+  status: '',
+  search: '',
+});
+const filteredSites = computed(() => filterSites(sites.value, siteFilters));
 
 const loadBenchOptions = async () => {
   benchLoading.value = true;
@@ -311,9 +350,7 @@ const filteredSiteLogs = computed(() => {
     return siteLogs.value;
   }
 
-  return siteLogs.value.filter((entry) =>
-    `${entry.message} ${entry.level}`.toLowerCase().includes(query)
-  );
+  return siteLogs.value.filter((entry) => `${entry.message} ${entry.level}`.toLowerCase().includes(query));
 });
 
 const onDeleteSite = async (id: string, name: string) => {

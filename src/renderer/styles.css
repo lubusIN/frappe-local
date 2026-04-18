@@ -728,6 +728,16 @@ body {
     cursor: not-allowed;
   }
 
+  .sites-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    border: 1px solid #d8cbbd;
+    border-radius: 14px;
+    background: #fff8ee;
+    padding: 12px;
+  }
+
   .sites-empty {
     border: 1px dashed #d3c5b5;
     border-radius: 16px;
