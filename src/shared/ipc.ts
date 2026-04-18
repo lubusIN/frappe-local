@@ -1,3 +1,5 @@
+import type { TaskProgressEvent } from './domain/task-runner';
+
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
   catalogList: 'catalog:list',
@@ -36,6 +38,9 @@ export const ipcChannels = {
   terminalOutputEvent: 'terminal:output-event',
   terminalErrorEvent: 'terminal:error-event',
   terminalStateChangeEvent: 'terminal:state-change-event',
+  taskRunnerSubscribe: 'task-runner:subscribe',
+  taskRunnerUnsubscribe: 'task-runner:unsubscribe',
+  taskRunnerProgressEvent: 'task-runner:progress-event',
 } as const;
 
 export type AppHealthResponse = {
@@ -294,6 +299,9 @@ export type RendererBridge = {
   readonly onTerminalOutput: (listener: (event: TerminalOutputEvent) => void) => () => void;
   readonly onTerminalError: (listener: (event: TerminalErrorEvent) => void) => () => void;
   readonly onTerminalStateChange: (listener: (event: TerminalStateChangeEvent) => void) => () => void;
+  readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
+  readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;
+  readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

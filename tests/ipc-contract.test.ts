@@ -57,6 +57,12 @@ describe('ipc contract', () => {
     expect(ipcChannels.workspacesList).toBe('workspaces:list');
   });
 
+  it('uses stable task runner channel names', () => {
+    expect(ipcChannels.taskRunnerSubscribe).toBe('task-runner:subscribe');
+    expect(ipcChannels.taskRunnerUnsubscribe).toBe('task-runner:unsubscribe');
+    expect(ipcChannels.taskRunnerProgressEvent).toBe('task-runner:progress-event');
+  });
+
   it('validates app health payload shape', () => {
     const validPayload = {
       appName: 'Frappe Cafe',

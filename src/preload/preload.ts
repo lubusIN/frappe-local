@@ -43,6 +43,8 @@ const rendererBridge: RendererBridge = {
 		ipcRenderer.invoke(ipcChannels.terminalOpenEditor, benchId, siteId),
 	terminalOpenDevcontainer: async (benchId) =>
 		ipcRenderer.invoke(ipcChannels.terminalOpenDevcontainer, benchId),
+	subscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerSubscribe),
+	unsubscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerUnsubscribe),
 	onTerminalOutput: (listener) => {
 		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
 		ipcRenderer.on(ipcChannels.terminalOutputEvent, handler);
@@ -62,6 +64,13 @@ const rendererBridge: RendererBridge = {
 		ipcRenderer.on(ipcChannels.terminalStateChangeEvent, handler);
 		return () => {
 			ipcRenderer.removeListener(ipcChannels.terminalStateChangeEvent, handler);
+		};
+	},
+	onTaskRunnerProgress: (listener) => {
+		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
+		ipcRenderer.on(ipcChannels.taskRunnerProgressEvent, handler);
+		return () => {
+			ipcRenderer.removeListener(ipcChannels.taskRunnerProgressEvent, handler);
 		};
 	},
 };

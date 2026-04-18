@@ -19,12 +19,14 @@ import type {
   TerminalErrorEvent,
   TerminalSessionInspection,
   TerminalOutputEvent,
+  TaskProgressEvent,
   WorkspaceUpdateInput,
   TerminalStateChangeEvent,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
 import type { TerminalCreateResponse } from '../shared/ipc';
 import { getTerminalService } from './terminal-service';
+import { getTaskRunner } from './task-runner';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
@@ -67,6 +69,10 @@ type TerminalServiceLike = {
   closeSession: ReturnType<typeof getTerminalService>['closeSession'];
   clear: ReturnType<typeof getTerminalService>['clear'];
   resize: ReturnType<typeof getTerminalService>['resize'];
+};
+
+type TaskRunnerLike = {
+  onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
 };
 
 export type AppRepositories = {
@@ -306,8 +312,11 @@ export const registerIpcHandlers = (
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
   },
-  terminalService: TerminalServiceLike = getTerminalService()
+  terminalService: TerminalServiceLike = getTerminalService(),
+  taskRunner: TaskRunnerLike = getTaskRunner()
 ): void => {
+  let taskEventSubscriptionCount = 0;
+
   const broadcast = <T>(channel: string, payload: T): void => {
     BrowserWindow.getAllWindows().forEach((window) => {
       window.webContents.send(channel, payload);
@@ -326,7 +335,23 @@ export const registerIpcHandlers = (
     broadcast(ipcChannels.terminalStateChangeEvent, event);
   });
 
+  taskRunner.onEvent((event: TaskProgressEvent) => {
+    if (taskEventSubscriptionCount > 0) {
+      broadcast(ipcChannels.taskRunnerProgressEvent, event);
+    }
+  });
+
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
+
+  ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
+    taskEventSubscriptionCount += 1;
+    return taskEventSubscriptionCount > 0;
+  });
+
+  ipcMainLike.handle(ipcChannels.taskRunnerUnsubscribe, async () => {
+    taskEventSubscriptionCount = Math.max(0, taskEventSubscriptionCount - 1);
+    return taskEventSubscriptionCount > 0;
+  });
 
   ipcMainLike.handle(ipcChannels.catalogList, async () => {
     const items = await repositories.appCatalog.findAll();
