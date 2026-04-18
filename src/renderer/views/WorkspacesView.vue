@@ -13,7 +13,7 @@
     <p v-if="error" class="workspaces-error">{{ error }}</p>
     <p v-if="successMessage" class="workspaces-success">{{ successMessage }}</p>
 
-    <form class="workspaces-form" @submit.prevent="onCreateWorkspace">
+    <form v-if="!loading" class="workspaces-form" @submit.prevent="onCreateWorkspace">
       <label class="workspaces-field">
         <span>Name</span>
         <input v-model="createForm.name" type="text" required />
