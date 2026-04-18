@@ -1034,11 +1034,206 @@ body {
     justify-content: flex-start;
   }
 
+  .runtime-panel {
+    display: grid;
+    gap: 16px;
+    padding: 22px 24px;
+    border-radius: 18px;
+    border: 1px solid #d3c5b5;
+    background: #fffaf3;
+    box-shadow: 0 6px 24px rgba(40, 24, 8, 0.08);
+  }
+
+  .runtime-panel--ok {
+    border-color: #8fbb9f;
+  }
+
+  .runtime-panel--error {
+    border-color: #c97a7a;
+  }
+
+  .runtime-panel--active {
+    border-color: #d2a46a;
+  }
+
+  .runtime-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .runtime-panel__title {
+    margin: 0;
+    font-size: 22px;
+    color: #2f2116;
+  }
+
+  .runtime-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .runtime-panel__button {
+    border: 1px solid #d3c5b5;
+    background: #fff6ea;
+    color: #2f2116;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .runtime-panel__button--primary {
+    background: #6e4a29;
+    border-color: #6e4a29;
+    color: #fff8ef;
+  }
+
+  .runtime-panel__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .runtime-panel__summary,
+  .runtime-panel__empty,
+  .runtime-panel__status,
+  .runtime-panel__error {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .runtime-panel__summary {
+    color: #6b5240;
+  }
+
+  .runtime-panel__summary-separator {
+    margin: 0 8px;
+    color: #b28b68;
+  }
+
+  .runtime-panel__fallback {
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f3e2c7;
+    color: #7a532e;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .runtime-panel__status {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f6ede0;
+    color: #6b5240;
+  }
+
+  .runtime-panel__status--ok {
+    background: #ecf7ef;
+    color: #2d7a43;
+  }
+
+  .runtime-panel__status--error,
+  .runtime-panel__error {
+    background: #fff1f1;
+    color: #9b3535;
+  }
+
+  .runtime-panel__status--active {
+    background: #fff3de;
+    color: #8a5a23;
+  }
+
+  .runtime-panel__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+
+  .runtime-dependency {
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid #ead8c5;
+    background: #fffdf8;
+    display: grid;
+    gap: 10px;
+  }
+
+  .runtime-dependency__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .runtime-dependency__title,
+  .runtime-panel__logs-title {
+    margin: 0;
+    font-size: 16px;
+    color: #2f2116;
+  }
+
+  .runtime-dependency__summary,
+  .runtime-dependency__version,
+  .runtime-dependency__guidance-title,
+  .runtime-panel__logs-list {
+    margin: 0;
+    color: #6b5240;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .runtime-dependency__status {
+    align-self: flex-start;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .runtime-dependency__status--ready {
+    background: #ecf7ef;
+    color: #2d7a43;
+  }
+
+  .runtime-dependency__status--missing,
+  .runtime-dependency__status--incompatible,
+  .runtime-dependency__status--unknown {
+    background: #fff1f1;
+    color: #9b3535;
+  }
+
+  .runtime-dependency__guidance-list,
+  .runtime-panel__logs-list {
+    padding-left: 18px;
+  }
+
+  .runtime-panel__logs {
+    display: grid;
+    gap: 8px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #f8efe3;
+    border: 1px solid #e0ccb3;
+  }
+
   @media (max-width: 920px) {
     .benches-form,
     .sites-form,
     .settings-form {
       grid-template-columns: 1fr;
+    }
+
+    .runtime-panel__header {
+      flex-direction: column;
     }
   }
 

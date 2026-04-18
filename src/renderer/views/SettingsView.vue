@@ -61,11 +61,36 @@
         </button>
       </div>
     </form>
+
+    <RuntimeHealthPanel
+      :health="runtimeHealth"
+      :loading="runtimeLoading"
+      :repairing="runtimeRepairing"
+      :error="runtimeError"
+      :active-task-status="runtimeTaskStatus"
+      :last-task-message="runtimeTaskMessage"
+      :repair-logs="runtimeLogs"
+      @refresh="refreshRuntimeHealth"
+      @repair="repairRuntime"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import { useSettings } from '../composables/useSettings';
+import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
 const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
+const {
+  health: runtimeHealth,
+  loading: runtimeLoading,
+  repairing: runtimeRepairing,
+  error: runtimeError,
+  activeTaskStatus: runtimeTaskStatus,
+  lastTaskMessage: runtimeTaskMessage,
+  repairLogs: runtimeLogs,
+  refresh: refreshRuntimeHealth,
+  repair: repairRuntime,
+} = useRuntimeHealth();
 </script>

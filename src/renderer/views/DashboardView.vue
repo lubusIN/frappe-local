@@ -17,6 +17,17 @@
           <p v-if="error" class="card-error">{{ error }}</p>
         </div>
       </div>
+      <RuntimeHealthPanel
+        :health="runtimeHealth"
+        :loading="runtimeLoading"
+        :repairing="runtimeRepairing"
+        :error="runtimeError"
+        :active-task-status="runtimeTaskStatus"
+        :last-task-message="runtimeTaskMessage"
+        :repair-logs="runtimeLogs"
+        @refresh="refreshRuntimeHealth"
+        @repair="repairRuntime"
+      />
     </section>
 
     <section class="dashboard-section">
@@ -42,9 +53,22 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
+import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import { useAppHealth } from '../composables/useAppHealth';
+import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
 const { health, loading, error } = useAppHealth();
+const {
+  health: runtimeHealth,
+  loading: runtimeLoading,
+  repairing: runtimeRepairing,
+  error: runtimeError,
+  activeTaskStatus: runtimeTaskStatus,
+  lastTaskMessage: runtimeTaskMessage,
+  repairLogs: runtimeLogs,
+  refresh: refreshRuntimeHealth,
+  repair: repairRuntime,
+} = useRuntimeHealth();
 
 const healthCardClass = computed(() => {
   if (loading.value) return 'health-card--loading';
