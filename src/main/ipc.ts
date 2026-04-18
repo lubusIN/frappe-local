@@ -30,6 +30,7 @@ import {
   isBenchReadyForSiteStatus,
 } from '../shared/domain/site-lifecycle';
 import type { BenchLifecycleOperation } from './bench-analytics';
+import { orchestrateSiteCreation } from './site-orchestration';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -310,17 +311,7 @@ export const registerIpcHandlers = (
       status: 'stopped',
     });
 
-    const benches = await repositories.benches.findAll();
-    const bench = benches.find((entry) => entry.id === payload.benchId);
-    if (!bench) {
-      throw new Error('Cannot create site: parent bench was not found.');
-    }
-
-    if (!canAttachSiteToBench(bench.status)) {
-      throw new Error('Cannot create site: parent bench is not ready.');
-    }
-
-    const created = await repositories.sites.create(payload);
+    const created = await orchestrateSiteCreation(repositories, payload);
     return toSiteListItem(created);
   });
 
