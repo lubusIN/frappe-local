@@ -186,6 +186,14 @@
           >
             {{ openingFolder ? 'Opening…' : 'Open folder' }}
           </button>
+          <button
+            class="site-action"
+            type="button"
+            :disabled="exporting"
+            @click="onExportSite(site.id, site.name)"
+          >
+            {{ exporting ? 'Exporting…' : 'Export' }}
+          </button>
         </div>
 
         <section v-if="activeSiteLogId === site.id" class="site-logs-panel">
@@ -249,6 +257,8 @@ const {
   openFolder,
   refresh,
 } = useSites();
+
+const exporting = ref(false);
 
 const createForm = reactive({
   name: '',
@@ -409,6 +419,33 @@ const onCloseSiteLogs = () => {
 
 const onOpenSiteFolder = async (id: string) => {
   await openFolder(id);
+};
+
+const onExportSite = async (id: string, name: string) => {
+  try {
+    exporting.value = true;
+    const ipc = useIpc();
+    
+    // Prompt user for output directory
+    const outputDir = window.prompt(`Enter output directory path for exporting "${name}":`);
+    if (!outputDir || !outputDir.trim()) {
+      return;
+    }
+    
+    const result = await ipc.exportSitePackage({
+      siteId: id,
+      outputDirectory: outputDir.trim(),
+    });
+    
+    // TODO: Show success message with artifact directory path
+    // successMessage.value = `Site exported successfully to ${result.artifactDirectory}`;
+    console.log('Export result:', result);
+  } catch (err) {
+    console.error('Export failed:', err);
+    // TODO: Set error message
+  } finally {
+    exporting.value = false;
+  }
 };
 
 onMounted(() => {
