@@ -2,12 +2,46 @@ import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 
+const isDarwin = process.platform === 'darwin';
+
+/**
+ * macOS Code Signing and Notarization Configuration
+ * 
+ * For production releases on macOS:
+ * 1. Set APPLE_ID and APPLE_PASSWORD environment variables
+ * 2. Ensure Apple Developer certificate is installed in Keychain
+ * 3. Uncomment signing and notarization config below
+ * 
+ * See docs/PACKAGING.md for detailed setup instructions
+ */
+const macOSConfig = {
+  // osxSign: {
+  //   identity: 'Developer ID Application: YOUR_NAME (TEAMID)',
+  //   'hardened-runtime': true,
+  //   'entitlements': 'build/entitlements.plist',
+  // },
+  // osxNotarize: {
+  //   tool: 'notarytool',
+  //   appleId: process.env.APPLE_ID,
+  //   appleIdPassword: process.env.APPLE_PASSWORD,
+  //   teamId: process.env.APPLE_TEAM_ID,
+  // },
+};
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    // Platform-specific configurations
+    ...(isDarwin && {
+      // macOS-specific settings
+      ...macOSConfig,
+    }),
   },
   rebuildConfig: {},
-  makers: [new MakerZIP({}, ['darwin'])],
+  makers: [
+    // Cross-platform ZIP archives (works on all platforms)
+    new MakerZIP({}, ['darwin', 'linux', 'win32']),
+  ],
   plugins: [
     new VitePlugin({
       build: [
