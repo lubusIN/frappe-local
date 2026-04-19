@@ -23,6 +23,15 @@
     />
     <p v-if="successMessage" class="import-export-success">{{ successMessage }}</p>
 
+    <FirstRunGuide
+      v-if="!loading && benches.length === 0"
+      title="Import and export need a target bench"
+      body="Exports come from existing sites and imports are mapped onto existing benches. Once you create a bench, this screen can validate packages and guide transfers safely."
+      :steps="importExportSetupSteps"
+      :links="importExportSetupLinks"
+      compact
+    />
+
     <form class="import-export-form" @submit.prevent="onValidatePackage">
       <div class="import-export-steps import-export-field--full">
         <p class="import-export-step" :class="{ 'import-export-step--active': wizardStep === 1 }">1. Locate package</p>
@@ -153,6 +162,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import type {
   BenchListItem,
   ImportConflictPolicy,
@@ -194,6 +204,15 @@ const conflictPreview = computed(() =>
   buildImportConflictPreview(benches.value, sites.value, draft.benchId, validation.value)
 );
 const importConfirmOpen = ref(false);
+const importExportSetupSteps = computed(() => [
+  'Create a bench so imports have a destination and exports have a matching environment.',
+  'Create at least one site if you want to test export packaging from inside the app.',
+  'Return here to validate an artifact directory and map it safely to a bench.',
+]);
+const importExportSetupLinks = computed<FirstRunGuideLink[]>(() => [
+  { label: 'Create a bench', to: '/benches' },
+  { label: 'Create a site', to: '/sites' },
+]);
 const importConfirmMessage = computed(() => {
   if (draft.conflictPolicy === 'rename') {
     return 'Rename-on-conflict can create a new site name automatically. Confirm to continue with import execution.';

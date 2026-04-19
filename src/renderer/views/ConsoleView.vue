@@ -37,7 +37,16 @@
       {{ contextNotice }}
     </p>
 
-    <div class="console-context">
+    <FirstRunGuide
+      v-if="!loadingContext && benches.length === 0"
+      title="Console needs a bench context"
+      body="The console is scoped to a bench or site. Create a bench first, then this page can run commands, open folders, and attach editor tooling to that context."
+      :steps="consoleSetupSteps"
+      :links="consoleSetupLinks"
+      compact
+    />
+
+    <div v-if="benches.length > 0" class="console-context">
       <label class="console-field">
         <span>Bench</span>
         <select
@@ -138,7 +147,7 @@
       </div>
     </div>
 
-    <div class="console-status">
+    <div v-if="benches.length > 0" class="console-status">
       <span class="console-status-label">Session:</span>
       <span class="console-status-value">{{ sessionState }}</span>
       <span class="console-status-target">Target: {{ currentContextLabel }}</span>
@@ -148,7 +157,7 @@
       >ID: {{ sessionId }}</span>
     </div>
 
-    <p class="console-policy">
+    <p v-if="benches.length > 0" class="console-policy">
       Switching bench or site resets the current session so commands stay scoped to the selected context.
     </p>
 
@@ -170,6 +179,7 @@
     </div>
 
     <form
+      v-if="benches.length > 0"
       class="console-input-row"
       @submit.prevent="runCommand"
     >
@@ -195,6 +205,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import { useTerminalSession } from '../composables/useTerminalSession';
 
@@ -234,6 +246,17 @@ const {
   runCommand,
   stepHistory,
 } = useTerminalSession();
+
+const consoleSetupSteps = computed(() => [
+  'Create and start a bench so the console has a real working directory to attach to.',
+  'Optionally create a site if you want commands scoped below the bench root.',
+  'Return here to start a session, run commands, and open the same context in your editor.',
+]);
+
+const consoleSetupLinks = computed<FirstRunGuideLink[]>(() => [
+  { label: 'Create a bench', to: '/benches' },
+  { label: 'Create a site', to: '/sites' },
+]);
 </script>
 
 <style scoped>

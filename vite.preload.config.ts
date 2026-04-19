@@ -5,7 +5,7 @@ export default mergeConfig(baseConfig, {
   build: {
     lib: {
       entry: 'src/preload/preload.ts',
-      formats: ['es'],
+      formats: ['cjs'],
       fileName: () => 'preload.js',
     },
     outDir: '.vite/build',

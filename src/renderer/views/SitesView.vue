@@ -20,7 +20,16 @@
     />
     <p v-if="successMessage" class="sites-success">{{ successMessage }}</p>
 
-    <form class="sites-form" @submit.prevent="onCreateSite">
+    <FirstRunGuide
+      v-if="!loading && !benchLoading && allBenches.length === 0"
+      title="Create a bench before creating sites"
+      body="Sites are attached to benches. Once you have one running bench, this screen becomes the main place to create, control, and export sites."
+      :steps="siteSetupSteps"
+      :links="siteSetupLinks"
+      compact
+    />
+
+    <form v-if="allBenches.length > 0" class="sites-form" @submit.prevent="onCreateSite">
       <div class="site-wizard-steps sites-field--full">
         <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 1 }">1. Select bench</p>
         <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 2 }">2. Configure site</p>
@@ -252,9 +261,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
@@ -311,6 +322,15 @@ const siteFilters = reactive({
   search: '',
 });
 const filteredSites = computed(() => filterSites(sites.value, siteFilters));
+const siteSetupSteps = computed(() => [
+  'Open Benches and create one local bench with a valid path and runtime.',
+  'Start that bench so it becomes selectable here for site creation.',
+  'Return to Sites to create your first site, then export or group it later.',
+]);
+const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
+  { label: 'Go to Benches', to: '/benches' },
+  { label: 'Review runtime health', to: '/settings' },
+]);
 
 const loadBenchOptions = async () => {
   benchLoading.value = true;

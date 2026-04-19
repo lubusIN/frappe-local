@@ -20,6 +20,15 @@
     />
     <p v-if="successMessage" class="workspaces-success">{{ successMessage }}</p>
 
+    <FirstRunGuide
+      v-if="!loading && sites.length === 0"
+      title="Workspaces become useful after your first site"
+      body="This screen groups sites by project or client. You can create a workspace now, but it becomes meaningful once there are sites to assign."
+      :steps="workspaceSetupSteps"
+      :links="workspaceSetupLinks"
+      compact
+    />
+
     <form v-if="!loading" class="workspaces-form" @submit.prevent="onCreateWorkspace">
       <label class="workspaces-field">
         <span>Name</span>
@@ -106,6 +115,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import { useWorkspaces } from '../composables/useWorkspaces';
 
@@ -130,6 +140,15 @@ const createForm = reactive({
 });
 
 const assignmentSelection = ref<Record<string, string>>({});
+const workspaceSetupSteps = computed(() => [
+  'Create a bench and at least one site so workspaces have something to organize.',
+  'Create a workspace for each client, project, or environment boundary you care about.',
+  'Assign sites into those workspaces so filtered navigation becomes useful.',
+]);
+const workspaceSetupLinks = computed<FirstRunGuideLink[]>(() => [
+  { label: 'Create a site', to: '/sites' },
+  { label: 'Manage benches', to: '/benches' },
+]);
 
 const onCreateWorkspace = async () => {
   const tags = createForm.tagsText

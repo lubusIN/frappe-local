@@ -1,5 +1,34 @@
 <template>
   <div class="dashboard">
+    <FirstRunGuide
+      v-if="showGettingStarted"
+      title="Set up your local workspace"
+      body="A fresh install has no benches, sites, or workspaces yet. Start with one bench, then create a site and group it once the runtime is healthy."
+      :steps="gettingStartedSteps"
+      :links="gettingStartedLinks"
+    />
+
+    <section class="dashboard-section">
+      <h2 class="section-title">Workspace Snapshot</h2>
+      <div class="card-row">
+        <div class="health-card">
+          <p class="card-eyebrow">Benches</p>
+          <p class="card-value">{{ setupSummary.benches }}</p>
+          <p class="card-label">Local Frappe environments ready for lifecycle actions.</p>
+        </div>
+        <div class="health-card">
+          <p class="card-eyebrow">Sites</p>
+          <p class="card-value">{{ setupSummary.sites }}</p>
+          <p class="card-label">Sites attached to benches and available for workspaces, console, and export.</p>
+        </div>
+        <div class="health-card">
+          <p class="card-eyebrow">Workspaces</p>
+          <p class="card-value">{{ setupSummary.workspaces }}</p>
+          <p class="card-label">Project groupings used to organize sites and reduce list clutter.</p>
+        </div>
+      </div>
+    </section>
+
     <section class="dashboard-section">
       <h2 class="section-title">System Health</h2>
       <div class="card-row">
@@ -76,12 +105,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
+import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import TaskProgressCenter from '../components/TaskProgressCenter.vue';
 import { useAppHealth } from '../composables/useAppHealth';
+import { useIpc } from '../composables/useIpc';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
@@ -132,6 +163,75 @@ const progressRecentOnly = computed({
 const retryProgressSubscription = async (): Promise<void> => {
   await reconnect();
 };
+
+const ipc = useIpc();
+const setupSummary = reactive({ benches: 0, sites: 0, workspaces: 0 });
+
+const refreshSetupSummary = async (): Promise<void> => {
+  try {
+    const [benches, sites, workspaces] = await Promise.all([
+      ipc.listBenches(),
+      ipc.listSites(),
+      ipc.listWorkspaces(),
+    ]);
+
+    setupSummary.benches = benches.length;
+    setupSummary.sites = sites.length;
+    setupSummary.workspaces = workspaces.length;
+  } catch {
+    setupSummary.benches = 0;
+    setupSummary.sites = 0;
+    setupSummary.workspaces = 0;
+  }
+};
+
+onMounted(() => {
+  void refreshSetupSummary();
+});
+
+const showGettingStarted = computed(() =>
+  setupSummary.benches === 0 || setupSummary.sites === 0 || setupSummary.workspaces === 0
+);
+
+const gettingStartedSteps = computed(() => {
+  const steps: string[] = [];
+
+  if (setupSummary.benches === 0) {
+    steps.push('Create your first bench from the Benches screen and point it at the local path you want Frappe Cafe to manage.');
+  }
+
+  if (setupSummary.benches > 0 && setupSummary.sites === 0) {
+    steps.push('Create a site on a running bench so lifecycle, export, and workspace features have real data to operate on.');
+  }
+
+  if (setupSummary.sites > 0 && setupSummary.workspaces === 0) {
+    steps.push('Create a workspace to group related sites by client, project, or environment.');
+  }
+
+  steps.push('Use Settings to confirm runtime health and rerun diagnostics before relying on the app for day-to-day work.');
+
+  return steps;
+});
+
+const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
+  const links: FirstRunGuideLink[] = [];
+
+  if (setupSummary.benches === 0) {
+    links.push({ label: 'Create a bench', to: '/benches' });
+  }
+
+  if (setupSummary.benches > 0 && setupSummary.sites === 0) {
+    links.push({ label: 'Create a site', to: '/sites' });
+  }
+
+  if (setupSummary.sites > 0 && setupSummary.workspaces === 0) {
+    links.push({ label: 'Create a workspace', to: '/workspaces' });
+  }
+
+  links.push({ label: 'Check settings', to: '/settings' });
+
+  return links;
+});
 
 const runtimeConfirmOpen = ref(false);
 
