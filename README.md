@@ -77,3 +77,11 @@ Execution references:
 - `docs/planning/EXECUTION_TRACKER.md`
 
 The implementation follows small, validated checkpoints with manual commit approval before each commit.
+
+## Release Documentation
+
+- docs/PACKAGING.md
+- docs/release/SETUP_GUIDE.md
+- docs/release/TROUBLESHOOTING.md
+- docs/release/RELEASE_NOTES_TEMPLATE.md
+- docs/release/CHANGELOG_PROCESS.md
