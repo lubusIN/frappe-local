@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, onMounted } from 'vue';
+import { computed, watch, ref } from 'vue';
 
 const props = withDefaults(
   defineProps<{

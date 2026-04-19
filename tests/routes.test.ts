@@ -9,6 +9,7 @@ describe('renderer routes', () => {
       'sites',
       'workspaces',
       'console',
+      'importExport',
       'settings',
     ]);
   });

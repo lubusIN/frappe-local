@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Accessibility test suite for keyboard interactions and ARIA attributes
 // These tests validate that components are accessible via keyboard navigation

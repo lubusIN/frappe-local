@@ -141,6 +141,7 @@ describe('Accessibility - Component Color Contrast Audit', () => {
       const audit = auditContrast('#7b2f23', '#ffe8e8', 'error-eyebrow', 'normal');
       // Small eyebrow text should still aim for good contrast
       const ratio = getContrastRatio('#7b2f23', '#ffe8e8');
+      expect(audit.meetsAA).toBe(true);
       expect(ratio).toBeGreaterThan(2);
     });
 
@@ -153,6 +154,7 @@ describe('Accessibility - Component Color Contrast Audit', () => {
       const audit = auditContrast('#6f3428', '#ffe8e8', 'error-reason', 'normal');
       // Audit current color
       const ratio = getContrastRatio('#6f3428', '#ffe8e8');
+      expect(audit.meetsAA).toBe(true);
       expect(ratio).toBeGreaterThan(2);
     });
 
@@ -160,6 +162,7 @@ describe('Accessibility - Component Color Contrast Audit', () => {
       const audit = auditContrast('#70281e', '#ffffff', 'error-button', 'normal');
       // Light background for button may not be enough
       const ratio = getContrastRatio('#70281e', '#ffffff');
+      expect(audit.meetsAA).toBe(true);
       expect(ratio).toBeGreaterThan(3);
     });
   });
@@ -168,12 +171,14 @@ describe('Accessibility - Component Color Contrast Audit', () => {
     it('eyebrow (#44566f) on info background meets WCAG AA for small text', () => {
       const audit = auditContrast('#44566f', '#ebf2f9', 'state-info-eyebrow', 'normal');
       const ratio = getContrastRatio('#44566f', '#ebf2f9');
+      expect(audit.meetsAA).toBe(true);
       expect(ratio).toBeGreaterThan(2);
     });
 
     it('error eyebrow (#7a2e2e) on error background meets WCAG AA', () => {
       const audit = auditContrast('#7a2e2e', '#ffeeea', 'state-error-eyebrow', 'normal');
       const ratio = getContrastRatio('#7a2e2e', '#ffeeea');
+      expect(audit.meetsAA).toBe(true);
       expect(ratio).toBeGreaterThan(2);
     });
 
@@ -185,6 +190,7 @@ describe('Accessibility - Component Color Contrast Audit', () => {
     it('error body text (#7f3c34) on error background meets WCAG AA', () => {
       const audit = auditContrast('#7f3c34', '#ffeeea', 'state-error-body', 'normal');
       const ratio = getContrastRatio('#7f3c34', '#ffeeea');
+      expect(audit.meetsAA).toBe(true);
       expect(ratio).toBeGreaterThan(2);
     });
   });
