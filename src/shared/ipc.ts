@@ -4,6 +4,8 @@ import type { DiagnosticsReport } from './domain/diagnostics';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
+  updateGetStatus: 'update:get-status',
+  updateCheckNow: 'update:check-now',
   catalogList: 'catalog:list',
   diagnosticsRun: 'diagnostics:run',
   diagnosticsGetLast: 'diagnostics:get-last',
@@ -55,6 +57,22 @@ export type AppHealthResponse = {
   readonly nodeVersion: string;
   readonly electronVersion: string;
   readonly timestamp: string;
+};
+
+export type UpdateStrategyStatus = {
+  readonly mode: 'deferred-manual';
+  readonly channel: 'stable' | 'beta';
+  readonly autoUpdateEnabled: boolean;
+  readonly currentVersion: string;
+  readonly summary: string;
+  readonly rollbackGuidance: readonly string[];
+};
+
+export type UpdateCheckResult = {
+  readonly checkedAt: string;
+  readonly source: 'manual';
+  readonly status: 'not-configured';
+  readonly message: string;
 };
 
 export type DiagnosticsRunResponse = DiagnosticsReport;
@@ -296,6 +314,8 @@ export type TerminalStateChangeEvent = {
 
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
+  readonly getUpdateStatus: () => Promise<UpdateStrategyStatus>;
+  readonly checkForUpdates: () => Promise<UpdateCheckResult>;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;

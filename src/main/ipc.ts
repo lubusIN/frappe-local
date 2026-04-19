@@ -24,9 +24,12 @@ import type {
   TerminalOutputEvent,
   WorkspaceUpdateInput,
   TerminalStateChangeEvent,
+  UpdateCheckResult,
+  UpdateStrategyStatus,
 } from '../shared/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics } from './diagnostics-service';
+import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
 import { ipcChannels } from '../shared/ipc';
 import type { TerminalCreateResponse } from '../shared/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
@@ -367,6 +370,15 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
+
+  ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {
+    const settings = await repositories.settings.get();
+    return buildUpdateStrategyStatus(settings, appVersion);
+  });
+
+  ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
+    return runManualUpdateCheck();
+  });
 
   let lastDiagnosticsReport: DiagnosticsReport | null = initialDiagnosticsReport;
 

@@ -93,6 +93,16 @@
       :error="diagnostics.error"
       @run="diagnostics.runDiagnostics"
     />
+
+    <UpdateStrategyPanel
+      :status="updates.status"
+      :last-check="updates.lastCheck"
+      :loading="updates.loading"
+      :checking="updates.checking"
+      :error="updates.error"
+      @refresh="updates.load"
+      @check="updates.checkNow"
+    />
   </section>
 </template>
 
@@ -101,13 +111,17 @@ import { onMounted } from 'vue';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
 import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import StatePanel from '../components/StatePanel.vue';
+import UpdateStrategyPanel from '../components/UpdateStrategyPanel.vue';
 import { useDiagnostics } from '../diagnostics-controller';
+import { useUpdateStrategy } from '../update-strategy-controller';
 import { useSettings } from '../composables/useSettings';
 import { useIpc } from '../composables/useIpc';
 import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
 const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
-const diagnostics = useDiagnostics(useIpc());
+const ipc = useIpc();
+const diagnostics = useDiagnostics(ipc);
+const updates = useUpdateStrategy(ipc);
 const {
   health: runtimeHealth,
   loading: runtimeLoading,
@@ -122,5 +136,6 @@ const {
 
 onMounted(() => {
   void diagnostics.loadLastReport();
+  void updates.load();
 });
 </script>

@@ -177,4 +177,52 @@ describe('settings IPC handlers', () => {
       saveHandler?.(undefined, { ...seedSettings, updateChannel: 'nightly' })
     ).rejects.toThrow();
   });
+
+  it('update:get-status returns deferred update strategy', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(seedSettings),
+        groups: makeStubGroupRepo(),
+      },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      '0.1.0'
+    );
+
+    const status = await handlers.get(ipcChannels.updateGetStatus)?.();
+    expect(status).toMatchObject({
+      mode: 'deferred-manual',
+      channel: 'stable',
+      currentVersion: '0.1.0',
+    });
+  });
+
+  it('update:check-now returns not-configured result', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(seedSettings),
+        groups: makeStubGroupRepo(),
+      }
+    );
+
+    const result = await handlers.get(ipcChannels.updateCheckNow)?.();
+    expect(result).toMatchObject({
+      source: 'manual',
+      status: 'not-configured',
+    });
+  });
 });
