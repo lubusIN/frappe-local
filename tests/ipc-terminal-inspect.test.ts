@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
+import { createTerminalSessionId } from '../src/shared/domain/terminal-session';
+
+type TerminalServiceLike = NonNullable<Parameters<typeof registerIpcHandlers>[3]>;
 
 function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
   return {
@@ -54,14 +57,14 @@ function makeStubGroupRepo() {
 describe('terminal inspect IPC handler', () => {
   it('returns session inspection details when the session exists', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-    const terminalService = {
+    const terminalService: TerminalServiceLike = {
       onOutput: vi.fn(() => () => undefined),
       onError: vi.fn(() => () => undefined),
       onStateChange: vi.fn(() => () => undefined),
       createSession: vi.fn(),
       getSession: vi.fn(() => ({
-        id: 'terminal-1',
-        state: 'ready',
+        id: createTerminalSessionId('terminal-1'),
+        state: 'ready' as const,
         workingDirectory: '/Users/example/bench-1',
         contextBenchId: 'bench-1',
         contextSiteId: null,
@@ -88,7 +91,7 @@ describe('terminal inspect IPC handler', () => {
         openInEditor: async () => false,
         pathExists: () => false,
       },
-      terminalService as any
+      terminalService
     );
 
     const result = await handlers.get(ipcChannels.terminalInspect)?.(undefined, 'terminal-1');
@@ -106,7 +109,7 @@ describe('terminal inspect IPC handler', () => {
 
   it('returns null for unknown sessions', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-    const terminalService = {
+    const terminalService: TerminalServiceLike = {
       onOutput: vi.fn(() => () => undefined),
       onError: vi.fn(() => () => undefined),
       onStateChange: vi.fn(() => () => undefined),
@@ -132,7 +135,7 @@ describe('terminal inspect IPC handler', () => {
         openInEditor: async () => false,
         pathExists: () => false,
       },
-      terminalService as any
+      terminalService
     );
 
     const result = await handlers.get(ipcChannels.terminalInspect)?.(undefined, 'missing');

@@ -50,7 +50,7 @@ const openInEditor = async (targetPath: string, editorPreference: string): Promi
     });
     childProcess.unref();
     return true;
-  } catch (error) {
+  } catch {
     bootstrapLogger.warn(`failed to open editor for ${targetPath}`);
     return false;
   }

@@ -7,10 +7,62 @@ import { ipcChannels } from '../src/shared/ipc';
 import { registerIpcHandlers } from '../src/main/ipc';
 import type { AppRepositories } from '../src/main/ipc';
 import type { Settings } from '../src/shared/domain/models';
+import type { ExportSitePackageResult } from '../src/main/export-package-writer';
 import * as exportModule from '../src/main/export-package-writer';
 
+type IpcMainLike = Parameters<typeof registerIpcHandlers>[0];
+
+const mockExportResult: ExportSitePackageResult = {
+  artifactDirectory: '/tmp/site-export-v1',
+  manifestPath: '/tmp/site-export-v1/manifest.json',
+  payloadPath: '/tmp/site-export-v1/payload.json',
+  manifest: {
+    packageVersion: 1,
+    exportedAt: '2024-01-01T00:00:00Z',
+    site: {
+      id: 'site-1',
+      name: 'test-site',
+      benchId: 'bench-1',
+      groupId: null,
+      apps: ['frappe'],
+      status: 'running',
+      path: '/test/site',
+      timestamps: {
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    },
+    bench: {
+      id: 'bench-1',
+      name: 'test-bench',
+      path: '/test/bench',
+      runtime: 'docker',
+      frappeVersion: '14.0.0',
+      status: 'running',
+      apps: ['frappe'],
+      timestamps: {
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    },
+    group: null,
+    settings: null,
+    requiredApps: [],
+    payload: {
+      fileName: 'payload.json',
+      sha256: 'mock-checksum',
+      sizeBytes: 128,
+    },
+    metadata: {
+      storageSchemaVersion: 1,
+      appCatalogSeedVersion: 1,
+      exportedBy: 'Frappe Cafe',
+    },
+  },
+};
+
 describe('IPC Export Handlers', () => {
-  let mockIpcMain: { handle: (channel: string, listener: (...args: unknown[]) => unknown) => void };
+  let mockIpcMain: IpcMainLike;
   let exportHandler: ((event: unknown, input: unknown) => Promise<ExportSitePackageResponse>) | null = null;
   let mockRepositories: AppRepositories;
 
@@ -61,34 +113,16 @@ describe('IPC Export Handlers', () => {
     };
 
     // Mock the exportSitePackage function
-    vi.spyOn(exportModule, 'exportSitePackage').mockResolvedValue({
-      artifactDirectory: '/tmp/site-export-v1',
-      manifestPath: '/tmp/site-export-v1/manifest.json',
-      payloadPath: '/tmp/site-export-v1/payload.json',
-      manifest: {
-        packageVersion: 1,
-        exportedAt: '2024-01-01T00:00:00Z',
-        site: { id: 'site-1', name: 'test-site', path: '/test/site' },
-        bench: {
-          id: 'bench-1',
-          name: 'test-bench',
-          path: '/test/bench',
-          runtime: 'docker',
-          frappeVersion: '14.0.0',
-        },
-        requiredApps: [],
-        checksum: 'mock-checksum',
-      },
-    } as any);
+    vi.spyOn(exportModule, 'exportSitePackage').mockResolvedValue(mockExportResult);
   });
 
   it('should register export handler', () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories);
+    registerIpcHandlers(mockIpcMain, mockRepositories);
     expect(exportHandler).toBeDefined();
   });
 
   it('should export site package successfully', async () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories);
+    registerIpcHandlers(mockIpcMain, mockRepositories);
 
     if (!exportHandler) {
       throw new Error('Export handler not registered');
@@ -108,7 +142,7 @@ describe('IPC Export Handlers', () => {
   });
 
   it('should throw error when output directory missing', async () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories);
+    registerIpcHandlers(mockIpcMain, mockRepositories);
 
     if (!exportHandler) {
       throw new Error('Export handler not registered');
@@ -123,7 +157,7 @@ describe('IPC Export Handlers', () => {
   });
 
   it('should throw error when site ID missing', async () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories);
+    registerIpcHandlers(mockIpcMain, mockRepositories);
 
     if (!exportHandler) {
       throw new Error('Export handler not registered');

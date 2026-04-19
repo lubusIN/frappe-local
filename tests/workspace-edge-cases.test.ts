@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Site, Group } from '../src/shared/domain/models';
+import type { Group, Site } from '../src/shared/domain/models';
 
 /**
  * Edge case scenarios for workspace grouping:
@@ -165,19 +165,6 @@ describe('workspace edge cases', () => {
       tags: ['archived'],
       siteIds: [],
     };
-
-    const sites: Site[] = [
-      {
-        id: 'site-001',
-        name: 'demo.localhost',
-        benchId: 'bench-001',
-        groupId: null,
-        apps: ['frappe'],
-        status: 'stopped',
-        path: '/path',
-        timestamps: { createdAt: '', updatedAt: '' },
-      },
-    ];
 
     // Verify workspace is empty but still exists
     expect(workspace.siteIds).toHaveLength(0);

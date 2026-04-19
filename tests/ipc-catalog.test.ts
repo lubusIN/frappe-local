@@ -100,8 +100,8 @@ function makeStubGroupRepo() {
       id: 'group-new',
       ...input,
     }),
-    update: async (id: string, input: { name?: string; description?: string; tags?: string[]; siteIds?: string[] }) => null,
-    delete: async (id: string) => false,
+    update: async () => null,
+    delete: async () => false,
   };
 }
 

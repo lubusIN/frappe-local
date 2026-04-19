@@ -87,8 +87,8 @@ function makeStubGroupRepo(items: Group[] = groups) {
       id: 'group-new',
       ...input,
     }),
-    update: async (id: string, input: { name?: string; description?: string; tags?: string[]; siteIds?: string[] }) => null,
-    delete: async (id: string) => false,
+    update: async () => null,
+    delete: async () => false,
   };
 }
 
@@ -195,7 +195,7 @@ describe('workspaces IPC handlers', () => {
 
     // Note: The actual handler implementation should call repository.update and return the result
     // For now, we verify the handler exists and can be invoked
-    const result = await handlers.get(ipcChannels.workspacesUpdate)?.(undefined, {
+    await handlers.get(ipcChannels.workspacesUpdate)?.(undefined, {
       id: 'grp-123',
       name: 'Updated Name',
       description: 'Updated description',
@@ -231,7 +231,7 @@ describe('workspaces IPC handlers', () => {
 
     // Note: The actual handler implementation should call repository.delete
     // For now, we verify the handler exists and can be invoked
-    const result = await handlers.get(ipcChannels.workspacesDelete)?.(undefined, 'grp-456');
+    await handlers.get(ipcChannels.workspacesDelete)?.(undefined, 'grp-456');
 
     // Since our stub returns false for delete, we just verify the handler can be called
     expect(handlers.get(ipcChannels.workspacesDelete)).toBeDefined();

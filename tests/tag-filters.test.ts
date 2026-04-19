@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeTags, parseTagsFromText, extractSiteTags, filterSites, getFilterOptions } from '../src/renderer/tag-filters';
+import { normalizeTags, parseTagsFromText, filterSites, getFilterOptions } from '../src/renderer/tag-filters';
 import type { Site } from '../src/shared/domain/models';
 
 const mockSites: Site[] = [

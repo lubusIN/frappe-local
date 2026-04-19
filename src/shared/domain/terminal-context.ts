@@ -3,8 +3,6 @@
  * Ensures terminal sessions are bound to valid bench/site context
  */
 
-import type { TerminalSessionId } from './terminal-session';
-
 /**
  * Validated context scope for a terminal session
  */

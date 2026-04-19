@@ -172,7 +172,7 @@ export const executeImportPackage = async (
   const sourceSiteName = parsedPackage.payload.data.site.name;
   const hasConflict = existingSiteNames.has(sourceSiteName);
   let importedSiteName = sourceSiteName;
-  let conflictPolicyApplied: ImportConflictPolicy = input.conflictPolicy;
+  const conflictPolicyApplied: ImportConflictPolicy = input.conflictPolicy;
 
   if (hasConflict && input.conflictPolicy === 'block') {
     steps.push({
