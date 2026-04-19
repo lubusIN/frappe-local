@@ -203,8 +203,10 @@ const handleConfirmEnter = (): void => {
 }
 
 .confirm-button--danger {
-  background: rgba(156, 35, 35, 0.14);
-  border-color: rgba(156, 35, 35, 0.22);
+  background: #9c2323;
+  border-color: rgba(156, 35, 35, 0.4);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .confirm-button:disabled {
