@@ -10,6 +10,7 @@ const defaultSettings = (): SettingsItem => ({
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
+  sidebarCompact: false,
 });
 
 export const useSettings = () => {

@@ -32,6 +32,7 @@ const fullSettings: Settings = {
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
+  sidebarCompact: false,
 };
 
 describe('SettingsRepository', () => {

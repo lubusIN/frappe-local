@@ -140,6 +140,7 @@ describe('import validation IPC handler', () => {
             editorPreference: 'code',
             updateChannel: 'stable',
             autoUpdateEnabled: true,
+            sidebarCompact: false,
           }),
           set: async (input) => input,
         },

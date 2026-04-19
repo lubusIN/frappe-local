@@ -269,3 +269,202 @@ const onOpenBenchFolder = async (id: string) => {
   await openFolder(id);
 };
 </script>
+
+<style scoped>
+.benches-view {
+  display: grid;
+  gap: 14px;
+}
+
+.benches-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.benches-title {
+  margin: 0;
+  font-size: 20px;
+  color: #1f272e;
+}
+
+.benches-refresh,
+.benches-create,
+.bench-action {
+  border: 1px solid #d7dee8;
+  background: #ffffff;
+  color: #334155;
+}
+
+.benches-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.benches-field {
+  display: grid;
+  gap: 6px;
+}
+
+.benches-field > span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.benches-field--full,
+.benches-actions {
+  grid-column: 1 / -1;
+}
+
+.benches-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.bench-card {
+  padding: 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.bench-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.bench-name {
+  margin: 0;
+  font-size: 16px;
+  color: #1f272e;
+}
+
+.bench-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid #d7dee8;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.bench-status--running,
+.bench-status--success {
+  border-color: #bbf7d0;
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.bench-status--failure,
+.bench-status--error {
+  border-color: #fecaca;
+  color: #b42318;
+  background: #fff7f7;
+}
+
+.bench-path {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.bench-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bench-meta dt {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.bench-meta dd {
+  margin: 2px 0 0;
+  color: #1f272e;
+  font-size: 13px;
+}
+
+.bench-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bench-action {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.bench-action--danger {
+  border-color: #fca5a5;
+  color: #912018;
+  background: #fff7f7;
+}
+
+.bench-logs-panel {
+  border-top: 1px solid #e4e9ef;
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.bench-logs-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bench-logs-title {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+.bench-logs-filter {
+  flex: 1;
+}
+
+.bench-logs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.bench-log-item {
+  padding: 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.bench-log-message,
+.bench-log-meta {
+  margin: 0;
+}
+
+.bench-log-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+</style>

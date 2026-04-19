@@ -140,7 +140,7 @@ const handleConfirmEnter = (): void => {
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(22, 24, 29, 0.42);
+  background: rgba(15, 23, 42, 0.45);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -149,10 +149,10 @@ const handleConfirmEnter = (): void => {
 
 .confirm-card {
   width: min(520px, 100%);
-  border-radius: 16px;
-  background: #fffbf7;
-  border: 1px solid rgba(108, 41, 31, 0.2);
-  box-shadow: 0 18px 48px rgba(32, 15, 10, 0.24);
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e4e9ef;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
   padding: 18px;
   display: grid;
   gap: 12px;
@@ -161,9 +161,10 @@ const handleConfirmEnter = (): void => {
 .confirm-eyebrow {
   margin: 0;
   font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #8a5030;
+  color: #64748b;
 }
 
 .confirm-title,
@@ -172,7 +173,7 @@ const handleConfirmEnter = (): void => {
 }
 
 .confirm-message {
-  color: #5d4533;
+  color: #64748b;
 }
 
 .confirm-field {
@@ -180,11 +181,22 @@ const handleConfirmEnter = (): void => {
   gap: 6px;
 }
 
+.confirm-field span {
+  font-size: 12px;
+  color: #64748b;
+}
+
 .confirm-field input {
-  border-radius: 10px;
-  border: 1px solid rgba(108, 41, 31, 0.25);
+  border-radius: 8px;
+  border: 1px solid #d7dee8;
   background: #fff;
   padding: 9px 12px;
+}
+
+.confirm-field input:focus {
+  outline: none;
+  border-color: #7aa2f7;
+  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.2);
 }
 
 .confirm-actions {
@@ -194,19 +206,34 @@ const handleConfirmEnter = (): void => {
 }
 
 .confirm-button {
-  border-radius: 10px;
-  border: 1px solid rgba(108, 41, 31, 0.18);
+  border-radius: 8px;
+  border: 1px solid #d7dee8;
   padding: 9px 14px;
-  background: rgba(108, 41, 31, 0.08);
-  color: #5d2a1f;
+  background: #f8fafc;
+  color: #334155;
   cursor: pointer;
 }
 
+.confirm-button:hover:not(:disabled) {
+  background: #eef3f8;
+  border-color: #cfd9e6;
+}
+
+.confirm-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.28);
+}
+
 .confirm-button--danger {
-  background: #9c2323;
-  border-color: rgba(156, 35, 35, 0.4);
-  color: #ffffff;
+  background: #b42318;
+  border-color: #b42318;
+  color: #fff;
   font-weight: 600;
+}
+
+.confirm-button--danger:hover:not(:disabled) {
+  background: #9f1f16;
+  border-color: #9f1f16;
 }
 
 .confirm-button:disabled {

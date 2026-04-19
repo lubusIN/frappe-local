@@ -165,6 +165,7 @@ export type SettingsItem = {
   readonly editorPreference: string;
   readonly updateChannel: 'stable' | 'beta';
   readonly autoUpdateEnabled: boolean;
+  readonly sidebarCompact: boolean;
 };
 
 export type RuntimeHealthResponse = {

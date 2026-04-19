@@ -266,6 +266,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   editorPreference: settings.editorPreference,
   updateChannel: settings.updateChannel,
   autoUpdateEnabled: settings.autoUpdateEnabled,
+  sidebarCompact: settings.sidebarCompact,
 });
 
 const toWorkspaceListItem = (group: Group): WorkspaceListItem => ({

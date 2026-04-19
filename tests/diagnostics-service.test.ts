@@ -15,6 +15,7 @@ const seedSettings: Settings = {
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
+  sidebarCompact: false,
 };
 
 afterEach(async () => {

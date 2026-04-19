@@ -526,3 +526,265 @@ onMounted(() => {
   void loadBenchOptions();
 });
 </script>
+
+<style scoped>
+.sites-view {
+  display: grid;
+  gap: 14px;
+}
+
+.sites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sites-title {
+  margin: 0;
+  font-size: 20px;
+  color: #1f272e;
+}
+
+.sites-refresh,
+.sites-create,
+.site-action {
+  border: 1px solid #d7dee8;
+  background: #ffffff;
+  color: #334155;
+}
+
+.sites-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.sites-field {
+  display: grid;
+  gap: 6px;
+}
+
+.sites-field > span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sites-field--full,
+.sites-actions {
+  grid-column: 1 / -1;
+}
+
+.site-wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.site-wizard-step {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #d7dee8;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.site-wizard-step--active {
+  border-color: #d3e2ff;
+  background: #eaf2ff;
+  color: #1e3a8a;
+}
+
+.sites-error {
+  margin: 0;
+  font-size: 13px;
+  color: #b42318;
+}
+
+.site-wizard-summary {
+  padding: 10px;
+  border: 1px solid #e4e9ef;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.site-wizard-summary p {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+.site-wizard-summary p + p {
+  margin-top: 4px;
+}
+
+.sites-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sites-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.sites-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.site-card {
+  padding: 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.site-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-name {
+  margin: 0;
+  font-size: 16px;
+  color: #1f272e;
+}
+
+.site-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid #d7dee8;
+  color: #475569;
+  background: #f8fafc;
+}
+
+.site-status--running,
+.site-status--success {
+  border-color: #bbf7d0;
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.site-status--failure,
+.site-status--error {
+  border-color: #fecaca;
+  color: #b42318;
+  background: #fff7f7;
+}
+
+.site-path {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.site-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.site-meta dt {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.site-meta dd {
+  margin: 2px 0 0;
+  color: #1f272e;
+  font-size: 13px;
+}
+
+.site-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.site-action {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.site-action--danger {
+  border-color: #fca5a5;
+  color: #912018;
+  background: #fff7f7;
+}
+
+.site-logs-panel {
+  border-top: 1px solid #e4e9ef;
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.site-logs-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-logs-title {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+.site-logs-level-filter,
+.site-logs-filter {
+  min-height: 32px;
+}
+
+.site-logs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.site-log-item {
+  padding: 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.site-log-message,
+.site-log-meta {
+  margin: 0;
+}
+
+.site-log-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+</style>

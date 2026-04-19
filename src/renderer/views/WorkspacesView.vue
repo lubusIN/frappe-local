@@ -239,3 +239,160 @@ const onConfirmDeleteWorkspace = async (): Promise<void> => {
   onCancelDeleteWorkspace();
 };
 </script>
+
+<style scoped>
+.workspaces-view {
+  display: grid;
+  gap: 14px;
+}
+
+.workspaces-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workspaces-title {
+  margin: 0;
+  font-size: 20px;
+  color: #1f272e;
+}
+
+.workspaces-refresh,
+.workspaces-create,
+.workspace-action {
+  border: 1px solid #d7dee8;
+  background: #ffffff;
+  color: #334155;
+}
+
+.workspaces-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.workspaces-field {
+  display: grid;
+  gap: 6px;
+}
+
+.workspaces-field > span {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.workspaces-field--full,
+.workspaces-actions {
+  grid-column: 1 / -1;
+}
+
+.workspaces-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.workspace-card {
+  padding: 14px;
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-name {
+  margin: 0;
+  font-size: 16px;
+  color: #1f272e;
+}
+
+.workspace-description {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.workspace-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-sites {
+  font-size: 12px;
+  color: #475569;
+}
+
+.workspace-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.workspace-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #d7dee8;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+}
+
+.workspace-tag--empty {
+  color: #64748b;
+}
+
+.workspace-assignment {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.workspace-assigned-sites {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-assigned-sites li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.workspace-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workspace-action {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.workspace-action--subtle {
+  background: #f8fafc;
+}
+
+.workspace-action--danger {
+  border-color: #fca5a5;
+  color: #912018;
+  background: #fff7f7;
+}
+</style>

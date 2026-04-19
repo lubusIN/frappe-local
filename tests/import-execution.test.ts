@@ -62,6 +62,7 @@ const buildExportFixture = async (outputDirectory: string) => {
           editorPreference: 'code',
           updateChannel: 'stable',
           autoUpdateEnabled: true,
+          sidebarCompact: false,
         }),
       },
       appCatalog: {
@@ -153,6 +154,7 @@ describe('import execution', () => {
             editorPreference: 'code',
             updateChannel: 'stable',
             autoUpdateEnabled: true,
+            sidebarCompact: false,
           }),
         },
         appCatalog: {
@@ -258,6 +260,7 @@ describe('import execution', () => {
             editorPreference: 'code',
             updateChannel: 'stable',
             autoUpdateEnabled: true,
+            sidebarCompact: false,
           }),
         },
         appCatalog: {
@@ -353,6 +356,7 @@ describe('import execution', () => {
             editorPreference: 'code',
             updateChannel: 'stable',
             autoUpdateEnabled: true,
+            sidebarCompact: false,
           }),
         },
         appCatalog: {

@@ -64,6 +64,7 @@ export const SettingsSchema = z.object({
   editorPreference: z.string(),
   updateChannel: z.enum(['stable', 'beta']).default('stable'),
   autoUpdateEnabled: z.boolean(),
+  sidebarCompact: z.boolean().default(false),
 });
 
 export const CreateBenchInputSchema = BenchSchema.omit({

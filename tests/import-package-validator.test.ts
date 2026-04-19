@@ -59,6 +59,7 @@ const createExportFixture = async (outputDirectory: string) => {
           editorPreference: 'code',
           updateChannel: 'stable',
           autoUpdateEnabled: true,
+          sidebarCompact: false,
         }),
       },
       appCatalog: {

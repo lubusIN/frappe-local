@@ -131,6 +131,7 @@ describe('export site package writer', () => {
             editorPreference: 'code',
             updateChannel: 'stable',
             autoUpdateEnabled: true,
+            sidebarCompact: false,
           }),
         },
         appCatalog: {

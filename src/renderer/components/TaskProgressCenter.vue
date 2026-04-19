@@ -136,10 +136,10 @@ const errorNotice = computed(() =>
 
 <style scoped>
 .progress-center {
-  border: 1px solid rgba(99, 115, 129, 0.35);
-  border-radius: 14px;
-  padding: 16px;
-  background: linear-gradient(170deg, rgba(228, 238, 250, 0.55), rgba(246, 248, 252, 0.95));
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  padding: 14px;
+  background: #ffffff;
 }
 
 .progress-header {
@@ -152,14 +152,16 @@ const errorNotice = computed(() =>
 .progress-eyebrow {
   margin: 0;
   font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #2f4b6c;
+  color: #64748b;
 }
 
 .progress-title {
   margin: 2px 0 0;
   font-size: 1rem;
+  color: #1f272e;
 }
 
 .progress-filters {
@@ -173,11 +175,22 @@ const errorNotice = computed(() =>
   flex-direction: column;
   gap: 4px;
   font-size: 0.75rem;
-  color: #425466;
+  color: #64748b;
 }
 
 .progress-filters select {
   min-width: 120px;
+  min-height: 32px;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+}
+
+.progress-filters select:focus-visible {
+  outline: none;
+  border-color: #7aa2f7;
+  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.2);
 }
 
 .recent-toggle {
@@ -187,14 +200,18 @@ const errorNotice = computed(() =>
   gap: 6px !important;
 }
 
+.recent-toggle input {
+  accent-color: #2563eb;
+}
+
 .progress-empty,
 .progress-error {
   margin: 14px 0 0;
-  color: #5c6d7e;
+  color: #64748b;
 }
 
 .progress-error {
-  color: #8f1f1f;
+  color: #b42318;
 }
 
 .progress-list {
@@ -206,9 +223,9 @@ const errorNotice = computed(() =>
 }
 
 .progress-item {
-  border: 1px solid rgba(99, 115, 129, 0.24);
+  border: 1px solid #e4e9ef;
   border-radius: 10px;
-  background: #fff;
+  background: #f8fafc;
   padding: 10px;
 }
 
@@ -217,7 +234,7 @@ const errorNotice = computed(() =>
   align-items: center;
   gap: 8px;
   font-size: 0.75rem;
-  color: #5c6d7e;
+  color: #64748b;
 }
 
 .pill {
@@ -225,32 +242,42 @@ const errorNotice = computed(() =>
   border-radius: 999px;
   text-transform: capitalize;
   font-weight: 600;
+  border: 1px solid transparent;
 }
 
 .pill--queued {
-  background: #e8eef5;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
 }
 
 .pill--running {
-  background: #e7f2ff;
+  background: #eaf2ff;
+  border-color: #d3e2ff;
+  color: #1e3a8a;
 }
 
 .pill--success {
-  background: #e7f8ef;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
 }
 
 .pill--failure {
-  background: #ffeceb;
+  background: #fff7f7;
+  border-color: #fecaca;
+  color: #b42318;
 }
 
 .task-name {
   margin: 6px 0 0;
   font-weight: 600;
+  color: #1f272e;
 }
 
 .task-message {
   margin: 4px 0 0;
-  color: #506173;
+  color: #64748b;
   font-size: 0.9rem;
 }
 
@@ -258,6 +285,17 @@ const errorNotice = computed(() =>
   margin-top: 6px;
   display: inline-block;
   font-size: 0.82rem;
+  color: #1e3a8a;
+}
+
+.task-link:hover {
+  color: #1e40af;
+}
+
+.task-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.24);
+  border-radius: 4px;
 }
 
 @media (max-width: 760px) {

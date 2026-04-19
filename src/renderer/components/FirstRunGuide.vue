@@ -45,18 +45,16 @@ defineProps<{
 <style scoped>
 .first-run-guide {
   display: grid;
-  gap: 16px;
-  padding: 20px 22px;
-  border-radius: 20px;
-  border: 1px solid rgba(111, 74, 41, 0.18);
-  background:
-    radial-gradient(circle at top right, rgba(216, 165, 109, 0.22), transparent 38%),
-    linear-gradient(145deg, rgba(255, 248, 238, 0.96), rgba(248, 237, 220, 0.9));
-  box-shadow: 0 18px 42px rgba(76, 51, 22, 0.08);
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #e4e9ef;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .first-run-guide--compact {
-  padding: 16px 18px;
+  padding: 14px;
 }
 
 .first-run-guide__intro,
@@ -65,31 +63,31 @@ defineProps<{
 }
 
 .first-run-guide__eyebrow {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #9a6f47;
+  color: #64748b;
 }
 
 .first-run-guide__title {
   margin: 0;
-  font-size: 22px;
-  color: #2f2116;
+  font-size: 18px;
+  color: #1f272e;
 }
 
 .first-run-guide__body {
-  margin: 10px 0 0;
-  color: #5f4a37;
-  line-height: 1.6;
+  margin: 8px 0 0;
+  color: #64748b;
+  line-height: 1.5;
 }
 
 .first-run-guide__steps {
-  padding-left: 20px;
+  padding-left: 18px;
   display: grid;
-  gap: 10px;
-  color: #4b3828;
+  gap: 8px;
+  color: #334155;
 }
 
 .first-run-guide__step {
@@ -106,17 +104,19 @@ defineProps<{
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(111, 74, 41, 0.18);
-  background: rgba(255, 251, 245, 0.9);
-  color: #54351d;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #d7dee8;
+  background: #f8fafc;
+  color: #334155;
   text-decoration: none;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .first-run-guide__link:hover {
-  background: rgba(255, 246, 233, 0.96);
+  background: #eef3f8;
+  border-color: #cfd9e6;
 }
 </style>

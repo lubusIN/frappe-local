@@ -39,6 +39,7 @@ const settings: Settings = {
   editorPreference: 'code -n',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
+  sidebarCompact: false,
 };
 
 function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
