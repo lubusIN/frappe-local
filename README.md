@@ -85,3 +85,5 @@ The implementation follows small, validated checkpoints with manual commit appro
 - docs/release/TROUBLESHOOTING.md
 - docs/release/RELEASE_NOTES_TEMPLATE.md
 - docs/release/CHANGELOG_PROCESS.md
+- docs/release/QA_CHECKLIST.md
+- docs/release/RC_VALIDATION_REPORT.md
