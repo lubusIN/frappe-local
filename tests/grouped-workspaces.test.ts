@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ref } from 'vue';
 import { useGroupedWorkspaces } from '../src/renderer/composables/useGroupedWorkspaces';
+import type { Site } from '../src/shared/domain/models';
+import type { WorkspaceListItem } from '../src/shared/ipc';
 
-const mockWorkspaces = [
+const mockWorkspaces: WorkspaceListItem[] = [
   {
     id: 'grp-001',
     name: 'Client A',
@@ -19,7 +21,7 @@ const mockWorkspaces = [
   },
 ];
 
-const mockSites = [
+const mockSites: Site[] = [
   {
     id: 'site-001',
     name: 'demo.localhost',
@@ -75,7 +77,7 @@ describe('useGroupedWorkspaces', () => {
       name: 'Client A',
       siteCount: 2,
     });
-    expect(workspaceSummaries.value[0].statusSummary).toEqual({
+    expect(workspaceSummaries.value[0]!.statusSummary).toEqual({
       running: 1,
       stopped: 1,
       queued: 0,
@@ -89,8 +91,8 @@ describe('useGroupedWorkspaces', () => {
     const { groupedSitesView } = useGroupedWorkspaces(workspaces, sites);
 
     expect(groupedSitesView.value).toHaveLength(2);
-    expect(groupedSitesView.value[0].sitesInGroup).toHaveLength(2);
-    expect(groupedSitesView.value[1].sitesInGroup).toHaveLength(1);
+    expect(groupedSitesView.value[0]!.sitesInGroup).toHaveLength(2);
+    expect(groupedSitesView.value[1]!.sitesInGroup).toHaveLength(1);
   });
 
   it('counts unassigned sites correctly', () => {
@@ -115,7 +117,7 @@ describe('useGroupedWorkspaces', () => {
   });
 
   it('handles empty workspace list', () => {
-    const workspaces = ref([]);
+    const workspaces = ref<WorkspaceListItem[]>([]);
     const sites = ref(mockSites);
 
     const { mostActiveWorkspace } = useGroupedWorkspaces(workspaces, sites);

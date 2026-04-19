@@ -3,11 +3,12 @@ import { reconcileLifecycleSnapshot } from '../src/main/storage/reconcile';
 import type { StorageSnapshot } from '../src/main/storage/schema';
 
 const makeSnapshot = (): StorageSnapshot => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   metadata: {
     createdAt: new Date('2026-04-01T00:00:00.000Z').toISOString(),
     updatedAt: new Date('2026-04-01T00:00:00.000Z').toISOString(),
     appCatalogSeedVersion: 1,
+    lastMigratedAt: null,
   },
   benches: [
     {

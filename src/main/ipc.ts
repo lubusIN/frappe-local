@@ -22,15 +22,16 @@ import type {
   TerminalErrorEvent,
   TerminalSessionInspection,
   TerminalOutputEvent,
-  TaskProgressEvent,
   WorkspaceUpdateInput,
   TerminalStateChangeEvent,
 } from '../shared/ipc';
 import { ipcChannels } from '../shared/ipc';
 import type { TerminalCreateResponse } from '../shared/ipc';
+import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
 import { RuntimeService } from './runtime-service';
+import { CURRENT_STORAGE_SCHEMA_VERSION } from './storage/schema';
 import fs from 'node:fs';
 import path from 'node:path';
 import { BrowserWindow } from 'electron';
@@ -682,7 +683,18 @@ export const registerIpcHandlers = (
         sites: repositories.sites,
         groups: repositories.groups,
         settings: repositories.settings,
-        appCatalog: repositories.appCatalog,
+        appCatalog: {
+          findAll: async () => {
+            const items = await repositories.appCatalog.findAll();
+            return items.map((item) => ({
+              ...item,
+              compatibility: {
+                ...item.compatibility,
+                supportedRuntimes: [...item.compatibility.supportedRuntimes],
+              },
+            }));
+          },
+        },
       },
       {
         artifactDirectory: payload.artifactDirectory.trim(),
@@ -721,7 +733,23 @@ export const registerIpcHandlers = (
         benches: repositories.benches,
         sites: repositories.sites,
         groups: repositories.groups,
-        appCatalog: repositories.appCatalog,
+        settings: repositories.settings,
+        appCatalog: {
+          findAll: async () => {
+            const items = await repositories.appCatalog.findAll();
+            return items.map((item) => ({
+              ...item,
+              compatibility: {
+                ...item.compatibility,
+                supportedRuntimes: [...item.compatibility.supportedRuntimes],
+              },
+            }));
+          },
+        },
+        storageMetadata: {
+          schemaVersion: CURRENT_STORAGE_SCHEMA_VERSION,
+          appCatalogSeedVersion: 0,
+        },
       },
       {
         siteId: payload.siteId.trim(),
@@ -734,10 +762,6 @@ export const registerIpcHandlers = (
       manifestPath: path.join(result.artifactDirectory, 'manifest.json'),
       payloadPath: path.join(result.artifactDirectory, 'payload.json'),
     };
-
-    if (result.site.id) {
-      operations.trackSiteOperation?.(result.site.id, 'export');
-    }
 
     return response;
   });

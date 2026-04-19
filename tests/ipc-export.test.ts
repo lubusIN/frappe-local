@@ -6,12 +6,13 @@ import type {
 import { ipcChannels } from '../src/shared/ipc';
 import { registerIpcHandlers } from '../src/main/ipc';
 import type { AppRepositories } from '../src/main/ipc';
+import type { Settings } from '../src/shared/domain/models';
 import * as exportModule from '../src/main/export-package-writer';
 
 describe('IPC Export Handlers', () => {
   let mockIpcMain: { handle: (channel: string, listener: (...args: unknown[]) => unknown) => void };
   let exportHandler: ((event: unknown, input: unknown) => Promise<ExportSitePackageResponse>) | null = null;
-  let mockRepositories: Partial<AppRepositories>;
+  let mockRepositories: AppRepositories;
 
   beforeEach(() => {
     exportHandler = null;
@@ -26,20 +27,36 @@ describe('IPC Export Handlers', () => {
     mockRepositories = {
       sites: {
         findAll: vi.fn(async () => []),
-        findById: vi.fn(),
+        findById: vi.fn(async () => null),
+        create: vi.fn(async () => {
+          throw new Error('not implemented');
+        }),
+        update: vi.fn(async () => null),
+        delete: vi.fn(async () => false),
       },
       benches: {
         findAll: vi.fn(async () => []),
-        findById: vi.fn(),
+        findById: vi.fn(async () => null),
+        create: vi.fn(async () => {
+          throw new Error('not implemented');
+        }),
+        update: vi.fn(async () => null),
+        delete: vi.fn(async () => false),
       },
       groups: {
         findAll: vi.fn(async () => []),
+        create: vi.fn(async () => ({ id: 'group-stub', name: 'workspace', description: '', tags: [], siteIds: [] })),
+        update: vi.fn(async () => null),
+        delete: vi.fn(async () => false),
       },
       settings: {
-        get: vi.fn(),
+        get: vi.fn(async () => null),
+        set: vi.fn(async (input: Settings) => input),
       },
       appCatalog: {
         findAll: vi.fn(async () => []),
+        findById: vi.fn(async () => null),
+        search: vi.fn(async () => []),
       },
     };
 
@@ -62,29 +79,16 @@ describe('IPC Export Handlers', () => {
         requiredApps: [],
         checksum: 'mock-checksum',
       },
-      site: {
-        id: 'site-1',
-        name: 'test-site',
-        benchId: 'bench-1',
-        groupId: null,
-        status: 'stopped',
-        path: '/test/site',
-        apps: ['app-1'],
-        timestamps: {
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z',
-        },
-      },
-    });
+    } as any);
   });
 
   it('should register export handler', () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories as any);
+    registerIpcHandlers(mockIpcMain as any, mockRepositories);
     expect(exportHandler).toBeDefined();
   });
 
   it('should export site package successfully', async () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories as any);
+    registerIpcHandlers(mockIpcMain as any, mockRepositories);
 
     if (!exportHandler) {
       throw new Error('Export handler not registered');
@@ -104,7 +108,7 @@ describe('IPC Export Handlers', () => {
   });
 
   it('should throw error when output directory missing', async () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories as any);
+    registerIpcHandlers(mockIpcMain as any, mockRepositories);
 
     if (!exportHandler) {
       throw new Error('Export handler not registered');
@@ -119,7 +123,7 @@ describe('IPC Export Handlers', () => {
   });
 
   it('should throw error when site ID missing', async () => {
-    registerIpcHandlers(mockIpcMain as any, mockRepositories as any);
+    registerIpcHandlers(mockIpcMain as any, mockRepositories);
 
     if (!exportHandler) {
       throw new Error('Export handler not registered');

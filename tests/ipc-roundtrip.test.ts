@@ -29,6 +29,7 @@ function makeStubBenchRepo() {
 
   return {
     findAll: async () => [current],
+    findById: async (id: string) => (current.id === id ? current : null),
     create: async (input: {
       name: string;
       path: string;
@@ -80,6 +81,7 @@ function makeStubSiteRepo() {
 
   return {
     findAll: async () => [current],
+    findById: async (id: string) => (current.id === id ? current : null),
     create: async (input: {
       name: string;
       benchId: string;

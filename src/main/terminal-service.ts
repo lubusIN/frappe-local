@@ -120,7 +120,7 @@ export class TerminalService {
 
       return {
         success: true,
-        session: this.getSession(sessionId),
+        session: this.getSession(sessionId) ?? undefined,
       };
     } catch (error) {
       return {

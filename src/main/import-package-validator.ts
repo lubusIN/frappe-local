@@ -120,19 +120,20 @@ export const validateImportCompatibility = (
     });
   }
 
-  if (context.targetFrappeVersion) {
-    if (compareVersion(context.targetFrappeVersion, parsedPackage.manifest.bench.frappeVersion) < 0) {
+  const targetFrappeVersion = context.targetFrappeVersion;
+  if (targetFrappeVersion) {
+    if (compareVersion(targetFrappeVersion, parsedPackage.manifest.bench.frappeVersion) < 0) {
       issues.push({
         severity: 'error',
         code: 'frappe-version-too-low',
-        message: `Target Frappe ${context.targetFrappeVersion} is lower than exported site requirement ${parsedPackage.manifest.bench.frappeVersion}.`,
+        message: `Target Frappe ${targetFrappeVersion} is lower than exported site requirement ${parsedPackage.manifest.bench.frappeVersion}.`,
       });
     }
 
     parsedPackage.manifest.requiredApps.forEach((app) => {
       if (
         app.compatibility.maximumFrappeVersion &&
-        compareVersion(context.targetFrappeVersion, app.compatibility.maximumFrappeVersion) > 0
+        compareVersion(targetFrappeVersion, app.compatibility.maximumFrappeVersion) > 0
       ) {
         issues.push({
           severity: 'warning',

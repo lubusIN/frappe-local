@@ -88,7 +88,7 @@ describe('terminal inspect IPC handler', () => {
         openInEditor: async () => false,
         pathExists: () => false,
       },
-      terminalService
+      terminalService as any
     );
 
     const result = await handlers.get(ipcChannels.terminalInspect)?.(undefined, 'terminal-1');
@@ -132,7 +132,7 @@ describe('terminal inspect IPC handler', () => {
         openInEditor: async () => false,
         pathExists: () => false,
       },
-      terminalService
+      terminalService as any
     );
 
     const result = await handlers.get(ipcChannels.terminalInspect)?.(undefined, 'missing');

@@ -46,6 +46,7 @@ function makeStubBenchRepo() {
 
   return {
     findAll: async () => benches,
+    findById: async (id: string) => benches.find((bench) => bench.id === id) ?? null,
     create: async (input: {
       name: string;
       path: string;
@@ -71,6 +72,7 @@ function makeStubSiteRepo(items: Site[] = sites) {
 
   return {
     findAll: async () => current,
+    findById: async (id: string) => current.find((site) => site.id === id) ?? null,
     create: async (input: {
       name: string;
       benchId: string;
@@ -413,7 +415,7 @@ describe('sites IPC handlers', () => {
         settings: makeStubSettingsRepo(),
         groups: makeStubGroupRepo(),
       },
-      { openPath, trackSiteOperation }
+      { openPath, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
     );
 
     const openFolderHandler = handlers.get(ipcChannels.sitesOpenFolder);

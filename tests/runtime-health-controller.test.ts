@@ -43,7 +43,7 @@ describe('runtime health controller', () => {
 
   it('dispatches repair actions and refreshes after task completion events', async () => {
     const state = createDefaultRuntimeHealthState();
-    let taskListener: ((event: TaskProgressEvent) => void) | null = null;
+    let taskListener: ((event: TaskProgressEvent) => void) | undefined;
     const ipc = {
       getRuntimeHealth: vi
         .fn<() => Promise<RuntimeHealthResponse>>()
@@ -66,9 +66,15 @@ describe('runtime health controller', () => {
       onTaskRunnerProgress: vi.fn((listener: (event: TaskProgressEvent) => void) => {
         taskListener = listener;
         return () => {
-          taskListener = null;
+          taskListener = undefined;
         };
       }),
+    };
+
+    const emitTaskEvent = (event: TaskProgressEvent): void => {
+      if (taskListener) {
+        taskListener(event);
+      }
     };
 
     const controller = createRuntimeHealthController(ipc, state);
@@ -76,7 +82,7 @@ describe('runtime health controller', () => {
     await controller.refresh();
     await controller.repair();
 
-    taskListener?.({
+    emitTaskEvent({
       taskId: 'task-123',
       taskName: 'Repair docker runtime',
       type: 'task.started',
@@ -88,7 +94,7 @@ describe('runtime health controller', () => {
       logLevel: null,
       errorCode: null,
     });
-    taskListener?.({
+    emitTaskEvent({
       taskId: 'task-123',
       taskName: 'Repair docker runtime',
       type: 'task.completed',

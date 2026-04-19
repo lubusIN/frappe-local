@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { TaskProgressEvent } from '../src/shared/domain/task-runner';
+import type { Settings } from '../src/shared/domain/models';
 
 function makeStubCatalogRepo() {
   return {
@@ -58,7 +59,7 @@ function makeStubSiteRepo() {
 function makeStubSettingsRepo() {
   return {
     get: async () => null,
-    set: async (input: unknown) => input,
+    set: async (input: Settings) => input,
   };
 }
 

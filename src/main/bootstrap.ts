@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
 import type { IpcMain } from 'electron';
 import { BrowserWindow } from 'electron';
 import { shell } from 'electron';

@@ -274,8 +274,9 @@ export const executeImportPackage = async (
     });
 
     if (groupLinked && matchingGroup && createdSite) {
+      const createdSiteId = createdSite.id;
       const revertedGroup = await dependencies.groups.update(matchingGroup.id, {
-        siteIds: matchingGroup.siteIds.filter((id) => id !== createdSite.id),
+        siteIds: matchingGroup.siteIds.filter((id) => id !== createdSiteId),
       });
 
       steps.push({

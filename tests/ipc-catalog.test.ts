@@ -37,6 +37,7 @@ function makeStubCatalogRepo(items: AppCatalogItem[]): AppCatalogRepository {
 function makeStubBenchRepo() {
   return {
     findAll: async () => [],
+    findById: async () => null,
     create: async (input: {
       name: string;
       path: string;
@@ -60,6 +61,7 @@ function makeStubBenchRepo() {
 function makeStubSiteRepo() {
   return {
     findAll: async () => [],
+    findById: async () => null,
     create: async (input: {
       name: string;
       benchId: string;
