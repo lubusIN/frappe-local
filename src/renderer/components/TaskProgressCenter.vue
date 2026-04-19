@@ -35,7 +35,12 @@
     </header>
 
     <p v-if="loading" class="progress-empty">Subscribing to task stream…</p>
-    <p v-else-if="error" class="progress-error">{{ error }}</p>
+    <ErrorNotice
+      v-else-if="errorNotice"
+      :notice="errorNotice"
+      tone="warning"
+      @action="$emit('retrySubscription')"
+    />
     <p v-else-if="items.length === 0" class="progress-empty">No matching tasks yet.</p>
 
     <ul v-else class="progress-list">
@@ -54,9 +59,11 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs } from 'vue';
+import { computed, toRefs } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
+import ErrorNotice from './ErrorNotice.vue';
+import { buildErrorRemediationNotice } from '../error-remediation';
 import type { ProgressTaskResource, ProgressTaskSummary } from '../progress-center';
 
 const props = defineProps<{
@@ -72,6 +79,7 @@ const emit = defineEmits<{
   (event: 'update:statusFilter', value: 'all' | 'queued' | 'running' | 'success' | 'failure'): void;
   (event: 'update:resourceFilter', value: 'all' | ProgressTaskResource): void;
   (event: 'update:recentOnly', value: boolean): void;
+  (event: 'retrySubscription'): void;
 }>();
 
 const onStatusChange = (event: Event): void => {
@@ -121,6 +129,9 @@ const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
 const formatTime = (value: string): string => new Date(value).toLocaleString();
 
 const { statusFilter, resourceFilter, recentOnly } = toRefs(props);
+const errorNotice = computed(() =>
+  props.error ? buildErrorRemediationNotice('progress-center', props.error) : null
+);
 </script>
 
 <style scoped>

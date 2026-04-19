@@ -20,8 +20,14 @@ export const useProgressCenter = () => {
 
   const filteredTasks = computed(() => filterProgressTasks(state));
 
+  const reconnect = async (): Promise<void> => {
+    await controller.disconnect();
+    await controller.connect();
+  };
+
   return {
     ...toRefs(state),
     filteredTasks,
+    reconnect,
   };
 };

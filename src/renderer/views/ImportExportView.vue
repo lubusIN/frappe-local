@@ -15,7 +15,12 @@
       </button>
     </header>
 
-    <p v-if="error" class="import-export-error">{{ error }}</p>
+    <ErrorNotice
+      v-if="errorNotice"
+      :notice="errorNotice"
+      tone="danger"
+      @action="onErrorAction"
+    />
     <p v-if="successMessage" class="import-export-success">{{ successMessage }}</p>
 
     <form class="import-export-form" @submit.prevent="onValidatePackage">
@@ -146,7 +151,9 @@ import type {
   ImportValidationResponse,
   SiteListItem,
 } from '../../shared/ipc';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import { useIpc } from '../composables/useIpc';
+import { buildErrorRemediationNotice } from '../error-remediation';
 import {
   buildImportConflictPreview,
   getImportWizardStepErrors,
@@ -172,6 +179,7 @@ const draft = reactive({
 });
 
 const wizardErrors = computed(() => getImportWizardStepErrors(wizardStep.value, draft, validation.value));
+const errorNotice = computed(() => (error.value ? buildErrorRemediationNotice('import-export', error.value) : null));
 const conflictPreview = computed(() =>
   buildImportConflictPreview(benches.value, sites.value, draft.benchId, validation.value)
 );
@@ -231,6 +239,12 @@ const onNextStep = () => {
 const onPreviousStep = () => {
   if (wizardStep.value > 1) {
     wizardStep.value = (wizardStep.value - 1) as ImportWizardStep;
+  }
+};
+
+const onErrorAction = async (actionId: string): Promise<void> => {
+  if (actionId === 'retry') {
+    await refreshContext();
   }
 };
 

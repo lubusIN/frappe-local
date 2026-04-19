@@ -60,6 +60,7 @@
         @update:statusFilter="(value) => (progressStatusFilter.value = value)"
         @update:resourceFilter="(value) => (progressResourceFilter.value = value)"
         @update:recentOnly="(value) => (progressRecentOnly.value = value)"
+        @retrySubscription="retryProgressSubscription"
       />
     </section>
   </div>
@@ -94,6 +95,7 @@ const {
   statusFilter,
   resourceFilter,
   recentOnly,
+  reconnect,
 } = useProgressCenter();
 
 const progressStatusFilter = computed({
@@ -116,6 +118,10 @@ const progressRecentOnly = computed({
     recentOnly.value = value;
   },
 });
+
+const retryProgressSubscription = async (): Promise<void> => {
+  await reconnect();
+};
 
 const healthCardClass = computed(() => {
   if (loading.value) return 'health-card--loading';

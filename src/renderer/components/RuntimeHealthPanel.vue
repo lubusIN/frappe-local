@@ -28,7 +28,12 @@
       </div>
     </header>
 
-    <p v-if="error" class="runtime-panel__error">{{ error }}</p>
+    <ErrorNotice
+      v-if="errorNotice"
+      :notice="errorNotice"
+      tone="danger"
+      @action="onErrorAction"
+    />
 
     <template v-if="health">
       <p class="runtime-panel__summary">
@@ -84,6 +89,8 @@
 import { computed, ref } from 'vue';
 import type { RuntimeHealthResponse } from '../../shared/ipc';
 import type { TaskStatus } from '../../shared/domain/task-runner';
+import ErrorNotice from './ErrorNotice.vue';
+import { buildErrorRemediationNotice } from '../error-remediation';
 
 const props = defineProps<{
   health: RuntimeHealthResponse | null;
@@ -95,7 +102,7 @@ const props = defineProps<{
   repairLogs: string[];
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   refresh: [];
   repair: [];
 }>();
@@ -103,6 +110,7 @@ defineEmits<{
 const showLogs = ref(false);
 
 const canRepair = computed(() => (props.health?.blockingDependencies.length ?? 0) > 0);
+const errorNotice = computed(() => (props.error ? buildErrorRemediationNotice('runtime', props.error) : null));
 
 const panelClass = computed(() => {
   if (props.error) return 'runtime-panel--error';
@@ -122,5 +130,11 @@ const dependencyLabel = (dependency: string): string => {
   if (dependency === 'podman') return 'Podman';
   if (dependency === 'git') return 'Git';
   return dependency;
+};
+
+const onErrorAction = (actionId: string): void => {
+  if (actionId === 'retry') {
+    emit('refresh');
+  }
 };
 </script>
