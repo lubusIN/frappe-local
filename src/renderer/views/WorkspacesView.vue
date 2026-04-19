@@ -10,7 +10,14 @@
       </button>
     </header>
 
-    <p v-if="error" class="workspaces-error">{{ error }}</p>
+    <StatePanel
+      v-if="error"
+      kind="error"
+      title="Unable to load workspaces"
+      :body="error"
+      action-label="Retry"
+      @action="refresh"
+    />
     <p v-if="successMessage" class="workspaces-success">{{ successMessage }}</p>
 
     <form v-if="!loading" class="workspaces-form" @submit.prevent="onCreateWorkspace">
@@ -31,14 +38,19 @@
       </div>
     </form>
 
-    <div v-else-if="loading" class="workspaces-empty">
-      <p class="workspaces-empty-title">Loading workspaces…</p>
-    </div>
+    <StatePanel
+      v-else-if="loading"
+      kind="loading"
+      title="Loading workspaces"
+      body="Pulling group assignments and workspace summaries."
+    />
 
-    <div v-else-if="workspaces.length === 0" class="workspaces-empty">
-      <p class="workspaces-empty-title">No workspaces yet.</p>
-      <p class="workspaces-empty-body">Create groups to organize sites by project or client.</p>
-    </div>
+    <StatePanel
+      v-else-if="workspaces.length === 0"
+      kind="empty"
+      title="No workspaces yet"
+      body="Create groups to organize sites by project or client."
+    />
 
     <ul v-else class="workspaces-grid">
       <li v-for="workspace in workspaces" :key="workspace.id" class="workspace-card">
@@ -94,6 +106,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import StatePanel from '../components/StatePanel.vue';
 import { useWorkspaces } from '../composables/useWorkspaces';
 
 const {

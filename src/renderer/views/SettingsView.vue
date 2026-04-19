@@ -10,7 +10,20 @@
       </button>
     </header>
 
-    <p v-if="error" class="settings-error">{{ error }}</p>
+    <StatePanel
+      v-if="error"
+      kind="error"
+      title="Unable to load settings"
+      :body="error"
+      action-label="Retry"
+      @action="refresh"
+    />
+    <StatePanel
+      v-else-if="loading"
+      kind="loading"
+      title="Loading settings"
+      body="Reading current preferences and runtime defaults."
+    />
     <p v-if="successMessage" class="settings-success">{{ successMessage }}</p>
 
     <form class="settings-form" @submit.prevent="save">
@@ -78,6 +91,7 @@
 
 <script setup lang="ts">
 import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
+import StatePanel from '../components/StatePanel.vue';
 import { useSettings } from '../composables/useSettings';
 import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 

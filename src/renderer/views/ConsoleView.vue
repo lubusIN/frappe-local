@@ -21,12 +21,14 @@
       </div>
     </header>
 
-    <p
+    <StatePanel
       v-if="error"
-      class="console-error"
-    >
-      {{ error }}
-    </p>
+      kind="error"
+      title="Console action failed"
+      :body="error"
+      action-label="Retry context"
+      @action="loadContext"
+    />
 
     <p
       v-if="contextNotice"
@@ -155,12 +157,12 @@
       role="log"
       aria-live="polite"
     >
-      <p
+      <StatePanel
         v-if="output.length === 0"
-        class="console-empty"
-      >
-        Start a session to begin running commands.
-      </p>
+        kind="empty"
+        title="No console output yet"
+        body="Start a session to begin running commands."
+      />
       <pre
         v-else
         class="console-log"
@@ -193,6 +195,7 @@
 </template>
 
 <script setup lang="ts">
+import StatePanel from '../components/StatePanel.vue';
 import { useTerminalSession } from '../composables/useTerminalSession';
 
 const {
@@ -331,11 +334,6 @@ const {
   white-space: pre-wrap;
 }
 
-.console-empty {
-  margin: 0;
-  opacity: 0.8;
-}
-
 .console-input-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -353,7 +351,4 @@ const {
   font-size: 0.82rem;
 }
 
-.console-error {
-  color: #ffb3b3;
-}
 </style>

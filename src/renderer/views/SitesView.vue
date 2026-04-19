@@ -10,7 +10,14 @@
       </button>
     </header>
 
-    <p v-if="error" class="sites-error">{{ error }}</p>
+    <StatePanel
+      v-if="error"
+      kind="error"
+      title="Unable to load sites"
+      :body="error"
+      action-label="Retry"
+      @action="refresh"
+    />
     <p v-if="successMessage" class="sites-success">{{ successMessage }}</p>
 
     <form class="sites-form" @submit.prevent="onCreateSite">
@@ -83,14 +90,19 @@
       </div>
     </form>
 
-    <div v-if="!error && loading" class="sites-empty">
-      <p class="sites-empty-title">Loading sites…</p>
-    </div>
+    <StatePanel
+      v-if="!error && loading"
+      kind="loading"
+      title="Loading sites"
+      body="Fetching sites and active status metadata."
+    />
 
-    <div v-if="!error && !loading && sites.length === 0" class="sites-empty">
-      <p class="sites-empty-title">No sites yet.</p>
-      <p class="sites-empty-body">Create your first site to manage runtime status, inspect logs, and open paths quickly.</p>
-    </div>
+    <StatePanel
+      v-if="!error && !loading && sites.length === 0"
+      kind="empty"
+      title="No sites yet"
+      body="Create your first site to manage runtime status, inspect logs, and open paths quickly."
+    />
 
     <section v-if="!error && !loading && sites.length > 0" class="sites-filters">
       <label class="sites-field">
@@ -119,10 +131,12 @@
       </label>
     </section>
 
-    <div v-if="!error && !loading && sites.length > 0 && filteredSites.length === 0" class="sites-empty">
-      <p class="sites-empty-title">No matching sites.</p>
-      <p class="sites-empty-body">Adjust filters to see more results.</p>
-    </div>
+    <StatePanel
+      v-if="!error && !loading && sites.length > 0 && filteredSites.length === 0"
+      kind="empty"
+      title="No matching sites"
+      body="Adjust your filters to see more results."
+    />
 
     <ul v-if="!error && !loading && filteredSites.length > 0" class="sites-grid">
       <li v-for="site in filteredSites" :key="site.id" class="site-card">
@@ -241,6 +255,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import StatePanel from '../components/StatePanel.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import {

@@ -10,7 +10,14 @@
       </button>
     </header>
 
-    <p v-if="error" class="benches-error">{{ error }}</p>
+    <StatePanel
+      v-if="error"
+      kind="error"
+      title="Unable to load benches"
+      :body="error"
+      action-label="Retry"
+      @action="refresh"
+    />
     <p v-if="successMessage" class="benches-success">{{ successMessage }}</p>
 
     <form class="benches-form" @submit.prevent="onCreateBench">
@@ -49,14 +56,19 @@
       </div>
     </form>
 
-    <div v-if="!error && loading" class="benches-empty">
-      <p class="benches-empty-title">Loading benches…</p>
-    </div>
+    <StatePanel
+      v-if="!error && loading"
+      kind="loading"
+      title="Loading benches"
+      body="Fetching the latest bench list and lifecycle state."
+    />
 
-    <div v-if="!error && !loading && benches.length === 0" class="benches-empty">
-      <p class="benches-empty-title">No benches yet.</p>
-      <p class="benches-empty-body">Create your first bench to start lifecycle actions, logs, and folder shortcuts.</p>
-    </div>
+    <StatePanel
+      v-if="!error && !loading && benches.length === 0"
+      kind="empty"
+      title="No benches yet"
+      body="Create your first bench to start lifecycle actions, logs, and folder shortcuts."
+    />
 
     <ul v-if="!error && !loading && benches.length > 0" class="benches-grid">
       <li v-for="bench in benches" :key="bench.id" class="bench-card">
@@ -157,6 +169,7 @@
 import { computed, reactive, ref } from 'vue';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import StatePanel from '../components/StatePanel.vue';
 import { useBenches } from '../composables/useBenches';
 
 const {
