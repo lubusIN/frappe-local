@@ -47,6 +47,21 @@
         </RouterLink>
       </div>
     </section>
+
+    <section class="dashboard-section">
+      <h2 class="section-title">Progress Center</h2>
+      <TaskProgressCenter
+        :items="filteredTasks"
+        :loading="progressLoading"
+        :error="progressError"
+        :statusFilter="progressStatusFilter"
+        :resourceFilter="progressResourceFilter"
+        :recentOnly="progressRecentOnly"
+        @update:statusFilter="(value) => (progressStatusFilter.value = value)"
+        @update:resourceFilter="(value) => (progressResourceFilter.value = value)"
+        @update:recentOnly="(value) => (progressRecentOnly.value = value)"
+      />
+    </section>
   </div>
 </template>
 
@@ -54,7 +69,9 @@
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
+import TaskProgressCenter from '../components/TaskProgressCenter.vue';
 import { useAppHealth } from '../composables/useAppHealth';
+import { useProgressCenter } from '../composables/useProgressCenter';
 import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
 const { health, loading, error } = useAppHealth();
@@ -69,6 +86,36 @@ const {
   refresh: refreshRuntimeHealth,
   repair: repairRuntime,
 } = useRuntimeHealth();
+
+const {
+  filteredTasks,
+  loading: progressLoading,
+  error: progressError,
+  statusFilter,
+  resourceFilter,
+  recentOnly,
+} = useProgressCenter();
+
+const progressStatusFilter = computed({
+  get: () => statusFilter.value,
+  set: (value: 'all' | 'queued' | 'running' | 'success' | 'failure') => {
+    statusFilter.value = value;
+  },
+});
+
+const progressResourceFilter = computed({
+  get: () => resourceFilter.value,
+  set: (value: 'all' | 'bench' | 'site' | 'import' | 'runtime' | 'system') => {
+    resourceFilter.value = value;
+  },
+});
+
+const progressRecentOnly = computed({
+  get: () => recentOnly.value,
+  set: (value: boolean) => {
+    recentOnly.value = value;
+  },
+});
 
 const healthCardClass = computed(() => {
   if (loading.value) return 'health-card--loading';
