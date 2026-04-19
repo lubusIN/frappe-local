@@ -1,22 +1,34 @@
 <template>
-  <section class="error-notice" :class="`error-notice--${tone}`" role="alert" aria-live="polite">
+  <section
+    class="error-notice"
+    :class="`error-notice--${tone}`"
+    role="alert"
+    aria-live="polite"
+    aria-atomic="true"
+  >
     <p class="error-notice__eyebrow">Needs attention</p>
-    <h4 class="error-notice__title">{{ notice.title }}</h4>
-    <p class="error-notice__reason">{{ notice.reason }}</p>
+    <h4 class="error-notice__title" :id="titleId">{{ notice.title }}</h4>
+    <p :id="reasonId" class="error-notice__reason">{{ notice.reason }}</p>
 
-    <ul class="error-notice__steps">
+    <ul class="error-notice__steps" :aria-describedby="reasonId">
       <li v-for="step in notice.steps" :key="step">{{ step }}</li>
     </ul>
 
     <div v-if="notice.actions.length > 0" class="error-notice__actions">
       <template v-for="action in notice.actions" :key="action.id">
-        <RouterLink v-if="action.to" class="error-notice__action error-notice__action--link" :to="action.to">
+        <RouterLink
+          v-if="action.to"
+          class="error-notice__action error-notice__action--link"
+          :to="action.to"
+          :aria-label="`${action.label}: navigate to resolve this error`"
+        >
           {{ action.label }}
         </RouterLink>
         <button
           v-else
           type="button"
           class="error-notice__action"
+          :aria-label="`${action.label}: take action to resolve this error`"
           @click="$emit('action', action.id)"
         >
           {{ action.label }}
@@ -27,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { ErrorRemediationNotice } from '../error-remediation';
 
@@ -38,6 +51,10 @@ defineProps<{
 defineEmits<{
   (event: 'action', actionId: string): void;
 }>();
+
+// Generate unique IDs for accessibility linking
+const titleId = computed(() => `error-notice-title-${Math.random().toString(36).substr(2, 9)}`);
+const reasonId = computed(() => `error-notice-reason-${Math.random().toString(36).substr(2, 9)}`);
 </script>
 
 <style scoped>

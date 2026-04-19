@@ -1,5 +1,12 @@
 <template>
-  <section class="state-panel" :class="`state-panel--${kind}`" role="status" aria-live="polite">
+  <section
+    class="state-panel"
+    :class="`state-panel--${kind}`"
+    role="status"
+    aria-live="polite"
+    :aria-busy="kind === 'loading'"
+    :aria-label="accessibilityLabel"
+  >
     <p class="state-panel__eyebrow">{{ eyebrowLabel }}</p>
     <h4 class="state-panel__title">{{ title }}</h4>
     <p v-if="body" class="state-panel__body">{{ body }}</p>
@@ -7,6 +14,7 @@
       v-if="actionLabel"
       type="button"
       class="state-panel__action"
+      :aria-label="actionAriaLabel"
       @click="$emit('action')"
     >
       {{ actionLabel }}
@@ -32,6 +40,18 @@ const eyebrowLabel = computed(() => {
   if (props.kind === 'loading') return 'Loading state';
   if (props.kind === 'error') return 'Action needed';
   return 'Empty state';
+});
+
+const accessibilityLabel = computed(() => {
+  if (props.kind === 'loading') return `Loading: ${props.title}`;
+  if (props.kind === 'error') return `Error: ${props.title}`;
+  return `Empty: ${props.title}`;
+});
+
+const actionAriaLabel = computed(() => {
+  if (props.kind === 'error') return `${props.actionLabel}: retry this action`;
+  if (props.kind === 'loading') return `${props.actionLabel}: cancel loading`;
+  return `${props.actionLabel}`;
 });
 </script>
 
