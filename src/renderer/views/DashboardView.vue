@@ -26,7 +26,7 @@
         :last-task-message="runtimeTaskMessage"
         :repair-logs="runtimeLogs"
         @refresh="refreshRuntimeHealth"
-        @repair="repairRuntime"
+        @repair="onRequestRuntimeRepair"
       />
     </section>
 
@@ -63,12 +63,22 @@
         @retrySubscription="retryProgressSubscription"
       />
     </section>
+
+    <ConfirmationDialog
+      :open="runtimeConfirmOpen"
+      title="Run runtime repair"
+      message="This can modify local runtime dependencies and may take several minutes. Continue?"
+      confirm-label="Run repair"
+      @cancel="runtimeConfirmOpen = false"
+      @confirm="onConfirmRuntimeRepair"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import TaskProgressCenter from '../components/TaskProgressCenter.vue';
 import { useAppHealth } from '../composables/useAppHealth';
@@ -121,6 +131,17 @@ const progressRecentOnly = computed({
 
 const retryProgressSubscription = async (): Promise<void> => {
   await reconnect();
+};
+
+const runtimeConfirmOpen = ref(false);
+
+const onRequestRuntimeRepair = (): void => {
+  runtimeConfirmOpen.value = true;
+};
+
+const onConfirmRuntimeRepair = async (): Promise<void> => {
+  runtimeConfirmOpen.value = false;
+  await repairRuntime();
 };
 
 const healthCardClass = computed(() => {

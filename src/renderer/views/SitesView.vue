@@ -221,6 +221,18 @@
         </section>
       </li>
     </ul>
+
+    <ConfirmationDialog
+      :open="deleteConfirmOpen"
+      title="Delete site"
+      :message="`Delete site ${pendingDeleteSiteName}? Type the site name to confirm.`"
+      confirm-label="Delete site"
+      :confirmation-phrase="pendingDeleteSiteName || null"
+      :typed-value="deleteTypedValue"
+      @update:typedValue="onDeleteTypedValue"
+      @cancel="onCancelDeleteSite"
+      @confirm="onConfirmDeleteSite"
+    />
   </section>
 </template>
 
@@ -228,6 +240,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import {
@@ -394,13 +407,39 @@ const canStopSite = (siteId: string): boolean => {
   return canStopSiteFromUi(site);
 };
 
+const deleteConfirmOpen = ref(false);
+const pendingDeleteSiteId = ref<string | null>(null);
+const pendingDeleteSiteName = ref('');
+const deleteTypedValue = ref('');
+
 const onDeleteSite = async (id: string, name: string) => {
-  const confirmation = window.prompt(`Type ${name} to confirm deletion.`);
-  if (confirmation !== name) {
+  pendingDeleteSiteId.value = id;
+  pendingDeleteSiteName.value = name;
+  deleteTypedValue.value = '';
+  deleteConfirmOpen.value = true;
+};
+
+const onCancelDeleteSite = (): void => {
+  deleteConfirmOpen.value = false;
+  pendingDeleteSiteId.value = null;
+  pendingDeleteSiteName.value = '';
+  deleteTypedValue.value = '';
+};
+
+const onConfirmDeleteSite = async (): Promise<void> => {
+  const id = pendingDeleteSiteId.value;
+  if (!id) {
+    onCancelDeleteSite();
     return;
   }
 
+  deleteConfirmOpen.value = false;
   await remove(id);
+  onCancelDeleteSite();
+};
+
+const onDeleteTypedValue = (value: string): void => {
+  deleteTypedValue.value = value;
 };
 
 const onLoadSiteLogs = async (id: string) => {

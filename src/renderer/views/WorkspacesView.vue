@@ -79,11 +79,21 @@
         </div>
       </li>
     </ul>
+
+    <ConfirmationDialog
+      :open="deleteConfirmOpen"
+      title="Delete workspace"
+      :message="`Delete workspace ${pendingDeleteWorkspaceName}? Assigned sites will be ungrouped.`"
+      confirm-label="Delete workspace"
+      @cancel="onCancelDeleteWorkspace"
+      @confirm="onConfirmDeleteWorkspace"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import { useWorkspaces } from '../composables/useWorkspaces';
 
 const {
@@ -169,12 +179,31 @@ const onEditWorkspace = async (workspaceId: string) => {
   });
 };
 
+const deleteConfirmOpen = ref(false);
+const pendingDeleteWorkspaceId = ref<string | null>(null);
+const pendingDeleteWorkspaceName = ref('');
+
 const onDeleteWorkspace = async (workspaceId: string, name: string) => {
-  const confirmed = window.confirm(`Delete workspace ${name}?`);
-  if (!confirmed) {
+  pendingDeleteWorkspaceId.value = workspaceId;
+  pendingDeleteWorkspaceName.value = name;
+  deleteConfirmOpen.value = true;
+};
+
+const onCancelDeleteWorkspace = (): void => {
+  deleteConfirmOpen.value = false;
+  pendingDeleteWorkspaceId.value = null;
+  pendingDeleteWorkspaceName.value = '';
+};
+
+const onConfirmDeleteWorkspace = async (): Promise<void> => {
+  const workspaceId = pendingDeleteWorkspaceId.value;
+  if (!workspaceId) {
+    onCancelDeleteWorkspace();
     return;
   }
 
+  deleteConfirmOpen.value = false;
   await remove(workspaceId);
+  onCancelDeleteWorkspace();
 };
 </script>

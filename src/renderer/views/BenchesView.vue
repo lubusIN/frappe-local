@@ -141,12 +141,22 @@
         </section>
       </li>
     </ul>
+
+    <ConfirmationDialog
+      :open="deleteConfirmOpen"
+      title="Delete bench"
+      :message="`Delete bench ${pendingDeleteBenchName}? This cannot be undone.`"
+      confirm-label="Delete bench"
+      @cancel="onCancelDelete"
+      @confirm="onConfirmDelete"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
 import AppPicker from '../components/AppPicker.vue';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import { useBenches } from '../composables/useBenches';
 
 const {
@@ -208,13 +218,32 @@ const filteredBenchLogs = computed(() => {
   );
 });
 
+const deleteConfirmOpen = ref(false);
+const pendingDeleteBenchId = ref<string | null>(null);
+const pendingDeleteBenchName = ref('');
+
 const onDeleteBench = async (id: string, name: string) => {
-  const confirmed = window.confirm(`Delete bench ${name}? This cannot be undone.`);
-  if (!confirmed) {
+  pendingDeleteBenchId.value = id;
+  pendingDeleteBenchName.value = name;
+  deleteConfirmOpen.value = true;
+};
+
+const onCancelDelete = (): void => {
+  deleteConfirmOpen.value = false;
+  pendingDeleteBenchId.value = null;
+  pendingDeleteBenchName.value = '';
+};
+
+const onConfirmDelete = async (): Promise<void> => {
+  const id = pendingDeleteBenchId.value;
+  if (!id) {
+    onCancelDelete();
     return;
   }
 
+  deleteConfirmOpen.value = false;
   await remove(id);
+  onCancelDelete();
 };
 
 const onLoadBenchLogs = async (id: string) => {

@@ -139,6 +139,15 @@
         </button>
       </div>
     </form>
+
+    <ConfirmationDialog
+      :open="importConfirmOpen"
+      title="Execute import"
+      :message="importConfirmMessage"
+      confirm-label="Execute import"
+      @cancel="importConfirmOpen = false"
+      @confirm="onConfirmExecuteImport"
+    />
   </section>
 </template>
 
@@ -151,6 +160,7 @@ import type {
   ImportValidationResponse,
   SiteListItem,
 } from '../../shared/ipc';
+import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import { useIpc } from '../composables/useIpc';
 import { buildErrorRemediationNotice } from '../error-remediation';
@@ -183,6 +193,14 @@ const errorNotice = computed(() => (error.value ? buildErrorRemediationNotice('i
 const conflictPreview = computed(() =>
   buildImportConflictPreview(benches.value, sites.value, draft.benchId, validation.value)
 );
+const importConfirmOpen = ref(false);
+const importConfirmMessage = computed(() => {
+  if (draft.conflictPolicy === 'rename') {
+    return 'Rename-on-conflict can create a new site name automatically. Confirm to continue with import execution.';
+  }
+
+  return 'Execute the import with current mapping and conflict policy?';
+});
 
 const refreshContext = async () => {
   loading.value = true;
@@ -249,6 +267,24 @@ const onErrorAction = async (actionId: string): Promise<void> => {
 };
 
 const onExecuteImport = async () => {
+  if (wizardErrors.value.length > 0 || !validation.value) {
+    return;
+  }
+
+  if (draft.conflictPolicy === 'rename' || conflictPreview.value.status === 'warning') {
+    importConfirmOpen.value = true;
+    return;
+  }
+
+  await executeImport();
+};
+
+const onConfirmExecuteImport = async (): Promise<void> => {
+  importConfirmOpen.value = false;
+  await executeImport();
+};
+
+const executeImport = async (): Promise<void> => {
   if (wizardErrors.value.length > 0 || !validation.value) {
     return;
   }
