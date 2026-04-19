@@ -87,3 +87,5 @@ The implementation follows small, validated checkpoints with manual commit appro
 - docs/release/CHANGELOG_PROCESS.md
 - docs/release/QA_CHECKLIST.md
 - docs/release/RC_VALIDATION_REPORT.md
+- docs/release/PHASE_11_CLOSURE_REPORT.md
+- docs/release/RC_PREPARATION_NOTES.md
