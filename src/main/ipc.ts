@@ -25,12 +25,15 @@ import type {
   WorkspaceUpdateInput,
   TerminalStateChangeEvent,
 } from '../shared/ipc';
+import type { DiagnosticsReport } from '../shared/domain/diagnostics';
+import { runDiagnostics } from './diagnostics-service';
 import { ipcChannels } from '../shared/ipc';
 import type { TerminalCreateResponse } from '../shared/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
 import { RuntimeService } from './runtime-service';
+import type { AppRuntimePaths } from './config';
 import { CURRENT_STORAGE_SCHEMA_VERSION } from './storage/schema';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -327,7 +330,15 @@ export const registerIpcHandlers = (
   runtimeService: RuntimeServiceLike = new RuntimeService({
     settings: repositories.settings,
     taskRunner: getTaskRunner(),
-  })
+  }),
+  appVersion: string = '0.1.0',
+  runtimePaths: AppRuntimePaths = {
+    userDataPath: '',
+    logsPath: '',
+    configPath: '',
+    storagePath: '',
+  },
+  initialDiagnosticsReport: DiagnosticsReport | null = null
 ): void => {
   let taskEventSubscriptionCount = 0;
 
@@ -356,6 +367,23 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
+
+  let lastDiagnosticsReport: DiagnosticsReport | null = initialDiagnosticsReport;
+
+  ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
+    const report = await runDiagnostics({
+      runtimePaths,
+      runtimeService,
+      settingsRepository: repositories.settings,
+      appVersion,
+    });
+    lastDiagnosticsReport = report;
+    return report;
+  });
+
+  ipcMainLike.handle(ipcChannels.diagnosticsGetLast, async (): Promise<DiagnosticsReport | null> => {
+    return lastDiagnosticsReport;
+  });
 
   ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
     taskEventSubscriptionCount += 1;

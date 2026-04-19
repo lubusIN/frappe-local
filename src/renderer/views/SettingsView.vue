@@ -86,16 +86,28 @@
       @refresh="refreshRuntimeHealth"
       @repair="repairRuntime"
     />
+
+    <DiagnosticsPanel
+      :report="diagnostics.report"
+      :running="diagnostics.isRunning"
+      :error="diagnostics.error"
+      @run="diagnostics.runDiagnostics"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue';
+import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
 import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import StatePanel from '../components/StatePanel.vue';
+import { useDiagnostics } from '../diagnostics-controller';
 import { useSettings } from '../composables/useSettings';
+import { useIpc } from '../composables/useIpc';
 import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
 const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
+const diagnostics = useDiagnostics(useIpc());
 const {
   health: runtimeHealth,
   loading: runtimeLoading,
@@ -107,4 +119,8 @@ const {
   refresh: refreshRuntimeHealth,
   repair: repairRuntime,
 } = useRuntimeHealth();
+
+onMounted(() => {
+  void diagnostics.loadLastReport();
+});
 </script>

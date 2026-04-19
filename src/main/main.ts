@@ -33,7 +33,7 @@ const createMainWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(async () => {
-  const bootstrapContext = createBootstrapContext(app.getName(), createMainWindow, app);
+  const bootstrapContext = createBootstrapContext(app.getName(), app.getVersion(), createMainWindow, app);
   await runApplicationBootstrap(bootstrapContext, ipcMain);
 
   app.on('activate', async () => {

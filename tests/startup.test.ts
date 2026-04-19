@@ -5,6 +5,7 @@ describe('startup bootstrap', () => {
   it('creates a startup context with resolved runtime paths', () => {
     const context = createBootstrapContext(
       'Frappe Cafe',
+      '0.1.0',
       async () => undefined,
       {
         getPath: (name) => {

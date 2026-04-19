@@ -1,9 +1,12 @@
 import type { TaskProgressEvent } from './domain/task-runner';
 import type { DependencyHealth, DependencyType } from './domain/runtime-health';
+import type { DiagnosticsReport } from './domain/diagnostics';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
   catalogList: 'catalog:list',
+  diagnosticsRun: 'diagnostics:run',
+  diagnosticsGetLast: 'diagnostics:get-last',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
   benchesList: 'benches:list',
@@ -53,6 +56,9 @@ export type AppHealthResponse = {
   readonly electronVersion: string;
   readonly timestamp: string;
 };
+
+export type DiagnosticsRunResponse = DiagnosticsReport;
+export type DiagnosticsGetLastResponse = DiagnosticsReport | null;
 
 export type CatalogAppItem = {
   readonly id: string;
@@ -290,6 +296,8 @@ export type TerminalStateChangeEvent = {
 
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
+  readonly runDiagnostics: () => Promise<DiagnosticsReport>;
+  readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;

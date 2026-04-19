@@ -5,7 +5,6 @@ import type { IpcMain } from 'electron';
 import { BrowserWindow } from 'electron';
 import { shell } from 'electron';
 import type { AppRepositories } from './ipc';
-import type { IpcOperations } from './ipc';
 import { registerIpcHandlers } from './ipc';
 import { createMainLogger } from './logger';
 import type { AppRuntimePaths } from './config';
@@ -20,13 +19,15 @@ import { SiteRepository } from './storage/repositories/site-repository';
 import { InMemoryBenchAnalytics } from './bench-analytics';
 import { InMemorySiteAnalytics } from './site-analytics';
 import { getDefaultAppCatalogSeed } from './catalog-provider';
+import { runDiagnostics } from './diagnostics-service';
 import { RuntimeService } from './runtime-service';
 import { getTaskRunner } from './task-runner';
 
 type BootstrapContext = {
-  readonly registerHandlers: (ipcMain: IpcMain, repositories: AppRepositories, operations?: IpcOperations) => void;
+  readonly registerHandlers: typeof registerIpcHandlers;
   readonly createMainWindow: () => Promise<void>;
   readonly appName: string;
+  readonly appVersion: string;
   readonly runtimePaths: AppRuntimePaths;
 };
 
@@ -86,12 +87,14 @@ const buildStartupErrorHtml = (appName: string): string => {
 
 export const createBootstrapContext = (
   appName: string,
+  appVersion: string,
   createMainWindow: () => Promise<void>,
   appPathReader: { getPath: (name: 'userData' | 'logs') => string }
 ): BootstrapContext => ({
   registerHandlers: registerIpcHandlers,
   createMainWindow,
   appName,
+  appVersion,
   runtimePaths: resolveAppRuntimePaths(appPathReader),
 });
 
@@ -132,6 +135,17 @@ export const runApplicationBootstrap = async (
       });
     }
 
+    const initialDiagnosticsReport = await runDiagnostics({
+      runtimePaths: context.runtimePaths,
+      runtimeService,
+      settingsRepository: repositories.settings,
+      appVersion: context.appVersion,
+    });
+
+    if (initialDiagnosticsReport.hasCriticalIssues || initialDiagnosticsReport.hasWarnings) {
+      bootstrapLogger.warn(`startup diagnostics: ${initialDiagnosticsReport.summary}`);
+    }
+
     const benchAnalytics = new InMemoryBenchAnalytics();
     const siteAnalytics = new InMemorySiteAnalytics();
 
@@ -148,7 +162,7 @@ export const runApplicationBootstrap = async (
       trackSiteOperation: (siteId, operation) => {
         siteAnalytics.track(siteId, operation);
       },
-    });
+    }, undefined, undefined, runtimeService, context.appVersion, context.runtimePaths, initialDiagnosticsReport);
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');
   } catch (error) {

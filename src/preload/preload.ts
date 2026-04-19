@@ -4,6 +4,8 @@ import { ipcChannels } from '../shared/ipc';
 
 const rendererBridge: RendererBridge = {
 	checkAppHealth: async () => ipcRenderer.invoke(ipcChannels.appHealthCheck),
+	runDiagnostics: async () => ipcRenderer.invoke(ipcChannels.diagnosticsRun),
+	getLastDiagnosticsReport: async () => ipcRenderer.invoke(ipcChannels.diagnosticsGetLast),
 	listCatalog: async () => ipcRenderer.invoke(ipcChannels.catalogList),
 	findCatalogItem: async (id: string) => ipcRenderer.invoke(ipcChannels.catalogFindById, id),
 	searchCatalog: async (query: string) => ipcRenderer.invoke(ipcChannels.catalogSearch, query),
