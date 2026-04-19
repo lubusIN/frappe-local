@@ -1,21 +1,12 @@
 <template>
   <section class="console-view">
-    <header class="console-header">
-      <div>
-        <p class="card-eyebrow">
-          Developer Tools
-        </p>
-        <h3 class="console-title">
-          Console
-        </h3>
-      </div>
-      <div class="console-header-actions">
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="loadingContext"
-          @click="loadContext"
-        >
+    <header class="view-header">
+      <h2 class="view-header__title">Console</h2>
+      <div class="view-header__actions">
+        <button type="button" class="btn btn--subtle" :disabled="loadingContext" @click="loadContext">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
+          </svg>
           {{ loadingContext ? 'Refreshing…' : 'Refresh Context' }}
         </button>
       </div>
@@ -30,12 +21,12 @@
       @action="loadContext"
     />
 
-    <p
-      v-if="contextNotice"
-      class="console-notice"
-    >
+    <div v-if="contextNotice" class="alert alert--warning">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+        <path fill-rule="evenodd" d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l4.928 9.225c.628 1.176-.25 2.604-1.543 2.604H3.072c-1.293 0-2.17-1.428-1.543-2.604L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z" clip-rule="evenodd"/>
+      </svg>
       {{ contextNotice }}
-    </p>
+    </div>
 
     <FirstRunGuide
       v-if="!loadingContext && benches.length === 0"
@@ -46,159 +37,85 @@
       compact
     />
 
-    <div v-if="benches.length > 0" class="console-context">
-      <label class="console-field">
-        <span>Bench</span>
-        <select
-          v-model="selectedBenchId"
-          :disabled="loadingContext"
-        >
-          <option
-            value=""
-            disabled
-          >Select a bench</option>
-          <option
-            v-for="bench in benches"
-            :key="bench.id"
-            :value="bench.id"
-          >{{ bench.name }}</option>
-        </select>
-      </label>
+    <!-- Context selectors -->
+    <div v-if="benches.length > 0" class="form-card">
+      <div class="form-card__header">
+        <h3 class="form-card__title">Session context</h3>
+        <div class="console-status-badge">
+          <span class="status-dot" :class="hasSession ? 'status-dot--active' : 'status-dot--inactive'"></span>
+          {{ sessionState }}
+        </div>
+      </div>
+      <div class="console-context">
+        <div class="context-row">
+          <label class="form-field">
+            <span class="form-label">Bench</span>
+            <select v-model="selectedBenchId" :disabled="loadingContext">
+              <option value="" disabled>Select a bench</option>
+              <option v-for="bench in benches" :key="bench.id" :value="bench.id">{{ bench.name }}</option>
+            </select>
+          </label>
+          <label class="form-field">
+            <span class="form-label">Site (optional)</span>
+            <select v-model="selectedSiteId" :disabled="loadingContext || !selectedBenchId">
+              <option :value="null">Bench root</option>
+              <option v-for="site in filteredSites" :key="site.id" :value="site.id">{{ site.name }}</option>
+            </select>
+          </label>
+        </div>
 
-      <label class="console-field">
-        <span>Site (optional)</span>
-        <select
-          v-model="selectedSiteId"
-          :disabled="loadingContext || !selectedBenchId"
-        >
-          <option :value="null">Bench root</option>
-          <option
-            v-for="site in filteredSites"
-            :key="site.id"
-            :value="site.id"
-          >{{ site.name }}</option>
-        </select>
-      </label>
+        <div class="console-toolbar">
+          <button class="btn btn--primary btn--sm" :disabled="hasSession || starting || !selectedBenchId" @click="startSession">
+            {{ starting ? 'Starting…' : 'Start' }}
+          </button>
+          <button class="btn btn--subtle btn--sm" :disabled="!hasSession || stopping" @click="stopSession">
+            {{ stopping ? 'Stopping…' : 'Stop' }}
+          </button>
+          <button class="btn btn--subtle btn--sm" :disabled="reconnecting || !selectedBenchId" @click="reconnect">
+            {{ reconnecting ? 'Reconnecting…' : 'Reconnect' }}
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="btn btn--subtle btn--sm" @click="clearOutput">Clear</button>
+          <button class="btn btn--subtle btn--sm" :disabled="copyingOutput || output.length === 0" @click="copyOutput">
+            {{ copyingOutput ? 'Copying…' : 'Copy' }}
+          </button>
+          <button class="btn btn--subtle btn--sm" :disabled="openingFolder || !selectedBenchId" @click="openContextFolder">Folder</button>
+          <button class="btn btn--subtle btn--sm" :disabled="openingEditor || !selectedBenchId" @click="openContextInEditor">Editor</button>
+          <button class="btn btn--subtle btn--sm" :disabled="openingDevcontainer || !selectedBenchId" @click="openDevcontainer">Devcontainer</button>
+        </div>
 
-      <div class="console-session-actions">
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="hasSession || starting || !selectedBenchId"
-          @click="startSession"
-        >
-          {{ starting ? 'Starting…' : 'Start' }}
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="!hasSession || stopping"
-          @click="stopSession"
-        >
-          {{ stopping ? 'Stopping…' : 'Stop' }}
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="reconnecting || !selectedBenchId"
-          @click="reconnect"
-        >
-          {{ reconnecting ? 'Reconnecting…' : 'Reconnect' }}
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          @click="clearOutput"
-        >
-          Clear
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="copyingOutput || output.length === 0"
-          @click="copyOutput"
-        >
-          {{ copyingOutput ? 'Copying…' : 'Copy Output' }}
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="openingFolder || !selectedBenchId"
-          @click="openContextFolder"
-        >
-          {{ openingFolder ? 'Opening…' : 'Open Folder' }}
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="openingEditor || !selectedBenchId"
-          @click="openContextInEditor"
-        >
-          {{ openingEditor ? 'Opening…' : 'Open in Editor' }}
-        </button>
-        <button
-          type="button"
-          class="console-btn"
-          :disabled="openingDevcontainer || !selectedBenchId"
-          @click="openDevcontainer"
-        >
-          {{ openingDevcontainer ? 'Opening…' : 'Open Devcontainer Files' }}
-        </button>
+        <p class="context-info">
+          <span class="context-info__label">Target:</span> {{ currentContextLabel }}
+          <template v-if="sessionId"> · <span class="context-info__label">ID:</span> {{ sessionId }}</template>
+        </p>
       </div>
     </div>
 
-    <div v-if="benches.length > 0" class="console-status">
-      <span class="console-status-label">Session:</span>
-      <span class="console-status-value">{{ sessionState }}</span>
-      <span class="console-status-target">Target: {{ currentContextLabel }}</span>
-      <span
-        v-if="sessionId"
-        class="console-session-id"
-      >ID: {{ sessionId }}</span>
-    </div>
-
-    <p v-if="benches.length > 0" class="console-policy">
-      Switching bench or site resets the current session so commands stay scoped to the selected context.
-    </p>
-
-    <div
-      class="console-output"
-      role="log"
-      aria-live="polite"
-    >
+    <!-- Terminal output -->
+    <div class="terminal-card">
       <StatePanel
         v-if="output.length === 0"
         kind="empty"
         title="No console output yet"
         body="Start a session to begin running commands."
       />
-      <pre
-        v-else
-        class="console-log"
-      >{{ output.join('') }}</pre>
+      <pre v-else class="terminal-output" role="log" aria-live="polite">{{ output.join('') }}</pre>
     </div>
 
-    <form
-      v-if="benches.length > 0"
-      class="console-input-row"
-      @submit.prevent="runCommand"
-    >
-      <span class="console-prompt-prefix">{{ currentPromptPrefix }}</span>
+    <!-- Command input -->
+    <form v-if="benches.length > 0" class="command-bar" @submit.prevent="runCommand">
+      <span class="command-prefix">{{ currentPromptPrefix }}</span>
       <input
         v-model="commandInput"
         type="text"
-        class="console-input"
+        class="command-input"
         placeholder="Type a command and press Enter"
         :disabled="!canRunCommands || executing"
         @keydown.up.prevent="stepHistory('older')"
         @keydown.down.prevent="stepHistory('newer')"
       >
-      <button
-        type="submit"
-        class="console-btn"
-        :disabled="!canRunCommands || executing || !commandInput.trim()"
-      >
-        {{ executing ? 'Sending…' : 'Run' }}
+      <button type="submit" class="btn btn--primary btn--sm" :disabled="!canRunCommands || executing || !commandInput.trim()">
+        {{ executing ? 'Running…' : 'Run' }}
       </button>
     </form>
   </section>
@@ -265,113 +182,221 @@ const consoleSetupLinks = computed<FirstRunGuideLink[]>(() => [
   gap: 16px;
 }
 
-.console-header {
+.view-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.view-header__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.view-header__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.btn--subtle {
+  border-color: var(--border-default);
+}
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn--sm {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+/* Alert */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.alert--warning {
+  color: var(--orange-text);
+  background: var(--orange-light);
+  border: 1px solid var(--orange-border);
+}
+
+/* Form card */
+.form-card {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.form-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.form-card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.console-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot--active {
+  background: var(--green-text);
+}
+
+.status-dot--inactive {
+  background: var(--text-muted);
 }
 
 .console-context {
+  padding: 16px;
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
-.console-field {
+.context-row {
   display: grid;
-  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.console-field select,
-.console-input {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  background: rgba(8, 12, 22, 0.72);
-  color: inherit;
-  padding: 10px 12px;
+.form-field {
+  display: grid;
+  gap: 4px;
 }
 
-.console-session-actions {
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.console-toolbar {
   display: flex;
-  align-items: end;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
-}
-
-.console-btn {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(24, 90, 171, 0.25);
-  color: inherit;
-  border-radius: 8px;
-  padding: 9px 12px;
-  cursor: pointer;
-}
-
-.console-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.console-status {
-  display: flex;
-  gap: 8px;
   align-items: center;
-  font-size: 0.92rem;
-  flex-wrap: wrap;
 }
 
-.console-status-value {
-  text-transform: capitalize;
-  font-weight: 600;
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-light);
+  margin: 0 4px;
 }
 
-.console-session-id {
-  opacity: 0.8;
+.context-info {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
-.console-status-target,
-.console-policy,
-.console-notice {
-  opacity: 0.85;
+.context-info__label {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
-.console-notice {
-  color: #f8d98c;
-}
-
-.console-output {
+/* Terminal */
+.terminal-card {
   min-height: 260px;
   max-height: 440px;
   overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  background: rgba(8, 10, 15, 0.9);
-  padding: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: #1a1a2e;
+  color: #e0e0e0;
 }
 
-.console-log {
+.terminal-output {
   margin: 0;
-  font-family: ui-monospace, Menlo, Monaco, SFMono-Regular, monospace;
-  font-size: 0.86rem;
-  line-height: 1.4;
+  padding: 16px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.5;
   white-space: pre-wrap;
 }
 
-.console-input-row {
+/* Command bar */
+.command-bar {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
 }
 
-.console-prompt-prefix {
+.command-prefix {
   display: inline-flex;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  padding: 0 12px;
-  background: rgba(255, 255, 255, 0.06);
-  font-family: ui-monospace, Menlo, Monaco, SFMono-Regular, monospace;
-  font-size: 0.82rem;
+  padding: 0 10px;
+  min-height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  background: var(--surface-subtle);
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
+.command-input {
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+}
 </style>

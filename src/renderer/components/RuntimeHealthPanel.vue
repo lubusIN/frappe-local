@@ -1,17 +1,18 @@
 <template>
-  <section class="runtime-panel" :class="panelClass">
-    <header class="runtime-panel__header">
+  <section class="form-card" :class="panelClass">
+    <div class="form-card__header">
       <div>
-        <p class="card-eyebrow">Runtime Readiness</p>
-        <h3 class="runtime-panel__title">Dependencies and repair actions</h3>
+        <h3 class="form-card__title">Runtime Readiness</h3>
+        <p class="form-card__subtitle">Dependencies and repair actions</p>
       </div>
-      <div class="runtime-panel__actions">
-        <button type="button" class="runtime-panel__button" :disabled="loading || repairing" @click="$emit('refresh')">
+      <div class="form-card__actions">
+        <button type="button" class="btn btn--subtle btn--sm" :disabled="loading || repairing" @click="$emit('refresh')">
           {{ loading ? 'Checking…' : 'Re-check' }}
         </button>
         <button
           type="button"
-          class="runtime-panel__button runtime-panel__button--primary"
+          class="btn btn--sm"
+          :class="canRepair ? 'btn--primary' : 'btn--subtle'"
           :disabled="repairing || !canRepair"
           @click="$emit('repair')"
         >
@@ -20,68 +21,75 @@
         <button
           v-if="repairLogs.length > 0"
           type="button"
-          class="runtime-panel__button"
+          class="btn btn--subtle btn--sm"
           @click="showLogs = !showLogs"
         >
           {{ showLogs ? 'Hide logs' : 'View logs' }}
         </button>
       </div>
-    </header>
+    </div>
 
-    <ErrorNotice
-      v-if="errorNotice"
-      :notice="errorNotice"
-      tone="danger"
-      @action="onErrorAction"
-    />
+    <div class="form-card__body">
+      <ErrorNotice
+        v-if="errorNotice"
+        :notice="errorNotice"
+        tone="danger"
+        @action="onErrorAction"
+      />
 
-    <template v-if="health">
-      <p class="runtime-panel__summary">
-        Preferred runtime: <strong>{{ health.preferredRuntime }}</strong>
-        <span class="runtime-panel__summary-separator">•</span>
-        Active runtime: <strong>{{ health.selectedRuntime }}</strong>
-        <span v-if="health.fallbackApplied" class="runtime-panel__fallback">Fallback applied</span>
-      </p>
-
-      <p v-if="lastTaskMessage" class="runtime-panel__status" :class="statusClass">
-        {{ lastTaskMessage }}
-      </p>
-
-      <div class="runtime-panel__grid">
-        <article v-for="dependency in health.dependencies" :key="dependency.dependency" class="runtime-dependency">
-          <div class="runtime-dependency__header">
-            <div>
-              <h4 class="runtime-dependency__title">{{ dependencyLabel(dependency.dependency) }}</h4>
-              <p class="runtime-dependency__summary">{{ dependency.summary }}</p>
-            </div>
-            <span class="runtime-dependency__status" :class="`runtime-dependency__status--${dependency.status}`">
-              {{ dependency.status }}
-            </span>
+      <template v-if="health">
+        <div class="runtime-summary">
+          <div class="runtime-summary__item">
+            <span class="runtime-summary__label">Preferred runtime:</span>
+            <span class="runtime-summary__value">{{ health.preferredRuntime }}</span>
           </div>
+          <div class="runtime-summary__item">
+            <span class="runtime-summary__label">Active runtime:</span>
+            <span class="runtime-summary__value">{{ health.selectedRuntime }}</span>
+          </div>
+          <span v-if="health.fallbackApplied" class="runtime-badge runtime-badge--fallback">Fallback applied</span>
+        </div>
 
-          <p class="runtime-dependency__version">
-            Detected: <strong>{{ dependency.detectedVersion ?? 'Unavailable' }}</strong>
-            <span class="runtime-panel__summary-separator">•</span>
-            Required: <strong>{{ dependency.requiredVersion }}</strong>
-          </p>
+        <div v-if="lastTaskMessage" class="alert" :class="statusClass">
+          {{ lastTaskMessage }}
+        </div>
 
-          <p class="runtime-dependency__guidance-title">{{ dependency.guidance.title }}</p>
-          <ul class="runtime-dependency__guidance-list">
-            <li v-for="step in dependency.guidance.steps" :key="step">{{ step }}</li>
-          </ul>
-        </article>
-      </div>
+        <div class="runtime-grid">
+          <article v-for="dependency in health.dependencies" :key="dependency.dependency" class="dependency-card">
+            <div class="dependency-card__header">
+              <h4 class="dependency-card__title">{{ dependencyLabel(dependency.dependency) }}</h4>
+              <span class="status-pill" :class="`status-pill--${dependency.status}`">
+                {{ dependency.status }}
+              </span>
+            </div>
 
-      <div v-if="showLogs && repairLogs.length > 0" class="runtime-panel__logs">
-        <p class="runtime-panel__logs-title">Repair log stream</p>
-        <ol class="runtime-panel__logs-list">
-          <li v-for="entry in repairLogs" :key="entry">{{ entry }}</li>
-        </ol>
-      </div>
-    </template>
+            <p class="dependency-card__summary">{{ dependency.summary }}</p>
 
-    <p v-else-if="loading" class="runtime-panel__empty">Checking runtime dependencies…</p>
-    <p v-else class="runtime-panel__empty">Runtime health has not been checked yet.</p>
+            <div class="dependency-card__versions">
+              <span class="version-label">Detected: <strong>{{ dependency.detectedVersion ?? 'Unavailable' }}</strong></span>
+              <span class="version-label">Required: <strong>{{ dependency.requiredVersion }}</strong></span>
+            </div>
+
+            <div class="dependency-card__guidance">
+              <p class="guidance-title">{{ dependency.guidance.title }}</p>
+              <ul class="guidance-list">
+                <li v-for="step in dependency.guidance.steps" :key="step">{{ step }}</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+
+        <div v-if="showLogs && repairLogs.length > 0" class="terminal-logs">
+          <p class="terminal-logs__title">Repair log stream</p>
+          <ol class="terminal-logs__list">
+            <li v-for="entry in repairLogs" :key="entry">{{ entry }}</li>
+          </ol>
+        </div>
+      </template>
+
+      <p v-else-if="loading" class="empty-state">Checking runtime dependencies…</p>
+      <p v-else class="empty-state">Runtime health has not been checked yet.</p>
+    </div>
   </section>
 </template>
 
@@ -113,16 +121,16 @@ const canRepair = computed(() => (props.health?.blockingDependencies.length ?? 0
 const errorNotice = computed(() => (props.error ? buildErrorRemediationNotice('runtime', props.error) : null));
 
 const panelClass = computed(() => {
-  if (props.error) return 'runtime-panel--error';
-  if (props.repairing) return 'runtime-panel--active';
-  if (!props.health?.hasBlockingIssues && !props.health?.fallbackApplied) return 'runtime-panel--ok';
+  if (props.error) return 'form-card--error';
+  if (props.repairing) return 'form-card--active';
+  if (!props.health?.hasBlockingIssues && !props.health?.fallbackApplied) return 'form-card--success';
   return '';
 });
 
 const statusClass = computed(() => {
-  if (props.activeTaskStatus === 'failure') return 'runtime-panel__status--error';
-  if (props.activeTaskStatus === 'success') return 'runtime-panel__status--ok';
-  return 'runtime-panel__status--active';
+  if (props.activeTaskStatus === 'failure') return 'alert--danger';
+  if (props.activeTaskStatus === 'success') return 'alert--success';
+  return 'alert--info';
 });
 
 const dependencyLabel = (dependency: string): string => {
@@ -140,222 +148,240 @@ const onErrorAction = (actionId: string): void => {
 </script>
 
 <style scoped>
-.runtime-panel {
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 14px;
+.form-card {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+  transition: border-color 200ms ease;
+}
+
+.form-card--success { border-color: var(--green-border); }
+.form-card--active { border-color: var(--blue-border); }
+.form-card--error { border-color: var(--red-border); }
+
+.form-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-subtle);
+}
+
+.form-card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-card__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.form-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.form-card__body {
+  padding: 16px;
   display: grid;
+  gap: 16px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.btn:hover:not(:disabled) { background: var(--surface-hover); }
+.btn--subtle { border-color: var(--border-default); }
+.btn--primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+.btn--primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn--sm { min-height: 24px; padding: 0 8px; font-size: 11px; }
+
+/* Alerts */
+.alert {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.alert--info { background: var(--blue-light); color: var(--blue-text); border: 1px solid var(--blue-border); }
+.alert--success { background: var(--green-light); color: var(--green-text); border: 1px solid var(--green-border); }
+.alert--danger { background: var(--red-light); color: var(--red-text); border: 1px solid var(--red-border); }
+
+/* Summaries */
+.runtime-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface-subtle);
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+}
+
+.runtime-summary__item {
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.runtime-summary__label { color: var(--text-secondary); }
+.runtime-summary__value { color: var(--text-primary); font-weight: 500; }
+
+.runtime-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.runtime-badge--fallback {
+  background: var(--orange-light);
+  color: var(--orange-text);
+  border: 1px solid var(--orange-border);
+}
+
+/* Dependencies */
+.runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
 }
 
-.runtime-panel--ok {
-  border-color: #bbf7d0;
-}
-
-.runtime-panel--active {
-  border-color: #d3e2ff;
-}
-
-.runtime-panel--error {
-  border-color: #fecaca;
-}
-
-.runtime-panel__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.runtime-panel__title {
-  margin: 0;
-  font-size: 18px;
-  color: #1f272e;
-}
-
-.runtime-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.runtime-panel__button {
-  min-height: 32px;
-  padding: 0 10px;
+.dependency-card {
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  border: 1px solid #d7dee8;
-  background: #ffffff;
-  color: #334155;
-  cursor: pointer;
-}
-
-.runtime-panel__button--primary {
-  background: #eaf2ff;
-  border-color: #d3e2ff;
-  color: #1e3a8a;
-}
-
-.runtime-panel__button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.runtime-panel__summary {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.runtime-panel__summary-separator {
-  margin: 0 6px;
-  color: #94a3b8;
-}
-
-.runtime-panel__fallback {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid #fecaca;
-  color: #b42318;
-  background: #fff7f7;
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.runtime-panel__status {
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.runtime-panel__status--active {
-  color: #1e3a8a;
-  background: #eaf2ff;
-}
-
-.runtime-panel__status--ok {
-  color: #166534;
-  background: #f0fdf4;
-}
-
-.runtime-panel__status--error {
-  color: #b42318;
-  background: #fff7f7;
-}
-
-.runtime-panel__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 10px;
-}
-
-.runtime-dependency {
-  border: 1px solid #e4e9ef;
-  border-radius: 10px;
-  background: #f8fafc;
-  padding: 10px;
+  padding: 12px;
   display: grid;
   gap: 8px;
+  background: var(--surface-card);
 }
 
-.runtime-dependency__header {
+.dependency-card__header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
 }
 
-.runtime-dependency__title,
-.runtime-dependency__summary,
-.runtime-dependency__version,
-.runtime-dependency__guidance-title {
+.dependency-card__title {
   margin: 0;
-}
-
-.runtime-dependency__title {
-  font-size: 15px;
-  color: #1f272e;
-}
-
-.runtime-dependency__summary,
-.runtime-dependency__version {
   font-size: 13px;
-  color: #64748b;
-}
-
-.runtime-dependency__status {
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid #d7dee8;
-  background: #fff;
-  color: #475569;
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.runtime-dependency__status--ready,
-.runtime-dependency__status--ok {
-  border-color: #bbf7d0;
-  color: #166534;
-  background: #f0fdf4;
-}
-
-.runtime-dependency__status--missing,
-.runtime-dependency__status--error,
-.runtime-dependency__status--blocked {
-  border-color: #fecaca;
-  color: #b42318;
-  background: #fff7f7;
-}
-
-.runtime-dependency__guidance-title {
-  font-size: 12px;
-  color: #475569;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
-.runtime-dependency__guidance-list {
+.dependency-card__summary {
   margin: 0;
-  padding-left: 18px;
-  color: #334155;
-  font-size: 13px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dependency-card__versions {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.version-label { color: var(--text-secondary); }
+.version-label strong { color: var(--text-primary); }
+
+.dependency-card__guidance {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.guidance-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.guidance-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
-.runtime-panel__logs {
-  border-top: 1px solid #e4e9ef;
-  padding-top: 10px;
+.status-pill {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pill--ready,
+.status-pill--ok {
+  background: var(--green-light);
+  color: var(--green-text);
+}
+
+.status-pill--missing,
+.status-pill--error,
+.status-pill--blocked {
+  background: var(--red-light);
+  color: var(--red-text);
+}
+
+/* Terminal logs */
+.terminal-logs {
+  background: #1a1a2e;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.terminal-logs__title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #a0a0b0;
+  text-transform: uppercase;
+}
+
+.terminal-logs__list {
+  margin: 0;
+  padding-left: 16px;
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 11px;
   display: grid;
-  gap: 8px;
+  gap: 2px;
 }
 
-.runtime-panel__logs-title {
+.empty-state {
   margin: 0;
+  text-align: center;
+  padding: 20px;
+  color: var(--text-secondary);
   font-size: 13px;
-  color: #334155;
-}
-
-.runtime-panel__logs-list {
-  margin: 0;
-  padding-left: 18px;
-  color: #475569;
-  font-size: 13px;
-  display: grid;
-  gap: 4px;
-}
-
-.runtime-panel__empty {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-@media (max-width: 900px) {
-  .runtime-panel__header {
-    flex-direction: column;
-  }
 }
 </style>

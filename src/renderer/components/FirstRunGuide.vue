@@ -1,25 +1,36 @@
 <template>
-  <section class="first-run-guide" :class="{ 'first-run-guide--compact': compact }">
-    <div class="first-run-guide__intro">
-      <p class="first-run-guide__eyebrow">Getting started</p>
-      <h4 class="first-run-guide__title">{{ title }}</h4>
-      <p class="first-run-guide__body">{{ body }}</p>
+  <section class="first-run" :class="{ 'first-run--compact': compact }">
+    <div class="first-run__header">
+      <div class="first-run__icon">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 3l7 4v6l-7 4-7-4V7l7-4z" />
+          <path d="M10 10v7" />
+          <path d="M3 7l7 3 7-3" />
+        </svg>
+      </div>
+      <div>
+        <h4 class="first-run__title">{{ title }}</h4>
+        <p class="first-run__body">{{ body }}</p>
+      </div>
     </div>
 
-    <ol class="first-run-guide__steps">
-      <li v-for="step in steps" :key="step" class="first-run-guide__step">
+    <ol class="first-run__steps">
+      <li v-for="step in steps" :key="step" class="first-run__step">
         {{ step }}
       </li>
     </ol>
 
-    <div v-if="links.length > 0" class="first-run-guide__links">
+    <div v-if="links.length > 0" class="first-run__links">
       <RouterLink
         v-for="link in links"
         :key="`${link.to}-${link.label}`"
         :to="link.to"
-        class="first-run-guide__link"
+        class="first-run__link"
       >
         {{ link.label }}
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 4l4 4-4 4" />
+        </svg>
       </RouterLink>
     </div>
   </section>
@@ -43,80 +54,88 @@ defineProps<{
 </script>
 
 <style scoped>
-.first-run-guide {
+.first-run {
   display: grid;
   gap: 14px;
   padding: 16px;
-  border-radius: 12px;
-  border: 1px solid #e4e9ef;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  border: 1px solid var(--blue-border);
+  background: var(--blue-light);
 }
 
-.first-run-guide--compact {
+.first-run--compact {
   padding: 14px;
 }
 
-.first-run-guide__intro,
-.first-run-guide__steps {
-  margin: 0;
-}
-
-.first-run-guide__eyebrow {
-  margin: 0 0 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.first-run-guide__title {
-  margin: 0;
-  font-size: 18px;
-  color: #1f272e;
-}
-
-.first-run-guide__body {
-  margin: 8px 0 0;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.first-run-guide__steps {
-  padding-left: 18px;
-  display: grid;
-  gap: 8px;
-  color: #334155;
-}
-
-.first-run-guide__step {
-  line-height: 1.5;
-}
-
-.first-run-guide__links {
+.first-run__header {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 10px;
 }
 
-.first-run-guide__link {
-  display: inline-flex;
+.first-run__icon {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
-  padding: 0 12px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
   border-radius: 8px;
-  border: 1px solid #d7dee8;
-  background: #f8fafc;
-  color: #334155;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 500;
+  background: var(--surface-card);
+  color: var(--blue-text);
+  border: 1px solid var(--blue-border);
 }
 
-.first-run-guide__link:hover {
-  background: #eef3f8;
-  border-color: #cfd9e6;
+.first-run__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.first-run__body {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.first-run__steps {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.first-run__step {
+  line-height: 1.5;
+}
+
+.first-run__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.first-run__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 100ms ease;
+}
+
+.first-run__link:hover {
+  background: var(--surface-hover);
 }
 </style>

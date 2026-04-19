@@ -1,13 +1,15 @@
 <template>
   <section class="workspaces-view">
-    <header class="workspaces-header">
-      <div>
-        <p class="card-eyebrow">Organization</p>
-        <h3 class="workspaces-title">Workspaces</h3>
+    <header class="view-header">
+      <h2 class="view-header__title">Workspaces</h2>
+      <div class="view-header__actions">
+        <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
+          </svg>
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
       </div>
-      <button type="button" class="workspaces-refresh" @click="refresh" :disabled="loading">
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
     </header>
 
     <StatePanel
@@ -18,7 +20,13 @@
       action-label="Retry"
       @action="refresh"
     />
-    <p v-if="successMessage" class="workspaces-success">{{ successMessage }}</p>
+
+    <div v-if="successMessage" class="alert alert--success">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 5.28a.75.75 0 010 1.06l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L7.25 8.75l3.47-3.47a.75.75 0 011.06 0z" />
+      </svg>
+      {{ successMessage }}
+    </div>
 
     <FirstRunGuide
       v-if="!loading && sites.length === 0"
@@ -29,26 +37,30 @@
       compact
     />
 
-    <form v-if="!loading" class="workspaces-form" @submit.prevent="onCreateWorkspace">
-      <label class="workspaces-field">
-        <span>Name</span>
-        <input v-model="createForm.name" type="text" required />
-      </label>
-      <label class="workspaces-field workspaces-field--full">
-        <span>Description</span>
-        <input v-model="createForm.description" type="text" placeholder="Workspace description" />
-      </label>
-      <label class="workspaces-field workspaces-field--full">
-        <span>Tags (comma separated)</span>
-        <input v-model="createForm.tagsText" type="text" placeholder="client-a, production" />
-      </label>
-      <div class="workspaces-actions workspaces-field--full">
-        <button type="submit" class="workspaces-create" :disabled="loading">Create workspace</button>
-      </div>
-    </form>
+    <!-- Create form -->
+    <div v-if="!loading" class="form-card">
+      <h3 class="form-card__title">Create new workspace</h3>
+      <form class="form-grid" @submit.prevent="onCreateWorkspace">
+        <label class="form-field">
+          <span class="form-label">Name</span>
+          <input v-model="createForm.name" type="text" required placeholder="Project Alpha" />
+        </label>
+        <label class="form-field form-field--full">
+          <span class="form-label">Description</span>
+          <input v-model="createForm.description" type="text" placeholder="Workspace description" />
+        </label>
+        <label class="form-field form-field--full">
+          <span class="form-label">Tags (comma separated)</span>
+          <input v-model="createForm.tagsText" type="text" placeholder="client-a, production" />
+        </label>
+        <div class="form-actions form-field--full">
+          <button type="submit" class="btn btn--primary" :disabled="loading">Create workspace</button>
+        </div>
+      </form>
+    </div>
 
     <StatePanel
-      v-else-if="loading"
+      v-if="loading"
       kind="loading"
       title="Loading workspaces"
       body="Pulling group assignments and workspace summaries."
@@ -61,45 +73,47 @@
       body="Create groups to organize sites by project or client."
     />
 
-    <ul v-else class="workspaces-grid">
-      <li v-for="workspace in workspaces" :key="workspace.id" class="workspace-card">
-        <h4 class="workspace-name">{{ workspace.name }}</h4>
-        <p class="workspace-description">{{ workspace.description || 'No description' }}</p>
-        <div class="workspace-meta">
-          <span class="workspace-sites">{{ workspace.siteCount }} site(s)</span>
-          <div class="workspace-tags">
-            <span v-for="tag in workspace.tags" :key="tag" class="workspace-tag">{{ tag }}</span>
-            <span v-if="workspace.tags.length === 0" class="workspace-tag workspace-tag--empty">no tags</span>
+    <!-- Workspace list -->
+    <div v-if="!loading && workspaces.length > 0" class="workspace-list">
+      <article v-for="workspace in workspaces" :key="workspace.id" class="workspace-card">
+        <div class="workspace-card__header">
+          <div>
+            <h4 class="workspace-card__name">{{ workspace.name }}</h4>
+            <p class="workspace-card__desc">{{ workspace.description || 'No description' }}</p>
+          </div>
+          <div class="workspace-card__meta">
+            <span class="meta-badge">{{ workspace.siteCount }} site(s)</span>
           </div>
         </div>
 
-        <div class="workspace-assignment">
-          <select v-model="assignmentSelection[workspace.id]">
-            <option value="">Assign site</option>
+        <div class="workspace-tags">
+          <span v-for="tag in workspace.tags" :key="tag" class="tag-pill">{{ tag }}</span>
+          <span v-if="workspace.tags.length === 0" class="tag-pill tag-pill--empty">no tags</span>
+        </div>
+
+        <div class="workspace-assign">
+          <select v-model="assignmentSelection[workspace.id]" class="workspace-assign__select">
+            <option value="">Assign site…</option>
             <option v-for="site in assignableSites(workspace.id)" :key="site.id" :value="site.id">
               {{ site.name }}
             </option>
           </select>
-          <button type="button" class="workspace-action" @click="onAssignSite(workspace.id)">Assign</button>
+          <button type="button" class="btn btn--subtle btn--sm" @click="onAssignSite(workspace.id)">Assign</button>
         </div>
 
-        <ul class="workspace-assigned-sites">
-          <li v-for="site in assignedSites(workspace.id)" :key="site.id">
-            <span>{{ site.name }}</span>
-            <button type="button" class="workspace-action workspace-action--subtle" @click="onUnassignSite(site.id)">
-              Remove
-            </button>
+        <ul v-if="assignedSites(workspace.id).length > 0" class="assigned-list">
+          <li v-for="site in assignedSites(workspace.id)" :key="site.id" class="assigned-item">
+            <span class="assigned-item__name">{{ site.name }}</span>
+            <button type="button" class="btn btn--subtle btn--sm" @click="onUnassignSite(site.id)">Remove</button>
           </li>
         </ul>
 
-        <div class="workspace-card-actions">
-          <button type="button" class="workspace-action" @click="onEditWorkspace(workspace.id)">Edit</button>
-          <button type="button" class="workspace-action workspace-action--danger" @click="onDeleteWorkspace(workspace.id, workspace.name)">
-            Delete
-          </button>
+        <div class="workspace-card__actions">
+          <button type="button" class="btn btn--subtle btn--sm" @click="onEditWorkspace(workspace.id)">Edit</button>
+          <button type="button" class="btn btn--danger btn--sm" @click="onDeleteWorkspace(workspace.id, workspace.name)">Delete</button>
         </div>
-      </li>
-    </ul>
+      </article>
+    </div>
 
     <ConfirmationDialog
       :open="deleteConfirmOpen"
@@ -243,156 +257,202 @@ const onConfirmDeleteWorkspace = async (): Promise<void> => {
 <style scoped>
 .workspaces-view {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
-.workspaces-header {
+.view-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
-.workspaces-title {
+.view-header__title {
   margin: 0;
-  font-size: 20px;
-  color: #1f272e;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.workspaces-refresh,
-.workspaces-create,
-.workspace-action {
-  border: 1px solid #d7dee8;
-  background: #ffffff;
-  color: #334155;
+.view-header__actions {
+  display: flex;
+  gap: 8px;
 }
 
-.workspaces-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.workspaces-field {
-  display: grid;
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-}
-
-.workspaces-field > span {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-size: 12px;
-  color: #64748b;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+  white-space: nowrap;
 }
 
-.workspaces-field--full,
-.workspaces-actions {
-  grid-column: 1 / -1;
+.btn:hover:not(:disabled) { background: var(--surface-hover); }
+.btn--subtle { border-color: var(--border-default); }
+.btn--primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+.btn--primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn--danger { border-color: var(--red-border); color: var(--red-text); background: var(--surface-card); }
+.btn--danger:hover:not(:disabled) { background: var(--red-light); }
+.btn--sm { min-height: 24px; padding: 0 8px; font-size: 11px; }
+
+/* Alert */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
-.workspaces-grid {
+.alert--success {
+  color: var(--green-text);
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+}
+
+/* Form card */
+.form-card {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.form-card__title {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.form-field { display: grid; gap: 4px; }
+.form-field--full { grid-column: 1 / -1; }
+.form-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.form-actions { display: flex; gap: 8px; padding-top: 4px; }
+
+/* Workspace list */
+.workspace-list {
+  display: grid;
   gap: 12px;
 }
 
 .workspace-card {
-  padding: 14px;
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  padding: 16px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
-.workspace-name {
-  margin: 0;
-  font-size: 16px;
-  color: #1f272e;
+.workspace-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.workspace-description {
+.workspace-card__name {
   margin: 0;
-  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.workspace-card__desc {
+  margin: 2px 0 0;
   font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.workspace-meta {
-  display: grid;
-  gap: 8px;
-}
-
-.workspace-sites {
+.meta-badge {
   font-size: 12px;
-  color: #475569;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--surface-subtle);
 }
 
 .workspace-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
-.workspace-tag {
+.tag-pill {
+  display: inline-flex;
   padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid #d7dee8;
-  background: #f8fafc;
-  color: #475569;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
   font-size: 11px;
+  font-weight: 500;
 }
 
-.workspace-tag--empty {
-  color: #64748b;
+.tag-pill--empty {
+  color: var(--text-muted);
+  border-style: dashed;
 }
 
-.workspace-assignment {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+.workspace-assign {
+  display: flex;
   gap: 8px;
 }
 
-.workspace-assigned-sites {
+.workspace-assign__select {
+  flex: 1;
+  min-height: 24px;
+  font-size: 12px;
+}
+
+.assigned-list {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
-.workspace-assigned-sites li {
+.assigned-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 8px;
-  border-radius: 8px;
-  background: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
 }
 
-.workspace-card-actions {
+.assigned-item__name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.workspace-card__actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.workspace-action {
-  min-height: 32px;
-  padding: 0 10px;
-}
-
-.workspace-action--subtle {
-  background: #f8fafc;
-}
-
-.workspace-action--danger {
-  border-color: #fca5a5;
-  color: #912018;
-  background: #fff7f7;
+  gap: 4px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
 }
 </style>

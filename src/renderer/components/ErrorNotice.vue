@@ -6,34 +6,40 @@
     aria-live="polite"
     aria-atomic="true"
   >
-    <p class="error-notice__eyebrow">Needs attention</p>
-    <h4 class="error-notice__title" :id="titleId">{{ notice.title }}</h4>
-    <p :id="reasonId" class="error-notice__reason">{{ notice.reason }}</p>
+    <div class="error-notice__icon">
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+      </svg>
+    </div>
+    <div class="error-notice__content">
+      <h4 class="error-notice__title" :id="titleId">{{ notice.title }}</h4>
+      <p :id="reasonId" class="error-notice__reason">{{ notice.reason }}</p>
 
-    <ul class="error-notice__steps" :aria-describedby="reasonId">
-      <li v-for="step in notice.steps" :key="step">{{ step }}</li>
-    </ul>
+      <ul v-if="notice.steps.length > 0" class="error-notice__steps" :aria-describedby="reasonId">
+        <li v-for="step in notice.steps" :key="step">{{ step }}</li>
+      </ul>
 
-    <div v-if="notice.actions.length > 0" class="error-notice__actions">
-      <template v-for="action in notice.actions" :key="action.id">
-        <RouterLink
-          v-if="action.to"
-          class="error-notice__action error-notice__action--link"
-          :to="action.to"
-          :aria-label="`${action.label}: navigate to resolve this error`"
-        >
-          {{ action.label }}
-        </RouterLink>
-        <button
-          v-else
-          type="button"
-          class="error-notice__action"
-          :aria-label="`${action.label}: take action to resolve this error`"
-          @click="$emit('action', action.id)"
-        >
-          {{ action.label }}
-        </button>
-      </template>
+      <div v-if="notice.actions.length > 0" class="error-notice__actions">
+        <template v-for="action in notice.actions" :key="action.id">
+          <RouterLink
+            v-if="action.to"
+            class="error-notice__action error-notice__action--link"
+            :to="action.to"
+            :aria-label="`${action.label}: navigate to resolve this error`"
+          >
+            {{ action.label }}
+          </RouterLink>
+          <button
+            v-else
+            type="button"
+            class="error-notice__action"
+            :aria-label="`${action.label}: take action to resolve this error`"
+            @click="$emit('action', action.id)"
+          >
+            {{ action.label }}
+          </button>
+        </template>
+      </div>
     </div>
   </section>
 </template>
@@ -59,74 +65,92 @@ const reasonId = computed(() => `error-notice-reason-${Math.random().toString(36
 
 <style scoped>
 .error-notice {
-  display: grid;
-  gap: 10px;
-  border-radius: 14px;
-  padding: 14px;
-  border: 1px solid rgba(145, 34, 34, 0.24);
-  background: linear-gradient(170deg, rgba(255, 238, 232, 0.95), rgba(255, 249, 247, 0.98));
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--red-border);
+  background: var(--red-light);
+  color: var(--red-text);
 }
 
 .error-notice--warning {
-  border-color: rgba(171, 110, 31, 0.24);
-  background: linear-gradient(170deg, rgba(255, 246, 224, 0.95), rgba(255, 251, 241, 0.98));
+  border-color: var(--orange-border);
+  background: var(--orange-light);
+  color: var(--orange-text);
 }
 
-.error-notice__eyebrow {
-  margin: 0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #7b2f23;
+.error-notice__icon {
+  margin-top: 1px;
 }
 
-.error-notice--warning .error-notice__eyebrow {
-  color: #8b5f12;
-}
-
-.error-notice__title,
-.error-notice__reason,
-.error-notice__steps {
-  margin: 0;
+.error-notice__content {
+  display: grid;
+  gap: 6px;
 }
 
 .error-notice__title {
-  font-size: 1rem;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .error-notice__reason {
-  color: #6f3428;
+  margin: 0;
+  font-size: 13px;
+  color: #9b2c2c;
+  line-height: 1.5;
+}
+
+.error-notice--warning .error-notice__reason {
+  color: #92400e;
 }
 
 .error-notice__steps {
+  margin: 4px 0 0;
   padding-left: 18px;
-  color: #6b4b3a;
+  font-size: 13px;
+  color: #9b2c2c;
+  line-height: 1.5;
+}
+
+.error-notice--warning .error-notice__steps {
+  color: #92400e;
 }
 
 .error-notice__actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  margin-top: 6px;
 }
 
 .error-notice__action {
-  border: 1px solid rgba(145, 34, 34, 0.18);
-  background: rgba(255, 255, 255, 0.7);
-  color: #70281e;
-  border-radius: 999px;
-  padding: 8px 12px;
-  text-decoration: none;
   font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--red-border);
+  background: var(--surface-card);
+  color: var(--red-text);
   cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.error-notice__action:hover {
+  background: var(--red-light);
 }
 
 .error-notice--warning .error-notice__action {
-  border-color: rgba(171, 110, 31, 0.18);
-  color: #7a5310;
+  border-color: var(--orange-border);
+  color: var(--orange-text);
 }
 
-.error-notice__action--link {
-  display: inline-flex;
-  align-items: center;
+.error-notice--warning .error-notice__action:hover {
+  background: var(--orange-light);
 }
 </style>

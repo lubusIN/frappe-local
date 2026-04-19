@@ -1,12 +1,12 @@
 <template>
   <section class="app-picker">
     <header class="app-picker-header">
-      <p class="app-picker-title">Apps</p>
+      <p class="app-picker-title">Apps Reference</p>
       <input
         v-model="query"
         class="app-picker-search"
         type="search"
-        placeholder="Search apps"
+        placeholder="Search available apps…"
         :disabled="disabled"
         @input="onSearch"
       />
@@ -21,25 +21,27 @@
       </select>
     </header>
 
-    <p v-if="state.error" class="app-picker-error">{{ state.error }}</p>
-    <p v-else-if="state.loading" class="app-picker-empty">Loading apps…</p>
-    <p v-else-if="items.length === 0" class="app-picker-empty">No matching apps.</p>
+    <div v-if="state.error" class="app-picker-state app-picker-state--error">{{ state.error }}</div>
+    <div v-else-if="state.loading" class="app-picker-state">Loading apps…</div>
+    <div v-else-if="items.length === 0" class="app-picker-state">No matching apps.</div>
 
     <ul v-else class="app-picker-grid">
       <li v-for="item in items" :key="item.id" class="app-picker-item">
-        <label>
+        <label class="app-picker-item__label">
           <input
             type="checkbox"
             :checked="modelValue.includes(item.id)"
             :disabled="disabled || !getCompatibility(item.id).isCompatible"
             @change="onToggle(item.id)"
           />
-          <span class="app-picker-item-name">{{ item.name }}</span>
-          <span class="app-picker-item-version">v{{ item.version }}</span>
+          <div class="app-picker-item__content">
+            <span class="app-picker-item__name">{{ item.name }}</span>
+            <span class="app-picker-item__version">v{{ item.version }}</span>
+          </div>
           <span
             v-if="getCompatibility(item.id).status !== 'ok'"
-            class="app-picker-item-compatibility"
-            :class="`app-picker-item-compatibility--${getCompatibility(item.id).status}`"
+            class="app-picker-item__compatibility"
+            :class="`app-picker-item__compatibility--${getCompatibility(item.id).status}`"
           >
             {{ getCompatibility(item.id).message }}
           </span>
@@ -108,3 +110,114 @@ const getCompatibility = (appId: string) => {
   });
 };
 </script>
+
+<style scoped>
+.app-picker {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-bg);
+}
+
+.app-picker-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.app-picker-title {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: none; /* Hide visually but keep if needed */
+}
+
+.app-picker-search {
+  flex: 1;
+  min-width: 140px;
+}
+
+.app-picker-filter {
+  min-width: 120px;
+}
+
+.app-picker-state {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--surface-card);
+  border: 1px dashed var(--border-light);
+  border-radius: 6px;
+}
+
+.app-picker-state--error {
+  color: var(--red-text);
+  border-color: var(--red-border);
+  background: var(--red-light);
+}
+
+.app-picker-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  border-radius: 6px;
+}
+
+.app-picker-item__label {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: border-color 100ms ease;
+}
+
+.app-picker-item__label:hover {
+  border-color: var(--border-default);
+}
+
+.app-picker-item__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-picker-item__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.app-picker-item__version {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.app-picker-item__compatibility {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.app-picker-item__compatibility--warning {
+  color: var(--orange-text);
+}
+
+.app-picker-item__compatibility--blocked {
+  color: var(--red-text);
+}
+</style>

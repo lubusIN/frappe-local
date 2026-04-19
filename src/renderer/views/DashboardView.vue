@@ -8,97 +8,86 @@
       :links="gettingStartedLinks"
     />
 
-    <section id="overview" class="dashboard-section dashboard-section--overview">
+    <section id="overview" class="dashboard-section">
+      <!-- Metric strip — Frappe Cloud style -->
       <div class="metric-strip">
         <article
           v-for="metric in overviewMetrics"
           :key="metric.label"
-          class="metric-card"
-          :class="metric.tone ? `metric-card--${metric.tone}` : ''"
+          class="metric-cell"
         >
-          <p class="metric-card__label">{{ metric.label }}</p>
-          <p class="metric-card__value">{{ metric.value }}</p>
-          <p class="metric-card__detail">{{ metric.detail }}</p>
+          <p class="metric-cell__label">{{ metric.label }}</p>
+          <div class="metric-cell__row">
+            <p class="metric-cell__value" :class="metric.tone ? `metric-cell__value--${metric.tone}` : ''">{{ metric.value }}</p>
+            <p v-if="metric.sublabel" class="metric-cell__sublabel">{{ metric.sublabel }}</p>
+          </div>
         </article>
       </div>
 
+      <!-- Two-column layout: Site info + Chart -->
       <div class="overview-grid">
-        <article class="overview-panel">
-          <header class="overview-panel__header">
-            <div>
-              <h2 class="overview-panel__title">Workspace Information</h2>
-              <p class="overview-panel__body">Default runtime and storage settings used by the desktop workspace.</p>
-            </div>
-            <span class="overview-panel__tag">{{ settingsLoading ? 'Loading' : 'Configured' }}</span>
-          </header>
-
-          <dl class="overview-table">
-            <div v-for="item in workspaceInformation" :key="item.label" class="overview-table__row">
+        <!-- Site Information panel -->
+        <article class="info-panel">
+          <h2 class="info-panel__title">Site Information</h2>
+          <dl class="info-table">
+            <div v-for="item in workspaceInformation" :key="item.label" class="info-table__row">
               <dt>{{ item.label }}</dt>
-              <dd>{{ item.value }}</dd>
+              <dd>
+                <template v-if="item.flag">
+                  <span class="info-flag">{{ item.flag }}</span>
+                </template>
+                {{ item.value }}
+              </dd>
             </div>
           </dl>
+          <div class="info-panel__footer">
+            <button class="tag-btn">Add Tag +</button>
+          </div>
         </article>
 
-        <article class="overview-panel overview-panel--chart">
-          <header class="overview-panel__header">
-            <div>
-              <h2 class="overview-panel__title">Daily Activity</h2>
-              <p class="overview-panel__body">Recent task events across benches, sites, runtime, and import flows.</p>
-            </div>
-            <span class="overview-panel__tag" :class="`overview-panel__tag--${runtimeStatusTone}`">
-              {{ runtimeStatusLabel }}
-            </span>
+        <!-- Daily Usage chart panel -->
+        <article class="chart-panel">
+          <header class="chart-panel__header">
+            <h2 class="chart-panel__title">Daily Usage</h2>
+            <RouterLink to="/console" class="chart-panel__link">All analytics →</RouterLink>
           </header>
 
-          <div class="activity-card">
-            <div class="activity-card__meta">
-              <div>
-                <p class="activity-card__metric-label">Recent events</p>
-                <p class="activity-card__metric-value">{{ activityTotal }}</p>
-              </div>
-              <RouterLink to="/console" class="overview-action">Open Console</RouterLink>
+          <div class="chart-area">
+            <div class="chart-y-labels">
+              <span v-for="tick in chartYTicks" :key="tick">{{ tick }}</span>
             </div>
-
-            <div class="activity-chart">
-              <svg viewBox="0 0 320 168" class="activity-chart__svg" aria-hidden="true">
-                <path d="M20 136H300" class="activity-chart__axis" />
-                <path d="M20 96H300" class="activity-chart__grid" />
-                <path d="M20 56H300" class="activity-chart__grid" />
-                <path :d="activityAreaPath" class="activity-chart__area" />
-                <path :d="activityLinePath" class="activity-chart__line" />
+            <div class="chart-canvas">
+              <svg viewBox="0 0 320 140" class="chart-svg" preserveAspectRatio="none" aria-hidden="true">
+                <!-- Grid lines -->
+                <line v-for="(tick, i) in chartYTicks" :key="`grid-${i}`"
+                  x1="0" :y1="getGridY(i)" x2="320" :y2="getGridY(i)"
+                  class="chart-grid" />
+                <!-- Area -->
+                <path :d="activityAreaPath" class="chart__area" />
+                <!-- Line -->
+                <path :d="activityLinePath" class="chart__line" />
+                <!-- Points -->
                 <circle
                   v-for="point in activityChartPoints"
                   :key="point.label"
                   :cx="point.x"
                   :cy="point.y"
-                  r="3.5"
-                  class="activity-chart__point"
+                  r="3"
+                  class="chart__point"
                 />
               </svg>
-              <div class="activity-chart__labels">
-                <span v-for="point in activityChartPoints" :key="`${point.label}-label`">{{ point.label }}</span>
-              </div>
             </div>
-
-            <dl class="activity-summary">
-              <div v-for="item in operationalSummary" :key="item.label" class="activity-summary__item">
-                <dt>{{ item.label }}</dt>
-                <dd>{{ item.value }}</dd>
-              </div>
-            </dl>
+          </div>
+          <div class="chart-x-labels">
+            <span v-for="point in activityChartPoints" :key="`${point.label}-label`">{{ point.label }}</span>
           </div>
         </article>
       </div>
     </section>
 
     <section id="runtime" class="dashboard-section">
-      <div class="section-heading">
-        <div>
-          <h2 class="section-title">Runtime Diagnostics</h2>
-          <p class="section-copy">Inspect runtime dependencies, fallback behavior, and guided repair actions.</p>
-        </div>
-      </div>
+      <h2 class="section-heading">Runtime Diagnostics</h2>
+      <p class="section-desc">Inspect runtime dependencies, fallback behavior, and guided repair actions.</p>
       <RuntimeHealthPanel
         :health="runtimeHealth"
         :loading="runtimeLoading"
@@ -113,12 +102,8 @@
     </section>
 
     <section id="activity" class="dashboard-section">
-      <div class="section-heading">
-        <div>
-          <h2 class="section-title">Activity</h2>
-          <p class="section-copy">Recent tasks and long-running operations across benches, sites, runtime, and imports.</p>
-        </div>
-      </div>
+      <h2 class="section-heading">Activity</h2>
+      <p class="section-desc">Recent tasks and long-running operations across benches, sites, runtime, and imports.</p>
       <TaskProgressCenter
         :items="filteredTasks"
         :loading="progressLoading"
@@ -134,24 +119,41 @@
     </section>
 
     <section id="shortcuts" class="dashboard-section">
-      <div class="section-heading">
-        <div>
-          <h2 class="section-title">Quick Actions</h2>
-          <p class="section-copy">Jump directly into the core operational areas from the overview surface.</p>
-        </div>
-      </div>
+      <h2 class="section-heading">Quick Actions</h2>
+      <p class="section-desc">Jump directly into the core operational areas from the overview surface.</p>
       <div class="shortcut-grid">
-        <RouterLink to="/benches" class="action-card">
-          <p class="card-eyebrow">Benches</p>
-          <p class="card-label">Manage environments</p>
+        <RouterLink to="/benches" class="shortcut-card">
+          <div class="shortcut-card__icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 7v10h14V7" /><path d="M4 7h16" />
+            </svg>
+          </div>
+          <div>
+            <p class="shortcut-card__title">Manage Benches</p>
+            <p class="shortcut-card__desc">Create and control bench environments</p>
+          </div>
         </RouterLink>
-        <RouterLink to="/sites" class="action-card">
-          <p class="card-eyebrow">Sites</p>
-          <p class="card-label">Manage local sites</p>
+        <RouterLink to="/sites" class="shortcut-card">
+          <div class="shortcut-card__icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="11" r="7" /><path d="M5 11h14" />
+            </svg>
+          </div>
+          <div>
+            <p class="shortcut-card__title">Manage Sites</p>
+            <p class="shortcut-card__desc">View and control local sites</p>
+          </div>
         </RouterLink>
-        <RouterLink to="/settings" class="action-card">
-          <p class="card-eyebrow">Settings</p>
-          <p class="card-label">Configure preferences</p>
+        <RouterLink to="/settings" class="shortcut-card">
+          <div class="shortcut-card__icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+            </svg>
+          </div>
+          <div>
+            <p class="shortcut-card__title">Configure Settings</p>
+            <p class="shortcut-card__desc">Set runtime defaults and preferences</p>
+          </div>
         </RouterLink>
       </div>
     </section>
@@ -347,43 +349,40 @@ const runtimeStatusTone = computed(() => {
 
 const overviewMetrics = computed(() => [
   {
-    label: 'Benches',
-    value: String(setupSummary.benches),
-    detail: 'Local environments ready for lifecycle actions.',
+    label: 'Current Plan',
+    value: 'Local Dev',
+    sublabel: 'Desktop runtime',
     tone: null,
   },
   {
-    label: 'Sites',
-    value: String(setupSummary.sites),
-    detail: 'Sites attached to benches and available for operations.',
+    label: 'Compute',
+    value: `${setupSummary.benches} benches`,
+    sublabel: `${setupSummary.sites} sites active`,
     tone: null,
   },
   {
-    label: 'Workspaces',
-    value: String(setupSummary.workspaces),
-    detail: 'Project groupings used to keep navigation manageable.',
+    label: 'Storage',
+    value: `${setupSummary.workspaces} workspaces`,
+    sublabel: 'Project groupings',
     tone: null,
   },
   {
     label: 'Runtime',
     value: runtimeStatusLabel.value,
-    detail: runtimeHealth.value
-      ? `${runtimeHealth.value.selectedRuntime} selected${runtimeHealth.value.fallbackApplied ? ' via fallback' : ''}.`
-      : 'Runtime diagnostics have not returned a result yet.',
+    sublabel: runtimeHealth.value
+      ? `${runtimeHealth.value.selectedRuntime}${runtimeHealth.value.fallbackApplied ? ' (fallback)' : ''}`
+      : 'Diagnostics pending',
     tone: runtimeStatusTone.value,
   },
 ]);
 
 const workspaceInformation = computed(() => [
-  { label: 'Storage Path', value: settingsForm.value.storagePath },
-  { label: 'Preferred Runtime', value: settingsForm.value.runtimePreference },
-  { label: 'Default Frappe', value: settingsForm.value.defaultFrappeVersion },
-  { label: 'Terminal', value: settingsForm.value.terminalPreference },
-  { label: 'Editor', value: settingsForm.value.editorPreference },
-  {
-    label: 'Updates',
-    value: `${settingsForm.value.updateChannel}${settingsForm.value.autoUpdateEnabled ? ' / auto enabled' : ' / manual'}`,
-  },
+  { label: 'Owned by', value: settingsForm.value.editorPreference || 'local@frappe.cafe', flag: null },
+  { label: 'Created by', value: settingsForm.value.runtimePreference || 'Administrator', flag: null },
+  { label: 'Runtime', value: settingsForm.value.runtimePreference || 'docker', flag: null },
+  { label: 'Region', value: 'Local Machine', flag: '🖥️' },
+  { label: 'Storage Path', value: settingsForm.value.storagePath || '~/Library/Application Support/Frappe Cafe', flag: null },
+  { label: 'Frappe Version', value: settingsForm.value.defaultFrappeVersion || '15.0.0', flag: null },
 ]);
 
 const operationalSummary = computed(() => [
@@ -435,12 +434,22 @@ const activitySeries = computed(() => {
 
 const activityTotal = computed(() => activitySeries.value.reduce((sum, item) => sum + item.count, 0));
 
+const chartYTicks = computed(() => {
+  const maxCount = Math.max(...activitySeries.value.map((item) => item.count), 1);
+  const step = Math.ceil(maxCount / 3);
+  return [step * 3, step * 2, step, 0].map(String);
+});
+
+const getGridY = (index: number): number => {
+  return 10 + (index * 120) / 3;
+};
+
 const activityChartPoints = computed(() => {
   const maxCount = Math.max(...activitySeries.value.map((item) => item.count), 1);
 
   return activitySeries.value.map((item, index) => {
-    const x = 20 + (index * 280) / Math.max(activitySeries.value.length - 1, 1);
-    const y = 136 - (item.count / maxCount) * 92;
+    const x = 10 + (index * 300) / Math.max(activitySeries.value.length - 1, 1);
+    const y = 130 - (item.count / maxCount) * 110;
 
     return {
       ...item,
@@ -458,14 +467,14 @@ const activityLinePath = computed(() =>
 
 const activityAreaPath = computed(() => {
   if (activityChartPoints.value.length === 0) {
-    return 'M20 136L300 136';
+    return 'M10 130L310 130';
   }
 
   const firstPoint = activityChartPoints.value[0];
   const lastPoint = activityChartPoints.value[activityChartPoints.value.length - 1];
   const line = activityLinePath.value.replace(/^M/, 'L');
 
-  return `M${firstPoint.x} 136 ${line} L${lastPoint.x} 136 Z`;
+  return `M${firstPoint.x} 130 ${line} L${lastPoint.x} 130 Z`;
 });
 </script>
 
@@ -477,399 +486,361 @@ const activityAreaPath = computed(() => {
 
 .dashboard-section {
   display: grid;
-  gap: 14px;
-}
-
-.dashboard-section--overview {
   gap: 16px;
 }
 
-.section-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f272e;
-}
-
 .section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.section-copy {
-  margin: 6px 0 0;
-  font-size: 14px;
+.section-desc {
+  margin: -8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
   line-height: 1.5;
-  color: #687381;
 }
+
+/* ============================================================
+   Metric Strip — Frappe Cloud "Current Plan / Compute / Storage / Database" bar
+   ============================================================ */
 
 .metric-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid #e4e9ef;
-  border-radius: 16px;
-  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
   overflow: hidden;
 }
 
-.metric-card {
-  display: grid;
-  gap: 8px;
-  min-height: 132px;
-  padding: 18px 20px;
-  border-right: 1px solid #e4e9ef;
+.metric-cell {
+  padding: 16px 20px;
+  border-right: 1px solid var(--border-light);
 }
 
-.metric-card:last-child {
+.metric-cell:last-child {
   border-right: 0;
 }
 
-.metric-card__label {
+.metric-cell__label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.metric-cell__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metric-cell__value {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.metric-cell__value--ok {
+  color: var(--green-text);
+}
+
+.metric-cell__value--warning {
+  color: var(--red-text);
+}
+
+.metric-cell__sublabel {
   margin: 0;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
-.metric-card__value {
-  margin: 0;
-  font-size: 30px;
-  line-height: 1.05;
-  color: #1f272e;
-}
-
-.metric-card__detail {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #687381;
-}
-
-.metric-card--ok .metric-card__value {
-  color: #166534;
-}
-
-.metric-card--warning .metric-card__value {
-  color: #9b2c2c;
-}
+/* ============================================================
+   Overview Grid — Side by side info + chart
+   ============================================================ */
 
 .overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 
-.overview-panel {
-  border: 1px solid #e4e9ef;
-  border-radius: 16px;
-  background: #ffffff;
+/* Info panel — Frappe Cloud "Site Information" */
+.info-panel {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
   overflow: hidden;
 }
 
-.overview-panel__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid #e4e9ef;
-}
-
-.overview-panel__title {
+.info-panel__title {
   margin: 0;
-  font-size: 18px;
-  color: #1f272e;
-}
-
-.overview-panel__body {
-  margin: 6px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #687381;
-}
-
-.overview-panel__tag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: #f8fafc;
-  border: 1px solid #e4e9ef;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.overview-panel__tag--ok {
-  color: #166534;
-  background: #ecfdf3;
-  border-color: #bbf7d0;
-}
-
-.overview-panel__tag--warning {
-  color: #9b2c2c;
-  background: #fff5f5;
-  border-color: #fecaca;
-}
-
-.overview-table {
-  margin: 0;
-}
-
-.overview-table__row {
-  display: grid;
-  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
-  gap: 12px;
-  padding: 14px 20px;
-  border-top: 1px solid #edf2f7;
-}
-
-.overview-table__row:first-child {
-  border-top: 0;
-}
-
-.overview-table__row dt,
-.overview-table__row dd {
-  margin: 0;
-}
-
-.overview-table__row dt {
-  color: #687381;
-  font-size: 13px;
-}
-
-.overview-table__row dd {
-  color: #1f272e;
+  padding: 16px 20px;
   font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.info-table {
+  margin: 0;
+}
+
+.info-table__row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-light);
+  align-items: center;
+}
+
+.info-table__row:last-child {
+  border-bottom: 0;
+}
+
+.info-table__row dt {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.info-table__row dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
   word-break: break-word;
 }
 
-.overview-panel__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 16px 20px 20px;
-  border-top: 1px solid #edf2f7;
+.info-flag {
+  font-size: 14px;
 }
 
-.overview-action {
+.info-panel__footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-light);
+}
+
+.tag-btn {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid #d7dee8;
-  background: #ffffff;
-  color: #334155;
-  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px dashed var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.overview-action:hover {
-  background: #f8fafc;
-  border-color: #cfd9e6;
+.tag-btn:hover {
+  background: var(--surface-hover);
+  border-style: solid;
 }
 
-.overview-panel--chart {
-  background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+/* ============================================================
+   Chart panel — Frappe Cloud "Daily Usage"
+   ============================================================ */
+
+.chart-panel {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.activity-card {
-  display: grid;
-  gap: 18px;
-  padding: 18px 20px 20px;
-}
-
-.activity-card__meta {
+.chart-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.activity-card__metric-label {
+.chart-panel__title {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #64748b;
+  color: var(--text-primary);
 }
 
-.activity-card__metric-value {
-  margin: 6px 0 0;
-  font-size: 30px;
-  line-height: 1.05;
-  color: #1f272e;
+.chart-panel__link {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
 }
 
-.activity-chart {
-  display: grid;
+.chart-panel__link:hover {
+  color: var(--text-primary);
+}
+
+.chart-area {
+  display: flex;
   gap: 8px;
+  padding: 20px 20px 8px;
+  flex: 1;
 }
 
-.activity-chart__svg {
+.chart-y-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 20px;
+  text-align: right;
+  padding: 4px 0;
+}
+
+.chart-canvas {
+  flex: 1;
+}
+
+.chart-svg {
   width: 100%;
-  height: auto;
+  height: 100%;
+  min-height: 120px;
   overflow: visible;
 }
 
-.activity-chart__axis,
-.activity-chart__grid {
-  fill: none;
+.chart-grid {
+  stroke: var(--border-light);
   stroke-width: 1;
+  stroke-dasharray: 4 4;
 }
 
-.activity-chart__axis {
-  stroke: #cfd9e6;
-}
-
-.activity-chart__grid {
-  stroke: #e8edf3;
-}
-
-.activity-chart__area {
-  fill: rgba(147, 51, 234, 0.12);
+.chart__area {
+  fill: rgba(147, 51, 234, 0.08);
   stroke: none;
 }
 
-.activity-chart__line {
+.chart__line {
   fill: none;
   stroke: #8b5cf6;
-  stroke-width: 3;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.activity-chart__point {
+.chart__point {
   fill: #ffffff;
   stroke: #8b5cf6;
   stroke-width: 2;
 }
 
-.activity-chart__labels {
+.chart-x-labels {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  font-size: 12px;
-  color: #64748b;
+  padding: 0 20px 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-left: 28px;
 }
 
-.activity-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.activity-summary__item {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border: 1px solid #edf2f7;
-  border-radius: 14px;
-  background: #f9fbfd;
-}
-
-.activity-summary__item dt,
-.activity-summary__item dd {
-  margin: 0;
-}
-
-.activity-summary__item dt {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.activity-summary__item dd {
-  font-size: 14px;
-  color: #1f272e;
-}
+/* ============================================================
+   Shortcut Grid
+   ============================================================ */
 
 .shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
-.card-eyebrow {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.card-label {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #64748b;
-}
-
-.action-card {
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  min-height: 116px;
-  padding: 18px;
-  border: 1px solid #e4e9ef;
-  border-radius: 16px;
-  background: #ffffff;
+.shortcut-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
   text-decoration: none;
   color: inherit;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition: background-color 100ms ease, border-color 100ms ease;
 }
 
-.action-card:hover {
-  background: #f8fafc;
-  border-color: #d7dee8;
+.shortcut-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-default);
 }
+
+.shortcut-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+}
+
+.shortcut-card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shortcut-card__desc {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
 
 @media (max-width: 1080px) {
   .metric-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .metric-card:nth-child(2n) {
+  .metric-cell:nth-child(2n) {
     border-right: 0;
   }
 
-  .metric-card:nth-child(n + 3) {
-    border-top: 1px solid #e4e9ef;
+  .metric-cell:nth-child(n + 3) {
+    border-top: 1px solid var(--border-light);
   }
 
   .overview-grid {
     grid-template-columns: 1fr;
   }
+
+  .shortcut-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
-  .section-heading,
-  .overview-panel__header {
-    flex-direction: column;
-  }
-
   .metric-strip {
     grid-template-columns: 1fr;
   }
 
-  .metric-card {
+  .metric-cell {
     border-right: 0;
-    border-top: 1px solid #e4e9ef;
+    border-bottom: 1px solid var(--border-light);
   }
 
-  .metric-card:first-child {
-    border-top: 0;
-  }
-
-  .overview-table__row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+  .metric-cell:last-child {
+    border-bottom: 0;
   }
 }
 </style>

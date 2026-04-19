@@ -2,7 +2,7 @@
   <div class="site-filters-panel">
     <div class="site-filters-header">
       <h4 class="site-filters-title">Filter Sites</h4>
-      <button v-if="hasActiveFilters" type="button" class="site-filters-clear" @click="$emit('clear')">
+      <button v-if="hasActiveFilters" type="button" class="btn btn--subtle btn--sm" @click="$emit('clear')">
         Clear filters
       </button>
     </div>
@@ -12,7 +12,7 @@
         <input
           type="text"
           class="site-filter-search"
-          placeholder="Search by name..."
+          placeholder="Search by name…"
           :value="filterCriteria.query"
           @input="$emit('update:query', $event.target.value)"
         />
@@ -91,10 +91,10 @@ const hasActiveFilters = computed(() => {
 
 <style scoped>
 .site-filters-panel {
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  padding: 14px;
-  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--surface-card);
 }
 
 .site-filters-header {
@@ -106,26 +106,31 @@ const hasActiveFilters = computed(() => {
 
 .site-filters-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1f272e;
+  color: var(--text-primary);
 }
 
-.site-filters-clear {
-  min-height: 30px;
-  padding: 0 10px;
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-size: 12px;
-  background: #f8fafc;
-  border: 1px solid #d7dee8;
-  border-radius: 8px;
-  color: #334155;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 100ms ease;
 }
 
-.site-filters-clear:hover {
-  background: #eef3f8;
-  border-color: #cfd9e6;
-}
+.btn:hover:not(:disabled) { background: var(--surface-hover); }
+.btn--subtle { border-color: var(--border-default); }
+.btn--sm { min-height: 24px; padding: 0 8px; font-size: 11px; }
 
 .site-filters-controls {
   display: grid;
@@ -141,32 +146,48 @@ const hasActiveFilters = computed(() => {
 .site-filter-search {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d7dee8;
-  border-radius: 8px;
-  font-size: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.site-filter-search:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--text-primary);
 }
 
 .site-filter-select {
   padding: 8px 12px;
-  border: 1px solid #d7dee8;
-  border-radius: 8px;
-  font-size: 14px;
-  background-color: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font-size: 13px;
+  background-color: var(--surface-card);
+  color: var(--text-primary);
   cursor: pointer;
+}
+
+.site-filter-select:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--text-primary);
 }
 
 .site-filters-tags {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #e4e9ef;
+  border-top: 1px solid var(--border-light);
 }
 
 .site-filters-tags-label {
   margin: 0 0 8px 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-secondary);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .site-filters-tags-list {
@@ -181,12 +202,11 @@ const hasActiveFilters = computed(() => {
   gap: 6px;
   font-size: 13px;
   cursor: pointer;
-  color: #334155;
+  color: var(--text-primary);
 }
 
 .site-filter-tag input {
   cursor: pointer;
-  width: 16px;
-  height: 16px;
+  accent-color: var(--primary);
 }
 </style>

@@ -1,38 +1,32 @@
 <template>
   <section class="progress-center" aria-live="polite">
-    <header class="progress-header">
-      <div>
-        <p class="progress-eyebrow">Unified Progress</p>
-        <h3 class="progress-title">Task Activity</h3>
+    <div class="progress-filters">
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select :value="statusFilter" class="filter-select" @change="onStatusChange">
+          <option value="all">All</option>
+          <option value="queued">Queued</option>
+          <option value="running">Running</option>
+          <option value="success">Success</option>
+          <option value="failure">Failure</option>
+        </select>
       </div>
-      <div class="progress-filters">
-        <label>
-          <span>Status</span>
-          <select :value="statusFilter" @change="onStatusChange">
-            <option value="all">All</option>
-            <option value="queued">Queued</option>
-            <option value="running">Running</option>
-            <option value="success">Success</option>
-            <option value="failure">Failure</option>
-          </select>
-        </label>
-        <label>
-          <span>Resource</span>
-          <select :value="resourceFilter" @change="onResourceChange">
-            <option value="all">All</option>
-            <option value="bench">Bench</option>
-            <option value="site">Site</option>
-            <option value="import">Import/Export</option>
-            <option value="runtime">Runtime</option>
-            <option value="system">System</option>
-          </select>
-        </label>
-        <label class="recent-toggle">
-          <input type="checkbox" :checked="recentOnly" @change="onRecentToggle" />
-          <span>Recent 24h</span>
-        </label>
+      <div class="filter-group">
+        <label class="filter-label">Resource</label>
+        <select :value="resourceFilter" class="filter-select" @change="onResourceChange">
+          <option value="all">All</option>
+          <option value="bench">Bench</option>
+          <option value="site">Site</option>
+          <option value="import">Import/Export</option>
+          <option value="runtime">Runtime</option>
+          <option value="system">System</option>
+        </select>
       </div>
-    </header>
+      <label class="recent-toggle">
+        <input type="checkbox" :checked="recentOnly" @change="onRecentToggle" />
+        <span>Recent 24h</span>
+      </label>
+    </div>
 
     <p v-if="loading" class="progress-empty">Subscribing to task stream…</p>
     <ErrorNotice
@@ -43,18 +37,24 @@
     />
     <p v-else-if="items.length === 0" class="progress-empty">No matching tasks yet.</p>
 
-    <ul v-else class="progress-list">
-      <li v-for="item in items" :key="item.taskId" class="progress-item">
-        <div class="progress-meta">
-          <span class="pill" :class="`pill--${item.status}`">{{ item.status }}</span>
-          <span class="resource">{{ item.resource }}</span>
-          <time :datetime="item.timestamp">{{ formatTime(item.timestamp) }}</time>
+    <div v-else class="progress-list">
+      <div v-for="item in items" :key="item.taskId" class="progress-item">
+        <div class="progress-item__header">
+          <div class="progress-item__meta">
+            <span class="status-pill" :class="`status-pill--${item.status}`">{{ item.status }}</span>
+            <span class="resource-badge">{{ item.resource }}</span>
+          </div>
+          <time class="progress-item__time" :datetime="item.timestamp">{{ formatTime(item.timestamp) }}</time>
         </div>
-        <p class="task-name">{{ item.taskName }}</p>
-        <p class="task-message">{{ item.message }}</p>
-        <RouterLink class="task-link" :to="taskRoute(item)">Open related view</RouterLink>
-      </li>
-    </ul>
+        <div class="progress-item__body">
+          <p class="task-name">{{ item.taskName }}</p>
+          <p class="task-message">{{ item.message }}</p>
+        </div>
+        <div class="progress-item__footer">
+          <RouterLink class="task-link" :to="taskRoute(item)">Open context &rarr;</RouterLink>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -136,179 +136,167 @@ const errorNotice = computed(() =>
 
 <style scoped>
 .progress-center {
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  padding: 14px;
-  background: #ffffff;
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-}
-
-.progress-eyebrow {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #64748b;
-}
-
-.progress-title {
-  margin: 2px 0 0;
-  font-size: 1rem;
-  color: #1f272e;
+  display: grid;
+  gap: 16px;
 }
 
 .progress-filters {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.progress-filters label {
+.filter-group {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.75rem;
-  color: #64748b;
+  align-items: center;
+  gap: 8px;
 }
 
-.progress-filters select {
+.filter-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.filter-select {
   min-width: 120px;
   min-height: 32px;
-  border: 1px solid #d7dee8;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #334155;
-}
-
-.progress-filters select:focus-visible {
-  outline: none;
-  border-color: #7aa2f7;
-  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.2);
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
 }
 
 .recent-toggle {
-  justify-content: flex-end;
-  flex-direction: row !important;
-  align-items: center;
-  gap: 6px !important;
-}
-
-.recent-toggle input {
-  accent-color: #2563eb;
-}
-
-.progress-empty,
-.progress-error {
-  margin: 14px 0 0;
-  color: #64748b;
-}
-
-.progress-error {
-  color: #b42318;
-}
-
-.progress-list {
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-
-.progress-item {
-  border: 1px solid #e4e9ef;
-  border-radius: 10px;
-  background: #f8fafc;
-  padding: 10px;
-}
-
-.progress-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.pill {
+.progress-empty {
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.progress-list {
+  display: grid;
+  gap: 12px;
+}
+
+.progress-item {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-subtle);
+  border-radius: 8px 8px 0 0;
+}
+
+.progress-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-item__time {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.status-pill {
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
   text-transform: capitalize;
+  background: var(--gray-light);
+  color: var(--gray-text);
+}
+
+.status-pill--running {
+  background: var(--blue-light);
+  color: var(--blue-text);
+}
+
+.status-pill--success {
+  background: var(--green-light);
+  color: var(--green-text);
+}
+
+.status-pill--failure {
+  background: var(--red-light);
+  color: var(--red-text);
+}
+
+.resource-badge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   font-weight: 600;
-  border: 1px solid transparent;
 }
 
-.pill--queued {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #475569;
-}
-
-.pill--running {
-  background: #eaf2ff;
-  border-color: #d3e2ff;
-  color: #1e3a8a;
-}
-
-.pill--success {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #166534;
-}
-
-.pill--failure {
-  background: #fff7f7;
-  border-color: #fecaca;
-  color: #b42318;
+.progress-item__body {
+  padding: 16px;
+  display: grid;
+  gap: 4px;
 }
 
 .task-name {
-  margin: 6px 0 0;
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
-  color: #1f272e;
+  color: var(--text-primary);
 }
 
 .task-message {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 0.9rem;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.progress-item__footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .task-link {
-  margin-top: 6px;
-  display: inline-block;
-  font-size: 0.82rem;
-  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-link);
+  text-decoration: none;
 }
 
 .task-link:hover {
-  color: #1e40af;
-}
-
-.task-link:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.24);
-  border-radius: 4px;
+  color: var(--text-link-hover);
+  text-decoration: underline;
 }
 
 @media (max-width: 760px) {
-  .progress-header {
+  .progress-filters {
     flex-direction: column;
-  }
-
-  .progress-filters label {
-    width: 100%;
-  }
-
-  .progress-filters select {
-    min-width: 0;
+    align-items: flex-start;
   }
 }
 </style>

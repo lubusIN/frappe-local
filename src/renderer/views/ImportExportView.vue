@@ -1,18 +1,15 @@
 <template>
-  <section class="import-export-view">
-    <header class="import-export-header">
-      <div>
-        <p class="card-eyebrow">Import / Export</p>
-        <h3 class="import-export-title">Import package review</h3>
+  <section class="import-view">
+    <header class="view-header">
+      <h2 class="view-header__title">Import / Export</h2>
+      <div class="view-header__actions">
+        <button type="button" class="btn btn--subtle" :disabled="loading" @click="refreshContext">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
+          </svg>
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
       </div>
-      <button
-        type="button"
-        class="import-export-refresh"
-        :disabled="loading"
-        @click="refreshContext"
-      >
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
     </header>
 
     <ErrorNotice
@@ -21,7 +18,13 @@
       tone="danger"
       @action="onErrorAction"
     />
-    <p v-if="successMessage" class="import-export-success">{{ successMessage }}</p>
+
+    <div v-if="successMessage" class="alert alert--success">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 5.28a.75.75 0 010 1.06l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L7.25 8.75l3.47-3.47a.75.75 0 011.06 0z" />
+      </svg>
+      {{ successMessage }}
+    </div>
 
     <FirstRunGuide
       v-if="!loading && benches.length === 0"
@@ -32,122 +35,108 @@
       compact
     />
 
-    <form class="import-export-form" @submit.prevent="onValidatePackage">
-      <div class="import-export-steps import-export-field--full">
-        <p class="import-export-step" :class="{ 'import-export-step--active': wizardStep === 1 }">1. Locate package</p>
-        <p class="import-export-step" :class="{ 'import-export-step--active': wizardStep === 2 }">2. Review validation</p>
-        <p class="import-export-step" :class="{ 'import-export-step--active': wizardStep === 3 }">3. Map bench</p>
+    <!-- Wizard form -->
+    <div class="form-card">
+      <div class="form-card__header">
+        <h3 class="form-card__title">Import package</h3>
+        <div class="wizard-steps">
+          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }">1. Locate</span>
+          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }">2. Review</span>
+          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 3 }">3. Map bench</span>
+        </div>
       </div>
 
-      <p v-if="wizardErrors.length > 0" class="import-export-error import-export-field--full">
-        {{ wizardErrors.join(' ') }}
-      </p>
+      <form class="form-body" @submit.prevent="onValidatePackage">
+        <p v-if="wizardErrors.length > 0" class="form-error">{{ wizardErrors.join(' ') }}</p>
 
-      <template v-if="wizardStep === 1">
-        <label class="import-export-field import-export-field--full">
-          <span>Export artifact directory</span>
-          <input
-            v-model="draft.artifactDirectory"
-            type="text"
-            placeholder="/absolute/path/to/site-export-v1"
-            :disabled="validating"
-          />
-        </label>
-      </template>
-
-      <template v-if="wizardStep === 2 && validation">
-        <div class="import-export-summary import-export-field--full">
-          <p><strong>Site:</strong> {{ validation.summary.siteName }}</p>
-          <p><strong>Exported from bench:</strong> {{ validation.summary.benchName }}</p>
-          <p><strong>Runtime:</strong> {{ validation.summary.benchRuntime }}</p>
-          <p><strong>Frappe:</strong> {{ validation.summary.benchFrappeVersion }}</p>
-          <p><strong>Package version:</strong> v{{ validation.summary.packageVersion }}</p>
-          <p><strong>Required apps:</strong> {{ validation.summary.requiredAppIds.join(', ') || 'None' }}</p>
+        <!-- Step 1: Locate -->
+        <div v-if="wizardStep === 1" class="form-grid">
+          <label class="form-field form-field--full">
+            <span class="form-label">Export artifact directory</span>
+            <input v-model="draft.artifactDirectory" type="text" placeholder="/absolute/path/to/site-export-v1" :disabled="validating" />
+          </label>
         </div>
 
-        <ul class="import-export-issues import-export-field--full">
-          <li
-            v-for="issue in validation.issues"
-            :key="`${issue.code}-${issue.message}`"
-            class="import-export-issue"
-            :class="`import-export-issue--${issue.severity}`"
-          >
-            {{ issue.message }}
-          </li>
-          <li v-if="validation.issues.length === 0" class="import-export-issue import-export-issue--ok">
-            No compatibility issues detected.
-          </li>
-        </ul>
-      </template>
+        <!-- Step 2: Review -->
+        <template v-if="wizardStep === 2 && validation">
+          <div class="import-summary">
+            <div class="import-summary__row"><span>Site</span><strong>{{ validation.summary.siteName }}</strong></div>
+            <div class="import-summary__row"><span>Exported from bench</span><strong>{{ validation.summary.benchName }}</strong></div>
+            <div class="import-summary__row"><span>Runtime</span><strong>{{ validation.summary.benchRuntime }}</strong></div>
+            <div class="import-summary__row"><span>Frappe</span><strong>{{ validation.summary.benchFrappeVersion }}</strong></div>
+            <div class="import-summary__row"><span>Package version</span><strong>v{{ validation.summary.packageVersion }}</strong></div>
+            <div class="import-summary__row"><span>Required apps</span><strong>{{ validation.summary.requiredAppIds.join(', ') || 'None' }}</strong></div>
+          </div>
 
-      <template v-if="wizardStep === 3 && validation">
-        <label class="import-export-field import-export-field--full">
-          <span>Target bench</span>
-          <select v-model="draft.benchId" :disabled="validating || benches.length === 0">
-            <option value="">Select a bench</option>
-            <option v-for="bench in benches" :key="bench.id" :value="bench.id">
-              {{ bench.name }} ({{ bench.runtime }}, Frappe {{ bench.frappeVersion }})
-            </option>
-          </select>
-        </label>
+          <div class="issues-list">
+            <div
+              v-for="issue in validation.issues"
+              :key="`${issue.code}-${issue.message}`"
+              class="issue-item"
+              :class="`issue-item--${issue.severity}`"
+            >
+              {{ issue.message }}
+            </div>
+            <div v-if="validation.issues.length === 0" class="issue-item issue-item--ok">
+              No compatibility issues detected.
+            </div>
+          </div>
+        </template>
 
-        <label class="import-export-field import-export-field--full">
-          <span>Conflict policy</span>
-          <select v-model="draft.conflictPolicy" :disabled="executing">
-            <option value="block">Block import if the site name already exists</option>
-            <option value="rename">Rename imported site when a name conflict exists</option>
-          </select>
-        </label>
+        <!-- Step 3: Map bench -->
+        <template v-if="wizardStep === 3 && validation">
+          <div class="form-grid">
+            <label class="form-field form-field--full">
+              <span class="form-label">Target bench</span>
+              <select v-model="draft.benchId" :disabled="validating || benches.length === 0">
+                <option value="">Select a bench…</option>
+                <option v-for="bench in benches" :key="bench.id" :value="bench.id">
+                  {{ bench.name }} ({{ bench.runtime }}, Frappe {{ bench.frappeVersion }})
+                </option>
+              </select>
+            </label>
 
-        <div class="import-export-summary import-export-field--full">
-          <p><strong>Conflict preview:</strong> {{ conflictPreview.message }}</p>
-          <p><strong>Readiness:</strong> {{ validation.canImport ? 'Package passed compatibility checks.' : 'Package has blocking issues.' }}</p>
-          <p><strong>Policy:</strong> {{ draft.conflictPolicy === 'rename' ? 'Rename on conflict' : 'Block on conflict' }}</p>
+            <label class="form-field form-field--full">
+              <span class="form-label">Conflict policy</span>
+              <select v-model="draft.conflictPolicy" :disabled="executing">
+                <option value="block">Block import if the site name already exists</option>
+                <option value="rename">Rename imported site when a name conflict exists</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="import-summary">
+            <div class="import-summary__row"><span>Conflict preview</span><strong>{{ conflictPreview.message }}</strong></div>
+            <div class="import-summary__row"><span>Readiness</span><strong>{{ validation.canImport ? 'Passed compatibility checks' : 'Has blocking issues' }}</strong></div>
+            <div class="import-summary__row"><span>Policy</span><strong>{{ draft.conflictPolicy === 'rename' ? 'Rename on conflict' : 'Block on conflict' }}</strong></div>
+          </div>
+
+          <div v-if="executionSteps.length > 0" class="issues-list">
+            <div
+              v-for="(step, index) in executionSteps"
+              :key="`${step.name}-${index}`"
+              class="issue-item"
+              :class="`issue-item--${step.status === 'failed' ? 'error' : step.status}`"
+            >
+              <strong>{{ step.name }}:</strong> {{ step.message }}
+            </div>
+          </div>
+        </template>
+
+        <div class="form-actions">
+          <button v-if="wizardStep > 1" type="button" class="btn btn--subtle" @click="onPreviousStep">Back</button>
+          <button v-if="wizardStep === 1" type="submit" class="btn btn--primary" :disabled="validating">
+            {{ validating ? 'Validating…' : 'Validate package' }}
+          </button>
+          <button v-if="wizardStep === 2" type="button" class="btn btn--primary" @click="onNextStep">
+            Continue to bench mapping
+          </button>
+          <button v-if="wizardStep === 3" type="button" class="btn btn--primary" :disabled="executing || !validation" @click="onExecuteImport">
+            {{ executing ? 'Importing…' : 'Execute import' }}
+          </button>
         </div>
-
-        <ul v-if="executionSteps.length > 0" class="import-export-issues import-export-field--full">
-          <li
-            v-for="(step, index) in executionSteps"
-            :key="`${step.name}-${index}`"
-            class="import-export-issue"
-            :class="`import-export-issue--${step.status === 'failed' ? 'error' : step.status}`"
-          >
-            <strong>{{ step.name }}:</strong> {{ step.message }}
-          </li>
-        </ul>
-      </template>
-
-      <div class="import-export-actions import-export-field--full">
-        <button v-if="wizardStep > 1" type="button" class="import-export-button" @click="onPreviousStep">
-          Back
-        </button>
-        <button
-          v-if="wizardStep === 1"
-          type="submit"
-          class="import-export-button"
-          :disabled="validating"
-        >
-          {{ validating ? 'Validating…' : 'Validate package' }}
-        </button>
-        <button
-          v-if="wizardStep === 2"
-          type="button"
-          class="import-export-button"
-          @click="onNextStep"
-        >
-          Continue to bench mapping
-        </button>
-        <button
-          v-if="wizardStep === 3"
-          type="button"
-          class="import-export-button"
-          :disabled="executing || !validation"
-          @click="onExecuteImport"
-        >
-          {{ executing ? 'Importing…' : 'Execute import' }}
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
 
     <ConfirmationDialog
       :open="importConfirmOpen"
@@ -365,120 +354,174 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.import-export-view {
+.import-view {
   display: grid;
   gap: 16px;
 }
 
-.import-export-header {
+.view-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.import-export-form {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
-  border-radius: 18px;
-  border: 1px solid rgba(31, 28, 24, 0.12);
-  background: rgba(255, 251, 245, 0.82);
-}
-
-.import-export-steps,
-.import-export-actions {
-  display: flex;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
-.import-export-step {
+.view-header__title {
   margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.view-header__actions { display: flex; gap: 8px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) { background: var(--surface-hover); }
+.btn--subtle { border-color: var(--border-default); }
+.btn--primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+.btn--primary:hover:not(:disabled) { background: var(--primary-hover); }
+
+/* Alert */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(113, 78, 40, 0.08);
-  color: rgba(31, 28, 24, 0.7);
+  border-radius: 6px;
+  font-size: 13px;
 }
 
-.import-export-step--active {
-  background: rgba(113, 78, 40, 0.18);
-  color: #6e4a29;
+.alert--success {
+  color: var(--green-text);
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
 }
 
-.import-export-field {
+/* Form card */
+.form-card {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.form-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.form-card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-body { padding: 16px; display: grid; gap: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.form-field { display: grid; gap: 4px; }
+.form-field--full { grid-column: 1 / -1; }
+.form-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.form-error { margin: 0; font-size: 13px; color: var(--red-text); }
+.form-actions { display: flex; gap: 8px; }
+
+/* Wizard steps */
+.wizard-steps { display: flex; gap: 4px; }
+
+.wizard-step {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+
+.wizard-step--active {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+}
+
+.wizard-step--done {
+  background: var(--green-light);
+  color: var(--green-text);
+  border-color: var(--green-border);
+}
+
+/* Import summary */
+.import-summary {
   display: grid;
   gap: 6px;
+  padding: 14px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-light);
 }
 
-.import-export-field--full {
-  width: 100%;
+.import-summary__row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
 }
 
-.import-export-field input,
-.import-export-field select {
-  border: 1px solid rgba(31, 28, 24, 0.16);
-  border-radius: 10px;
-  background: #fffdf8;
-  color: inherit;
-  padding: 10px 12px;
+.import-summary__row span {
+  min-width: 140px;
+  color: var(--text-secondary);
 }
 
-.import-export-button,
-.import-export-refresh {
-  border: 1px solid rgba(113, 78, 40, 0.18);
-  background: rgba(113, 78, 40, 0.12);
-  color: #4c331f;
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
+.import-summary__row strong {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
-.import-export-button:disabled,
-.import-export-refresh:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.import-export-summary {
+/* Issues list */
+.issues-list {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 14px;
-  background: rgba(113, 78, 40, 0.06);
+  gap: 4px;
 }
 
-.import-export-summary p,
-.import-export-issue {
-  margin: 0;
+.issue-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
-.import-export-issues {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
+.issue-item--error {
+  color: var(--red-text);
+  background: var(--red-light);
 }
 
-.import-export-issue {
-  padding: 12px 14px;
-  border-radius: 12px;
+.issue-item--warning {
+  color: var(--orange-text);
+  background: var(--orange-light);
 }
 
-.import-export-issue--error,
-.import-export-error {
-  color: #8a2f2f;
-  background: rgba(196, 94, 94, 0.12);
-}
-
-.import-export-issue--warning {
-  color: #7a5a1a;
-  background: rgba(210, 169, 76, 0.16);
-}
-
-.import-export-issue--ok,
-.import-export-success {
-  color: #2f6a43;
-  background: rgba(83, 153, 113, 0.12);
+.issue-item--ok,
+.issue-item--success {
+  color: var(--green-text);
+  background: var(--green-light);
 }
 </style>

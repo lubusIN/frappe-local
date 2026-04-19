@@ -1,124 +1,121 @@
 <template>
-  <main class="shell" :class="{ 'shell--compact': sidebarCompact }">
+  <main class="shell">
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="brand-row">
-          <div class="product-mark" aria-label="Frappe Cafe">
-            <span class="product-mark__badge" aria-hidden="true">
-              <svg viewBox="0 0 24 24" class="product-mark__badge-icon">
-                <path d="M7 14c-1.66 0-3-1.34-3-3 0-1.52 1.13-2.77 2.6-2.97C7.3 5.67 9.44 4 12 4c3.2 0 5.82 2.52 5.99 5.68A3.5 3.5 0 0 1 17.5 17H8" />
-              </svg>
-            </span>
-            <div>
-              <p class="eyebrow">Frappe Cloud</p>
-              <h1 class="brand-title">Frappe Cafe</h1>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="sidebar-toggle"
-            :aria-pressed="sidebarCompact"
-            :aria-label="sidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'"
-            @click="toggleSidebarCompact"
-          >
-            <svg viewBox="0 0 24 24" class="sidebar-toggle__icon" aria-hidden="true">
-              <path :d="sidebarCompact ? 'M8 6l6 6-6 6' : 'M16 6l-6 6 6 6'" />
-            </svg>
-          </button>
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">
+          <svg viewBox="0 0 24 24" class="sidebar-logo__icon" aria-hidden="true">
+            <path d="M7 14c-1.66 0-3-1.34-3-3 0-1.52 1.13-2.77 2.6-2.97C7.3 5.67 9.44 4 12 4c3.2 0 5.82 2.52 5.99 5.68A3.5 3.5 0 0 1 17.5 17H8" />
+          </svg>
         </div>
-
-        <button type="button" class="workspace-switcher">
-          <span class="workspace-switcher__avatar" aria-hidden="true">FC</span>
-          <span class="workspace-switcher__copy">
-            <strong class="workspace-switcher__name">Local Development</strong>
-            <span class="workspace-switcher__meta">Desktop workspace</span>
-          </span>
-          <svg viewBox="0 0 24 24" class="workspace-switcher__chevron" aria-hidden="true">
-            <path d="M7 10l5 5 5-5" />
+        <div class="sidebar-brand__text">
+          <span class="sidebar-brand__label">Frappe Cloud</span>
+          <span class="sidebar-brand__user">local@frappe.cafe</span>
+        </div>
+        <button
+          type="button"
+          class="sidebar-brand__menu"
+          aria-label="Menu"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
           </svg>
         </button>
       </div>
 
-      <nav aria-label="Primary" class="nav-block">
-        <p class="nav-section-title">Workspace</p>
+      <nav aria-label="Primary" class="sidebar-nav">
         <RouterLink
           v-for="item in navigationWithIcons"
           :key="item.path"
           :to="item.path"
-          class="nav-link"
+          class="sidebar-item"
           :title="item.label"
         >
-          <span class="nav-link-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" class="nav-link-icon__svg">
+          <span class="sidebar-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="sidebar-item__svg">
               <path v-for="segment in item.iconPaths" :key="segment" :d="segment" />
             </svg>
           </span>
-          <span class="nav-link-copy">
-            <span class="nav-link-title">{{ item.label }}</span>
-            <span class="nav-link-description">{{ item.description }}</span>
-          </span>
+          <span class="sidebar-item__label">{{ item.label }}</span>
         </RouterLink>
       </nav>
 
-      <footer class="sidebar-footer">
-        <div class="sidebar-footer__cluster">
-          <p class="sidebar-footer__label">Environment</p>
-          <p class="sidebar-footer__value">Desktop · Local runtime</p>
-        </div>
-        <div class="sidebar-footer__actions">
-          <RouterLink class="sidebar-footer__link" to="/settings">Settings</RouterLink>
-          <RouterLink class="sidebar-footer__link" to="/console">Console</RouterLink>
-        </div>
-      </footer>
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-bottom">
+        <RouterLink to="/settings" class="sidebar-item" title="Settings">
+          <span class="sidebar-item__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="sidebar-item__svg">
+              <path d="M12 8.5A3.5 3.5 0 1112 15.5 3.5 3.5 0 0112 8.5z" />
+              <path d="M19.4 15a1 1 0 00.2 1.1l.1.1a2 2 0 01-2.8 2.8l-.1-.1a1 1 0 00-1.1-.2 1 1 0 00-.6.9V20a2 2 0 01-4 0v-.2a1 1 0 00-.7-.9 1 1 0 00-1.1.2l-.1.1a2 2 0 01-2.8-2.8l.1-.1a1 1 0 00.2-1.1 1 1 0 00-.9-.6H4a2 2 0 010-4h.2a1 1 0 00.9-.7 1 1 0 00-.2-1.1l-.1-.1a2 2 0 012.8-2.8l.1.1a1 1 0 001.1.2 1 1 0 00.6-.9V4a2 2 0 014 0v.2a1 1 0 00.7.9 1 1 0 001.1-.2l.1-.1a2 2 0 012.8 2.8l-.1.1a1 1 0 00-.2 1.1 1 1 0 00.9.6H20a2 2 0 010 4h-.2a1 1 0 00-.9.7z" />
+            </svg>
+          </span>
+          <span class="sidebar-item__label">Settings</span>
+        </RouterLink>
+      </div>
     </aside>
 
     <section class="content">
-      <div class="workspace-frame">
-        <header class="entity-shell">
-          <div class="entity-header">
-            <div class="entity-header__meta">
-              <p class="entity-header__context">Local Workspace / Desktop Shell / {{ currentTitle }}</p>
-              <div class="entity-header__title-row">
-                <h2 class="entity-header__title">{{ currentTitle }}</h2>
-                <span class="entity-status" :class="entityStatusClass">{{ entityStatusLabel }}</span>
-              </div>
-              <p class="entity-header__body">{{ currentDescription }}</p>
-            </div>
-            <div class="entity-header__actions">
-              <RouterLink class="entity-action" to="/settings">Preferences</RouterLink>
-              <RouterLink class="entity-action entity-action--primary" to="/sites">Open Sites</RouterLink>
-            </div>
+      <header class="page-header">
+        <div class="page-header__top">
+          <div class="page-header__breadcrumb">
+            <span class="breadcrumb__segment">Local Workspace</span>
+            <span class="breadcrumb__separator">/</span>
+            <span class="breadcrumb__segment breadcrumb__segment--current">{{ currentTitle }}</span>
           </div>
-
-          <nav v-if="showDashboardTabs" class="entity-tabs" aria-label="Dashboard sections">
-            <RouterLink
-              v-for="tab in dashboardTabs"
-              :key="tab.hash"
-              class="entity-tab"
-              :class="{ 'entity-tab--active': activeDashboardHash === tab.hash }"
-              :to="{ path: '/', hash: tab.hash }"
-            >
-              <svg viewBox="0 0 24 24" class="entity-tab__icon" aria-hidden="true">
-                <path v-for="segment in tab.iconPaths" :key="segment" :d="segment" />
+          <div class="page-header__actions">
+            <RouterLink class="header-btn" to="/settings">Preferences</RouterLink>
+            <RouterLink class="header-btn header-btn--primary" to="/sites">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="8" cy="8" r="6" />
               </svg>
-              {{ tab.label }}
+              Visit Sites
             </RouterLink>
-          </nav>
-        </header>
+            <button class="header-btn header-btn--icon" aria-label="More options">
+              <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        <section v-if="showIpcWarning" class="ipc-warning" role="alert">
-          <p class="ipc-warning__eyebrow">Renderer connection issue</p>
+        <div class="page-header__title-row">
+          <h1 class="page-header__title">{{ currentTitle }}</h1>
+          <span class="status-badge" :class="entityStatusClass">{{ entityStatusLabel }}</span>
+        </div>
+      </header>
+
+      <nav v-if="showDashboardTabs" class="page-tabs" aria-label="Dashboard sections">
+        <RouterLink
+          v-for="tab in dashboardTabs"
+          :key="tab.hash"
+          class="page-tab"
+          :class="{ 'page-tab--active': activeDashboardHash === tab.hash }"
+          :to="{ path: '/', hash: tab.hash }"
+        >
+          <svg viewBox="0 0 24 24" class="page-tab__icon" aria-hidden="true">
+            <path v-for="segment in tab.iconPaths" :key="segment" :d="segment" />
+          </svg>
+          {{ tab.label }}
+        </RouterLink>
+      </nav>
+
+      <section v-if="showIpcWarning" class="ipc-warning" role="alert">
+        <div class="ipc-warning__icon">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div>
           <h3 class="ipc-warning__title">Desktop services are unavailable</h3>
           <p class="ipc-warning__body">
-            The preload bridge did not initialize, so data loading and local actions cannot run yet.
-            The tabs should still render, but any runtime-backed action will show an error until the Electron preload connection is fixed.
+            The preload bridge did not initialize. Runtime-backed actions will show an error until the Electron preload connection is fixed.
           </p>
-        </section>
+        </div>
+      </section>
 
-        <section class="workspace-frame__body">
-          <RouterView />
-        </section>
-      </div>
+      <section class="page-body">
+        <RouterView />
+      </section>
     </section>
   </main>
 </template>
@@ -135,7 +132,6 @@ type IconDefinition = {
 };
 
 const route = useRoute();
-const sidebarCompact = ref(false);
 const settingsLoaded = ref(false);
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 
@@ -166,17 +162,19 @@ const iconMap: Record<string, IconDefinition> = {
   },
 };
 
+// Filter out settings from main nav since it's in sidebar bottom
+const mainNavItems = computed(() =>
+  navigationItems.filter((item) => item.path !== '/settings')
+);
+
 const navigationWithIcons = computed(() =>
-  navigationItems.map((item) => ({
+  mainNavItems.value.map((item) => ({
     ...item,
     iconPaths: iconMap[item.path]?.iconPaths ?? ['M5 12h14'],
   }))
 );
 
 const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Cafe'));
-const currentDescription = computed(() =>
-  String(route.meta.description ?? 'The desktop shell is ready for the next feature slice.')
-);
 const dashboardTabs = [
   { label: 'Overview', hash: '#overview', iconPaths: ['M4 5h16v14H4z', 'M9 5v14', 'M4 10h16'] },
   { label: 'Runtime', hash: '#runtime', iconPaths: ['M12 3v5', 'M12 16v5', 'M4.9 4.9l3.5 3.5', 'M15.6 15.6l3.5 3.5', 'M3 12h5', 'M16 12h5', 'M4.9 19.1l3.5-3.5', 'M15.6 8.4l3.5-3.5'] },
@@ -185,9 +183,9 @@ const dashboardTabs = [
 ] as const;
 const showDashboardTabs = computed(() => route.path === '/');
 const activeDashboardHash = computed(() => route.hash || '#overview');
-const entityStatusLabel = computed(() => (showIpcWarning.value ? 'Unavailable' : 'Connected'));
+const entityStatusLabel = computed(() => (showIpcWarning.value ? 'Unavailable' : 'Active'));
 const entityStatusClass = computed(() =>
-  showIpcWarning.value ? 'entity-status--warning' : 'entity-status--ok'
+  showIpcWarning.value ? 'status-badge--danger' : 'status-badge--success'
 );
 
 const buildDefaultSettings = (): SettingsItem => ({
@@ -203,29 +201,10 @@ const buildDefaultSettings = (): SettingsItem => ({
 
 const loadShellPreference = async (): Promise<void> => {
   try {
-    const settings = await window.frappeCafe?.getSettings();
-    sidebarCompact.value = settings?.sidebarCompact ?? false;
+    await window.frappeCafe?.getSettings();
   } finally {
     settingsLoaded.value = true;
   }
-};
-
-const persistShellPreference = async (): Promise<void> => {
-  if (!settingsLoaded.value) {
-    return;
-  }
-
-  const existing = await window.frappeCafe?.getSettings();
-  const settings = existing ?? buildDefaultSettings();
-  await window.frappeCafe?.setSettings({
-    ...settings,
-    sidebarCompact: sidebarCompact.value,
-  });
-};
-
-const toggleSidebarCompact = async (): Promise<void> => {
-  sidebarCompact.value = !sidebarCompact.value;
-  await persistShellPreference();
 };
 
 onMounted(() => {
@@ -234,630 +213,377 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.brand-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
+/* ============================================================
+   Sidebar
+   ============================================================ */
 
-.sidebar-header {
-  display: grid;
-  gap: 12px;
-}
-
-.product-mark {
+.sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px 4px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.product-mark__dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #3b82f6, #2563eb);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
-  flex: 0 0 14px;
-}
-
-.workspace-switcher {
+.sidebar-logo {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  border: 1px solid #e4e9ef;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 10px 12px;
-  cursor: default;
-}
-
-.workspace-switcher__avatar {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: #eaf2ff;
-  border: 1px solid #d3e2ff;
-  color: #1e3a8a;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #171717, #404040);
 }
 
-.workspace-switcher__copy {
-  display: grid;
-  gap: 2px;
-}
-
-.workspace-switcher__name {
-  font-size: 13px;
-  color: #1f272e;
-}
-
-.workspace-switcher__meta {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.sidebar-toggle {
-  min-width: 36px;
-  min-height: 36px;
-  border: 1px solid #d7dee8;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #334155;
-  padding: 0 8px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.sidebar-toggle:hover {
-  background: #eef3f8;
-  border-color: #cfd9e6;
-}
-
-.nav-block {
-  margin-top: 8px;
-}
-
-.nav-section-title {
-  margin: 0 0 8px;
-  padding: 0 8px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-}
-
-.nav-link {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 10px;
-  border-radius: 12px;
-}
-
-.nav-link-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
-  border: 1px solid #e4e9ef;
-  background: #f8fafc;
-  color: #475569;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.nav-link.router-link-active {
-  background: #f8fafc;
-}
-
-.nav-link.router-link-active .nav-link-icon {
-  border-color: #bfd2ff;
-  background: #dbe8ff;
-  color: #1e3a8a;
-}
-
-.nav-link-title {
-  grid-column: 2;
-  font-size: 14px;
-  font-weight: 500;
-  color: #25313c;
-}
-
-.shell--compact {
-  grid-template-columns: 92px minmax(0, 1fr);
-}
-
-.shell--compact .workspace-switcher,
-.shell--compact .nav-section-title,
-.shell--compact .sidebar-footer,
-.shell--compact .brand-title,
-.shell--compact .eyebrow {
-  display: none;
-}
-
-.shell--compact .sidebar {
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.shell--compact .product-mark {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.shell--compact .sidebar-toggle {
-  width: 100%;
-  padding: 0;
-  font-size: 11px;
-}
-
-.shell--compact .nav-link {
-  grid-template-columns: 1fr;
-  justify-items: center;
-  padding: 8px;
-}
-
-.shell--compact .nav-link-title {
-  display: none;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 14px 10px 4px;
-  border-top: 1px solid #e4e9ef;
-}
-
-.sidebar-footer__label,
-.sidebar-footer__value {
-  margin: 0;
-}
-
-.sidebar-footer__label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-}
-
-.sidebar-footer__value {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.sidebar-footer__link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid #d7dee8;
-  border-radius: 999px;
-  background: #ffffff;
-  font-size: 12px;
-  color: #334155;
-  text-decoration: none;
-}
-
-.sidebar-footer__link:hover {
-  background: #eef3f8;
-  border-color: #cfd9e6;
-}
-
-.sidebar-footer__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.entity-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 4px 0 14px;
-}
-
-.entity-header__meta {
-  min-width: 0;
-}
-
-.entity-header__context {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: #64748b;
-  letter-spacing: 0.01em;
-}
-
-.entity-header__title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.entity-header__title {
-  margin: 0;
-  font-size: clamp(28px, 4vw, 38px);
-  line-height: 1.05;
-  font-weight: 600;
-  color: #1f272e;
-}
-
-.entity-header__body {
-  margin: 8px 0 0;
-  max-width: 780px;
-  font-size: 14px;
-  line-height: 1.55;
-  color: #687381;
-}
-
-.entity-status {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.entity-status--ok {
-  color: #166534;
-  background: #ecfdf3;
-  border-color: #bbf7d0;
-}
-
-.entity-status--warning {
-  color: #9b2c2c;
-  background: #fff5f5;
-  border-color: #fecaca;
-}
-
-.entity-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.entity-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #d7dee8;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #334155;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.entity-action:hover {
-  background: #eef3f8;
-  border-color: #cfd9e6;
-}
-
-.entity-action--primary {
-  background: #1f2937;
-  border-color: #1f2937;
-  color: #ffffff;
-}
-
-.entity-action--primary:hover {
-  background: #111827;
-  border-color: #111827;
-}
-
-.entity-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0 0 18px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e4e9ef;
-  overflow-x: auto;
-}
-
-.entity-tab {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 10px;
-  border-radius: 10px;
-  color: #64748b;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.entity-tab:hover {
-  background: #f8fafc;
-  color: #334155;
-}
-
-.entity-tab--active {
-  background: #f8fafc;
-  color: #1f272e;
-  box-shadow: inset 0 -2px 0 #1f272e;
-}
-
-.product-mark__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #4ab0ff 0%, #1d93ee 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 18px rgba(30, 58, 138, 0.14);
-}
-
-.product-mark__badge-icon,
-.sidebar-toggle__icon,
-.workspace-switcher__chevron,
-.nav-link-icon__svg,
-.entity-tab__icon {
+.sidebar-logo__icon {
   width: 18px;
   height: 18px;
   fill: none;
-  stroke: currentColor;
+  stroke: #ffffff;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.product-mark__badge-icon {
-  width: 20px;
-  height: 20px;
-  color: #ffffff;
-}
-
-.product-mark {
-  gap: 12px;
-}
-
-.workspace-switcher {
-  border-color: rgba(215, 222, 232, 0.8);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.78);
-  padding: 11px 12px;
-  box-shadow: 0 10px 28px rgba(148, 163, 184, 0.08);
-}
-
-.workspace-switcher__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #eef5ff 0%, #dbeafe 100%);
-  letter-spacing: 0.08em;
-}
-
-.workspace-switcher__copy {
+.sidebar-brand__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   flex: 1;
 }
 
-.sidebar-toggle {
-  display: inline-flex;
+.sidebar-brand__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.sidebar-brand__user {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-brand__menu {
+  display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 38px;
-  min-height: 38px;
-  border-color: rgba(215, 222, 232, 0.85);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  color: #475569;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 4px;
   padding: 0;
 }
 
-.nav-link {
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 10px;
-  border: 1px solid transparent;
-  text-decoration: none;
+.sidebar-brand__menu:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
-.nav-link-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border-color: rgba(215, 222, 232, 0.8);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.nav-link-copy {
-  display: grid;
+/* Sidebar nav */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
-  min-width: 0;
+  padding: 8px;
+  flex: 1;
 }
 
-.nav-link.router-link-active {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(215, 222, 232, 0.92);
-  box-shadow: 0 10px 22px rgba(148, 163, 184, 0.08);
-}
-
-.nav-link.router-link-active .nav-link-icon {
-  background: linear-gradient(180deg, #edf4ff 0%, #dbeafe 100%);
-}
-
-.nav-link-title {
-  grid-column: auto;
-  font-weight: 600;
-}
-
-.nav-link-description {
-  font-size: 12px;
-  line-height: 1.4;
-  color: #64748b;
-}
-
-.workspace-frame {
-  border: 1px solid rgba(228, 233, 239, 0.95);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 18px 48px rgba(148, 163, 184, 0.12);
-  overflow: hidden;
-  backdrop-filter: blur(14px);
-}
-
-.entity-shell {
-  padding: 18px 22px 0;
-  border-bottom: 1px solid #edf2f7;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 250, 251, 0.94) 100%);
-}
-
-.workspace-frame__body {
-  padding: 22px;
-}
-
-.entity-header__title {
-  font-size: clamp(30px, 4vw, 40px);
-  line-height: 1.02;
-}
-
-.entity-action {
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 12px;
-}
-
-.entity-action--primary {
-  background: #111827;
-  border-color: #111827;
-}
-
-.entity-action--primary:hover {
-  background: #0f172a;
-  border-color: #0f172a;
-}
-
-.entity-tabs {
-  margin: 0;
-  padding: 0 0 10px;
-  border-bottom: 0;
-}
-
-.entity-tab {
+.sidebar-item {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  min-height: 38px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 100ms ease, color 100ms ease;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-item.router-link-exact-active,
+.sidebar-item.router-link-active {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  color: currentColor;
+  opacity: 0.7;
+}
+
+.sidebar-item.router-link-exact-active .sidebar-item__icon,
+.sidebar-item.router-link-active .sidebar-item__icon {
+  opacity: 1;
+}
+
+.sidebar-item__svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-item__label {
+  flex: 1;
+  line-height: 1.3;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0 16px;
+}
+
+.sidebar-bottom {
+  padding: 8px;
+}
+
+/* ============================================================
+   Page Header — Frappe Cloud style
+   ============================================================ */
+
+.page-header {
+  padding: 16px 24px 0;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.page-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.page-header__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.breadcrumb__segment {
+  color: var(--text-secondary);
+}
+
+.breadcrumb__segment--current {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.breadcrumb__separator {
+  color: var(--text-muted);
+}
+
+.page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
   padding: 0 12px;
-  border-radius: 12px 12px 0 0;
-  border-bottom: 2px solid transparent;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
 }
 
-.entity-tab:hover {
-  background: transparent;
+.header-btn:hover {
+  background: var(--surface-hover);
 }
 
-.entity-tab--active {
-  background: transparent;
-  box-shadow: none;
-  border-bottom-color: #1f272e;
+.header-btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
 }
 
-.shell--compact .nav-link-description {
-  display: none;
+.header-btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
-.shell--compact .nav-link-copy,
-.shell--compact .nav-link-title {
-  display: none;
+.header-btn--icon {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  justify-content: center;
 }
 
-.shell--compact .nav-link {
-  grid-template-columns: 1fr;
+.page-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 16px;
 }
 
-.sidebar-footer__cluster {
-  display: grid;
-  gap: 4px;
-}
-
-.ipc-warning {
-  margin: 16px 22px 0;
-  border-radius: 14px;
-}
-
-@media (max-width: 960px) {
-  .shell--compact {
-    grid-template-columns: 1fr;
-  }
-
-  .shell--compact .workspace-switcher,
-  .shell--compact .nav-section-title,
-  .shell--compact .sidebar-footer,
-  .shell--compact .brand-title,
-  .shell--compact .eyebrow {
-    display: initial;
-  }
-
-  .shell--compact .nav-link {
-    grid-template-columns: 26px 1fr;
-    justify-items: stretch;
-    padding: 10px 12px;
-  }
-
-  .shell--compact .nav-link-title {
-    display: block;
-  }
-
-  .sidebar-footer {
-    margin-top: 8px;
-  }
-
-  .entity-header,
-  .entity-header__actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.ipc-warning {
-  margin-bottom: 16px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid #fed7d7;
-  background: #fff5f5;
-}
-
-.ipc-warning__eyebrow,
-.ipc-warning__title,
-.ipc-warning__body {
+.page-header__title {
   margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
 }
 
-.ipc-warning__eyebrow {
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #b42318;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.status-badge--success {
+  color: var(--green-text);
+  background: var(--green-light);
+}
+
+.status-badge--danger {
+  color: var(--red-text);
+  background: var(--red-light);
+}
+
+/* ============================================================
+   Page Tabs — Frappe Cloud style
+   ============================================================ */
+
+.page-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 24px;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.page-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 100ms ease, border-color 100ms ease;
+}
+
+.page-tab:hover {
+  color: var(--text-primary);
+}
+
+.page-tab--active {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+}
+
+.page-tab__icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ============================================================
+   Page Body
+   ============================================================ */
+
+.page-body {
+  padding: 20px 24px;
+}
+
+/* ============================================================
+   IPC Warning
+   ============================================================ */
+
+.ipc-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 24px 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--red-border);
+  background: var(--red-light);
+}
+
+.ipc-warning__icon {
+  color: var(--red-text);
+  min-width: 16px;
+  margin-top: 1px;
 }
 
 .ipc-warning__title {
-  margin-top: 4px;
-  font-size: 17px;
-  color: #7a271a;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--red-text);
 }
 
 .ipc-warning__body {
-  margin-top: 6px;
+  margin: 4px 0 0;
+  font-size: 13px;
   color: #9b2c2c;
   line-height: 1.5;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 960px) {
+  .page-header__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 </style>

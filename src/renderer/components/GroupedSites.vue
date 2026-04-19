@@ -1,32 +1,32 @@
 <template>
   <div class="grouped-sites">
-    <div class="grouped-sites-header">
-      <h4 class="grouped-sites-title">Grouped Sites</h4>
-      <p class="grouped-sites-count">{{ filteredSites.length }} site(s)</p>
+    <div class="grouped-sites__header">
+      <h4 class="grouped-sites__title">Grouped Sites</h4>
+      <p class="grouped-sites__count">{{ filteredSites.length }} site(s)</p>
     </div>
 
-    <div v-if="filteredSites.length === 0" class="grouped-sites-empty">
+    <div v-if="filteredSites.length === 0" class="empty-state">
       <p>No sites match the current filters.</p>
-      <button type="button" @click="$emit('reset-filters')">Clear filters</button>
+      <button type="button" class="btn btn--subtle" @click="$emit('reset-filters')">Clear filters</button>
     </div>
 
-    <div v-else class="grouped-sites-list">
+    <div v-else class="grouped-sites__list">
       <!-- Unassigned sites -->
-      <div v-if="unassignedSites.length > 0" class="grouped-sites-section">
-        <h5 class="grouped-sites-section-title">
+      <div v-if="unassignedSites.length > 0" class="group-section">
+        <h5 class="group-section__title">
           {{ unassignedSites.length }} Unassigned Site(s)
         </h5>
-        <ul class="grouped-sites-items">
-          <li v-for="site in unassignedSites" :key="site.id" class="grouped-site-item">
-            <div class="grouped-site-info">
-              <p class="grouped-site-name">{{ site.name }}</p>
-              <p class="grouped-site-status">{{ site.status }}</p>
+        <ul class="group-section__items">
+          <li v-for="site in unassignedSites" :key="site.id" class="group-item">
+            <div class="group-item__info">
+              <p class="group-item__name">{{ site.name }}</p>
+              <p class="group-item__status">{{ site.status }}</p>
             </div>
-            <div class="grouped-site-actions">
-              <button type="button" class="site-action-button" @click="$emit('site-action', 'open', site.id)">
+            <div class="group-item__actions">
+              <button type="button" class="btn btn--subtle btn--sm" @click="$emit('site-action', 'open', site.id)">
                 Open
               </button>
-              <button type="button" class="site-action-button" @click="$emit('site-action', 'logs', site.id)">
+              <button type="button" class="btn btn--subtle btn--sm" @click="$emit('site-action', 'logs', site.id)">
                 Logs
               </button>
             </div>
@@ -35,28 +35,28 @@
       </div>
 
       <!-- Grouped sites by workspace -->
-      <div v-for="workspace in groupedWorkspaces" :key="workspace.id" class="grouped-sites-section">
-        <div class="grouped-sites-section-header">
-          <h5 class="grouped-sites-section-title">
+      <div v-for="workspace in groupedWorkspaces" :key="workspace.id" class="group-section">
+        <div class="group-section__header">
+          <h5 class="group-section__title">
             {{ workspace.name }}
-            <span class="grouped-sites-section-count">{{ workspace.sitesInGroup.length }} site(s)</span>
+            <span class="group-section__count">{{ workspace.sitesInGroup.length }} site(s)</span>
           </h5>
-          <div class="grouped-sites-section-tags">
-            <span v-for="tag in workspace.tags" :key="tag" class="grouped-site-tag">{{ tag }}</span>
-            <span v-if="workspace.tags.length === 0" class="grouped-site-tag grouped-site-tag--empty">no tags</span>
+          <div class="group-section__tags">
+            <span v-for="tag in workspace.tags" :key="tag" class="tag-pill">{{ tag }}</span>
+            <span v-if="workspace.tags.length === 0" class="tag-pill tag-pill--empty">no tags</span>
           </div>
         </div>
-        <ul class="grouped-sites-items">
-          <li v-for="site in workspace.sitesInGroup" :key="site.id" class="grouped-site-item">
-            <div class="grouped-site-info">
-              <p class="grouped-site-name">{{ site.name }}</p>
-              <p class="grouped-site-status">{{ site.status }}</p>
+        <ul class="group-section__items">
+          <li v-for="site in workspace.sitesInGroup" :key="site.id" class="group-item">
+            <div class="group-item__info">
+              <p class="group-item__name">{{ site.name }}</p>
+              <p class="group-item__status">{{ site.status }}</p>
             </div>
-            <div class="grouped-site-actions">
-              <button type="button" class="site-action-button" @click="$emit('site-action', 'open', site.id)">
+            <div class="group-item__actions">
+              <button type="button" class="btn btn--subtle btn--sm" @click="$emit('site-action', 'open', site.id)">
                 Open
               </button>
-              <button type="button" class="site-action-button" @click="$emit('site-action', 'logs', site.id)">
+              <button type="button" class="btn btn--subtle btn--sm" @click="$emit('site-action', 'logs', site.id)">
                 Logs
               </button>
             </div>
@@ -102,115 +102,102 @@ const groupedWorkspaces = computed(() => {
 
 <style scoped>
 .grouped-sites {
-  background: white;
+  background: var(--surface-card);
   border-radius: 8px;
-  padding: 20px;
-  border: 1px solid #e0e0e0;
+  padding: 16px;
+  border: 1px solid var(--border-light);
 }
 
-.grouped-sites-header {
+.grouped-sites__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #f0e8dc;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.grouped-sites-title {
+.grouped-sites__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  color: #1f1c18;
+  color: var(--text-primary);
 }
 
-.grouped-sites-count {
+.grouped-sites__count {
   margin: 0;
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
-.grouped-sites-empty {
+.empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
-.grouped-sites-empty p {
+.empty-state p {
   margin: 0 0 12px 0;
-  font-size: 14px;
-}
-
-.grouped-sites-empty button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #6f4f36;
-  color: white;
   font-size: 13px;
-  cursor: pointer;
 }
 
-.grouped-sites-empty button:hover {
-  background-color: #5a3f2b;
-}
-
-.grouped-sites-list {
+.grouped-sites__list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
-.grouped-sites-section {
-  border: 1px solid #e8dcc8;
+.group-section {
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 16px;
-  background-color: #fdfbf7;
+  background-color: var(--surface-bg);
 }
 
-.grouped-sites-section-header {
+.group-section__header {
   margin-bottom: 16px;
 }
 
-.grouped-sites-section-title {
+.group-section__title {
   margin: 0 0 8px 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #1f1c18;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.grouped-sites-section-count {
+.group-section__count {
   font-size: 12px;
-  color: #999;
+  color: var(--text-muted);
   font-weight: 400;
 }
 
-.grouped-sites-section-tags {
+.group-section__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
 }
 
-.grouped-site-tag {
-  display: inline-block;
+.tag-pill {
+  display: inline-flex;
   padding: 2px 8px;
-  background-color: #ede5d5;
-  color: #5a4a3a;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
   font-size: 11px;
-  border-radius: 3px;
+  font-weight: 500;
 }
 
-.grouped-site-tag--empty {
-  color: #999;
-  background-color: transparent;
-  border: 1px dashed #ccc;
+.tag-pill--empty {
+  color: var(--text-muted);
+  border-style: dashed;
 }
 
-.grouped-sites-items {
+.group-section__items {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -219,57 +206,58 @@ const groupedWorkspaces = computed(() => {
   gap: 8px;
 }
 
-.grouped-site-item {
+.group-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  padding: 10px 12px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
 }
 
-.grouped-site-info {
+.group-item__info {
   flex: 1;
 }
 
-.grouped-site-name {
+.group-item__name {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #1f1c18;
+  color: var(--text-primary);
 }
 
-.grouped-site-status {
-  margin: 4px 0 0 0;
+.group-item__status {
+  margin: 2px 0 0 0;
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   text-transform: capitalize;
 }
 
-.grouped-site-actions {
+.group-item__actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-left: 12px;
 }
 
-.site-action-button {
-  padding: 6px 12px;
-  background-color: #f0e8dc;
-  border: 1px solid #d9d1c5;
-  border-radius: 4px;
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
   font-size: 12px;
-  color: #5a4a3a;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 100ms ease;
 }
 
-.site-action-button:hover {
-  background-color: #e8dcc8;
-  border-color: #c9c1b5;
-}
-
-.site-action-button:active {
-  background-color: #dcc9b3;
-}
+.btn:hover:not(:disabled) { background: var(--surface-hover); }
+.btn--subtle { border-color: var(--border-default); }
+.btn--sm { min-height: 24px; padding: 0 8px; font-size: 11px; }
 </style>

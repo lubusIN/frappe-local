@@ -1,13 +1,15 @@
 <template>
   <section class="sites-view">
-    <header class="sites-header">
-      <div>
-        <p class="card-eyebrow">Site Management</p>
-        <h3 class="sites-title">Local sites</h3>
+    <header class="view-header">
+      <h2 class="view-header__title">Sites</h2>
+      <div class="view-header__actions">
+        <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
+          </svg>
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
       </div>
-      <button type="button" class="sites-refresh" @click="refresh" :disabled="loading">
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
     </header>
 
     <StatePanel
@@ -18,7 +20,13 @@
       action-label="Retry"
       @action="refresh"
     />
-    <p v-if="successMessage" class="sites-success">{{ successMessage }}</p>
+
+    <div v-if="successMessage" class="alert alert--success">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 5.28a.75.75 0 010 1.06l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L7.25 8.75l3.47-3.47a.75.75 0 011.06 0z" />
+      </svg>
+      {{ successMessage }}
+    </div>
 
     <FirstRunGuide
       v-if="!loading && !benchLoading && allBenches.length === 0"
@@ -29,75 +37,73 @@
       compact
     />
 
-    <form v-if="allBenches.length > 0" class="sites-form" @submit.prevent="onCreateSite">
-      <div class="site-wizard-steps sites-field--full">
-        <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 1 }">1. Select bench</p>
-        <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 2 }">2. Configure site</p>
-        <p class="site-wizard-step" :class="{ 'site-wizard-step--active': wizardStep === 3 }">3. Confirm</p>
-      </div>
-
-      <p v-if="wizardErrors.length > 0" class="sites-error sites-field--full">{{ wizardErrors.join(' ') }}</p>
-
-      <template v-if="wizardStep === 1">
-        <label class="sites-field sites-field--full">
-          <span>Bench</span>
-          <select v-model="createForm.benchId" :disabled="benchLoading">
-            <option value="">Select a bench</option>
-            <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
-              {{ bench.name }} ({{ bench.status }})
-            </option>
-          </select>
-        </label>
-      </template>
-
-      <template v-if="wizardStep === 2">
-        <label class="sites-field">
-          <span>Name</span>
-          <input v-model="createForm.name" type="text" required />
-        </label>
-        <label class="sites-field">
-          <span>Group ID (optional)</span>
-          <input v-model="createForm.groupId" type="text" />
-        </label>
-        <label class="sites-field sites-field--full">
-          <span>Path</span>
-          <input v-model="createForm.path" type="text" required />
-        </label>
-        <label class="sites-field sites-field--full">
-          <span>Apps</span>
-          <AppPicker
-            v-model="createForm.appsSelected"
-            :disabled="creating || loading"
-            :runtime="selectedBench?.runtime"
-            :frappe-version="selectedBench?.frappeVersion"
-          />
-        </label>
-      </template>
-
-      <template v-if="wizardStep === 3">
-        <div class="site-wizard-summary sites-field--full">
-          <p><strong>Bench:</strong> {{ selectedBench?.name ?? createForm.benchId }}</p>
-          <p><strong>Site:</strong> {{ createForm.name }}</p>
-          <p><strong>Path:</strong> {{ createForm.path }}</p>
-          <p><strong>Group:</strong> {{ createForm.groupId || 'None' }}</p>
-          <p><strong>Apps:</strong> {{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</p>
+    <!-- Wizard form -->
+    <div v-if="allBenches.length > 0" class="form-card">
+      <div class="form-card__header">
+        <h3 class="form-card__title">Create new site</h3>
+        <div class="wizard-steps">
+          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }">1. Bench</span>
+          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }">2. Configure</span>
+          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 3 }">3. Confirm</span>
         </div>
-      </template>
-
-      <div class="sites-actions sites-field--full">
-        <button v-if="wizardStep > 1" class="sites-create" type="button" @click="onPreviousStep">
-          Back
-        </button>
-
-        <button v-if="wizardStep < 3" class="sites-create" type="button" @click="onNextStep">
-          Next
-        </button>
-
-        <button v-if="wizardStep === 3" class="sites-create" type="submit" :disabled="creating || loading">
-          {{ creating ? 'Creating…' : 'Create site' }}
-        </button>
       </div>
-    </form>
+
+      <form class="form-body" @submit.prevent="onCreateSite">
+        <p v-if="wizardErrors.length > 0" class="form-error">{{ wizardErrors.join(' ') }}</p>
+
+        <div v-if="wizardStep === 1" class="form-grid">
+          <label class="form-field form-field--full">
+            <span class="form-label">Select bench</span>
+            <select v-model="createForm.benchId" :disabled="benchLoading">
+              <option value="">Choose a bench…</option>
+              <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
+                {{ bench.name }} ({{ bench.status }})
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <div v-if="wizardStep === 2" class="form-grid">
+          <label class="form-field">
+            <span class="form-label">Site name</span>
+            <input v-model="createForm.name" type="text" required placeholder="my-site.local" />
+          </label>
+          <label class="form-field">
+            <span class="form-label">Group ID (optional)</span>
+            <input v-model="createForm.groupId" type="text" placeholder="client-a" />
+          </label>
+          <label class="form-field form-field--full">
+            <span class="form-label">Path</span>
+            <input v-model="createForm.path" type="text" required placeholder="/path/to/site" />
+          </label>
+          <label class="form-field form-field--full">
+            <span class="form-label">Apps</span>
+            <AppPicker
+              v-model="createForm.appsSelected"
+              :disabled="creating || loading"
+              :runtime="selectedBench?.runtime"
+              :frappe-version="selectedBench?.frappeVersion"
+            />
+          </label>
+        </div>
+
+        <div v-if="wizardStep === 3" class="wizard-summary">
+          <div class="wizard-summary__row"><span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong></div>
+          <div class="wizard-summary__row"><span>Site</span><strong>{{ createForm.name }}</strong></div>
+          <div class="wizard-summary__row"><span>Path</span><strong>{{ createForm.path }}</strong></div>
+          <div class="wizard-summary__row"><span>Group</span><strong>{{ createForm.groupId || 'None' }}</strong></div>
+          <div class="wizard-summary__row"><span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong></div>
+        </div>
+
+        <div class="form-actions">
+          <button v-if="wizardStep > 1" class="btn btn--subtle" type="button" @click="onPreviousStep">Back</button>
+          <button v-if="wizardStep < 3" class="btn btn--primary" type="button" @click="onNextStep">Next</button>
+          <button v-if="wizardStep === 3" class="btn btn--primary" type="submit" :disabled="creating || loading">
+            {{ creating ? 'Creating…' : 'Create site' }}
+          </button>
+        </div>
+      </form>
+    </div>
 
     <StatePanel
       v-if="!error && loading"
@@ -113,32 +119,22 @@
       body="Create your first site to manage runtime status, inspect logs, and open paths quickly."
     />
 
-    <section v-if="!error && !loading && sites.length > 0" class="sites-filters">
-      <label class="sites-field">
-        <span>Filter by bench</span>
-        <select v-model="siteFilters.benchId">
-          <option value="">All benches</option>
-          <option v-for="bench in allBenches" :key="bench.id" :value="bench.id">
-            {{ bench.name }}
-          </option>
-        </select>
-      </label>
-      <label class="sites-field">
-        <span>Filter by status</span>
-        <select v-model="siteFilters.status">
-          <option value="">All statuses</option>
-          <option value="running">running</option>
-          <option value="stopped">stopped</option>
-          <option value="queued">queued</option>
-          <option value="success">success</option>
-          <option value="failure">failure</option>
-        </select>
-      </label>
-      <label class="sites-field sites-field--full">
-        <span>Search</span>
-        <input v-model="siteFilters.search" type="text" placeholder="Search by site, bench, or path" />
-      </label>
-    </section>
+    <!-- Filters -->
+    <div v-if="!error && !loading && sites.length > 0" class="filter-bar">
+      <select v-model="siteFilters.benchId" class="filter-bar__select">
+        <option value="">All benches</option>
+        <option v-for="bench in allBenches" :key="bench.id" :value="bench.id">{{ bench.name }}</option>
+      </select>
+      <select v-model="siteFilters.status" class="filter-bar__select">
+        <option value="">All statuses</option>
+        <option value="running">Running</option>
+        <option value="stopped">Stopped</option>
+        <option value="queued">Queued</option>
+        <option value="success">Success</option>
+        <option value="failure">Failure</option>
+      </select>
+      <input v-model="siteFilters.search" type="text" class="filter-bar__search" placeholder="Search sites…" />
+    </div>
 
     <StatePanel
       v-if="!error && !loading && sites.length > 0 && filteredSites.length === 0"
@@ -147,103 +143,61 @@
       body="Adjust your filters to see more results."
     />
 
-    <ul v-if="!error && !loading && filteredSites.length > 0" class="sites-grid">
-      <li v-for="site in filteredSites" :key="site.id" class="site-card">
-        <div class="site-card-top">
-          <h4 class="site-name">{{ site.name }}</h4>
-          <span class="site-status" :class="`site-status--${site.status}`">{{ site.status }}</span>
+    <!-- Sites list table -->
+    <div v-if="!error && !loading && filteredSites.length > 0" class="list-table">
+      <div class="list-table__header">
+        <span class="list-col list-col--name">Site</span>
+        <span class="list-col list-col--meta">Bench</span>
+        <span class="list-col list-col--meta">Group</span>
+        <span class="list-col list-col--meta">Apps</span>
+        <span class="list-col list-col--status">Status</span>
+        <span class="list-col list-col--actions"></span>
+      </div>
+      <div
+        v-for="site in filteredSites"
+        :key="site.id"
+        class="list-table__row"
+      >
+        <div class="list-col list-col--name">
+          <p class="list-col__primary">{{ site.name }}</p>
+          <p class="list-col__secondary">{{ site.path }}</p>
         </div>
-        <p class="site-path">{{ site.path }}</p>
-        <dl class="site-meta">
-          <div>
-            <dt>Bench</dt>
-            <dd>{{ site.benchId }}</dd>
-          </div>
-          <div>
-            <dt>Group</dt>
-            <dd>{{ site.groupId ?? 'None' }}</dd>
-          </div>
-          <div>
-            <dt>Apps</dt>
-            <dd>{{ site.appCount }}</dd>
-          </div>
-        </dl>
-        <div class="site-card-actions">
-          <button
-            class="site-action"
-            type="button"
-            :disabled="updating || !canStartSite(site.id)"
-            @click="onSetSiteStatus(site.id, 'running')"
-          >
-            Start
-          </button>
-          <button
-            class="site-action"
-            type="button"
-            :disabled="updating || !canStopSite(site.id)"
-            @click="onSetSiteStatus(site.id, 'stopped')"
-          >
-            Stop
-          </button>
-          <button
-            class="site-action site-action--danger"
-            type="button"
-            :disabled="updating || deleting || site.status === 'running'"
-            @click="onDeleteSite(site.id, site.name)"
-          >
-            {{ deleting ? 'Deleting…' : 'Delete' }}
-          </button>
-          <button
-            class="site-action"
-            type="button"
-            :disabled="loadingLogs"
-            @click="onLoadSiteLogs(site.id)"
-          >
-            {{ loadingLogs ? 'Loading logs…' : 'View logs' }}
-          </button>
-          <button
-            class="site-action"
-            type="button"
-            :disabled="openingFolder"
-            @click="onOpenSiteFolder(site.id)"
-          >
-            {{ openingFolder ? 'Opening…' : 'Open folder' }}
-          </button>
-          <button
-            class="site-action"
-            type="button"
-            :disabled="exporting"
-            @click="onExportSite(site.id, site.name)"
-          >
-            {{ exporting ? 'Exporting…' : 'Export' }}
-          </button>
+        <span class="list-col list-col--meta">{{ site.benchId }}</span>
+        <span class="list-col list-col--meta">{{ site.groupId ?? '—' }}</span>
+        <span class="list-col list-col--meta">{{ site.appCount }}</span>
+        <span class="list-col list-col--status">
+          <span class="status-pill" :class="`status-pill--${site.status}`">{{ site.status }}</span>
+        </span>
+        <div class="list-col list-col--actions">
+          <button class="btn btn--subtle btn--sm" :disabled="updating || !canStartSite(site.id)" @click="onSetSiteStatus(site.id, 'running')">Start</button>
+          <button class="btn btn--subtle btn--sm" :disabled="updating || !canStopSite(site.id)" @click="onSetSiteStatus(site.id, 'stopped')">Stop</button>
+          <button class="btn btn--subtle btn--sm" :disabled="loadingLogs" @click="onLoadSiteLogs(site.id)">Logs</button>
+          <button class="btn btn--subtle btn--sm" :disabled="openingFolder" @click="onOpenSiteFolder(site.id)">Folder</button>
+          <button class="btn btn--subtle btn--sm" :disabled="exporting" @click="onExportSite(site.id, site.name)">Export</button>
+          <button class="btn btn--danger btn--sm" :disabled="updating || deleting || site.status === 'running'" @click="onDeleteSite(site.id, site.name)">Delete</button>
         </div>
 
-        <section v-if="activeSiteLogId === site.id" class="site-logs-panel">
-          <header class="site-logs-header">
-            <p class="site-logs-title">Recent logs</p>
-            <button type="button" class="site-action" @click="onCloseSiteLogs">Close</button>
-            <select v-model="siteLogLevel" class="site-logs-level-filter">
-              <option value="all">all levels</option>
-              <option value="info">info</option>
-              <option value="error">error</option>
+        <!-- Logs panel -->
+        <section v-if="activeSiteLogId === site.id" class="logs-panel">
+          <header class="logs-panel__header">
+            <span class="logs-panel__title">Recent logs</span>
+            <button type="button" class="btn btn--subtle btn--sm" @click="onCloseSiteLogs">Close</button>
+            <select v-model="siteLogLevel" class="logs-panel__level">
+              <option value="all">All levels</option>
+              <option value="info">Info</option>
+              <option value="error">Error</option>
             </select>
-            <input
-              v-model="siteLogFilter"
-              class="site-logs-filter"
-              type="text"
-              placeholder="Filter logs"
-            />
+            <input v-model="siteLogFilter" class="logs-panel__filter" type="text" placeholder="Filter logs…" />
           </header>
-          <ul class="site-logs-list">
-            <li v-for="entry in filteredSiteLogs" :key="entry.id" class="site-log-item">
-              <p class="site-log-message">{{ entry.message }}</p>
-              <p class="site-log-meta">{{ entry.level }} · {{ entry.timestamp }}</p>
+          <ul class="logs-list">
+            <li v-for="entry in filteredSiteLogs" :key="entry.id" class="logs-list__item">
+              <p class="logs-list__message">{{ entry.message }}</p>
+              <p class="logs-list__meta">{{ entry.level }} · {{ entry.timestamp }}</p>
             </li>
           </ul>
         </section>
-      </li>
-    </ul>
+      </div>
+    </div>
 
     <ConfirmationDialog
       :open="deleteConfirmOpen"
@@ -530,261 +484,380 @@ onMounted(() => {
 <style scoped>
 .sites-view {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
-.sites-header {
+/* View header */
+.view-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-}
-
-.sites-title {
-  margin: 0;
-  font-size: 20px;
-  color: #1f272e;
-}
-
-.sites-refresh,
-.sites-create,
-.site-action {
-  border: 1px solid #d7dee8;
-  background: #ffffff;
-  color: #334155;
-}
-
-.sites-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.sites-field {
-  display: grid;
-  gap: 6px;
-}
-
-.sites-field > span {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.sites-field--full,
-.sites-actions {
-  grid-column: 1 / -1;
-}
-
-.site-wizard-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.site-wizard-step {
-  margin: 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid #d7dee8;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.site-wizard-step--active {
-  border-color: #d3e2ff;
-  background: #eaf2ff;
-  color: #1e3a8a;
-}
-
-.sites-error {
-  margin: 0;
-  font-size: 13px;
-  color: #b42318;
-}
-
-.site-wizard-summary {
-  padding: 10px;
-  border: 1px solid #e4e9ef;
-  border-radius: 10px;
-  background: #f8fafc;
-}
-
-.site-wizard-summary p {
-  margin: 0;
-  font-size: 13px;
-  color: #334155;
-}
-
-.site-wizard-summary p + p {
-  margin-top: 4px;
-}
-
-.sites-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.sites-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  background: #ffffff;
-}
-
-.sites-grid {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 12px;
 }
 
-.site-card {
-  padding: 14px;
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  background: #ffffff;
-  display: grid;
-  gap: 10px;
+.view-header__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.site-card-top {
+.view-header__actions {
   display: flex;
+  gap: 8px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+
+.btn--subtle {
+  border-color: var(--border-default);
+  background: var(--surface-card);
+}
+
+.btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn--danger {
+  border-color: var(--red-border);
+  color: var(--red-text);
+  background: var(--surface-card);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--red-light);
+}
+
+.btn--sm {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+/* Alert */
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.alert--success {
+  color: var(--green-text);
+  background: var(--green-light);
+  border: 1px solid var(--green-border);
+}
+
+/* Form card */
+.form-card {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.form-card__header {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
 }
 
-.site-name {
+.form-card__title {
   margin: 0;
-  font-size: 16px;
-  color: #1f272e;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.site-status {
-  padding: 2px 8px;
-  border-radius: 999px;
+.form-body {
+  padding: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.form-field {
+  display: grid;
+  gap: 4px;
+}
+
+.form-field--full {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.form-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--red-text);
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+}
+
+/* Wizard steps */
+.wizard-steps {
+  display: flex;
+  gap: 4px;
+}
+
+.wizard-step {
+  padding: 3px 10px;
+  border-radius: 10px;
   font-size: 11px;
+  font-weight: 500;
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+
+.wizard-step--active {
+  background: var(--primary);
+  color: var(--primary-text);
+  border-color: var(--primary);
+}
+
+.wizard-step--done {
+  background: var(--green-light);
+  color: var(--green-text);
+  border-color: var(--green-border);
+}
+
+.wizard-summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-light);
+}
+
+.wizard-summary__row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.wizard-summary__row span {
+  min-width: 80px;
+  color: var(--text-secondary);
+}
+
+.wizard-summary__row strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-bar__select {
+  min-width: 140px;
+}
+
+.filter-bar__search {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* List table */
+.list-table {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.list-table__header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.8fr 0.5fr 0.8fr 2.5fr;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--border-light);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border: 1px solid #d7dee8;
-  color: #475569;
-  background: #f8fafc;
+  letter-spacing: 0.04em;
 }
 
-.site-status--running,
-.site-status--success {
-  border-color: #bbf7d0;
-  color: #166534;
-  background: #f0fdf4;
-}
-
-.site-status--failure,
-.site-status--error {
-  border-color: #fecaca;
-  color: #b42318;
-  background: #fff7f7;
-}
-
-.site-path {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  word-break: break-all;
-}
-
-.site-meta {
-  margin: 0;
+.list-table__row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 2fr 1fr 0.8fr 0.5fr 0.8fr 2.5fr;
   gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light);
+  align-items: center;
+  font-size: 13px;
 }
 
-.site-meta dt {
-  font-size: 11px;
-  color: #64748b;
+.list-table__row:last-child {
+  border-bottom: 0;
 }
 
-.site-meta dd {
+.list-col--name {
+  min-width: 0;
+}
+
+.list-col__primary {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-col__secondary {
   margin: 2px 0 0;
-  color: #1f272e;
-  font-size: 13px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.site-card-actions {
+.list-col--meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.list-col--actions {
   display: flex;
+  gap: 4px;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: flex-end;
 }
 
-.site-action {
-  min-height: 32px;
-  padding: 0 10px;
+/* Status pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--gray-light);
+  color: var(--gray-text);
 }
 
-.site-action--danger {
-  border-color: #fca5a5;
-  color: #912018;
-  background: #fff7f7;
+.status-pill--running,
+.status-pill--success {
+  background: var(--green-light);
+  color: var(--green-text);
 }
 
-.site-logs-panel {
-  border-top: 1px solid #e4e9ef;
-  padding-top: 10px;
+.status-pill--failure,
+.status-pill--error {
+  background: var(--red-light);
+  color: var(--red-text);
+}
+
+/* Logs panel */
+.logs-panel {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border-light);
+  padding: 12px 0 0;
   display: grid;
   gap: 8px;
 }
 
-.site-logs-header {
+.logs-panel__header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.site-logs-title {
-  margin: 0;
-  font-size: 13px;
-  color: #334155;
+.logs-panel__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
-.site-logs-level-filter,
-.site-logs-filter {
-  min-height: 32px;
+.logs-panel__level {
+  min-height: 24px;
+  font-size: 11px;
 }
 
-.site-logs-list {
+.logs-panel__filter {
+  flex: 1;
+  max-width: 280px;
+  min-height: 24px;
+  font-size: 11px;
+}
+
+.logs-list {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
-.site-log-item {
-  padding: 8px;
-  border-radius: 8px;
-  background: #f8fafc;
+.logs-list__item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--surface-subtle);
 }
 
-.site-log-message,
-.site-log-meta {
+.logs-list__message {
   margin: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
 }
 
-.site-log-meta {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #64748b;
+.logs-list__meta {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 </style>
