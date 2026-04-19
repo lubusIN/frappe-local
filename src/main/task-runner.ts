@@ -1,9 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import type { TaskProgressEvent, TaskSnapshot, TaskLogLevel } from '../shared/domain/task-runner';
+import type {
+  TaskProgressEvent,
+  TaskSnapshot,
+  TaskLogLevel,
+  TaskResourceContext,
+} from '../shared/domain/task-runner';
 
 type ManagedTask = {
   readonly id: string;
   readonly name: string;
+  readonly resource: TaskResourceContext | null;
   readonly run: (context: TaskExecutionContext) => Promise<void>;
   readonly controller: AbortController;
   readonly createdAt: string;
@@ -26,6 +32,7 @@ export type TaskExecutionContext = {
 export type TaskDefinition = {
   readonly id?: string;
   readonly name: string;
+  readonly resource?: TaskResourceContext;
   readonly run: (context: TaskExecutionContext) => Promise<void>;
 };
 
@@ -64,6 +71,7 @@ export class TaskRunner {
     const task: ManagedTask = {
       id: taskId,
       name: definition.name,
+      resource: definition.resource ?? null,
       run: definition.run,
       controller: new AbortController(),
       createdAt: now(),
@@ -136,6 +144,7 @@ export class TaskRunner {
     this.emit({
       taskId: nextTaskId,
       taskName: task.name,
+      ...(task.resource ? { resource: task.resource } : {}),
       type: 'task.started',
       status: 'running',
       stepId: null,
@@ -228,6 +237,7 @@ export class TaskRunner {
     this.emit({
       taskId,
       taskName: task.name,
+      ...(task.resource ? { resource: task.resource } : {}),
       type,
       status,
       stepId: details.stepId,

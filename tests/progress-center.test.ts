@@ -10,6 +10,7 @@ import type { TaskProgressEvent } from '../src/shared/domain/task-runner';
 const makeEvent = (overrides: Partial<TaskProgressEvent> = {}): TaskProgressEvent => ({
   taskId: overrides.taskId ?? 'task-1',
   taskName: overrides.taskName ?? 'Create bench demo',
+  resource: overrides.resource,
   type: overrides.type ?? 'task.started',
   status: overrides.status ?? 'running',
   stepId: overrides.stepId ?? null,
@@ -44,6 +45,21 @@ describe('progress-center', () => {
     expect(afterSecond).toHaveLength(1);
     expect(afterSecond[0]?.status).toBe('success');
     expect(afterSecond[0]?.message).toBe('Completed');
+    expect(afterSecond[0]?.resourceId).toBeNull();
+  });
+
+  it('prefers payload resource metadata for exact targeting', () => {
+    const event = makeEvent({
+      taskName: 'Background operation',
+      resource: {
+        type: 'site',
+        id: 'site-007',
+      },
+    });
+
+    const tasks = upsertProgressTask([], event);
+    expect(tasks[0]?.resource).toBe('site');
+    expect(tasks[0]?.resourceId).toBe('site-007');
   });
 
   it('filters task summaries by status, resource, and time window', () => {
@@ -59,6 +75,7 @@ describe('progress-center', () => {
         stepName: null,
         timestamp: new Date('2026-04-19T08:45:00.000Z').toISOString(),
         resource: 'runtime',
+        resourceId: 'docker',
       },
       {
         taskId: 'old-site',
@@ -69,6 +86,7 @@ describe('progress-center', () => {
         stepName: null,
         timestamp: new Date('2026-04-17T08:00:00.000Z').toISOString(),
         resource: 'site',
+        resourceId: 'site-old',
       },
     ];
 

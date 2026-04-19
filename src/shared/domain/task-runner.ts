@@ -17,6 +17,11 @@ export const taskLogLevels = ['info', 'warning', 'error'] as const;
 
 export type TaskLogLevel = (typeof taskLogLevels)[number];
 
+export type TaskResourceContext = {
+  readonly type: 'bench' | 'site' | 'workspace' | 'import' | 'runtime' | 'system';
+  readonly id?: string | null;
+};
+
 export type TaskSnapshot = {
   readonly id: string;
   readonly name: string;
@@ -31,6 +36,7 @@ export type TaskSnapshot = {
 export type TaskProgressEvent = {
   readonly taskId: string;
   readonly taskName: string;
+  readonly resource?: TaskResourceContext;
   readonly type: TaskEventType;
   readonly status: TaskStatus;
   readonly stepId: string | null;

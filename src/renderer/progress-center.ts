@@ -12,6 +12,7 @@ export type ProgressTaskSummary = {
   readonly stepName: string | null;
   readonly timestamp: string;
   readonly resource: ProgressTaskResource;
+  readonly resourceId: string | null;
 };
 
 export type ProgressCenterState = {
@@ -66,6 +67,10 @@ export const upsertProgressTask = (
   tasks: ProgressTaskSummary[],
   event: TaskProgressEvent
 ): ProgressTaskSummary[] => {
+  const payloadResourceType = event.resource?.type;
+  const payloadResource =
+    payloadResourceType && payloadResourceType !== 'workspace' ? payloadResourceType : undefined;
+
   const next: ProgressTaskSummary = {
     taskId: event.taskId,
     taskName: event.taskName,
@@ -74,7 +79,8 @@ export const upsertProgressTask = (
     message: event.message,
     stepName: event.stepName,
     timestamp: event.timestamp,
-    resource: detectProgressTaskResource(event.taskName),
+    resource: payloadResource ?? detectProgressTaskResource(event.taskName),
+    resourceId: event.resource?.id ?? null,
   };
 
   const withoutCurrent = tasks.filter((item) => item.taskId !== event.taskId);

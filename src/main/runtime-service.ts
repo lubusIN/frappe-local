@@ -176,6 +176,7 @@ export class RuntimeService {
 
     const taskId = this.taskRunner.enqueue({
       name: `Repair ${preferredRuntime} runtime`,
+      resource: { type: 'runtime', id: preferredRuntime },
       run: async (context) => {
         context.log('info', `Preparing repair plan for ${preferredRuntime}.`);
 

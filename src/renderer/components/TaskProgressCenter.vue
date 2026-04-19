@@ -47,7 +47,7 @@
         </div>
         <p class="task-name">{{ item.taskName }}</p>
         <p class="task-message">{{ item.message }}</p>
-        <RouterLink class="task-link" :to="taskRoute(item.resource)">Open related view</RouterLink>
+        <RouterLink class="task-link" :to="taskRoute(item)">Open related view</RouterLink>
       </li>
     </ul>
   </section>
@@ -56,6 +56,7 @@
 <script setup lang="ts">
 import { toRefs } from 'vue';
 import { RouterLink } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 import type { ProgressTaskResource, ProgressTaskSummary } from '../progress-center';
 
 const props = defineProps<{
@@ -93,12 +94,28 @@ const onRecentToggle = (event: Event): void => {
   emit('update:recentOnly', value);
 };
 
-const taskRoute = (resource: ProgressTaskResource): string => {
-  if (resource === 'bench') return '/benches';
-  if (resource === 'site') return '/sites';
-  if (resource === 'import') return '/import-export';
-  if (resource === 'runtime') return '/dashboard';
-  return '/dashboard';
+const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
+  if (item.resource === 'bench') {
+    return item.resourceId
+      ? { path: '/benches', query: { benchId: item.resourceId } }
+      : { path: '/benches' };
+  }
+
+  if (item.resource === 'site') {
+    return item.resourceId
+      ? { path: '/sites', query: { siteId: item.resourceId } }
+      : { path: '/sites' };
+  }
+
+  if (item.resource === 'import') {
+    return { path: '/import-export' };
+  }
+
+  if (item.resource === 'runtime') {
+    return { path: '/dashboard', query: item.resourceId ? { runtime: item.resourceId } : {} };
+  }
+
+  return { path: '/dashboard' };
 };
 
 const formatTime = (value: string): string => new Date(value).toLocaleString();
