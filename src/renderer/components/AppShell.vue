@@ -4,11 +4,11 @@
       <div class="sidebar-brand">
         <div class="sidebar-logo">
           <svg viewBox="0 0 24 24" class="sidebar-logo__icon" aria-hidden="true">
-            <path d="M7 14c-1.66 0-3-1.34-3-3 0-1.52 1.13-2.77 2.6-2.97C7.3 5.67 9.44 4 12 4c3.2 0 5.82 2.52 5.99 5.68A3.5 3.5 0 0 1 17.5 17H8" />
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3" />
           </svg>
         </div>
         <div class="sidebar-brand__text">
-          <span class="sidebar-brand__label">Frappe Cloud</span>
+          <span class="sidebar-brand__label">Frappe Cafe</span>
           <span class="sidebar-brand__user">local@frappe.cafe</span>
         </div>
         <button

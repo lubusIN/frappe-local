@@ -42,13 +42,7 @@
           <input v-model="form.defaultFrappeVersion" type="text" required />
         </label>
 
-        <label class="form-field">
-          <span class="form-label">Runtime Preference</span>
-          <select v-model="form.runtimePreference">
-            <option value="docker">docker</option>
-            <option value="podman">podman</option>
-          </select>
-        </label>
+
 
         <label class="form-field form-field--full">
           <span class="form-label">Storage Path</span>
@@ -86,17 +80,7 @@
       </form>
     </div>
 
-    <RuntimeHealthPanel
-      :health="runtimeHealth"
-      :loading="runtimeLoading"
-      :repairing="runtimeRepairing"
-      :error="runtimeError"
-      :active-task-status="runtimeTaskStatus"
-      :last-task-message="runtimeTaskMessage"
-      :repair-logs="runtimeLogs"
-      @refresh="refreshRuntimeHealth"
-      @repair="repairRuntime"
-    />
+
 
     <DiagnosticsPanel
       :report="diagnostics.report"
@@ -120,30 +104,17 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
-import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import StatePanel from '../components/StatePanel.vue';
 import UpdateStrategyPanel from '../components/UpdateStrategyPanel.vue';
 import { useDiagnostics } from '../diagnostics-controller';
 import { useUpdateStrategy } from '../update-strategy-controller';
 import { useSettings } from '../composables/useSettings';
 import { useIpc } from '../composables/useIpc';
-import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 
 const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
 const ipc = useIpc();
 const diagnostics = useDiagnostics(ipc);
 const updates = useUpdateStrategy(ipc);
-const {
-  health: runtimeHealth,
-  loading: runtimeLoading,
-  repairing: runtimeRepairing,
-  error: runtimeError,
-  activeTaskStatus: runtimeTaskStatus,
-  lastTaskMessage: runtimeTaskMessage,
-  repairLogs: runtimeLogs,
-  refresh: refreshRuntimeHealth,
-  repair: repairRuntime,
-} = useRuntimeHealth();
 
 onMounted(() => {
   void diagnostics.loadLastReport();

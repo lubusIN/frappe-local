@@ -7,6 +7,13 @@ import { createMainLogger } from './logger';
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mainLogger = createMainLogger('main');
 
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const binPath = isDev 
+  ? path.resolve(currentDirectory, '../../bin') 
+  : path.join(process.resourcesPath, 'bin');
+
+process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
+
 const createMainWindow = async (): Promise<void> => {
   mainLogger.info('creating main window');
 

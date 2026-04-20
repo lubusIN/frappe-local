@@ -25,8 +25,7 @@ const rendererBridge: RendererBridge = {
 	openSiteFolder: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenFolder, id),
 	getSettings: async () => ipcRenderer.invoke(ipcChannels.settingsGet),
 	setSettings: async (settings) => ipcRenderer.invoke(ipcChannels.settingsSet, settings),
-	getRuntimeHealth: async () => ipcRenderer.invoke(ipcChannels.runtimeGetHealth),
-	repairRuntime: async (input) => ipcRenderer.invoke(ipcChannels.runtimeRepair, input),
+
 	exportSitePackage: async (input) => ipcRenderer.invoke(ipcChannels.exportSitePackage, input),
 	validateImportPackage: async (input) => ipcRenderer.invoke(ipcChannels.importValidatePackage, input),
 	executeImportPackage: async (input) => ipcRenderer.invoke(ipcChannels.importExecutePackage, input),

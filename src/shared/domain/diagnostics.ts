@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-export const dependencyTypes = ['podman', 'docker-compose', 'git'] as const;
-export type DiagnosticsCheckType = (typeof dependencyTypes)[number] | 'path-writability' | 'runtime-preference' | 'storage-access';
+export type DiagnosticsCheckType = 'path-writability' | 'runtime-preference' | 'storage-access';
 
 export const diagnosticsCheckStatuses = ['passed', 'warning', 'failed', 'skipped'] as const;
 export type DiagnosticsCheckStatus = (typeof diagnosticsCheckStatuses)[number];

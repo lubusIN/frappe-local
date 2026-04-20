@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --fix",
     "precommit:check": "npm run lint && npm run typecheck && npm run test",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json",
+    "postinstall": "node scripts/download-binaries.js"
   },
   "author": "",
   "license": "MIT",

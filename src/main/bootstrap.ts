@@ -20,7 +20,7 @@ import { InMemoryBenchAnalytics } from './bench-analytics';
 import { InMemorySiteAnalytics } from './site-analytics';
 import { getDefaultAppCatalogSeed } from './catalog-provider';
 import { runDiagnostics } from './diagnostics-service';
-import { RuntimeService } from './runtime-service';
+
 import { getTaskRunner } from './task-runner';
 
 type BootstrapContext = {
@@ -123,21 +123,8 @@ export const runApplicationBootstrap = async (
       groups: new GroupRepository(adapter),
     };
 
-    const runtimeService = new RuntimeService({
-      settings: repositories.settings,
-      taskRunner: getTaskRunner(),
-    });
-
-    const startupReadiness = await evaluateStartupReadiness(runtimeService);
-    if (!startupReadiness.ok) {
-      startupReadiness.warnings.forEach((warning) => {
-        bootstrapLogger.warn(warning);
-      });
-    }
-
     const initialDiagnosticsReport = await runDiagnostics({
       runtimePaths: context.runtimePaths,
-      runtimeService,
       settingsRepository: repositories.settings,
       appVersion: context.appVersion,
     });
@@ -162,7 +149,7 @@ export const runApplicationBootstrap = async (
       trackSiteOperation: (siteId, operation) => {
         siteAnalytics.track(siteId, operation);
       },
-    }, undefined, undefined, runtimeService, context.appVersion, context.runtimePaths, initialDiagnosticsReport);
+    }, undefined, undefined, context.appVersion, context.runtimePaths, initialDiagnosticsReport);
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');
   } catch (error) {
@@ -181,41 +168,3 @@ export const runApplicationBootstrap = async (
 };
 
 export { buildStartupErrorHtml };
-
-type StartupReadinessResult = {
-  readonly ok: boolean;
-  readonly warnings: string[];
-};
-
-export const evaluateStartupReadiness = async (
-  runtimeService: Pick<RuntimeService, 'getHealthForStartup'>
-): Promise<StartupReadinessResult> => {
-  try {
-    const health = await runtimeService.getHealthForStartup();
-    const warnings: string[] = [];
-
-    if (health.fallbackApplied) {
-      warnings.push(
-        `Runtime fallback is active: preferred ${health.preferredRuntime}, using ${health.selectedRuntime}.`
-      );
-    }
-
-    if (health.hasBlockingIssues) {
-      warnings.push(
-        `Runtime readiness check found blocking dependencies: ${health.blockingDependencies.join(', ')}.`
-      );
-    }
-
-    return {
-      ok: warnings.length === 0,
-      warnings,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      warnings: [
-        `Runtime readiness check could not complete: ${error instanceof Error ? error.message : String(error)}.`,
-      ],
-    };
-  }
-};

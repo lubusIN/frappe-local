@@ -85,22 +85,6 @@
       </div>
     </section>
 
-    <section id="runtime" class="dashboard-section">
-      <h2 class="section-heading">Runtime Diagnostics</h2>
-      <p class="section-desc">Inspect runtime dependencies, fallback behavior, and guided repair actions.</p>
-      <RuntimeHealthPanel
-        :health="runtimeHealth"
-        :loading="runtimeLoading"
-        :repairing="runtimeRepairing"
-        :error="runtimeError"
-        :active-task-status="runtimeTaskStatus"
-        :last-task-message="runtimeTaskMessage"
-        :repair-logs="runtimeLogs"
-        @refresh="refreshRuntimeHealth"
-        @repair="onRequestRuntimeRepair"
-      />
-    </section>
-
     <section id="activity" class="dashboard-section">
       <h2 class="section-heading">Activity</h2>
       <p class="section-desc">Recent tasks and long-running operations across benches, sites, runtime, and imports.</p>
@@ -158,14 +142,6 @@
       </div>
     </section>
 
-    <ConfirmationDialog
-      :open="runtimeConfirmOpen"
-      title="Run runtime repair"
-      message="This can modify local runtime dependencies and may take several minutes. Continue?"
-      confirm-label="Run repair"
-      @cancel="runtimeConfirmOpen = false"
-      @confirm="onConfirmRuntimeRepair"
-    />
   </div>
 </template>
 
@@ -173,29 +149,14 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
-import RuntimeHealthPanel from '../components/RuntimeHealthPanel.vue';
 import TaskProgressCenter from '../components/TaskProgressCenter.vue';
 import { useAppHealth } from '../composables/useAppHealth';
 import { useIpc } from '../composables/useIpc';
 import { useProgressCenter } from '../composables/useProgressCenter';
-import { useRuntimeHealth } from '../composables/useRuntimeHealth';
 import { useSettings } from '../composables/useSettings';
 
 const { health, loading, error } = useAppHealth();
 const { form: settingsForm, loading: settingsLoading } = useSettings();
-const {
-  health: runtimeHealth,
-  loading: runtimeLoading,
-  repairing: runtimeRepairing,
-  error: runtimeError,
-  activeTaskStatus: runtimeTaskStatus,
-  lastTaskMessage: runtimeTaskMessage,
-  repairLogs: runtimeLogs,
-  refresh: refreshRuntimeHealth,
-  repair: repairRuntime,
-} = useRuntimeHealth();
-
 const {
   filteredTasks,
   loading: progressLoading,
@@ -300,53 +261,6 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
   return links;
 });
 
-const runtimeConfirmOpen = ref(false);
-
-const onRequestRuntimeRepair = (): void => {
-  runtimeConfirmOpen.value = true;
-};
-
-const onConfirmRuntimeRepair = async (): Promise<void> => {
-  runtimeConfirmOpen.value = false;
-  await repairRuntime();
-};
-
-const runtimeStatusLabel = computed(() => {
-  if (runtimeLoading.value) {
-    return 'Checking';
-  }
-
-  if (runtimeError.value) {
-    return 'Unavailable';
-  }
-
-  if (runtimeHealth.value?.hasBlockingIssues) {
-    return 'Needs Attention';
-  }
-
-  if (runtimeHealth.value) {
-    return 'Healthy';
-  }
-
-  return 'Pending';
-});
-
-const runtimeStatusTone = computed(() => {
-  if (runtimeLoading.value) {
-    return 'muted';
-  }
-
-  if (runtimeError.value || runtimeHealth.value?.hasBlockingIssues) {
-    return 'warning';
-  }
-
-  if (runtimeHealth.value) {
-    return 'ok';
-  }
-
-  return 'muted';
-});
-
 const overviewMetrics = computed(() => [
   {
     label: 'Current Plan',
@@ -368,11 +282,9 @@ const overviewMetrics = computed(() => [
   },
   {
     label: 'Runtime',
-    value: runtimeStatusLabel.value,
-    sublabel: runtimeHealth.value
-      ? `${runtimeHealth.value.selectedRuntime}${runtimeHealth.value.fallbackApplied ? ' (fallback)' : ''}`
-      : 'Diagnostics pending',
-    tone: runtimeStatusTone.value,
+    value: 'Bundled',
+    sublabel: 'Self-contained',
+    tone: 'ok',
   },
 ]);
 
@@ -396,13 +308,7 @@ const operationalSummary = computed(() => [
   },
   {
     label: 'Runtime Selection',
-    value: runtimeHealth.value
-      ? `${runtimeHealth.value.selectedRuntime}${runtimeHealth.value.fallbackApplied ? ' (fallback applied)' : ''}`
-      : 'Waiting for diagnostics',
-  },
-  {
-    label: 'Blocking Issues',
-    value: runtimeHealth.value ? String(runtimeHealth.value.blockingDependencies.length) : '0',
+    value: 'Self-contained bundled Podman/Docker.',
   },
   {
     label: 'Environment Counts',

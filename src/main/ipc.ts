@@ -6,9 +6,7 @@ import type {
   ImportExecuteInput,
   ImportExecutionResponse,
   ImportValidationResponse,
-  RuntimeHealthResponse,
-  RuntimeRepairInput,
-  RuntimeRepairResponse,
+
   ExportSitePackageInput,
   ExportSitePackageResponse,
   CatalogAppItem,
@@ -86,10 +84,7 @@ type TaskRunnerLike = {
   onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
 };
 
-type RuntimeServiceLike = {
-  getHealth: () => Promise<RuntimeHealthResponse>;
-  startRepair: (input: RuntimeRepairInput) => Promise<RuntimeRepairResponse>;
-};
+
 
 export type AppRepositories = {
   readonly appCatalog: {
@@ -331,10 +326,7 @@ export const registerIpcHandlers = (
   },
   terminalService: TerminalServiceLike = getTerminalService(),
   taskRunner: TaskRunnerLike = getTaskRunner(),
-  runtimeService: RuntimeServiceLike = new RuntimeService({
-    settings: repositories.settings,
-    taskRunner: getTaskRunner(),
-  }),
+
   appVersion: string = '0.1.0',
   runtimePaths: AppRuntimePaths = {
     userDataPath: '',
@@ -386,7 +378,7 @@ export const registerIpcHandlers = (
   ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
     const report = await runDiagnostics({
       runtimePaths,
-      runtimeService,
+
       settingsRepository: repositories.settings,
       appVersion,
     });
@@ -644,26 +636,7 @@ export const registerIpcHandlers = (
     return toSettingsItem(settings);
   });
 
-  ipcMainLike.handle(ipcChannels.runtimeGetHealth, async (): Promise<RuntimeHealthResponse> => {
-    return runtimeService.getHealth();
-  });
 
-  ipcMainLike.handle(ipcChannels.runtimeRepair, async (_event: unknown, input: unknown): Promise<RuntimeRepairResponse> => {
-    const payload = (input ?? {}) as RuntimeRepairInput;
-    if (
-      payload.runtimePreference !== undefined &&
-      payload.runtimePreference !== 'docker' &&
-      payload.runtimePreference !== 'podman'
-    ) {
-      throw new Error('Unsupported runtime preference.');
-    }
-
-    if (payload.dryRun !== undefined && typeof payload.dryRun !== 'boolean') {
-      throw new Error('Repair dryRun flag must be a boolean.');
-    }
-
-    return runtimeService.startRepair(payload);
-  });
 
   ipcMainLike.handle(ipcChannels.importValidatePackage, async (_event: unknown, input: unknown) => {
     const payload = input as { artifactDirectory?: unknown; benchId?: unknown };

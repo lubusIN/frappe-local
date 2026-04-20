@@ -8,9 +8,7 @@ import { createMainLogger } from './logger';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
-  readonly runtimeService: {
-    getHealth: () => Promise<RuntimeHealthResponse>;
-  };
+
   readonly settingsRepository: {
     get: () => Promise<Settings | null>;
   };
@@ -95,24 +93,6 @@ const checkRuntimePreference = (runtimePreference: string): DiagnosticsCheckResu
   };
 };
 
-const toDependencyCheck = (dependency: RuntimeHealthResponse['dependencies'][number]): DiagnosticsCheckResult => {
-  const timestamp = new Date().toISOString();
-  const status = dependency.status === 'ready'
-    ? 'passed'
-    : dependency.status === 'missing' || dependency.status === 'incompatible'
-      ? 'warning'
-      : 'skipped';
-
-  return {
-    type: dependency.dependency,
-    status,
-    title: `${dependency.guidance.title}`,
-    description: dependency.summary,
-    remediation: dependency.guidance.steps.join(' '),
-    timestamp,
-  };
-};
-
 /**
  * Run first-run and on-demand diagnostics checks
  */
@@ -134,23 +114,6 @@ export const runDiagnostics = async (context: DiagnosticsContext): Promise<Diagn
   const runtimePreference = settings?.runtimePreference ?? 'docker';
   const runtimeCheck = checkRuntimePreference(runtimePreference);
   checks.push(runtimeCheck);
-
-  // Check dependencies
-  try {
-    const runtimeHealth = await context.runtimeService.getHealth();
-    const dependencyChecks = runtimeHealth.dependencies.map(toDependencyCheck);
-    checks.push(...dependencyChecks);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    checks.push({
-      type: 'runtime-preference',
-      status: 'failed',
-      title: 'Dependency health check',
-      description: 'Unable to collect runtime dependency health.',
-      remediation: `Retry diagnostics after resolving the runtime probe issue. Error: ${message}`,
-      timestamp: new Date().toISOString(),
-    });
-  }
 
   // Determine severity
   const failedChecks = checks.filter((c) => c.status === 'failed');

@@ -31,6 +31,7 @@ const macOSConfig = {
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    extraResource: ['./bin'],
     // Platform-specific configurations
     ...(isDarwin && {
       // macOS-specific settings
