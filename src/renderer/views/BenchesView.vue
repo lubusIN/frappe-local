@@ -4,8 +4,8 @@
       <h2 class="view-header__title">Benches</h2>
       <div class="view-header__actions">
         <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
           </svg>
           {{ loading ? 'Refreshing…' : 'Refresh' }}
         </button>
@@ -36,29 +36,29 @@
           <span class="form-label">Name</span>
           <input v-model="createForm.name" type="text" required placeholder="my-bench" />
         </label>
-        <label class="form-field">
-          <span class="form-label">Runtime</span>
-          <select v-model="createForm.runtime">
-            <option value="docker">docker</option>
-            <option value="podman">podman</option>
-          </select>
-        </label>
         <label class="form-field form-field--full">
           <span class="form-label">Path</span>
-          <input v-model="createForm.path" type="text" required placeholder="/path/to/bench" />
+          <div class="path-picker">
+            <input v-model="createForm.path" type="text" required placeholder="/path/to/bench" />
+            <button type="button" class="btn btn--subtle" @click="triggerFolderPicker">Browse</button>
+            <input ref="folderPickerInput" type="file" webkitdirectory directory style="display: none" @change="onPathSelected" />
+          </div>
         </label>
         <label class="form-field">
           <span class="form-label">Frappe Version</span>
-          <input v-model="createForm.frappeVersion" type="text" required />
+          <select v-model="createForm.frappeVersion" required>
+            <option value="version-15">version-15 (Stable)</option>
+            <option value="version-16">version-16 (Beta)</option>
+            <option value="develop">develop</option>
+          </select>
         </label>
         <label class="form-field">
           <span class="form-label">Apps</span>
-          <AppPicker
-            v-model="createForm.appsSelected"
-            :disabled="creating || loading"
-            :runtime="createForm.runtime"
-            :frappe-version="createForm.frappeVersion"
-          />
+          <div>
+            <button type="button" class="btn btn--subtle" @click="showAppPicker = true">
+              {{ createForm.appsSelected.length ? `${createForm.appsSelected.length} Apps Selected` : 'Select Apps' }}
+            </button>
+          </div>
         </label>
         <div class="form-actions form-field--full">
           <button class="btn btn--primary" type="submit" :disabled="creating || loading">
@@ -139,15 +139,35 @@
       @cancel="onCancelDelete"
       @confirm="onConfirmDelete"
     />
+
+    <div v-if="showAppPicker" class="modal-overlay" role="dialog" aria-modal="true" @click.self="showAppPicker = false" @keydown.escape="showAppPicker = false">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Select Apps</h3>
+        </div>
+        <div class="modal-body">
+          <AppPicker
+            v-model="createForm.appsSelected"
+            :disabled="creating || loading"
+            :runtime="createForm.runtime"
+            :frappe-version="createForm.frappeVersion"
+          />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn--primary" @click="showAppPicker = false">Done</button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
 import { useBenches } from '../composables/useBenches';
+import { useSettings } from '../composables/useSettings';
 
 const {
   benches,
@@ -170,10 +190,32 @@ const {
 const createForm = reactive({
   name: '',
   path: '',
-  frappeVersion: '15.0.0',
-  runtime: 'docker' as 'docker' | 'podman',
+  frappeVersion: 'version-15',
+  runtime: 'podman' as 'docker' | 'podman',
   appsSelected: [] as string[],
 });
+
+const { form: settingsForm } = useSettings();
+const showAppPicker = ref(false);
+const folderPickerInput = ref<HTMLInputElement | null>(null);
+
+watch(() => createForm.name, (newName, oldName) => {
+  const basePath = settingsForm.value.storagePath || '~/Library/Application Support/Frappe Cafe';
+  if (!createForm.path || createForm.path === `${basePath}/${oldName}`) {
+    createForm.path = `${basePath}/${newName}`;
+  }
+});
+
+const triggerFolderPicker = () => {
+  folderPickerInput.value?.click();
+};
+
+const onPathSelected = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    createForm.path = target.files[0].path;
+  }
+};
 
 const onCreateBench = async () => {
   await create({
@@ -375,6 +417,14 @@ const onOpenBenchFolder = async (id: string) => {
   grid-column: 1 / -1;
 }
 
+.path-picker {
+  display: flex;
+  gap: 8px;
+}
+.path-picker input[type="text"] {
+  flex: 1;
+}
+
 .form-label {
   font-size: 12px;
   font-weight: 500;
@@ -532,5 +582,55 @@ const onOpenBenchFolder = async (id: string) => {
   margin: 2px 0 0;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Modal overlay matching ConfirmationDialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 50;
+  backdrop-filter: blur(2px);
+}
+
+.modal-card {
+  width: min(520px, 100%);
+  border-radius: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modal-actions {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+  background: var(--surface-subtle);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 </style>
