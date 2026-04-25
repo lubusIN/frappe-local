@@ -36,9 +36,10 @@ describe('storage bootstrap', () => {
         description: 'ERP for teams',
         source: 'https://github.com/frappe/erpnext',
         version: '15.0.0',
+        category: 'business',
         compatibility: {
           minimumFrappeVersion: 'version-15',
-          supportedRuntimes: ['docker', 'podman'],
+          
         },
       },
     ];
@@ -65,8 +66,9 @@ describe('storage bootstrap', () => {
         description: 'Initial seed',
         source: 'https://github.com/frappe/frappe',
         version: '15.0.0',
+        category: 'core',
         compatibility: {
-          supportedRuntimes: ['docker', 'podman'],
+          
         },
       },
     ];
@@ -78,8 +80,9 @@ describe('storage bootstrap', () => {
         description: 'Updated seed',
         source: 'https://github.com/frappe/payments',
         version: '15.1.0',
+        category: 'business',
         compatibility: {
-          supportedRuntimes: ['docker', 'podman'],
+          
         },
       },
     ];

@@ -11,7 +11,8 @@ const catalogItems: AppCatalogItem[] = [
     description: 'Core framework',
     source: 'https://github.com/frappe/frappe',
     version: '15.0.0',
-    compatibility: { supportedRuntimes: ['docker', 'podman'] },
+    category: 'core',
+    compatibility: {},
   },
   {
     id: 'erpnext',
@@ -19,7 +20,8 @@ const catalogItems: AppCatalogItem[] = [
     description: 'ERP platform',
     source: 'https://github.com/frappe/erpnext',
     version: '15.0.0',
-    compatibility: { supportedRuntimes: ['docker', 'podman'] },
+    category: 'business',
+    compatibility: {},
   },
 ];
 

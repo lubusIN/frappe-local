@@ -44,8 +44,17 @@ export const GroupSchema = z.object({
 export const AppCompatibilitySchema = z.object({
   minimumFrappeVersion: nonEmptyString.optional(),
   maximumFrappeVersion: nonEmptyString.optional(),
-  supportedRuntimes: z.array(RuntimeSchema).default(['docker', 'podman']),
 });
+
+export const AppCategorySchema = z.enum([
+  'core',
+  'business',
+  'crm-support',
+  'productivity',
+  'learning',
+  'tools',
+  'other',
+]);
 
 export const AppSchema = z.object({
   id: nonEmptyString,
@@ -53,6 +62,8 @@ export const AppSchema = z.object({
   description: z.string(),
   source: nonEmptyString,
   version: nonEmptyString,
+  category: AppCategorySchema.default('other'),
+  icon: nonEmptyString.optional(),
   compatibility: AppCompatibilitySchema,
 });
 

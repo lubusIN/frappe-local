@@ -8,8 +8,9 @@ const catalog = [
     description: 'Core framework',
     source: 'https://github.com/frappe/frappe',
     version: '15.0.0',
+    category: 'core',
     compatibility: {
-      supportedRuntimes: ['docker', 'podman'],
+      
     },
   },
   {
@@ -18,8 +19,9 @@ const catalog = [
     description: 'ERP app',
     source: 'https://github.com/frappe/erpnext',
     version: '15.1.0',
+    category: 'business',
     compatibility: {
-      supportedRuntimes: ['docker', 'podman'],
+      
     },
   },
   {
@@ -28,8 +30,9 @@ const catalog = [
     description: 'Payments module',
     source: 'https://gitlab.example.com/frappe/payments',
     version: '14.9.0',
+    category: 'business',
     compatibility: {
-      supportedRuntimes: ['docker', 'podman'],
+      
     },
   },
 ] as const;
@@ -39,6 +42,7 @@ describe('catalog query utilities', () => {
     const result = filterAndSortCatalog(catalog, {
       query: 'erp',
       sourceHost: 'github.com',
+      category: '',
       sort: 'name-asc',
     });
 
@@ -50,6 +54,7 @@ describe('catalog query utilities', () => {
     const result = filterAndSortCatalog(catalog, {
       query: '',
       sourceHost: '',
+      category: '',
       sort: 'version-desc',
     });
 

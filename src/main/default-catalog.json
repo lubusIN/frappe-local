@@ -1,0 +1,184 @@
+[
+  {
+    "id": "frappe",
+    "name": "Frappe Framework",
+    "description": "Full-stack web framework with metadata-driven architecture, ORM, REST API, and admin UI.",
+    "source": "https://github.com/frappe/frappe",
+    "version": "16.0.0",
+    "category": "core",
+    "icon": "https://raw.githubusercontent.com/frappe/frappe/develop/frappe/public/images/frappe-framework-logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "erpnext",
+    "name": "ERPNext",
+    "description": "Full-featured open-source ERP for accounting, inventory, manufacturing, HR, and CRM.",
+    "source": "https://github.com/frappe/erpnext",
+    "version": "16.0.0",
+    "category": "business",
+    "icon": "https://raw.githubusercontent.com/frappe/erpnext/develop/erpnext/public/images/erpnext-logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "hrms",
+    "name": "Frappe HR",
+    "description": "Human resource management with payroll, attendance, leaves, expense claims, and recruitment.",
+    "source": "https://github.com/frappe/hrms",
+    "version": "16.0.0",
+    "category": "business",
+    "icon": "https://raw.githubusercontent.com/frappe/hrms/develop/hrms/public/logo.png",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "lending",
+    "name": "Lending",
+    "description": "Loan management with disbursement, repayment schedules, interest calculation, and NPA tracking.",
+    "source": "https://github.com/frappe/lending",
+    "version": "16.0.0",
+    "category": "business",
+    "icon": "https://raw.githubusercontent.com/frappe/lending/develop/lending/public/images/frappe-lending-logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "payments",
+    "name": "Payments",
+    "description": "Payment gateway integrations including Stripe, PayPal, Razorpay, and more.",
+    "source": "https://github.com/frappe/payments",
+    "version": "16.0.0",
+    "category": "business",
+    "icon": "https://raw.githubusercontent.com/frappe/frappe/develop/frappe/public/images/frappe-framework-logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "ecommerce_integrations",
+    "name": "eCommerce Integrations",
+    "description": "Connectors for Shopify, WooCommerce, and other eCommerce platforms with ERPNext.",
+    "source": "https://github.com/frappe/ecommerce_integrations",
+    "version": "15.0.0",
+    "category": "business",
+    "icon": "https://raw.githubusercontent.com/frappe/erpnext/develop/erpnext/public/images/erpnext-logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0",
+      "maximumFrappeVersion": "15.999.999"
+    }
+  },
+  {
+    "id": "crm",
+    "name": "Frappe CRM",
+    "description": "Modern, open-source CRM with deal pipeline, email, calls, notes, and AI integration.",
+    "source": "https://github.com/frappe/crm",
+    "version": "16.0.0",
+    "category": "crm-support",
+    "icon": "https://raw.githubusercontent.com/frappe/crm/develop/crm/public/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "helpdesk",
+    "name": "Frappe Helpdesk",
+    "description": "Customer service software with ticketing, SLA tracking, knowledge base, and customer portal.",
+    "source": "https://github.com/frappe/helpdesk",
+    "version": "16.0.0",
+    "category": "crm-support",
+    "icon": "https://raw.githubusercontent.com/frappe/helpdesk/develop/helpdesk/public/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "gameplan",
+    "name": "Gameplan",
+    "description": "Team collaboration and project discussions with pages, tasks, and real-time updates.",
+    "source": "https://github.com/frappe/gameplan",
+    "version": "15.0.0",
+    "category": "productivity",
+    "icon": "https://raw.githubusercontent.com/frappe/gameplan/develop/gameplan/public/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0",
+      "maximumFrappeVersion": "15.999.999"
+    }
+  },
+  {
+    "id": "wiki",
+    "name": "Wiki",
+    "description": "Knowledge base and documentation tool with markdown support and version history.",
+    "source": "https://github.com/frappe/wiki",
+    "version": "16.0.0",
+    "category": "productivity",
+    "icon": "https://raw.githubusercontent.com/frappe/wiki/develop/wiki/public/images/wiki-logo.png",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "drive",
+    "name": "Frappe Drive",
+    "description": "File storage and document management with sharing, permissions, and collaborative editing.",
+    "source": "https://github.com/frappe/drive",
+    "version": "16.0.0",
+    "category": "productivity",
+    "icon": "https://raw.githubusercontent.com/frappe/drive/develop/drive/public/images/icons/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "lms",
+    "name": "Frappe LMS",
+    "description": "Learning management system with courses, quizzes, certifications, and student progress tracking.",
+    "source": "https://github.com/frappe/lms",
+    "version": "16.0.0",
+    "category": "learning",
+    "icon": "https://raw.githubusercontent.com/frappe/lms/develop/lms/public/images/lms-logo.png",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "print_designer",
+    "name": "Print Designer",
+    "description": "Visual drag-and-drop print format builder with dynamic fields, barcodes, and custom layouts.",
+    "source": "https://github.com/frappe/print_designer",
+    "version": "16.0.0",
+    "category": "tools",
+    "icon": "https://raw.githubusercontent.com/frappe/print_designer/develop/print_designer/public/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "insights",
+    "name": "Frappe Insights",
+    "description": "Business intelligence and data analytics with a visual query builder and dashboards.",
+    "source": "https://github.com/frappe/insights",
+    "version": "16.0.0",
+    "category": "tools",
+    "icon": "https://raw.githubusercontent.com/frappe/insights/develop/insights/public/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  },
+  {
+    "id": "builder",
+    "name": "Frappe Builder",
+    "description": "Visual no-code website builder with drag-and-drop blocks and dynamic data binding.",
+    "source": "https://github.com/frappe/builder",
+    "version": "16.0.0",
+    "category": "tools",
+    "icon": "https://raw.githubusercontent.com/frappe/builder/develop/builder/public/logo.svg",
+    "compatibility": {
+      "minimumFrappeVersion": "15.0.0"
+    }
+  }
+]

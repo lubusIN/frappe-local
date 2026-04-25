@@ -12,7 +12,8 @@ const seedItems: AppCatalogItem[] = [
     description: 'The core framework',
     source: 'https://github.com/frappe/frappe',
     version: '15.0.0',
-    compatibility: { supportedRuntimes: ['docker', 'podman'] },
+    category: 'core',
+    compatibility: {},
   },
   {
     id: 'erpnext',
@@ -20,7 +21,8 @@ const seedItems: AppCatalogItem[] = [
     description: 'Enterprise resource planning',
     source: 'https://github.com/frappe/erpnext',
     version: '15.0.0',
-    compatibility: { supportedRuntimes: ['docker', 'podman'] },
+    category: 'business',
+    compatibility: {},
   },
   {
     id: 'hrms',
@@ -28,7 +30,8 @@ const seedItems: AppCatalogItem[] = [
     description: 'Human resource management system',
     source: 'https://github.com/frappe/hrms',
     version: '15.0.0',
-    compatibility: { supportedRuntimes: ['docker'] },
+    category: 'business',
+    compatibility: {},
   },
 ];
 

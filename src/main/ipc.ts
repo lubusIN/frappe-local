@@ -94,10 +94,11 @@ export type AppRepositories = {
       description: string;
       source: string;
       version: string;
+      category?: string;
+      icon?: string;
       compatibility: {
         minimumFrappeVersion?: string;
         maximumFrappeVersion?: string;
-        supportedRuntimes: readonly ('docker' | 'podman')[];
       };
     }>>;
     findById: (id: string) => Promise<{
@@ -106,10 +107,11 @@ export type AppRepositories = {
       description: string;
       source: string;
       version: string;
+      category?: string;
+      icon?: string;
       compatibility: {
         minimumFrappeVersion?: string;
         maximumFrappeVersion?: string;
-        supportedRuntimes: readonly ('docker' | 'podman')[];
       };
     } | null>;
     search: (query: string) => Promise<Array<{
@@ -118,10 +120,11 @@ export type AppRepositories = {
       description: string;
       source: string;
       version: string;
+      category?: string;
+      icon?: string;
       compatibility: {
         minimumFrappeVersion?: string;
         maximumFrappeVersion?: string;
-        supportedRuntimes: readonly ('docker' | 'podman')[];
       };
     }>>;
   };
@@ -211,10 +214,11 @@ const toCatalogAppItem = (item: {
   description: string;
   source: string;
   version: string;
+  category?: string;
+  icon?: string;
   compatibility: {
     minimumFrappeVersion?: string;
     maximumFrappeVersion?: string;
-    supportedRuntimes: readonly ('docker' | 'podman')[];
   };
 }): CatalogAppItem => ({
   id: item.id,
@@ -222,10 +226,11 @@ const toCatalogAppItem = (item: {
   description: item.description,
   source: item.source,
   version: item.version,
+  category: item.category ?? 'other',
+  icon: item.icon,
   compatibility: {
     minimumFrappeVersion: item.compatibility.minimumFrappeVersion,
     maximumFrappeVersion: item.compatibility.maximumFrappeVersion,
-    supportedRuntimes: [...item.compatibility.supportedRuntimes],
   },
 });
 
@@ -702,9 +707,10 @@ export const registerIpcHandlers = (
             const items = await repositories.appCatalog.findAll();
             return items.map((item) => ({
               ...item,
+              category: (item.category ?? 'other') as 'other',
+              icon: item.icon,
               compatibility: {
                 ...item.compatibility,
-                supportedRuntimes: [...item.compatibility.supportedRuntimes],
               },
             }));
           },
@@ -753,9 +759,10 @@ export const registerIpcHandlers = (
             const items = await repositories.appCatalog.findAll();
             return items.map((item) => ({
               ...item,
+              category: (item.category ?? 'other') as 'other',
+              icon: item.icon,
               compatibility: {
                 ...item.compatibility,
-                supportedRuntimes: [...item.compatibility.supportedRuntimes],
               },
             }));
           },

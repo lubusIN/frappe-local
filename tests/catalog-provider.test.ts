@@ -9,14 +9,14 @@ describe('catalog provider normalization', () => {
       description: ' ERP platform ',
       source: ' https://github.com/frappe/erpnext ',
       version: ' 15.0.0 ',
+      category: 'business',
       compatibility: {
-        supportedRuntimes: ['docker', 'Podman', 'bad-runtime'],
+        
       },
     });
 
     expect(normalized.id).toBe('erpnext');
     expect(normalized.name).toBe('ERPNext');
-    expect(normalized.compatibility.supportedRuntimes).toEqual(['docker', 'podman']);
   });
 
   it('returns a normalized default catalog seed', () => {
@@ -24,6 +24,5 @@ describe('catalog provider normalization', () => {
 
     expect(seed.length).toBeGreaterThan(0);
     expect(seed[0]?.id).toBe(seed[0]?.id.toLowerCase());
-    expect(seed.every((item) => item.compatibility.supportedRuntimes.length > 0)).toBe(true);
   });
 });

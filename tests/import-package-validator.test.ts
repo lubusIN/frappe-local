@@ -70,9 +70,10 @@ const createExportFixture = async (outputDirectory: string) => {
             description: 'Core framework',
             source: 'frappe/frappe',
             version: '15.0.0',
+            category: 'core',
             compatibility: {
               minimumFrappeVersion: '15.0.0',
-              supportedRuntimes: ['docker', 'podman'],
+              
             },
           },
           {
@@ -81,10 +82,11 @@ const createExportFixture = async (outputDirectory: string) => {
             description: 'ERP app',
             source: 'frappe/erpnext',
             version: '15.0.0',
+            category: 'business',
             compatibility: {
               minimumFrappeVersion: '15.0.0',
               maximumFrappeVersion: '15.1.0',
-              supportedRuntimes: ['docker'],
+              
             },
           },
           {
@@ -93,8 +95,9 @@ const createExportFixture = async (outputDirectory: string) => {
             description: 'Payments app',
             source: 'frappe/payments',
             version: '15.0.0',
+            category: 'business',
             compatibility: {
-              supportedRuntimes: ['docker'],
+              
             },
           },
         ],

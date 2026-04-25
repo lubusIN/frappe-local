@@ -142,8 +142,9 @@ describe('export site package writer', () => {
               description: 'Core framework',
               source: 'frappe/frappe',
               version: '15.0.0',
+              category: 'core',
               compatibility: {
-                supportedRuntimes: ['docker', 'podman'],
+                
               },
             },
             {
@@ -152,8 +153,9 @@ describe('export site package writer', () => {
               description: 'ERP app',
               source: 'frappe/erpnext',
               version: '15.0.0',
+              category: 'business',
               compatibility: {
-                supportedRuntimes: ['docker'],
+                
               },
             },
             {
@@ -162,8 +164,9 @@ describe('export site package writer', () => {
               description: 'Payments app',
               source: 'frappe/payments',
               version: '15.0.0',
+              category: 'business',
               compatibility: {
-                supportedRuntimes: ['docker'],
+                
               },
             },
           ],

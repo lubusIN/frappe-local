@@ -1,7 +1,33 @@
 import type { CatalogAppItem } from '../shared/ipc';
 
+/**
+ * Normalizes Frappe version identifiers used in the bench creation form
+ * (e.g. "version-15", "version-16", "develop") into semver-style strings
+ * that can be compared against catalog compatibility ranges.
+ *
+ * "develop" maps to a very high version so all apps are considered compatible.
+ */
+const normalizeFrappeVersion = (value: string): string => {
+  const trimmed = value.trim().toLowerCase();
+
+  // Branch-style identifiers from the version picker
+  const branchMatch = trimmed.match(/^version[- ](\d+)$/);
+  if (branchMatch) {
+    return `${branchMatch[1]}.0.0`;
+  }
+
+  // "develop" is always the bleeding edge — treat as maximally compatible
+  if (trimmed === 'develop') {
+    return '999.0.0';
+  }
+
+  // Already a semver-ish string
+  return trimmed;
+};
+
 const parseVersion = (value: string): [number, number, number] => {
-  const [major = '0', minor = '0', patch = '0'] = value.trim().split('.');
+  const normalized = normalizeFrappeVersion(value);
+  const [major = '0', minor = '0', patch = '0'] = normalized.split('.');
   return [Number(major) || 0, Number(minor) || 0, Number(patch) || 0];
 };
 
@@ -15,7 +41,6 @@ const compareVersion = (a: string, b: string): number => {
 };
 
 export type CatalogCompatibilityContext = {
-  readonly runtime?: 'docker' | 'podman';
   readonly frappeVersion?: string;
 };
 
@@ -29,13 +54,7 @@ export const evaluateCatalogCompatibility = (
   item: CatalogAppItem,
   context: CatalogCompatibilityContext
 ): CatalogCompatibilityResult => {
-  if (context.runtime && !item.compatibility.supportedRuntimes.includes(context.runtime)) {
-    return {
-      isCompatible: false,
-      status: 'blocked',
-      message: `Not supported on ${context.runtime}.`,
-    };
-  }
+
 
   if (context.frappeVersion && item.compatibility.minimumFrappeVersion) {
     if (compareVersion(context.frappeVersion, item.compatibility.minimumFrappeVersion) < 0) {
@@ -50,9 +69,9 @@ export const evaluateCatalogCompatibility = (
   if (context.frappeVersion && item.compatibility.maximumFrappeVersion) {
     if (compareVersion(context.frappeVersion, item.compatibility.maximumFrappeVersion) > 0) {
       return {
-        isCompatible: true,
-        status: 'warning',
-        message: `Validated up to Frappe ${item.compatibility.maximumFrappeVersion}.`,
+        isCompatible: false,
+        status: 'blocked',
+        message: `Only supported up to Frappe ${item.compatibility.maximumFrappeVersion.replace(/\.999\.999$/, '.x')}.`,
       };
     }
   }
