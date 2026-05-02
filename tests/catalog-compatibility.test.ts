@@ -27,7 +27,7 @@ describe('catalog compatibility', () => {
   it('warns when frappe version exceeds validated range', () => {
     const result = evaluateCatalogCompatibility(app as any, { frappeVersion: '16.0.0' });
 
-    expect(result.status).toBe('warning');
-    expect(result.isCompatible).toBe(true);
+    expect(result.status).toBe('blocked');
+    expect(result.isCompatible).toBe(false);
   });
 });

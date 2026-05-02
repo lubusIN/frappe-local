@@ -11,6 +11,7 @@ describe('renderer routes', () => {
       'console',
       'importExport',
       'settings',
+      'diagnostics',
     ]);
   });
 

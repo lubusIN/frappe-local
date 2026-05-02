@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
@@ -103,6 +103,21 @@ function makeStubGroupRepo() {
   };
 }
 
+function makeStubTerminalService() {
+  return {
+    onOutput: vi.fn(() => () => {}),
+    onError: vi.fn(() => () => {}),
+    onStateChange: vi.fn(() => () => {}),
+    createSession: vi.fn(),
+    getSession: vi.fn(),
+    write: vi.fn(),
+    clear: vi.fn(),
+    resize: vi.fn(),
+    closeSession: vi.fn(),
+    listSessions: vi.fn(() => []),
+  };
+}
+
 describe('diagnostics IPC handlers', () => {
   it('returns the bootstrap-seeded diagnostics report', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -117,27 +132,8 @@ describe('diagnostics IPC handlers', () => {
         groups: makeStubGroupRepo(),
       },
       undefined,
+      makeStubTerminalService() as any,
       undefined,
-      undefined,
-      {
-        getHealth: async () => ({
-          preferredRuntime: 'docker',
-          selectedRuntime: 'docker',
-          fallbackRuntime: null,
-          fallbackApplied: false,
-          dependencies: [],
-          blockingDependencies: [],
-          hasBlockingIssues: false,
-        }),
-        startRepair: async () => ({
-          taskId: 'repair-task',
-          preferredRuntime: 'docker',
-          selectedRuntime: 'docker',
-          fallbackApplied: false,
-          dryRun: true,
-          repairDependencies: [],
-        }),
-      },
       '0.1.0',
       {
         userDataPath: '/tmp/userData',
@@ -165,39 +161,8 @@ describe('diagnostics IPC handlers', () => {
         groups: makeStubGroupRepo(),
       },
       undefined,
+      makeStubTerminalService() as any,
       undefined,
-      undefined,
-      {
-        getHealth: async () => ({
-          preferredRuntime: 'docker',
-          selectedRuntime: 'docker',
-          fallbackRuntime: null,
-          fallbackApplied: false,
-          dependencies: [
-            {
-              dependency: 'git',
-              status: 'ready',
-              detectedVersion: '2.39.0',
-              requiredVersion: '2.39.0',
-              summary: 'Git is ready.',
-              guidance: {
-                title: 'Git',
-                steps: ['No action needed.'],
-              },
-            },
-          ],
-          blockingDependencies: [],
-          hasBlockingIssues: false,
-        }),
-        startRepair: async () => ({
-          taskId: 'repair-task',
-          preferredRuntime: 'docker',
-          selectedRuntime: 'docker',
-          fallbackApplied: false,
-          dryRun: true,
-          repairDependencies: [],
-        }),
-      },
       '0.1.0',
       {
         userDataPath: '/tmp',

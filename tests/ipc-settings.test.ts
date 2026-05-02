@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
@@ -93,6 +93,21 @@ function makeStubGroupRepo() {
   };
 }
 
+function makeStubTerminalService() {
+  return {
+    onOutput: vi.fn(() => () => {}),
+    onError: vi.fn(() => () => {}),
+    onStateChange: vi.fn(() => () => {}),
+    createSession: vi.fn(),
+    getSession: vi.fn(),
+    write: vi.fn(),
+    clear: vi.fn(),
+    resize: vi.fn(),
+    closeSession: vi.fn(),
+    listSessions: vi.fn(() => []),
+  };
+}
+
 describe('settings IPC handlers', () => {
   it('settings:get returns null when settings are not configured', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -105,7 +120,9 @@ describe('settings IPC handlers', () => {
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
         groups: makeStubGroupRepo(),
-      }
+      },
+      undefined,
+      makeStubTerminalService() as any
     );
 
     const result = await handlers.get(ipcChannels.settingsGet)?.();
@@ -123,7 +140,9 @@ describe('settings IPC handlers', () => {
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
         groups: makeStubGroupRepo(),
-      }
+      },
+      undefined,
+      makeStubTerminalService() as any
     );
 
     const result = await handlers.get(ipcChannels.settingsGet)?.();
@@ -146,7 +165,9 @@ describe('settings IPC handlers', () => {
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
         groups: makeStubGroupRepo(),
-      }
+      },
+      undefined,
+      makeStubTerminalService() as any
     );
 
     const saveHandler = handlers.get(ipcChannels.settingsSet);
@@ -169,7 +190,9 @@ describe('settings IPC handlers', () => {
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
         groups: makeStubGroupRepo(),
-      }
+      },
+      undefined,
+      makeStubTerminalService() as any
     );
 
     const saveHandler = handlers.get(ipcChannels.settingsSet);
@@ -192,8 +215,7 @@ describe('settings IPC handlers', () => {
         groups: makeStubGroupRepo(),
       },
       undefined,
-      undefined,
-      undefined,
+      makeStubTerminalService() as any,
       undefined,
       '0.1.0'
     );

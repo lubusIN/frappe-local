@@ -55,7 +55,16 @@
             </div>
             <p class="check-card__desc">{{ check.description }}</p>
             <div v-if="check.remediation" class="check-card__remediation">
-              {{ check.remediation }}
+              <p class="remediation-text">{{ check.remediation }}</p>
+              <button
+                v-if="check.type === 'runtime-health' && check.status === 'failed'"
+                type="button"
+                class="btn btn--subtle btn--xs fix-btn"
+                :disabled="fixing"
+                @click="$emit('fix', check.type)"
+              >
+                {{ fixing ? 'Fixing...' : 'Attempt Fix' }}
+              </button>
             </div>
           </div>
         </div>
@@ -69,14 +78,16 @@ import { computed } from 'vue';
 import type { DiagnosticsReport } from '../../shared/domain/diagnostics';
 import StatePanel from './StatePanel.vue';
 
-const props = defineProps<{
+defineProps<{
   report: DiagnosticsReport | null;
   running: boolean;
+  fixing?: boolean;
   error: string | null;
 }>();
 
 defineEmits<{
   run: [];
+  fix: [checkType: string];
 }>();
 
 const summaryText = computed(() => {
@@ -151,6 +162,18 @@ const summaryText = computed(() => {
 .btn:hover:not(:disabled) { background: var(--surface-hover); }
 .btn--subtle { border-color: var(--border-default); }
 .btn--sm { min-height: 24px; padding: 0 8px; font-size: 11px; }
+.btn--xs { min-height: 20px; padding: 0 6px; font-size: 10px; }
+
+.fix-btn {
+  margin-top: 8px;
+  background: var(--surface-card);
+  border-color: var(--orange-border);
+  color: var(--orange-text);
+}
+
+.remediation-text {
+  margin: 0;
+}
 
 /* Summary */
 .diagnostics-summary {

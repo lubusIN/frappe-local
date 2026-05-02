@@ -4,9 +4,7 @@
       <h2 class="view-header__title">Settings</h2>
       <div class="view-header__actions">
         <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading || saving">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
-          </svg>
+          <IconRotateCcw class="btn-icon" />
           {{ loading ? 'Refreshing…' : 'Reload' }}
         </button>
       </div>
@@ -28,9 +26,7 @@
     />
 
     <div v-if="successMessage" class="alert alert--success">
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 5.28a.75.75 0 010 1.06l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L7.25 8.75l3.47-3.47a.75.75 0 011.06 0z" />
-      </svg>
+      <IconCheckCircle class="alert-icon" />
       {{ successMessage }}
     </div>
 
@@ -103,6 +99,8 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import IconRotateCcw from '~icons/lucide/rotate-ccw';
+import IconCheckCircle from '~icons/lucide/check-circle';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
 import StatePanel from '../components/StatePanel.vue';
 import UpdateStrategyPanel from '../components/UpdateStrategyPanel.vue';

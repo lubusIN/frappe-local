@@ -1,10 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import type { AppRuntimePaths } from './config';
-import type { RuntimeHealthResponse } from '../shared/ipc';
-import type { Settings } from '../shared/domain/models';
+
 import type { DiagnosticsCheckResult, DiagnosticsReport } from '../shared/domain/diagnostics';
 import { createMainLogger } from './logger';
+import { execPromise } from './utils/exec';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
@@ -93,6 +93,152 @@ const checkRuntimePreference = (runtimePreference: string): DiagnosticsCheckResu
   };
 };
 
+const parsePodmanJson = (stdout: string) => {
+  try {
+    // Podman might output warnings before JSON
+    const jsonStart = stdout.indexOf('[');
+    const jsonStartObj = stdout.indexOf('{');
+    let start = -1;
+    
+    if (jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj)) {
+      start = jsonStart;
+    } else {
+      start = jsonStartObj;
+    }
+
+    if (start === -1) return null;
+    return JSON.parse(stdout.substring(start));
+  } catch {
+    return null;
+  }
+};
+
+const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
+  const checks: DiagnosticsCheckResult[] = [];
+  let podmanAvailable = false;
+
+  // Check 1: Podman Binary
+  try {
+    const { code } = await execPromise('podman', ['--version']);
+    if (code === 0) {
+      podmanAvailable = true;
+      checks.push({
+        type: 'runtime-health',
+        status: 'passed',
+        title: 'Podman Binary',
+        description: 'Podman binary is available and executable',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      throw new Error('Non-zero exit code');
+    }
+  } catch {
+    checks.push({
+      type: 'runtime-health',
+      status: 'failed',
+      title: 'Podman Binary',
+      description: 'Podman binary not found or not executable',
+      remediation: 'Install Podman from https://podman.io/ and ensure it is in your PATH.',
+      timestamp: new Date().toISOString(),
+    });
+    return checks; // Cannot proceed with further podman checks
+  }
+
+  // Check 2: Podman System Connection / VM Status
+  if (podmanAvailable) {
+    const isVmRequired = process.platform === 'darwin' || process.platform === 'win32';
+    
+    checks.push({
+      type: 'runtime-health',
+      status: 'passed',
+      title: 'Environment Requirement',
+      description: isVmRequired ? 'A Linux VM (Podman Machine) is required on this platform' : 'No VM required (Native Linux)',
+      timestamp: new Date().toISOString(),
+    });
+
+    if (isVmRequired) {
+      try {
+        const { stdout, code } = await execPromise('podman', ['machine', 'ls', '--format', 'json']);
+        if (code === 0) {
+          const machines = parsePodmanJson(stdout);
+
+          if (Array.isArray(machines) && machines.length > 0) {
+            const activeMachine = machines.find((m: any) => m.CurrentlyRunning === true || m.Running === true || m.State === 'running');
+
+            if (activeMachine) {
+              checks.push({
+                type: 'runtime-health',
+                status: 'passed',
+                title: 'Podman Machine',
+                description: `Podman machine '${activeMachine.Name}' is running`,
+                timestamp: new Date().toISOString(),
+              });
+            } else {
+              checks.push({
+                type: 'runtime-health',
+                status: 'failed',
+                title: 'Podman Machine',
+                description: 'Podman machine exists but is not running',
+                remediation: 'Click "Attempt Fix" to start the Podman machine.',
+                timestamp: new Date().toISOString(),
+              });
+            }
+          } else {
+            checks.push({
+              type: 'runtime-health',
+              status: 'failed',
+              title: 'Podman Machine',
+              description: 'No Podman machine found',
+              remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
+              timestamp: new Date().toISOString(),
+            });
+          }
+        } else {
+          throw new Error('ls failed');
+        }
+      } catch (err) {
+        checks.push({
+          type: 'runtime-health',
+          status: 'failed',
+          title: 'Podman Machine',
+          description: `Unable to query Podman machine status: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          remediation: 'Ensure Podman Desktop is running or check `podman machine ls` manually.',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  // Check 3: Podman Engine Connection
+  if (podmanAvailable) {
+    try {
+      const { code } = await execPromise('podman', ['ps']);
+      if (code === 0) {
+        checks.push({
+          type: 'runtime-health',
+          status: 'passed',
+          title: 'Podman Engine',
+          description: 'Podman engine is running and accepting connections',
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        checks.push({
+          type: 'runtime-health',
+          status: 'failed',
+          title: 'Podman Engine',
+          description: 'Cannot connect to Podman engine',
+          remediation: 'Ensure the Podman machine or service is started.',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // Already handled binary check
+    }
+  }
+
+  return checks;
+};
+
 /**
  * Run first-run and on-demand diagnostics checks
  */
@@ -114,6 +260,12 @@ export const runDiagnostics = async (context: DiagnosticsContext): Promise<Diagn
   const runtimePreference = settings?.runtimePreference ?? 'docker';
   const runtimeCheck = checkRuntimePreference(runtimePreference);
   checks.push(runtimeCheck);
+
+  // Check Podman health if it is the preferred runtime
+  if (runtimePreference === 'podman') {
+    const podmanChecks = await checkPodmanHealth();
+    checks.push(...podmanChecks);
+  }
 
   // Determine severity
   const failedChecks = checks.filter((c) => c.status === 'failed');

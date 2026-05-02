@@ -1,4 +1,4 @@
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
 import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '../../shared/ipc';
 import { useIpc } from './useIpc';
 
@@ -126,8 +126,37 @@ export const useBenches = () => {
     }
   };
 
+  const pollingInterval = ref<ReturnType<typeof setInterval> | null>(null);
+
+  const startPolling = () => {
+    if (pollingInterval.value) return;
+    pollingInterval.value = setInterval(() => {
+      void load();
+    }, 3000);
+  };
+
+  const stopPolling = () => {
+    if (pollingInterval.value) {
+      clearInterval(pollingInterval.value);
+      pollingInterval.value = null;
+    }
+  };
+
+  watchEffect(() => {
+    const hasQueued = benches.value.some((b) => b.status === 'queued');
+    if (hasQueued) {
+      startPolling();
+    } else {
+      stopPolling();
+    }
+  });
+
   onMounted(() => {
     void load();
+  });
+
+  onUnmounted(() => {
+    stopPolling();
   });
 
   return {

@@ -535,3 +535,22 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   Icon Sizing (unplugin-icons)
+   ============================================================ */
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.alert-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: inline-block;
+  margin-right: 4px;
+}

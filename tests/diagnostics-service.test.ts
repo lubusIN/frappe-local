@@ -40,29 +40,7 @@ describe('diagnostics service', () => {
         configPath: path.join(userDataPath, 'config'),
         storagePath,
       },
-      runtimeService: {
-        getHealth: async () => ({
-          preferredRuntime: 'docker',
-          selectedRuntime: 'docker',
-          fallbackRuntime: null,
-          fallbackApplied: false,
-          dependencies: [
-            {
-              dependency: 'git',
-              status: 'ready',
-              detectedVersion: '2.39.0',
-              requiredVersion: '2.39.0',
-              summary: 'Git is ready.',
-              guidance: {
-                title: 'Git',
-                steps: ['No action needed.'],
-              },
-            },
-          ],
-          blockingDependencies: [],
-          hasBlockingIssues: false,
-        }),
-      },
+
       settingsRepository: {
         get: async () => seedSettings,
       },
@@ -73,7 +51,7 @@ describe('diagnostics service', () => {
     expect(report.hasWarnings).toBe(false);
     expect(report.summary).toContain('All diagnostics passed');
     expect(report.checks.map((check) => check.type)).toEqual(
-      expect.arrayContaining(['path-writability', 'storage-access', 'runtime-preference', 'git'])
+      expect.arrayContaining(['path-writability', 'storage-access', 'runtime-preference'])
     );
   });
 
@@ -88,23 +66,20 @@ describe('diagnostics service', () => {
         configPath: path.join(userDataPath, 'config'),
         storagePath: path.join(userDataPath, 'missing-storage'),
       },
-      runtimeService: {
-        getHealth: async () => {
-          throw new Error('probe timeout');
-        },
-      },
+
       settingsRepository: {
         get: async () => seedSettings,
       },
       appVersion: '0.1.0',
     });
 
-    expect(report.hasCriticalIssues).toBe(true);
-    expect(report.summary).toContain('critical issue');
+    expect(report.hasCriticalIssues).toBe(false);
+    expect(report.hasWarnings).toBe(true);
+    expect(report.summary).toContain('warning detected');
     expect(report.checks).toContainEqual(
       expect.objectContaining({
-        status: 'failed',
-        title: 'Dependency health check',
+        status: 'warning',
+        title: expect.stringContaining('Directory Access'),
       })
     );
   });

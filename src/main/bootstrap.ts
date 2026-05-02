@@ -112,7 +112,7 @@ export const runApplicationBootstrap = async (
     await adapter.connect();
     await initializeStorage(adapter, storageFilePath, {
       appCatalogSeed: getDefaultAppCatalogSeed(),
-      appCatalogSeedVersion: 3,
+      appCatalogSeedVersion: 5,
     });
 
     const repositories: AppRepositories = {

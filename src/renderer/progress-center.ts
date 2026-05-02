@@ -9,6 +9,7 @@ export type ProgressTaskSummary = {
   readonly status: TaskStatus;
   readonly type: TaskProgressEvent['type'];
   readonly message: string;
+  readonly logs: Array<{ message: string; timestamp: string; level: TaskProgressEvent['logLevel'] }>;
   readonly stepName: string | null;
   readonly timestamp: string;
   readonly resource: ProgressTaskResource;
@@ -71,12 +72,20 @@ export const upsertProgressTask = (
   const payloadResource =
     payloadResourceType && payloadResourceType !== 'workspace' ? payloadResourceType : undefined;
 
+  const existing = tasks.find((item) => item.taskId === event.taskId);
+  const newLogEntry = {
+    message: event.message,
+    timestamp: event.timestamp,
+    level: event.logLevel,
+  };
+
   const next: ProgressTaskSummary = {
     taskId: event.taskId,
     taskName: event.taskName,
     status: event.status,
     type: event.type,
     message: event.message,
+    logs: existing ? [...existing.logs, newLogEntry] : [newLogEntry],
     stepName: event.stepName,
     timestamp: event.timestamp,
     resource: payloadResource ?? detectProgressTaskResource(event.taskName),

@@ -6,27 +6,39 @@ import {
 } from '../progress-center';
 import { useIpc } from './useIpc';
 
+// Global singleton state to avoid multiple IPC subscriptions
+const globalState = reactive(createDefaultProgressCenterState());
+let globalController: ReturnType<typeof createProgressCenterController> | null = null;
+let connectionCount = 0;
+
 export const useProgressCenter = () => {
-  const state = reactive(createDefaultProgressCenterState());
-  const controller = createProgressCenterController(useIpc(), state);
+  if (!globalController) {
+    globalController = createProgressCenterController(useIpc(), globalState);
+  }
 
-  onMounted(() => {
-    void controller.connect();
+  onMounted(async () => {
+    connectionCount++;
+    if (connectionCount === 1) {
+      await globalController?.connect();
+    }
   });
 
-  onUnmounted(() => {
-    void controller.disconnect();
+  onUnmounted(async () => {
+    connectionCount--;
+    if (connectionCount === 0) {
+      await globalController?.disconnect();
+    }
   });
 
-  const filteredTasks = computed(() => filterProgressTasks(state));
+  const filteredTasks = computed(() => filterProgressTasks(globalState));
 
   const reconnect = async (): Promise<void> => {
-    await controller.disconnect();
-    await controller.connect();
+    await globalController?.disconnect();
+    await globalController?.connect();
   };
 
   return {
-    ...toRefs(state),
+    ...toRefs(globalState),
     filteredTasks,
     reconnect,
   };

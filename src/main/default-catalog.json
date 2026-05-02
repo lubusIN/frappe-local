@@ -30,7 +30,7 @@
     "source": "https://github.com/frappe/hrms",
     "version": "16.0.0",
     "category": "business",
-    "icon": "https://raw.githubusercontent.com/frappe/hrms/develop/hrms/public/logo.png",
+    "icon": "https://raw.githubusercontent.com/frappe/hrms/develop/hrms/public/images/frappe-hr-logo.png",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0"
     }
@@ -79,7 +79,7 @@
     "source": "https://github.com/frappe/crm",
     "version": "16.0.0",
     "category": "crm-support",
-    "icon": "https://raw.githubusercontent.com/frappe/crm/develop/crm/public/logo.svg",
+    "icon": "https://raw.githubusercontent.com/frappe/crm/develop/.github/logo.svg",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0"
     }
@@ -91,7 +91,7 @@
     "source": "https://github.com/frappe/helpdesk",
     "version": "16.0.0",
     "category": "crm-support",
-    "icon": "https://raw.githubusercontent.com/frappe/helpdesk/develop/helpdesk/public/logo.svg",
+    "icon": "https://raw.githubusercontent.com/frappe/helpdesk/develop/.github/hd-logo.svg",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0"
     }
@@ -103,7 +103,7 @@
     "source": "https://github.com/frappe/gameplan",
     "version": "15.0.0",
     "category": "productivity",
-    "icon": "https://raw.githubusercontent.com/frappe/gameplan/develop/gameplan/public/logo.svg",
+    "icon": "https://raw.githubusercontent.com/frappe/gameplan/develop/frontend/public/gameplan-logo.svg",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0",
       "maximumFrappeVersion": "15.999.999"
@@ -152,7 +152,7 @@
     "source": "https://github.com/frappe/print_designer",
     "version": "16.0.0",
     "category": "tools",
-    "icon": "https://raw.githubusercontent.com/frappe/print_designer/develop/print_designer/public/logo.svg",
+    "icon": "https://raw.githubusercontent.com/frappe/print_designer/develop/print_designer/public/images/print-designer-logo.svg",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0"
     }
@@ -164,7 +164,7 @@
     "source": "https://github.com/frappe/insights",
     "version": "16.0.0",
     "category": "tools",
-    "icon": "https://raw.githubusercontent.com/frappe/insights/develop/insights/public/logo.svg",
+    "icon": "https://raw.githubusercontent.com/frappe/insights/refs/heads/develop/frontend/public/insights-logo.png",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0"
     }
@@ -176,7 +176,7 @@
     "source": "https://github.com/frappe/builder",
     "version": "16.0.0",
     "category": "tools",
-    "icon": "https://raw.githubusercontent.com/frappe/builder/develop/builder/public/logo.svg",
+    "icon": "https://raw.githubusercontent.com/frappe/builder/develop/frontend/public/builder_logo.png",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0"
     }

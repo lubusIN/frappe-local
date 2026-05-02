@@ -11,7 +11,8 @@ const __dirname = path.dirname(__filename);
 // Constants
 const BIN_DIR = path.resolve(__dirname, '../bin');
 const DOCKER_COMPOSE_VERSION = 'v2.24.5';
-const PODMAN_VERSION = 'v4.9.3'; // Adjust version as needed for stability
+const PODMAN_VERSION = 'v5.8.2';
+const BUNDLED_MACHINE_IMAGE_BASENAME = 'podman-machine-image';
 
 // Arch mapping for GitHub releases
 const getComposeArch = (arch) => {
@@ -34,11 +35,49 @@ const COMPOSE_URLS = {
   win32: `https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-windows-${getComposeArch(arch)}.exe`,
 };
 
-// Assuming podman-remote as the binary on MacOS/Windows
 const PODMAN_URLS = {
-  darwin: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-remote-release-darwin_${getPodmanArch(arch)}.zip`,
-  linux: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-remote-release-linux_${getPodmanArch(arch)}.zip`,
+  darwin: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-installer-macos-${arch === 'x64' ? 'amd64' : 'arm64'}.pkg`,
+  linux: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-remote-static-linux_${getPodmanArch(arch)}.tar.gz`,
   win32: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-remote-release-windows_${getPodmanArch(arch)}.zip`,
+};
+
+const quoteShell = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
+
+const copyFileWithMode = (src, dest) => {
+  fs.copyFileSync(src, dest);
+  if (platform !== 'win32') {
+    fs.chmodSync(dest, 0o755);
+  }
+};
+
+const findBinary = (dir, name) => {
+  const files = fs.readdirSync(dir);
+  for (const file of files) {
+    const fullPath = path.join(dir, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      const found = findBinary(fullPath, name);
+      if (found) return found;
+    } else if (file === name || (platform === 'win32' && file === `${name}.exe`)) {
+      return fullPath;
+    }
+  }
+  return null;
+};
+
+const writePodmanWrapper = () => {
+  if (platform === 'win32') {
+    return;
+  }
+
+  const wrapperPath = path.join(BIN_DIR, 'podman');
+  const wrapper = `#!/usr/bin/env sh
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export PATH="$SCRIPT_DIR:$PATH"
+export CONTAINERS_HELPER_BINARY_DIR="$SCRIPT_DIR"
+exec "$SCRIPT_DIR/podman-real" "$@"
+`;
+  fs.writeFileSync(wrapperPath, wrapper, 'utf8');
+  fs.chmodSync(wrapperPath, 0o755);
 };
 
 function downloadFile(url, targetPath) {
@@ -88,6 +127,69 @@ function extractZip(zipPath, targetDir) {
   }
 }
 
+function extractArchive(archivePath, targetDir) {
+  if (archivePath.endsWith('.tar.gz')) {
+    console.log(`Extracting ${archivePath} ...`);
+    execSync(`tar -xzf ${quoteShell(archivePath)} -C ${quoteShell(targetDir)}`);
+    return;
+  }
+
+  extractZip(archivePath, targetDir);
+}
+
+const findMachineImageInDirectory = (directory) => {
+  if (!fs.existsSync(directory)) return null;
+
+  const entries = fs.readdirSync(directory);
+  const imageFile = entries.find((entry) =>
+    entry.startsWith('podman-machine-default') && (entry.endsWith('.raw') || entry.endsWith('.qcow2'))
+  );
+
+  return imageFile ? path.join(directory, imageFile) : null;
+};
+
+const resolveMachineImageSource = () => {
+  const envSource = process.env.PODMAN_MACHINE_IMAGE_PATH;
+  if (envSource && fs.existsSync(envSource)) {
+    return envSource;
+  }
+
+  // By default, only bundle image when explicitly requested to avoid large installs.
+  if (process.env.BUNDLE_PODMAN_MACHINE_IMAGE !== '1') {
+    return null;
+  }
+
+  const homeDirectory = os.homedir();
+  const machineCacheCandidates = [
+    path.join(homeDirectory, '.local', 'share', 'containers', 'podman', 'machine', 'applehv'),
+    path.join(homeDirectory, '.local', 'share', 'containers', 'podman', 'machine', 'qemu'),
+    path.join(homeDirectory, '.local', 'share', 'containers', 'podman', 'machine', 'hyperv'),
+    path.join(homeDirectory, '.local', 'share', 'containers', 'podman', 'machine', 'wsl'),
+  ];
+
+  for (const candidateDirectory of machineCacheCandidates) {
+    const imagePath = findMachineImageInDirectory(candidateDirectory);
+    if (imagePath) {
+      return imagePath;
+    }
+  }
+
+  return null;
+};
+
+const maybeBundleMachineImage = () => {
+  const imageSource = resolveMachineImageSource();
+  if (!imageSource) {
+    console.log('No local Podman machine image bundled (set BUNDLE_PODMAN_MACHINE_IMAGE=1 or PODMAN_MACHINE_IMAGE_PATH).');
+    return;
+  }
+
+  const extension = path.extname(imageSource) || '.raw';
+  const imageDestination = path.join(BIN_DIR, `${BUNDLED_MACHINE_IMAGE_BASENAME}${extension}`);
+  fs.copyFileSync(imageSource, imageDestination);
+  console.log(`Bundled Podman machine image: ${imageDestination}`);
+};
+
 async function main() {
   if (!fs.existsSync(BIN_DIR)) {
     fs.mkdirSync(BIN_DIR, { recursive: true });
@@ -110,49 +212,64 @@ async function main() {
       fs.chmodSync(composeTarget, 0o755);
     }
 
-    // Download Podman Zip
-    const podmanZipTarget = path.join(BIN_DIR, 'podman.zip');
-    await downloadFile(podmanUrl, podmanZipTarget);
-    
-    // Extract Podman
-    extractZip(podmanZipTarget, BIN_DIR);
-    
-    // Cleanup zip buffer
-    fs.unlinkSync(podmanZipTarget);
+    if (platform === 'darwin') {
+      const podmanPkgTarget = path.join(BIN_DIR, 'podman.pkg');
+      const podmanExpandDir = path.join(BIN_DIR, 'podman-pkg-expand');
 
-    // Symlink or rename the binary to `podman`
-    const podmanBinaryName = platform === 'win32' ? 'podman.exe' : 'podman';
-    const extractedPodman = path.join(BIN_DIR, `podman-remote-static-linux_${getPodmanArch(arch)}`, 'podman-remote-static'); // example, let's fix it later.
-    
-    // Actually the zip files from `containers/podman` extract directly into binaries or nested dirs. Let's just find the podman executable
-    const files = fs.readdirSync(BIN_DIR);
-    let podmanFound = false;
-    
-    // Make anything resembling podman executable
-    for (const file of files) {
-      if (file.toLowerCase().includes('podman') && file !== 'podman' && file !== 'podman.exe') {
-        const fullPath = path.join(BIN_DIR, file);
-        if (platform !== 'win32') {
-            try {
-                fs.chmodSync(fullPath, 0o755);
-            } catch (ignore) {}
-        }
-        
-        // Let's copy or rename it to 'podman'
-        if (file.includes('podman-remote')) {
-           const podmanDest = path.join(BIN_DIR, platform === 'win32' ? 'podman.exe' : 'podman');
-           if(fs.existsSync(podmanDest)) fs.unlinkSync(podmanDest);
-           fs.renameSync(fullPath, podmanDest);
-           podmanFound = true;
+      await downloadFile(podmanUrl, podmanPkgTarget);
+      fs.rmSync(podmanExpandDir, { recursive: true, force: true });
+      execSync(`pkgutil --expand-full ${quoteShell(podmanPkgTarget)} ${quoteShell(podmanExpandDir)}`);
+
+      const payloadBase = path.join(podmanExpandDir, 'podman.pkg', 'Payload', 'podman');
+      const podmanRealDest = path.join(BIN_DIR, 'podman-real');
+      const podmanSource = path.join(payloadBase, 'bin', 'podman');
+      copyFileWithMode(podmanSource, podmanRealDest);
+
+      // Keep helper binaries beside podman-real and use wrapper env var for lookup.
+      const helperCandidates = [
+        path.join(payloadBase, 'bin', 'gvproxy'),
+        path.join(payloadBase, 'bin', 'vfkit'),
+        path.join(payloadBase, 'bin', 'podman-mac-helper'),
+      ];
+
+      for (const helperSource of helperCandidates) {
+        if (fs.existsSync(helperSource)) {
+          const helperDest = path.join(BIN_DIR, path.basename(helperSource));
+          copyFileWithMode(helperSource, helperDest);
         }
       }
-    }
-    
-    if (platform !== 'win32' && !podmanFound) {
-      const podmanTarget = path.join(BIN_DIR, 'podman');
-      if (fs.existsSync(podmanTarget)) {
-         fs.chmodSync(podmanTarget, 0o755);
+
+      // Remove stale qemu artifacts from previous podman bundles.
+      fs.rmSync(path.join(BIN_DIR, 'qemu'), { recursive: true, force: true });
+      fs.rmSync(path.join(BIN_DIR, 'qemu-system-x86_64'), { force: true });
+
+      writePodmanWrapper();
+
+      fs.rmSync(podmanExpandDir, { recursive: true, force: true });
+      fs.rmSync(podmanPkgTarget, { force: true });
+      maybeBundleMachineImage();
+    } else {
+      const podmanArchiveName = platform === 'linux' ? 'podman.tar.gz' : 'podman.zip';
+      const podmanArchiveTarget = path.join(BIN_DIR, podmanArchiveName);
+      const podmanExtractDir = path.join(BIN_DIR, 'podman-extract');
+      await downloadFile(podmanUrl, podmanArchiveTarget);
+
+      // Extract Podman and move executable from extracted artifacts
+      fs.rmSync(podmanExtractDir, { recursive: true, force: true });
+      fs.mkdirSync(podmanExtractDir, { recursive: true });
+      extractArchive(podmanArchiveTarget, podmanExtractDir);
+
+      const podmanExecutable = findBinary(podmanExtractDir, platform === 'win32' ? 'podman.exe' : 'podman');
+      const podmanDest = path.join(BIN_DIR, platform === 'win32' ? 'podman.exe' : 'podman');
+      if (!podmanExecutable) {
+        throw new Error('Could not find extracted podman binary');
       }
+
+      copyFileWithMode(podmanExecutable, podmanDest);
+
+      fs.rmSync(podmanExtractDir, { recursive: true, force: true });
+      fs.rmSync(podmanArchiveTarget, { force: true });
+      maybeBundleMachineImage();
     }
 
     console.log('Successfully bundled podman and docker-compose!');

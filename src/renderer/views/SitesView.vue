@@ -4,9 +4,7 @@
       <h2 class="view-header__title">Sites</h2>
       <div class="view-header__actions">
         <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
-          </svg>
+          <IconRotateCcw class="btn-icon" />
           {{ loading ? 'Refreshing…' : 'Refresh' }}
         </button>
       </div>
@@ -22,9 +20,7 @@
     />
 
     <div v-if="successMessage" class="alert alert--success">
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 5.28a.75.75 0 010 1.06l-4 4a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L7.25 8.75l3.47-3.47a.75.75 0 011.06 0z" />
-      </svg>
+      <IconCheckCircle class="alert-icon" />
       {{ successMessage }}
     </div>
 
@@ -166,9 +162,25 @@
         <span class="list-col list-col--meta">{{ site.groupId ?? '—' }}</span>
         <span class="list-col list-col--meta">{{ site.appCount }}</span>
         <span class="list-col list-col--status">
-          <span class="status-pill" :class="`status-pill--${site.status}`">{{ site.status }}</span>
+          <span
+            class="status-pill status-pill--interactive"
+            :class="`status-pill--${site.status}`"
+            @click="onStatusClick(site.id, 'site')"
+          >
+            {{ formatStatusLabel(site.status) }}
+            <span v-if="site.status === 'queued'" class="status-spinner"></span>
+          </span>
         </span>
         <div class="list-col list-col--actions">
+          <a
+            v-if="site.status === 'running'"
+            class="btn btn--subtle btn--sm"
+            :href="`http://${site.name}:8080`"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View
+          </a>
           <button class="btn btn--subtle btn--sm" :disabled="updating || !canStartSite(site.id)" @click="onSetSiteStatus(site.id, 'running')">Start</button>
           <button class="btn btn--subtle btn--sm" :disabled="updating || !canStopSite(site.id)" @click="onSetSiteStatus(site.id, 'stopped')">Stop</button>
           <button class="btn btn--subtle btn--sm" :disabled="loadingLogs" @click="onLoadSiteLogs(site.id)">Logs</button>
@@ -210,19 +222,29 @@
       @cancel="onCancelDeleteSite"
       @confirm="onConfirmDeleteSite"
     />
+
+    <TaskLogModal
+      v-if="selectedTask"
+      :task="selectedTask"
+      @close="selectedTaskId = null"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import IconRotateCcw from '~icons/lucide/rotate-ccw';
+import IconCheckCircle from '~icons/lucide/check-circle';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
+import TaskLogModal from '../components/TaskLogModal.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
+import { useProgressCenter } from '../composables/useProgressCenter';
 import {
   buildSiteCreatePayload,
   getSiteWizardStepErrors,
@@ -250,6 +272,43 @@ const {
   openFolder,
   refresh,
 } = useSites();
+
+const { tasks } = useProgressCenter();
+const selectedTaskId = ref<string | null>(null);
+
+const selectedTask = computed(() => {
+  if (!selectedTaskId.value) return null;
+  return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
+});
+
+const formatStatusLabel = (status: string) => {
+  if (status === 'queued') return 'Creating...';
+  if (status === 'running') return 'Running';
+  return status;
+};
+
+const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
+  // Find by resource ID and type
+  const task = tasks.value.find(t => t.resourceId === resourceId && t.resource === resource);
+  
+  if (task) {
+    selectedTaskId.value = task.taskId;
+    return;
+  }
+
+  // Fallback 1: Try finding any recent task for this resource type that isn't successful
+  const recentTask = tasks.value.find(t => t.resource === resource && t.status !== 'success');
+  if (recentTask) {
+    selectedTaskId.value = recentTask.taskId;
+    return;
+  }
+
+  // Fallback 2: Just find the most recent task for this resource type
+  const anyTask = tasks.value.find(t => t.resource === resource);
+  if (anyTask) {
+    selectedTaskId.value = anyTask.taskId;
+  }
+};
 
 const exporting = ref(false);
 
@@ -786,6 +845,16 @@ onMounted(() => {
   font-weight: 500;
   background: var(--gray-light);
   color: var(--gray-text);
+  text-transform: capitalize;
+}
+
+.status-pill--interactive {
+  cursor: pointer;
+  transition: filter 100ms ease;
+}
+
+.status-pill--interactive:hover {
+  filter: brightness(0.95);
 }
 
 .status-pill--running,
@@ -794,10 +863,25 @@ onMounted(() => {
   color: var(--green-text);
 }
 
-.status-pill--failure,
 .status-pill--error {
   background: var(--red-light);
   color: var(--red-text);
+}
+
+.status-spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Logs panel */

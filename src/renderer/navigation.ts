@@ -54,6 +54,12 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     title: 'Settings',
     description: 'Collect defaults and preferences before persistence and runtime controls arrive.',
   },
+  {
+    path: '/diagnostics',
+    name: 'diagnostics',
+    title: 'Diagnostics',
+    description: 'Monitor system health and fix runtime issues.',
+  },
 ];
 
 export const navigationItems: NavigationItem[] = [
@@ -91,5 +97,10 @@ export const navigationItems: NavigationItem[] = [
     label: 'Settings',
     description: 'Set runtime defaults, storage paths, and editor preferences.',
     path: '/settings',
+  },
+  {
+    label: 'Diagnostics',
+    description: 'Check Podman status and system health.',
+    path: '/diagnostics',
   },
 ];

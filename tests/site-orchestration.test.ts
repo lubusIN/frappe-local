@@ -23,7 +23,7 @@ describe('site orchestration', () => {
     const result = await orchestrateSiteCreation(
       {
         benches: {
-          findAll: async () => [runningBench],
+          findById: async () => runningBench,
         },
         sites: {
           create: async (input) => {
@@ -38,16 +38,17 @@ describe('site orchestration', () => {
 
             return current;
           },
-          update: async () => {
-            current = {
-              ...(current as Site),
-              status: 'stopped',
-              timestamps: {
-                ...(current as Site).timestamps,
-                updatedAt: new Date('2026-03-01T01:01:00.000Z').toISOString(),
-              },
-            };
-
+          update: async (id, input) => {
+            if (current && current.id === id) {
+              current = {
+                ...current,
+                ...input,
+                timestamps: {
+                  ...current.timestamps,
+                  updatedAt: new Date().toISOString(),
+                },
+              };
+            }
             return current;
           },
         },
@@ -61,7 +62,7 @@ describe('site orchestration', () => {
       }
     );
 
-    expect(result.status).toBe('stopped');
+    expect(result.status).toBe('queued');
     expect(result.apps).toEqual(['frappe', 'erpnext']);
   });
 
@@ -70,7 +71,7 @@ describe('site orchestration', () => {
       orchestrateSiteCreation(
         {
           benches: {
-            findAll: async () => [],
+            findById: async () => null,
           },
           sites: {
             create: async () => {
@@ -92,33 +93,32 @@ describe('site orchestration', () => {
     ).rejects.toThrow('parent bench was not found');
   });
 
-  it('fails when finalize update does not return a site', async () => {
-    await expect(
-      orchestrateSiteCreation(
-        {
-          benches: {
-            findAll: async () => [runningBench],
-          },
-          sites: {
-            create: async (input) => ({
-              id: 'site-001',
-              ...input,
-              timestamps: {
-                createdAt: new Date('2026-03-01T01:00:00.000Z').toISOString(),
-                updatedAt: new Date('2026-03-01T01:00:00.000Z').toISOString(),
-              },
-            }),
-            update: async () => null,
-          },
+  it('allows site creation to start with queued status', async () => {
+    const result = await orchestrateSiteCreation(
+      {
+        benches: {
+          findById: async () => runningBench,
         },
-        {
-          name: 'demo.localhost',
-          benchId: 'bench-001',
-          groupId: null,
-          path: '/Users/dev/frappe-bench/sites/demo.localhost',
-          apps: ['frappe'],
-        }
-      )
-    ).rejects.toThrow('Cannot finalize site creation.');
+        sites: {
+          create: async (input) => ({
+            id: 'site-001',
+            ...input,
+            timestamps: {
+              createdAt: new Date('2026-03-01T01:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-03-01T01:00:00.000Z').toISOString(),
+            },
+          }),
+          update: async () => null,
+        },
+      },
+      {
+        name: 'demo.localhost',
+        benchId: 'bench-001',
+        groupId: null,
+        path: '/Users/dev/frappe-bench/sites/demo.localhost',
+        apps: ['frappe'],
+      }
+    );
+    expect(result.status).toBe('queued');
   });
 });

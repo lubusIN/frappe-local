@@ -240,7 +240,7 @@ describe('sites IPC handlers', () => {
       name: 'new.localhost',
       benchId: 'bench-001',
       groupId: null,
-      status: 'stopped',
+      status: 'queued',
       path: '/Users/dev/frappe-bench/sites/new.localhost',
     });
     expect(trackSiteOperation).toHaveBeenCalledWith(expect.any(String), 'create');

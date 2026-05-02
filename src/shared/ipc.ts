@@ -8,9 +8,11 @@ export const ipcChannels = {
   catalogList: 'catalog:list',
   diagnosticsRun: 'diagnostics:run',
   diagnosticsGetLast: 'diagnostics:get-last',
+  runtimeFix: 'runtime:fix',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
   benchesList: 'benches:list',
+  benchesPickFolder: 'benches:pick-folder',
   benchesCreate: 'benches:create',
   benchesUpdate: 'benches:update',
   benchesDelete: 'benches:delete',
@@ -98,6 +100,7 @@ export type BenchListItem = {
   readonly runtime: 'docker' | 'podman';
   readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly appCount: number;
+  readonly apps: string[];
   readonly createdAt: string;
   readonly updatedAt: string;
 };
@@ -294,10 +297,12 @@ export type RendererBridge = {
   readonly checkForUpdates: () => Promise<UpdateCheckResult>;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
+  readonly fixRuntime: (checkType: string) => Promise<boolean>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
   readonly listBenches: () => Promise<BenchListItem[]>;
+  readonly pickBenchFolder: () => Promise<string | null>;
   readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;
   readonly updateBench: (id: string, input: BenchUpdateInput) => Promise<BenchListItem | null>;
   readonly deleteBench: (id: string) => Promise<boolean>;

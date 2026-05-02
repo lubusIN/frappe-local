@@ -27,55 +27,62 @@
     <div v-else-if="items.length === 0" class="app-picker-state">No matching apps.</div>
 
     <div v-else class="app-picker-list">
-      <ul class="app-picker-grid">
-        <li v-for="item in items" :key="item.id" class="app-picker-item" :class="{ 'app-picker-item--blocked': !getCompatibility(item.id).isCompatible }">
-          <label class="app-picker-item__label">
-            <input
-              type="checkbox"
-              class="app-picker-item__checkbox"
-              :checked="modelValue.includes(item.id)"
-              :disabled="disabled || !getCompatibility(item.id).isCompatible"
-              @change="onToggle(item.id)"
-            />
-            <img 
-              v-if="item.icon && !imageErrors[item.id]" 
-              :src="item.icon" 
-              class="app-picker-item__icon" 
-              @error="imageErrors[item.id] = true" 
-            />
-            <div v-else class="app-picker-item__icon-fallback">{{ item.name.charAt(0).toUpperCase() }}</div>
-            <div class="app-picker-item__content">
-              <div class="app-picker-item__header">
-                <span class="app-picker-item__name">{{ item.name }}</span>
-                <span class="app-picker-item__version">v{{ item.version }}</span>
-              </div>
-              <p class="app-picker-item__desc">{{ item.description }}</p>
+      <ListView
+        ref="listViewRef"
+        class="app-picker-list__view"
+        :columns="appColumns"
+        :rows="rows"
+        row-key="name"
+        :options="{ selectable: true, showTooltip: false, rowHeight: '80px' }"
+        @update:selections="onSelectionsChange"
+      >
+        <template #default="{ selectable }">
+          <ListHeader class="app-picker-list__header-sticky" />
+          <ListRows class="app-picker-list__rows" />
+          <ListSelectBanner v-if="selectable" />
+        </template>
+
+        <template #cell="{ column, row }">
+          <template v-if="column.key === 'icon'">
+            <div class="app-picker-item__leading">
+              <img v-if="row.icon && !imageErrors[row.appId]" :src="row.icon" class="app-picker-item__icon" @error="imageErrors[row.appId] = true" />
+              <div v-else class="app-picker-item__icon-fallback">{{ row.appName.charAt(0).toUpperCase() }}</div>
             </div>
-            <span
-              v-if="getCompatibility(item.id).status !== 'ok'"
-              class="app-picker-item__badge"
-              :class="`app-picker-item__badge--${getCompatibility(item.id).status}`"
-            >
-              {{ getCompatibility(item.id).message }}
-            </span>
-          </label>
-        </li>
-      </ul>
+          </template>
+          <template v-else-if="column.key === 'name'">
+            <div class="app-picker-item__body" :class="{ 'app-picker-item__body--disabled': row.disabled }">
+              <div class="app-picker-item__title-row">
+                <span class="app-picker-item__name">{{ row.appName }}</span>
+              </div>
+              <p class="app-picker-item__desc">{{ row.description }}</p>
+              <div class="app-picker-item__meta">
+                <span class="app-picker-item__version">v{{ row.version }}</span>
+                <span class="app-picker-item__support" :class="`app-picker-item__support--${row.compatibilityStatus}`">
+                  {{ row.supportText }}
+                </span>
+              </div>
+            </div>
+          </template>
+        </template>
+      </ListView>
     </div>
 
-    <div v-if="modelValue.length > 0" class="app-picker-selection-summary">
-      {{ modelValue.length }} app{{ modelValue.length !== 1 ? 's' : '' }} selected
-    </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { ListHeader, ListRows, ListSelectBanner, ListView } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/ipc';
 import { useAppCatalog } from '../composables/useAppCatalog';
-import { normalizeSelection, toggleAppSelection } from '../app-picker-state';
-import { filterAndSortCatalog, getCatalogCategories, groupCatalogByCategory, type CatalogSort } from '../catalog-query';
+import { normalizeSelection } from '../app-picker-state';
+import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '../catalog-query';
 import { evaluateCatalogCompatibility } from '../catalog-compatibility';
+
+const appColumns = [
+  { key: 'icon', label: '', width: '40px' },
+  { key: 'name', label: 'Name', width: 'minmax(0, 1fr)' },
+];
 
 const props = defineProps<{
   modelValue: string[];
@@ -92,6 +99,9 @@ const categoryFilter = ref('');
 const sort = ref<CatalogSort>('name-asc');
 const { state, reload } = useAppCatalog();
 const imageErrors = ref<Record<string, boolean>>({});
+const listViewRef = ref<{ selections: Set<string> } | null>(null);
+const syncingFromUser = ref(false);
+const syncingFromModel = ref(false);
 
 const frappeVersionLabel = computed(() => {
   const v = props.frappeVersion ?? '';
@@ -111,65 +121,99 @@ const items = computed(() =>
   })
 );
 
+const rows = computed(() =>
+  items.value.map((item) => {
+    const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
+      frappeVersion: props.frappeVersion,
+    });
 
+    return {
+      ...item,
+      appId: item.id,
+      appName: item.name,
+      name: item.id,
+      disabled: props.disabled || !compatibility.isCompatible,
+      compatibilityStatus: compatibility.status,
+      supportText:
+        compatibility.status === 'ok'
+          ? props.frappeVersion
+            ? `Compatible with ${frappeVersionLabel.value}`
+            : 'Supported'
+          : compatibility.message,
+    };
+  })
+);
 
 const onSearch = () => {
   void reload(query.value);
 };
 
-const onToggle = (appId: string) => {
-  const next = toggleAppSelection(props.modelValue, appId);
-  emit('update:modelValue', normalizeSelection(next));
-};
+const syncSelectionsFromModel = () => {
+  const selectionSet = listViewRef.value?.selections;
+  if (!selectionSet) return;
 
-const getCompatibility = (appId: string) => {
-  const item = items.value.find((entry) => entry.id === appId);
-  if (!item) {
-    return {
-      isCompatible: false,
-      status: 'blocked' as const,
-      message: 'Unknown app',
-    };
-  }
-
-  return evaluateCatalogCompatibility(item as CatalogAppItem, {
-    frappeVersion: props.frappeVersion,
+  syncingFromModel.value = true;
+  selectionSet.clear();
+  rows.value.forEach((row) => {
+    if (!row.disabled && props.modelValue.includes(row.appId)) {
+      selectionSet.add(row.name);
+    }
   });
+  nextTick(() => { syncingFromModel.value = false; });
 };
+
+const onSelectionsChange = (value: Set<string>) => {
+  if (syncingFromModel.value) return;
+  syncingFromUser.value = true;
+  emit('update:modelValue', normalizeSelection(Array.from(value)));
+  nextTick(() => { syncingFromUser.value = false; });
+};
+
+watch([() => props.modelValue, rows], () => {
+  if (syncingFromUser.value) return;
+  syncSelectionsFromModel();
+}, { immediate: true });
 </script>
 
 <style scoped>
 .app-picker {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  height: 100%;
 }
 
 .app-picker-header {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  margin-bottom: 0;
 }
 
 .app-picker-search {
   flex: 1;
-  min-width: 160px;
+  min-width: 140px;
 }
 
 .app-picker-filter {
-  min-width: 140px;
+  min-width: 120px;
+  font-size: 12px;
 }
 
 .app-picker-version-badge {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   font-size: 11px;
-  color: var(--blue-text, #1a6ddb);
-  background: var(--blue-light, #eef4ff);
-  border: 1px solid var(--blue-border, #c2d9f5);
-  border-radius: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
 }
 
 .app-picker-version-badge strong {
@@ -177,72 +221,100 @@ const getCompatibility = (appId: string) => {
 }
 
 .app-picker-state {
-  padding: 20px;
+  padding: 12px 8px;
   text-align: center;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
-  background: var(--surface-card);
-  border: 1px dashed var(--border-light);
-  border-radius: 6px;
+  background: transparent;
+  border: none;
 }
 
 .app-picker-state--error {
   color: var(--red-text);
-  border-color: var(--red-border);
-  background: var(--red-light);
 }
 
 .app-picker-list {
-  max-height: 380px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding-right: 0;
+  margin-bottom: 8px;
+}
+
+.app-picker-list__view {
+  min-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-picker :deep(.relative.flex.w-full.flex-1.flex-col.overflow-x-auto) {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-picker-list__header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.app-picker-list__rows {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
 }
 
-.app-picker-grid {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-picker-item {
-  border-bottom: 1px solid var(--border-light);
-}
-
-.app-picker-item:last-child {
-  border-bottom: none;
-}
-
-.app-picker-item__label {
-  display: grid;
-  grid-template-columns: auto auto 1fr auto;
-  align-items: center;
+.app-picker :deep(.grid.items-center.gap-4.px-2) {
   gap: 12px;
-  padding: 12px 8px;
-  background: transparent;
-  cursor: pointer;
-  transition: background-color 120ms ease;
+  padding-left: 0;
+  padding-right: 0;
 }
 
-.app-picker-item__label:hover {
-  background: var(--surface-hover, var(--surface-card));
+.app-picker :deep(.w-fit.pe-2.py-3.flex) {
+  width: 24px;
+  padding-inline-end: 0;
+  justify-content: center;
 }
 
-.app-picker-item--blocked .app-picker-item__label {
-  opacity: 0.5;
-  cursor: not-allowed;
+.app-picker :deep(.text-sm.text-ink-gray-5) {
+  font-size: 12px;
 }
 
-.app-picker-item__checkbox {
-  margin-top: 0;
+.app-picker :deep(.overflow-x-hidden) {
+  overflow: visible;
+}
+
+.app-picker :deep(input[type='checkbox']) {
+  min-height: 0;
+  padding: 0;
+}
+
+.app-picker-item__leading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+}
+
+.app-picker-item__body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.app-picker-item__body--disabled {
+  opacity: 0.65;
 }
 
 .app-picker-item__icon,
 .app-picker-item__icon-fallback {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
   object-fit: cover;
 }
 
@@ -256,33 +328,24 @@ const getCompatibility = (appId: string) => {
   font-size: 14px;
 }
 
-.app-picker-item__content {
-  display: grid;
-  gap: 2px;
+.app-picker-item__title-row {
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
 
-.app-picker-item__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .app-picker-item__name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
-}
-
-.app-picker-item__version {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-picker-item__desc {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
   overflow: hidden;
@@ -292,31 +355,34 @@ const getCompatibility = (appId: string) => {
   -webkit-box-orient: vertical;
 }
 
-.app-picker-item__badge {
+.app-picker-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-picker-item__version,
+.app-picker-item__support {
   font-size: 10px;
   font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 4px;
   white-space: nowrap;
-  align-self: center;
 }
 
-.app-picker-item__badge--warning {
+.app-picker-item__version {
+  color: var(--text-muted);
+}
+
+.app-picker-item__support {
+  color: var(--text-secondary);
+}
+
+.app-picker-item__support--warning {
   color: var(--orange-text);
-  background: var(--orange-light, rgba(255, 165, 0, 0.1));
 }
 
-.app-picker-item__badge--blocked {
+.app-picker-item__support--blocked {
   color: var(--red-text);
-  background: var(--red-light);
 }
 
-.app-picker-selection-summary {
-  text-align: center;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--primary, #4a90d9);
-  padding: 6px 0;
-  border-top: 1px solid var(--border-light);
-}
 </style>

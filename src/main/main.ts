@@ -30,6 +30,20 @@ const createMainWindow = async (): Promise<void> => {
     },
   });
 
+  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    mainLogger.error(`renderer failed to load (${errorCode}) ${errorDescription} at ${validatedURL}`);
+  });
+
+  window.webContents.on('render-process-gone', (_event, details) => {
+    mainLogger.error(`renderer process exited: ${details.reason} (code: ${details.exitCode})`);
+  });
+
+  window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) {
+      mainLogger.error(`renderer console [${level}] ${message} (${sourceId}:${line})`);
+    }
+  });
+
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     window.webContents.openDevTools({ mode: 'detach' });

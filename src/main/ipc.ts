@@ -33,12 +33,14 @@ import type { TerminalCreateResponse } from '../shared/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
-import { RuntimeService } from './runtime-service';
+import { execPromise } from './utils/exec';
+
 import type { AppRuntimePaths } from './config';
 import { CURRENT_STORAGE_SCHEMA_VERSION } from './storage/schema';
 import fs from 'node:fs';
 import path from 'node:path';
-import { BrowserWindow } from 'electron';
+import os from 'node:os';
+import { BrowserWindow, dialog } from 'electron';
 import {
   CreateBenchInputSchema,
   CreateGroupInputSchema,
@@ -60,6 +62,7 @@ import {
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
 import { orchestrateSiteCreation } from './site-orchestration';
+import { orchestrateBenchCreation } from './bench-orchestration';
 import { parseImportPackage, validateImportCompatibility } from './import-package-validator';
 import { executeImportPackage } from './import-execution';
 import { exportSitePackage } from './export-package-writer';
@@ -82,6 +85,31 @@ type TerminalServiceLike = {
 
 type TaskRunnerLike = {
   onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
+};
+
+const resolveBundledPodmanMachineImagePath = (): string | null => {
+  const executableName = process.platform === 'win32' ? 'podman.exe' : 'podman';
+  const pathEntries = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
+
+  for (const entry of pathEntries) {
+    const podmanPath = path.join(entry, executableName);
+    if (!fs.existsSync(podmanPath)) {
+      continue;
+    }
+
+    const imageCandidates = [
+      path.join(entry, 'podman-machine-image.raw'),
+      path.join(entry, 'podman-machine-image.qcow2'),
+      path.join(entry, 'podman-machine-image'),
+    ];
+
+    const found = imageCandidates.find((candidate) => fs.existsSync(candidate));
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
 };
 
 
@@ -242,6 +270,7 @@ const toBenchListItem = (bench: Bench): BenchListItem => ({
   runtime: bench.runtime,
   status: bench.status,
   appCount: bench.apps.length,
+  apps: bench.apps,
   createdAt: bench.timestamps.createdAt,
   updatedAt: bench.timestamps.updatedAt,
 });
@@ -317,6 +346,23 @@ const findDevcontainerTarget = (benchPath: string, pathExists: (targetPath: stri
   }
 
   return null;
+};
+
+const resolveUserPath = (rawPath: string): string => {
+  const trimmedPath = rawPath.trim();
+  if (!trimmedPath) {
+    return trimmedPath;
+  }
+
+  if (trimmedPath === '~') {
+    return os.homedir();
+  }
+
+  if (trimmedPath.startsWith('~/') || trimmedPath.startsWith('~\\')) {
+    return path.join(os.homedir(), trimmedPath.slice(2));
+  }
+
+  return path.resolve(trimmedPath);
 };
 
 export const registerIpcHandlers = (
@@ -395,6 +441,50 @@ export const registerIpcHandlers = (
     return lastDiagnosticsReport;
   });
 
+  ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: string): Promise<boolean> => {
+    if (checkType !== 'runtime-health') return false;
+
+    mainLogger.info('Attempting to fix runtime issues...');
+
+    try {
+      // 1. Check if podman binary is actually there
+      try {
+        await execPromise('podman', ['--version']);
+      } catch {
+        mainLogger.error('Podman binary not found, cannot fix.');
+        return false;
+      }
+
+      // 2. Machine handling (Mac/Windows)
+      if (process.platform === 'darwin' || process.platform === 'win32') {
+        const { stdout } = await execPromise('podman', ['machine', 'ls', '--format', 'json']);
+        const machines = JSON.parse(stdout || '[]');
+
+        if (machines.length === 0) {
+          mainLogger.info('No podman machine found, initializing...');
+          const initArgs = ['machine', 'init'];
+          const bundledImagePath = resolveBundledPodmanMachineImagePath();
+          if (bundledImagePath) {
+            initArgs.push('--image', bundledImagePath);
+            mainLogger.info(`Using bundled Podman machine image at ${bundledImagePath}`);
+          }
+          await execPromise('podman', initArgs);
+        }
+
+        mainLogger.info('Starting podman machine...');
+        const { code } = await execPromise('podman', ['machine', 'start']);
+        return code === 0;
+      }
+
+      // On Linux, maybe just check if service is running? 
+      // For now, we mainly fix VM issues.
+      return true;
+    } catch (error) {
+      mainLogger.error('Failed to fix runtime issue:', error);
+      return false;
+    }
+  });
+
   ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
     taskEventSubscriptionCount += 1;
     return taskEventSubscriptionCount > 0;
@@ -427,13 +517,35 @@ export const registerIpcHandlers = (
     return benches.map(toBenchListItem);
   });
 
+  ipcMainLike.handle(ipcChannels.benchesPickFolder, async () => {
+    const targetWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+    const result = await dialog.showOpenDialog(targetWindow, {
+      title: 'Select Bench Folder',
+      buttonLabel: 'Select Folder',
+      defaultPath: os.homedir(),
+      properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return resolveUserPath(result.filePaths[0]);
+  });
+
   ipcMainLike.handle(ipcChannels.benchesCreate, async (_event: unknown, input: unknown) => {
+    const rawInput = input as BenchCreateInput;
     const payload = CreateBenchInputSchema.parse({
-      ...(input as BenchCreateInput),
-      status: 'stopped',
+      ...rawInput,
+      path: resolveUserPath(rawInput.path),
+      status: 'queued',
     });
     const created = await repositories.benches.create(payload);
     operations.trackBenchOperation?.(created.id, 'create');
+    
+    // Spawn background orchestration task
+    orchestrateBenchCreation(created, repositories.benches, runtimePaths);
+    
     return toBenchListItem(created);
   });
 
@@ -442,7 +554,11 @@ export const registerIpcHandlers = (
       return null;
     }
 
-    const payload = UpdateBenchInputSchema.parse(input as BenchUpdateInput);
+    const rawInput = input as BenchUpdateInput;
+    const payload = UpdateBenchInputSchema.parse({
+      ...rawInput,
+      ...(typeof rawInput.path === 'string' ? { path: resolveUserPath(rawInput.path) } : {}),
+    });
     const updated = await repositories.benches.update(id, payload);
     if (updated) {
       operations.trackBenchOperation?.(updated.id, 'update');

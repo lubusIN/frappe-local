@@ -223,7 +223,7 @@ describe('benches IPC handlers', () => {
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
       runtime: 'docker',
-      status: 'stopped',
+      status: 'queued',
       appCount: 1,
     });
   });

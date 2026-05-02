@@ -4,9 +4,7 @@
       <h2 class="view-header__title">Console</h2>
       <div class="view-header__actions">
         <button type="button" class="btn btn--subtle" :disabled="loadingContext" @click="loadContext">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 8A6 6 0 114.8 4.8" /><path d="M14 2v4h-4" />
-          </svg>
+          <IconRotateCcw class="btn-icon" />
           {{ loadingContext ? 'Refreshing…' : 'Refresh Context' }}
         </button>
       </div>
@@ -22,9 +20,7 @@
     />
 
     <div v-if="contextNotice" class="alert alert--warning">
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-        <path fill-rule="evenodd" d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l4.928 9.225c.628 1.176-.25 2.604-1.543 2.604H3.072c-1.293 0-2.17-1.428-1.543-2.604L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z" clip-rule="evenodd"/>
-      </svg>
+      <IconAlertTriangle class="alert-icon" />
       {{ contextNotice }}
     </div>
 
@@ -123,6 +119,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import IconRotateCcw from '~icons/lucide/rotate-ccw';
+import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import { useTerminalSession } from '../composables/useTerminalSession';
