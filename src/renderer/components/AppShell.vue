@@ -1,40 +1,27 @@
 <template>
   <main class="shell">
     <aside class="sidebar">
-      <div class="sidebar-brand">
-        <div class="sidebar-logo">
-          <IconCalendar class="sidebar-logo__icon" />
-        </div>
-        <div class="sidebar-brand__text">
-          <span class="sidebar-brand__label">Frappe Cafe</span>
-        </div>
-      </div>
-
-      <nav aria-label="Primary" class="sidebar-nav">
-        <RouterLink
-          v-for="item in navigationWithIcons"
-          :key="item.path"
-          :to="item.path"
-          class="sidebar-item"
-          :title="item.label"
-        >
-          <span class="sidebar-item__icon" aria-hidden="true">
-            <component :is="item.icon" class="sidebar-item__svg" />
-          </span>
-          <span class="sidebar-item__label">{{ item.label }}</span>
-        </RouterLink>
-      </nav>
-
-      <div class="sidebar-divider"></div>
-
-      <div class="sidebar-bottom">
-        <RouterLink to="/settings" class="sidebar-item" title="Settings">
-          <span class="sidebar-item__icon" aria-hidden="true">
-            <IconSettings class="sidebar-item__svg" />
-          </span>
-          <span class="sidebar-item__label">Settings</span>
-        </RouterLink>
-      </div>
+      <Sidebar :sections="sidebarSections">
+        <template #header>
+          <div class="sidebar-brand">
+            <div class="sidebar-brand__logo">
+              <IconCalendar class="sidebar-brand__logo-icon" />
+            </div>
+            <div class="sidebar-brand__text">
+              <div class="sidebar-brand__title">Frappe Cafe</div>
+              <div class="sidebar-brand__subtitle">Local Dev</div>
+            </div>
+          </div>
+        </template>
+        <template #footer-items>
+          <SidebarItem
+            label="Settings"
+            :icon="IconSettings"
+            to="/settings"
+            :is-active="route.path === '/settings'"
+          />
+        </template>
+      </Sidebar>
     </aside>
 
     <section class="content">
@@ -85,8 +72,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { computed, onMounted } from 'vue';
+import { RouterView, useRoute } from 'vue-router';
+import { Sidebar, SidebarItem } from 'frappe-ui';
 import IconHome from '~icons/lucide/home';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
@@ -102,7 +90,6 @@ import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { navigationItems } from '../routes';
 
 const route = useRoute();
-const settingsLoaded = ref(false);
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { actions: headerActions } = usePageHeaderActions();
 
@@ -128,13 +115,24 @@ const navigationWithIcons = computed(() =>
   }))
 );
 
+const sidebarSections = computed(() => [
+  {
+    items: navigationWithIcons.value.map((item) => ({
+      label: item.label,
+      icon: item.icon,
+      to: item.path,
+      isActive: route.path === item.path,
+    })),
+  },
+]);
+
 const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Cafe'));
 
 const loadShellPreference = async (): Promise<void> => {
   try {
     await window.frappeCafe?.getSettings();
-  } finally {
-    settingsLoaded.value = true;
+  } catch {
+    // Ignore settings preload failures; IPC warning handles user-facing messaging.
   }
 };
 
@@ -145,123 +143,68 @@ onMounted(() => {
 
 <style scoped>
 /* ============================================================
-   Sidebar
+   Sidebar brand header
    ============================================================ */
 
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-light);
+  gap: 8px;
+  width: 14rem;
+  height: 48px;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: default;
+  flex-shrink: 0;
 }
 
-.sidebar-logo {
+.sidebar-brand__logo {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
   min-width: 32px;
-  border-radius: 8px;
+  border-radius: 6px;
+  overflow: hidden;
   background: linear-gradient(135deg, #171717, #404040);
   color: #ffffff;
+  flex-shrink: 0;
 }
 
-.sidebar-logo__icon {
+.sidebar-brand__logo-icon {
   width: 18px;
   height: 18px;
-  flex-shrink: 0;
 }
 
 .sidebar-brand__text {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
   flex: 1;
-}
-
-.sidebar-brand__label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.3;
-}
-
-/* Sidebar nav */
-.sidebar-nav {
-  display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px;
-  flex: 1;
-}
-
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  text-decoration: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  transition: background-color 100ms ease, color 100ms ease;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  width: 100%;
   text-align: left;
+  min-width: 0;
 }
 
-.sidebar-item:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+.sidebar-brand__title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-gray-8, #1a1a1a);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sidebar-item.router-link-exact-active,
-.sidebar-item.router-link-active {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+.sidebar-brand__subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-gray-6, #6b7280);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.sidebar-item__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  color: currentColor;
-  opacity: 0.7;
-}
-
-.sidebar-item__svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.sidebar-item.router-link-exact-active .sidebar-item__icon,
-.sidebar-item.router-link-active .sidebar-item__icon {
-  opacity: 1;
-}
-
-.sidebar-item__label {
-  flex: 1;
-  line-height: 1.3;
-}
-
-.sidebar-divider {
-  height: 1px;
-  background: var(--border-light);
-  margin: 0 16px;
-}
-
-.sidebar-bottom {
-  padding: 8px;
-}
 
 /* ============================================================
    Page Header

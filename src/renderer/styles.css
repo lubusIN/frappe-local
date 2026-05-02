@@ -124,15 +124,7 @@ a:focus-visible {
   position: sticky;
   top: 0;
   height: 100vh;
-  width: 220px;
-  min-width: 220px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface-card);
-  border-right: 1px solid var(--border-light);
-  padding: 0;
-  color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 .content {

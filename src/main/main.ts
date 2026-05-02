@@ -58,7 +58,7 @@ const createMainWindow = async (): Promise<void> => {
 
 app.whenReady().then(async () => {
   const appIconPath = getAppIconPath();
-  if (process.platform === 'darwin' && appIconPath) {
+  if (process.platform === 'darwin' && appIconPath && app.dock) {
     app.dock.setIcon(appIconPath);
   }
 
