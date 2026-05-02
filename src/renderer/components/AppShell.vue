@@ -17,8 +17,7 @@
           <SidebarItem
             label="Settings"
             :icon="IconSettings"
-            to="/settings"
-            :is-active="route.path === '/settings'"
+            @click="openSettings"
           />
         </template>
       </Sidebar>
@@ -69,10 +68,12 @@
       </section>
     </section>
   </main>
+
+  <SettingsDialog :open="isSettingsOpen" @close="closeSettings" />
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import { Sidebar, SidebarItem } from 'frappe-ui';
 import IconHome from '~icons/lucide/home';
@@ -88,11 +89,14 @@ import IconCalendar from '~icons/lucide/calendar';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import { isIpcBridgeAvailable } from '../composables/useIpc';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
+import { useSettingsDialog } from '../composables/useSettingsDialog';
 import { navigationItems } from '../routes';
+import SettingsDialog from './SettingsDialog.vue';
 
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { actions: headerActions } = usePageHeaderActions();
+const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 
 const iconComponentMap: Record<string, any> = {
   '/': IconHome,

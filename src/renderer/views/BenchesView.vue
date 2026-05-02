@@ -128,18 +128,14 @@
       <template #body-content>
         <div class="bench-dialog-form">
           <div class="bench-dialog-form__grid">
-            <label class="form-field">
-              <span class="form-label">Name</span>
+            <div class="form-field">
+              <FormLabel label="Name" />
               <input v-model="createForm.name" type="text" required placeholder="my-bench" />
-            </label>
-            <label class="form-field">
-              <span class="form-label">Frappe Version</span>
-              <Select
-                v-model="createForm.frappeVersion"
-                :options="frappeVersionOptions"
-                placeholder="Select version"
-              />
-            </label>
+            </div>
+            <div class="form-field">
+              <FormLabel label="Frappe Version" />
+              <FrappeVersionSelect v-model="createForm.frappeVersion" />
+            </div>
             <label class="form-field">
               <span class="form-label">Path</span>
               <div class="path-picker">
@@ -233,7 +229,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Dialog, Dropdown, Select, toast } from 'frappe-ui';
+import { Button, Dialog, Dropdown, Select, FormLabel, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconCheckCircle from '~icons/lucide/check-circle';
@@ -248,6 +244,7 @@ import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
+import FrappeVersionSelect from '../components/FrappeVersionSelect.vue';
 import { useBenches } from '../composables/useBenches';
 import { useIpc } from '../composables/useIpc';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
@@ -385,11 +382,6 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
   }
 };
 
-const frappeVersionOptions = [
-  { label: 'version-15', value: 'version-15' },
-  { label: 'version-16', value: 'version-16' },
-  { label: 'develop', value: 'develop' },
-];
 
 const createForm = reactive({
   name: '',

@@ -21,17 +21,19 @@
     </ol>
 
     <div v-if="links.length > 0" class="first-run__links">
-      <RouterLink
+      <component
         v-for="link in links"
-        :key="`${link.to}-${link.label}`"
-        :to="link.to"
+        :key="`${link.to || 'action'}-${link.label}`"
+        :is="link.to ? 'RouterLink' : 'button'"
+        v-bind="link.to ? { to: link.to } : { type: 'button' }"
         class="first-run__link"
+        @click="link.onClick"
       >
         {{ link.label }}
         <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 4l4 4-4 4" />
         </svg>
-      </RouterLink>
+      </component>
     </div>
   </section>
 </template>
@@ -41,7 +43,8 @@ import { RouterLink } from 'vue-router';
 
 export type FirstRunGuideLink = {
   label: string;
-  to: string;
+  to?: string;
+  onClick?: () => void;
 };
 
 defineProps<{

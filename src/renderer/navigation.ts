@@ -55,12 +55,6 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     description: 'Validate export packages, map them to benches, and preview import conflicts safely.',
   },
   {
-    path: '/settings',
-    name: 'settings',
-    title: 'Settings',
-    description: 'Collect defaults and preferences before persistence and runtime controls arrive.',
-  },
-  {
     path: '/diagnostics',
     name: 'diagnostics',
     title: 'Diagnostics',
@@ -98,11 +92,6 @@ export const navigationItems: NavigationItem[] = [
     label: 'Import / Export',
     description: 'Validate packages, preview mappings, and prepare safe transfers.',
     path: '/import-export',
-  },
-  {
-    label: 'Settings',
-    description: 'Set runtime defaults, storage paths, and editor preferences.',
-    path: '/settings',
   },
   {
     label: 'Activity',

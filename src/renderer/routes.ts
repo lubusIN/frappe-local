@@ -5,7 +5,6 @@ import ConsoleView from './views/ConsoleView.vue';
 import DashboardView from './views/DashboardView.vue';
 import ImportExportView from './views/ImportExportView.vue';
 import { appRouteDefinitions, navigationItems } from './navigation';
-import SettingsView from './views/SettingsView.vue';
 import SitesView from './views/SitesView.vue';
 import WorkspacesView from './views/WorkspacesView.vue';
 
@@ -17,7 +16,6 @@ const componentMap = {
   workspaces: WorkspacesView,
   console: ConsoleView,
   importExport: ImportExportView,
-  settings: SettingsView,
   diagnostics: () => import('./views/DiagnosticsView.vue'),
 } as const;
 

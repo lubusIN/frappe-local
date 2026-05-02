@@ -35,17 +35,17 @@
             <p class="shortcut-card__desc">View and control local sites</p>
           </div>
         </RouterLink>
-        <RouterLink to="/settings" class="shortcut-card">
+        <button type="button" class="shortcut-card" @click="openSettings">
           <div class="shortcut-card__icon">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
             </svg>
           </div>
-          <div>
+          <div class="text-left">
             <p class="shortcut-card__title">Configure Settings</p>
             <p class="shortcut-card__desc">Set runtime defaults and preferences</p>
           </div>
-        </RouterLink>
+        </button>
       </div>
     </section>
 
@@ -57,8 +57,10 @@ import { computed, onMounted, reactive } from 'vue';
 import { RouterLink } from 'vue-router';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import { useIpc } from '../composables/useIpc';
+import { useSettingsDialog } from '../composables/useSettingsDialog';
 
 const ipc = useIpc();
+const { open: openSettings } = useSettingsDialog();
 const setupSummary = reactive({ benches: 0, sites: 0, workspaces: 0 });
 
 const refreshSetupSummary = async (): Promise<void> => {
@@ -102,7 +104,7 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
     links.push({ label: 'Create a workspace', to: '/workspaces' });
   }
 
-  links.push({ label: 'Check settings', to: '/settings' });
+  links.push({ label: 'Check settings', onClick: openSettings });
 
   return links;
 });
@@ -157,6 +159,8 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
   background: var(--surface-card);
   text-decoration: none;
   color: inherit;
+  width: 100%;
+  text-align: left;
   transition: background-color 100ms ease, border-color 100ms ease;
 }
 
