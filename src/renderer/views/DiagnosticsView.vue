@@ -1,9 +1,5 @@
 <template>
   <div class="diagnostics-view">
-    <div class="view-header">
-      <h2 class="view-title">System Health & Diagnostics</h2>
-      <p class="view-subtitle">Monitor and fix issues with your runtime environment and storage.</p>
-    </div>
 
     <div class="diagnostics-container">
       <DiagnosticsPanel
@@ -40,24 +36,6 @@ const { report, running, fixing, error, run, fix } = useDiagnostics();
   gap: 24px;
 }
 
-.view-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.view-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.view-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
 
 .diagnostics-container {
   display: grid;

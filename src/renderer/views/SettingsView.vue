@@ -1,14 +1,5 @@
 <template>
   <section class="settings-view">
-    <header class="view-header">
-      <h2 class="view-header__title">Settings</h2>
-      <div class="view-header__actions">
-        <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading || saving">
-          <IconRotateCcw class="btn-icon" />
-          {{ loading ? 'Refreshing…' : 'Reload' }}
-        </button>
-      </div>
-    </header>
 
     <StatePanel
       v-if="error"
@@ -98,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconCheckCircle from '~icons/lucide/check-circle';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
@@ -108,11 +99,33 @@ import { useDiagnostics } from '../diagnostics-controller';
 import { useUpdateStrategy } from '../update-strategy-controller';
 import { useSettings } from '../composables/useSettings';
 import { useIpc } from '../composables/useIpc';
+import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 
 const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
 const ipc = useIpc();
 const diagnostics = useDiagnostics(ipc);
 const updates = useUpdateStrategy(ipc);
+
+const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
+
+watch(() => loading.value, () => {
+  setPageHeaderActions([
+    {
+      id: 'settings-refresh',
+      label: loading.value ? 'Refreshing…' : 'Reload',
+      variant: 'subtle',
+      disabled: loading.value,
+      icon: IconRotateCcw,
+      onClick: () => {
+        void refresh();
+      },
+    },
+  ]);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  clearPageHeaderActions();
+});
 
 onMounted(() => {
   void diagnostics.loadLastReport();
@@ -126,24 +139,6 @@ onMounted(() => {
   gap: 16px;
 }
 
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.view-header__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.view-header__actions {
-  display: flex;
-  gap: 8px;
-}
 
 /* Buttons */
 .btn {

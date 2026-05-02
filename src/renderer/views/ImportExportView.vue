@@ -1,14 +1,5 @@
 <template>
   <section class="import-view">
-    <header class="view-header">
-      <h2 class="view-header__title">Import / Export</h2>
-      <div class="view-header__actions">
-        <button type="button" class="btn btn--subtle" :disabled="loading" @click="refreshContext">
-          <IconRotateCcw class="btn-icon" />
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
-        </button>
-      </div>
-    </header>
 
     <ErrorNotice
       v-if="errorNotice"
@@ -26,7 +17,6 @@
       v-if="!loading && benches.length === 0"
       title="Import and export need a target bench"
       body="Exports come from existing sites and imports are mapped onto existing benches. Once you create a bench, this screen can validate packages and guide transfers safely."
-      :steps="importExportSetupSteps"
       :links="importExportSetupLinks"
       compact
     />
@@ -146,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconCheckCircle from '~icons/lucide/check-circle';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
@@ -166,6 +156,7 @@ import {
   getImportWizardStepErrors,
   type ImportWizardStep,
 } from '../import-wizard';
+import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 
 const ipc = useIpc();
 const benches = ref<BenchListItem[]>([]);
@@ -179,6 +170,27 @@ const validation = ref<ImportValidationResponse | null>(null);
 const executionSteps = ref<ImportExecutionStep[]>([]);
 const wizardStep = ref<ImportWizardStep>(1);
 
+const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
+
+watch(() => loading.value, () => {
+  setPageHeaderActions([
+    {
+      id: 'import-export-refresh',
+      label: loading.value ? 'Refreshing…' : 'Refresh',
+      variant: 'subtle',
+      disabled: loading.value,
+      icon: IconRotateCcw,
+      onClick: () => {
+        void refreshContext();
+      },
+    },
+  ]);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  clearPageHeaderActions();
+});
+
 const draft = reactive({
   artifactDirectory: '',
   benchId: '',
@@ -191,11 +203,6 @@ const conflictPreview = computed(() =>
   buildImportConflictPreview(benches.value, sites.value, draft.benchId, validation.value)
 );
 const importConfirmOpen = ref(false);
-const importExportSetupSteps = computed(() => [
-  'Create a bench so imports have a destination and exports have a matching environment.',
-  'Create at least one site if you want to test export packaging from inside the app.',
-  'Return here to validate an artifact directory and map it safely to a bench.',
-]);
 const importExportSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Create a bench', to: '/benches' },
   { label: 'Create a site', to: '/sites' },
@@ -357,21 +364,6 @@ onMounted(() => {
   gap: 16px;
 }
 
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.view-header__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.view-header__actions { display: flex; gap: 8px; }
 
 /* Buttons */
 .btn {
