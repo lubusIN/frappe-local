@@ -1,15 +1,23 @@
 <template>
   <main class="shell">
     <aside class="sidebar">
-      <Sidebar :sections="sidebarSections">
+      <Sidebar
+        v-model:collapsed="isCollapsed"
+        :sections="sidebarSections"
+      >
         <template #header>
-          <div class="sidebar-brand">
-            <div class="sidebar-brand__logo">
-              <IconCalendar class="sidebar-brand__logo-icon" />
+          <div
+            class="sidebar-header"
+            :class="isCollapsed ? 'sidebar-header--collapsed' : ''"
+          >
+            <div class="sidebar-header__logo">
+              <div class="sidebar-logo">
+                <CafeLogo class="sidebar-logo__icon" />
+              </div>
             </div>
-            <div class="sidebar-brand__text">
-              <div class="sidebar-brand__title">Frappe Cafe</div>
-              <div class="sidebar-brand__subtitle">Local Dev</div>
+            <div class="sidebar-header__text" :class="isCollapsed ? 'sidebar-header__text--hidden' : ''">
+              <div class="sidebar-header__title">Frappe Cafe</div>
+              <div class="sidebar-header__subtitle">Local Dev</div>
             </div>
           </div>
         </template>
@@ -85,7 +93,7 @@ import IconActivity from '~icons/lucide/activity';
 import IconArrowRightLeft from '~icons/lucide/arrow-right-left';
 import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
-import IconCalendar from '~icons/lucide/calendar';
+import CafeLogo from './CafeLogo.vue';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import { isIpcBridgeAvailable } from '../composables/useIpc';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
@@ -97,6 +105,7 @@ const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { actions: headerActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
+const isCollapsed = ref(false);
 
 const iconComponentMap: Record<string, any> = {
   '/': IconHome,
@@ -149,66 +158,79 @@ onMounted(() => {
 
 <style scoped>
 /* ============================================================
-   Sidebar brand header
+   Sidebar logo
    ============================================================ */
 
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 14rem;
-  height: 48px;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: default;
-  flex-shrink: 0;
-}
-
-.sidebar-brand__logo {
+.sidebar-logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: 100%;
+  height: 100%;
   border-radius: 6px;
-  overflow: hidden;
   background: linear-gradient(135deg, #171717, #404040);
   color: #ffffff;
+  overflow: hidden;
+}
+
+.sidebar-logo__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-header {
+  display: flex;
+  height: 48px;
+  align-items: center;
+  border-radius: 6px;
+  padding: 8px;
+  width: 100%;
+  transition: all 0.3s ease-in-out;
+}
+
+.sidebar-header--collapsed {
+  width: 100%;
+  padding: 8px 0;
+  justify-content: center;
+}
+
+.sidebar-header__logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.sidebar-brand__logo-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.sidebar-brand__text {
+.sidebar-header__text {
+  margin-left: 8px;
   display: flex;
   flex: 1;
   flex-direction: column;
   text-align: left;
-  min-width: 0;
+  transition: all 0.3s ease-in-out;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.sidebar-brand__title {
+.sidebar-header__text--hidden {
+  margin-left: 0;
+  width: 0;
+  opacity: 0;
+}
+
+.sidebar-header__title {
   font-size: 15px;
   font-weight: 500;
-  color: var(--ink-gray-8, #1a1a1a);
+  color: var(--ink-gray-8);
   line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.sidebar-brand__subtitle {
+.sidebar-header__subtitle {
   margin-top: 4px;
   font-size: 13px;
-  color: var(--ink-gray-6, #6b7280);
+  color: var(--ink-gray-6);
   line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 

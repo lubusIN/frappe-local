@@ -1,29 +1,18 @@
-<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Frappe Cafe icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f6c36d" />
-      <stop offset="100%" stop-color="#d9771b" />
-    </linearGradient>
-    <linearGradient id="cup" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fff8ec" />
-      <stop offset="100%" stop-color="#f2ddbf" />
-    </linearGradient>
-    <linearGradient id="coffee" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#6d4020" />
-      <stop offset="100%" stop-color="#3a1f0f" />
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a2a2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#111111;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <rect x="32" y="32" width="960" height="960" rx="240" fill="url(#bg)" />
-  <ellipse cx="512" cy="790" rx="245" ry="50" fill="#ab5b14" opacity="0.25" />
-  <g>
-    <rect x="278" y="322" width="420" height="325" rx="92" fill="url(#cup)" />
-    <path d="M698 386c79 0 142 60 142 130s-63 130-142 130h-36v-78h36c35 0 64-24 64-52s-29-52-64-52h-36v-78h36z" fill="url(#cup)" />
-    <rect x="324" y="330" width="328" height="156" rx="72" fill="url(#coffee)" />
-    <rect x="278" y="606" width="474" height="52" rx="26" fill="#ead1ad" />
-  </g>
-  <g fill="#fff5e3" opacity="0.92">
-    <path d="M406 250c-29-50-16-100 23-138 6-6 15-6 21 0s6 15 0 21c-29 30-39 64-16 103 14 24 25 48 25 72 0 33-16 62-37 88-6 6-15 7-21 1s-7-15-1-21c18-22 29-44 29-68 0-18-8-38-23-58z" />
-    <path d="M516 250c-29-50-16-100 23-138 6-6 15-6 21 0s6 15 0 21c-29 30-39 64-16 103 14 24 25 48 25 72 0 33-16 62-37 88-6 6-15 7-21 1s-7-15-1-21c18-22 29-44 29-68 0-18-8-38-23-58z" />
-    <path d="M626 250c-29-50-16-100 23-138 6-6 15-6 21 0s6 15 0 21c-29 30-39 64-16 103 14 24 25 48 25 72 0 33-16 62-37 88-6 6-15 7-21 1s-7-15-1-21c18-22 29-44 29-68 0-18-8-38-23-58z" />
+  <!-- Background rect slightly smaller than 1024 to allow for OS-level padding/shadows -->
+  <rect width="900" height="900" x="62" y="62" rx="200" fill="url(#iconGradient)" />
+  <!-- Inner border/glow -->
+  <rect width="892" height="892" x="66" y="66" rx="196" fill="none" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="6" />
+  
+  <!-- Logo centered within the icon -->
+  <g transform="translate(112, 118) scale(8)">
+    <path fill="#FFFFFF" d="M85.25 19.133h-3.259L79.218 9.57H20.771l-2.765 9.563H14.75v9.188h4.179l9.926 59.112-.278.277c2.573 2.589 18.346 2.72 21.481 2.72 8.141 0 18.425-.631 21.061-2.393l.495.087L82.088 28.32h3.162zM23.029 12.57h53.935l1.82 6.281H21.212zm-5.279 9.563h64.5v3.188h-64.5zm6.744 21.216H76.41l-4.877 27.845H29.17zm7.156 42.617-1.977-11.772h41.334l-2.031 11.594c-1.991.75-8.928 1.643-18.919 1.643-9.288-.001-15.937-.773-18.407-1.465m45.286-45.617H23.99l-2.02-12.028h57.071z"/>
+    <path fill="#FFFFFF" d="M57.438 49.294c-1.4-1.4-3.359-2.171-5.519-2.171-2.864 0-5.818 1.311-8.104 3.596-4.149 4.149-4.789 10.261-1.426 13.623 1.399 1.4 3.359 2.172 5.518 2.172 2.866 0 5.82-1.312 8.105-3.598 1.962-1.961 3.213-4.42 3.522-6.922.328-2.641-.417-5.02-2.096-6.7M45.937 52.84c1.701-1.701 3.938-2.718 5.982-2.718.265 0 .563.021.876.067-2.75 1.799-3.91 4.373-4.888 6.556-.979 2.185-1.783 3.968-3.861 4.909-1.605-2.295-.851-6.072 1.891-8.814m10.622 2.785c-.229 1.843-1.176 3.679-2.667 5.17-1.702 1.702-3.939 2.719-5.984 2.719-.297 0-.636-.026-.99-.088 1.939-1.472 2.875-3.551 3.728-5.454 1.127-2.515 2.119-4.729 5.137-5.989.671.968.95 2.232.776 3.642"/>
   </g>
 </svg>
