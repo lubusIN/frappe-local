@@ -1,14 +1,6 @@
 <template>
   <section class="console-view">
-    <header class="view-header">
-      <h2 class="view-header__title">Console</h2>
-      <div class="view-header__actions">
-        <button type="button" class="btn btn--subtle" :disabled="loadingContext" @click="loadContext">
-          <IconRotateCcw class="btn-icon" />
-          {{ loadingContext ? 'Refreshing…' : 'Refresh Context' }}
-        </button>
-      </div>
-    </header>
+
 
     <StatePanel
       v-if="error"
@@ -28,7 +20,6 @@
       v-if="!loadingContext && benches.length === 0"
       title="Console needs a bench context"
       body="The console is scoped to a bench or site. Create a bench first, then this page can run commands, open folders, and attach editor tooling to that context."
-      :steps="consoleSetupSteps"
       :links="consoleSetupLinks"
       compact
     />
@@ -118,7 +109,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
+import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
@@ -162,11 +154,28 @@ const {
   stepHistory,
 } = useTerminalSession();
 
-const consoleSetupSteps = computed(() => [
-  'Create and start a bench so the console has a real working directory to attach to.',
-  'Optionally create a site if you want commands scoped below the bench root.',
-  'Return here to start a session, run commands, and open the same context in your editor.',
-]);
+const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
+
+watch(() => loadingContext.value, () => {
+  setPageHeaderActions([
+    {
+      id: 'console-refresh',
+      label: loadingContext.value ? 'Refreshing…' : 'Refresh Context',
+      variant: 'subtle',
+      disabled: loadingContext.value,
+      icon: IconRotateCcw,
+      onClick: () => {
+        void loadContext();
+      },
+    },
+  ]);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  clearPageHeaderActions();
+});
+
+
 
 const consoleSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Create a bench', to: '/benches' },
@@ -180,24 +189,7 @@ const consoleSetupLinks = computed<FirstRunGuideLink[]>(() => [
   gap: 16px;
 }
 
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
 
-.view-header__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.view-header__actions {
-  display: flex;
-  gap: 8px;
-}
 
 /* Buttons */
 .btn {
