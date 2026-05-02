@@ -1,14 +1,6 @@
 <template>
   <section class="sites-view">
-    <header class="view-header">
-      <h2 class="view-header__title">Sites</h2>
-      <div class="view-header__actions">
-        <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading">
-          <IconRotateCcw class="btn-icon" />
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
-        </button>
-      </div>
-    </header>
+
 
     <StatePanel
       v-if="error"
@@ -28,7 +20,6 @@
       v-if="!loading && !benchLoading && allBenches.length === 0"
       title="Create a bench before creating sites"
       body="Sites are attached to benches. Once you have one running bench, this screen becomes the main place to create, control, and export sites."
-      :steps="siteSetupSteps"
       :links="siteSetupLinks"
       compact
     />
@@ -108,12 +99,12 @@
       body="Fetching sites and active status metadata."
     />
 
-    <StatePanel
-      v-if="!error && !loading && sites.length === 0"
-      kind="empty"
-      title="No sites yet"
-      body="Create your first site to manage runtime status, inspect logs, and open paths quickly."
-    />
+    <section v-if="!error && !loading && sites.length === 0" class="bench-empty-state">
+      <div class="bench-empty-state__content">
+        <h2 class="bench-empty-state__title">No sites yet</h2>
+        <p class="bench-empty-state__description">Create your first site to manage runtime status, inspect logs, and open paths quickly.</p>
+      </div>
+    </section>
 
     <!-- Filters -->
     <div v-if="!error && !loading && sites.length > 0" class="filter-bar">
@@ -138,78 +129,94 @@
       title="No matching sites"
       body="Adjust your filters to see more results."
     />
-
-    <!-- Sites list table -->
-    <div v-if="!error && !loading && filteredSites.length > 0" class="list-table">
-      <div class="list-table__header">
-        <span class="list-col list-col--name">Site</span>
-        <span class="list-col list-col--meta">Bench</span>
-        <span class="list-col list-col--meta">Group</span>
-        <span class="list-col list-col--meta">Apps</span>
-        <span class="list-col list-col--status">Status</span>
-        <span class="list-col list-col--actions"></span>
-      </div>
-      <div
-        v-for="site in filteredSites"
-        :key="site.id"
-        class="list-table__row"
+    <div v-if="!error && !loading && filteredSites.length > 0" class="activity-list-container">
+      <ListView
+        :columns="siteColumns"
+        :rows="filteredSites"
+        row-key="id"
+        :options="siteListOptions"
       >
-        <div class="list-col list-col--name">
-          <p class="list-col__primary">{{ site.name }}</p>
-          <p class="list-col__secondary">{{ site.path }}</p>
-        </div>
-        <span class="list-col list-col--meta">{{ site.benchId }}</span>
-        <span class="list-col list-col--meta">{{ site.groupId ?? '—' }}</span>
-        <span class="list-col list-col--meta">{{ site.appCount }}</span>
-        <span class="list-col list-col--status">
-          <span
-            class="status-pill status-pill--interactive"
-            :class="`status-pill--${site.status}`"
-            @click="onStatusClick(site.id, 'site')"
-          >
-            {{ formatStatusLabel(site.status) }}
-            <span v-if="site.status === 'queued'" class="status-spinner"></span>
-          </span>
-        </span>
-        <div class="list-col list-col--actions">
-          <a
-            v-if="site.status === 'running'"
-            class="btn btn--subtle btn--sm"
-            :href="`http://${site.name}:8080`"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View
-          </a>
-          <button class="btn btn--subtle btn--sm" :disabled="updating || !canStartSite(site.id)" @click="onSetSiteStatus(site.id, 'running')">Start</button>
-          <button class="btn btn--subtle btn--sm" :disabled="updating || !canStopSite(site.id)" @click="onSetSiteStatus(site.id, 'stopped')">Stop</button>
-          <button class="btn btn--subtle btn--sm" :disabled="loadingLogs" @click="onLoadSiteLogs(site.id)">Logs</button>
-          <button class="btn btn--subtle btn--sm" :disabled="openingFolder" @click="onOpenSiteFolder(site.id)">Folder</button>
-          <button class="btn btn--subtle btn--sm" :disabled="exporting" @click="onExportSite(site.id, site.name)">Export</button>
-          <button class="btn btn--danger btn--sm" :disabled="updating || deleting || site.status === 'running'" @click="onDeleteSite(site.id, site.name)">Delete</button>
-        </div>
+        <template #default>
+          <ListHeader class="activity-list-header" />
+          <ListRows class="activity-list-rows" />
+        </template>
 
-        <!-- Logs panel -->
-        <section v-if="activeSiteLogId === site.id" class="logs-panel">
-          <header class="logs-panel__header">
-            <span class="logs-panel__title">Recent logs</span>
-            <button type="button" class="btn btn--subtle btn--sm" @click="onCloseSiteLogs">Close</button>
-            <select v-model="siteLogLevel" class="logs-panel__level">
-              <option value="all">All levels</option>
-              <option value="info">Info</option>
-              <option value="error">Error</option>
-            </select>
-            <input v-model="siteLogFilter" class="logs-panel__filter" type="text" placeholder="Filter logs…" />
-          </header>
-          <ul class="logs-list">
-            <li v-for="entry in filteredSiteLogs" :key="entry.id" class="logs-list__item">
-              <p class="logs-list__message">{{ entry.message }}</p>
-              <p class="logs-list__meta">{{ entry.level }} · {{ entry.timestamp }}</p>
-            </li>
-          </ul>
-        </section>
-      </div>
+        <template #cell="{ column, row }">
+          <template v-if="column.key === 'name'">
+            <div class="list-col list-col--name">
+              <p class="list-col__primary">{{ row.name }}</p>
+              <p class="list-col__secondary">{{ row.path }}</p>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'benchId'">
+            <span class="cell-text cell-text--secondary">{{ row.benchId }}</span>
+          </template>
+          <template v-else-if="column.key === 'groupId'">
+            <span class="cell-text cell-text--secondary">{{ row.groupId ?? '—' }}</span>
+          </template>
+          <template v-else-if="column.key === 'appCount'">
+            <span class="cell-text cell-text--secondary">{{ row.appCount }}</span>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <span
+              class="status-pill status-pill--interactive"
+              :class="`status-pill--${row.status}`"
+              @click.stop="onStatusClick(row.id, 'site')"
+            >
+              {{ formatStatusLabel(row.status) }}
+              <span v-if="row.status === 'queued'" class="status-spinner"></span>
+            </span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="list-col list-col--actions">
+              <Dropdown :options="getSiteActions(row)">
+                <template #default>
+                  <button class="btn btn--subtle btn--sm">
+                    <IconMoreHorizontal class="w-4 h-4" />
+                  </button>
+                </template>
+              </Dropdown>
+            </div>
+          </template>
+        </template>
+      </ListView>
     </div>
+
+    <Dialog
+      v-model="showLogsDialog"
+      :options="{ title: `Site Logs: ${activeSiteLogName}`, size: '3xl' }"
+    >
+      <template #body-content>
+        <div class="logs-panel-dialog">
+          <header class="logs-panel__header">
+            <div class="flex items-center gap-4 w-full">
+              <select v-model="siteLogLevel" class="logs-panel__level">
+                <option value="all">All levels</option>
+                <option value="info">Info</option>
+                <option value="error">Error</option>
+              </select>
+              <input v-model="siteLogFilter" class="logs-panel__filter" type="text" placeholder="Filter logs…" />
+            </div>
+          </header>
+          <div class="logs-container">
+            <div v-if="!filteredSiteLogs.length" class="empty-logs">
+              No logs found matching your filter.
+            </div>
+            <ul v-else class="logs-list">
+              <li v-for="entry in filteredSiteLogs" :key="entry.id" class="logs-list__item" :class="`logs-list__item--${entry.level}`">
+                <div class="logs-list__message">{{ entry.message }}</div>
+                <div class="logs-list__meta">{{ entry.level }} · {{ entry.timestamp }}</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="dialog-actions">
+          <Button theme="gray" variant="solid" @click="showLogsDialog = false">Close</Button>
+        </div>
+      </template>
+    </Dialog>
 
     <ConfirmationDialog
       :open="deleteConfirmOpen"
@@ -232,9 +239,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { Badge, Button, Dialog, Dropdown, ListView, ListHeader, ListRows, ListEmptyState } from 'frappe-ui';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconCheckCircle from '~icons/lucide/check-circle';
+import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+import IconExternalLink from '~icons/lucide/external-link';
+import IconPlay from '~icons/lucide/play';
+import IconSquare from '~icons/lucide/square';
+import IconFileText from '~icons/lucide/file-text';
+import IconFolder from '~icons/lucide/folder';
+import IconTrash from '~icons/lucide/trash-2';
+import IconDownload from '~icons/lucide/download';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
@@ -245,6 +261,7 @@ import TaskLogModal from '../components/TaskLogModal.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import { useProgressCenter } from '../composables/useProgressCenter';
+import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import {
   buildSiteCreatePayload,
   getSiteWizardStepErrors,
@@ -272,6 +289,27 @@ const {
   openFolder,
   refresh,
 } = useSites();
+
+const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
+
+watch(() => loading.value, () => {
+  setPageHeaderActions([
+    {
+      id: 'sites-refresh',
+      label: loading.value ? 'Refreshing…' : 'Refresh',
+      variant: 'subtle',
+      disabled: loading.value,
+      icon: IconRotateCcw,
+      onClick: () => {
+        void refresh();
+      },
+    },
+  ]);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  clearPageHeaderActions();
+});
 
 const { tasks } = useProgressCenter();
 const selectedTaskId = ref<string | null>(null);
@@ -310,6 +348,82 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
   }
 };
 
+const siteColumns = [
+  { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
+  { key: 'benchId', label: 'Bench', width: '120px' },
+  { key: 'groupId', label: 'Group', width: '100px' },
+  { key: 'appCount', label: 'Apps', width: '80px' },
+  { key: 'status', label: 'Status', width: '120px' },
+  { key: 'actions', label: '', width: '60px' },
+];
+
+const siteListOptions = computed(() => ({
+  selectable: false,
+  showTooltip: false,
+  rowHeight: '52px',
+  emptyState: {
+    title: 'No Sites',
+    description: 'No matching sites found for current filters.',
+  },
+}));
+
+const getSiteActions = (site: any) => {
+  const actions = [];
+
+  if (site.status === 'running') {
+    actions.push({
+      label: 'View',
+      icon: IconExternalLink,
+      onClick: () => window.open(`http://${site.name}:8080`, '_blank'),
+    });
+  }
+
+  actions.push({
+    label: site.status === 'running' ? 'Restart' : 'Start',
+    icon: IconPlay,
+    disabled: updating.value || !canStartSite(site.id),
+    onClick: () => onSetSiteStatus(site.id, 'running'),
+  });
+
+  actions.push({
+    label: 'Stop',
+    icon: IconSquare,
+    disabled: updating.value || !canStopSite(site.id),
+    onClick: () => onSetSiteStatus(site.id, 'stopped'),
+  });
+
+  actions.push({
+    label: 'Logs',
+    icon: IconFileText,
+    disabled: loadingLogs.value,
+    onClick: () => onLoadSiteLogs(site.id),
+  });
+
+  actions.push({
+    label: 'Open Folder',
+    icon: IconFolder,
+    disabled: openingFolder.value,
+    onClick: () => onOpenSiteFolder(site.id),
+  });
+
+  actions.push({
+    label: 'Export',
+    icon: IconDownload,
+    disabled: exporting.value,
+    onClick: () => onExportSite(site.id, site.name),
+  });
+
+  actions.push({
+    label: 'Delete',
+    icon: IconTrash,
+    theme: 'red',
+    disabled: updating.value || deleting.value || site.status === 'running',
+    onClick: () => onDeleteSite(site.id, site.name),
+  });
+
+  return actions;
+};
+
 const exporting = ref(false);
 
 const createForm = reactive({
@@ -335,11 +449,6 @@ const siteFilters = reactive({
   search: '',
 });
 const filteredSites = computed(() => filterSites(sites.value, siteFilters));
-const siteSetupSteps = computed(() => [
-  'Open Benches and create one local bench with a valid path and runtime.',
-  'Start that bench so it becomes selectable here for site creation.',
-  'Return to Sites to create your first site, then export or group it later.',
-]);
 const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Go to Benches', to: '/benches' },
   { label: 'Review runtime health', to: '/settings' },
@@ -490,14 +599,21 @@ const onDeleteTypedValue = (value: string): void => {
   deleteTypedValue.value = value;
 };
 
+const showLogsDialog = ref(false);
+const activeSiteLogName = ref('');
+
 const onLoadSiteLogs = async (id: string) => {
+  const site = sites.value.find(s => s.id === id);
+  activeSiteLogName.value = site?.name || id;
   siteLogs.value = await listLogs(id);
   siteLogFilter.value = '';
   siteLogLevel.value = 'all';
   activeSiteLogId.value = id;
+  showLogsDialog.value = true;
 };
 
 const onCloseSiteLogs = () => {
+  showLogsDialog.value = false;
   activeSiteLogId.value = null;
   siteLogs.value = [];
   siteLogFilter.value = '';
@@ -541,29 +657,92 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.sites-view {
-  display: grid;
+.activity-view {
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
 
-/* View header */
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.activity-list-container {
+  background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.view-header__title {
+.cell-text {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cell-text--secondary {
+  color: var(--text-secondary);
+}
+
+/* ListView Overrides to match design system */
+.activity-list-header {
+  background-color: var(--surface-subtle) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  margin-bottom: 0 !important;
+  padding: 10px 16px !important;
+  border-radius: 0 !important;
+}
+
+.activity-list-rows {
+  padding: 0 !important;
+}
+
+:deep(.frappe-list-row) {
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: 0 16px !important;
+  transition: background-color 100ms ease;
+  height: 52px !important;
+}
+
+:deep(.frappe-list-row:last-child) {
+  border-bottom: none !important;
+}
+
+:deep(.frappe-list-row:hover) {
+  background-color: var(--surface-hover) !important;
+}
+
+.activity-list-empty {
+  padding: 80px 20px !important;
+  background: var(--surface-card);
+}
+
+.bench-empty-state {
+  min-height: clamp(300px, 40vh, 500px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.bench-empty-state__content {
+  max-width: 520px;
+  text-align: center;
+}
+
+.bench-empty-state__title {
   margin: 0;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--text-primary);
 }
 
-.view-header__actions {
-  display: flex;
-  gap: 8px;
+.bench-empty-state__description {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.sites-view {
+  display: grid;
+  gap: 16px;
 }
 
 /* Buttons */
@@ -773,34 +952,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.list-table__header {
-  display: grid;
-  grid-template-columns: 2fr 1fr 0.8fr 0.5fr 0.8fr 2.5fr;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--surface-subtle);
-  border-bottom: 1px solid var(--border-light);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.list-table__row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 0.8fr 0.5fr 0.8fr 2.5fr;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border-light);
-  align-items: center;
-  font-size: 13px;
-}
-
-.list-table__row:last-child {
-  border-bottom: 0;
-}
-
 .list-col--name {
   min-width: 0;
 }
@@ -859,13 +1010,23 @@ onMounted(() => {
 
 .status-pill--running,
 .status-pill--success {
-  background: var(--green-light);
-  color: var(--green-text);
+  background: var(--green-light, #f0fdf4);
+  color: var(--green-text, #166534);
 }
 
-.status-pill--error {
-  background: var(--red-light);
-  color: var(--red-text);
+.status-pill--queued {
+  background: var(--blue-light, #eff6ff);
+  color: var(--blue-text, #1e40af);
+}
+
+.status-pill--stopped {
+  background: var(--gray-light, #f3f4f6);
+  color: var(--gray-text, #4b5563);
+}
+
+.status-pill--failure {
+  background: var(--red-light, #fef2f2);
+  color: var(--red-text, #991b1b);
 }
 
 .status-spinner {
@@ -885,37 +1046,30 @@ onMounted(() => {
 }
 
 /* Logs panel */
-.logs-panel {
-  grid-column: 1 / -1;
-  border-top: 1px solid var(--border-light);
-  padding: 12px 0 0;
-  display: grid;
-  gap: 8px;
+.logs-panel-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 500px;
+  margin: -16px;
 }
 
 .logs-panel__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface-subtle);
 }
 
-.logs-panel__title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.logs-panel__level {
-  min-height: 24px;
-  font-size: 11px;
-}
-
-.logs-panel__filter {
+.logs-container {
   flex: 1;
-  max-width: 280px;
-  min-height: 24px;
-  font-size: 11px;
+  overflow-y: auto;
+  padding: 0 16px 16px;
+}
+
+.empty-logs {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
 }
 
 .logs-list {
@@ -923,13 +1077,17 @@ onMounted(() => {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 4px;
+  gap: 8px;
 }
 
 .logs-list__item {
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-radius: 6px;
   background: var(--surface-subtle);
+}
+
+.logs-list__item--error {
+  background: var(--red-light);
 }
 
 .logs-list__message {
@@ -937,11 +1095,20 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-primary);
   font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .logs-list__meta {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
