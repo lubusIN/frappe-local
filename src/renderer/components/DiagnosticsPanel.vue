@@ -78,7 +78,7 @@ import { computed } from 'vue';
 import type { DiagnosticsReport } from '../../shared/domain/diagnostics';
 import StatePanel from './StatePanel.vue';
 
-defineProps<{
+const props = defineProps<{
   report: DiagnosticsReport | null;
   running: boolean;
   fixing?: boolean;
