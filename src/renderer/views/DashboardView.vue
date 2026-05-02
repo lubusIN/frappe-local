@@ -4,7 +4,6 @@
       v-if="showGettingStarted"
       title="Set up your local workspace"
       body="A fresh install has no benches, sites, or workspaces yet. Start with one bench, then create a site and group it once the runtime is healthy."
-      :steps="gettingStartedSteps"
       :links="gettingStartedLinks"
     />
 
@@ -87,26 +86,6 @@ onMounted(() => {
 const showGettingStarted = computed(() =>
   setupSummary.benches === 0 || setupSummary.sites === 0 || setupSummary.workspaces === 0
 );
-
-const gettingStartedSteps = computed(() => {
-  const steps: string[] = [];
-
-  if (setupSummary.benches === 0) {
-    steps.push('Create your first bench from the Benches screen and point it at the local path you want Frappe Cafe to manage.');
-  }
-
-  if (setupSummary.benches > 0 && setupSummary.sites === 0) {
-    steps.push('Create a site on a running bench so lifecycle, export, and workspace features have real data to operate on.');
-  }
-
-  if (setupSummary.sites > 0 && setupSummary.workspaces === 0) {
-    steps.push('Create a workspace to group related sites by client, project, or environment.');
-  }
-
-  steps.push('Use Settings to confirm runtime health and rerun diagnostics before relying on the app for day-to-day work.');
-
-  return steps;
-});
 
 const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
   const links: FirstRunGuideLink[] = [];

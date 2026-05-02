@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <ol class="first-run__steps">
+    <ol v-if="steps && steps.length > 0" class="first-run__steps">
       <li v-for="step in steps" :key="step" class="first-run__step">
         {{ step }}
       </li>
@@ -47,7 +47,7 @@ export type FirstRunGuideLink = {
 defineProps<{
   title: string;
   body: string;
-  steps: string[];
+  steps?: string[];
   links: FirstRunGuideLink[];
   compact?: boolean;
 }>();
