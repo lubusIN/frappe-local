@@ -1,14 +1,6 @@
 <template>
   <section class="workspaces-view">
-    <header class="view-header">
-      <h2 class="view-header__title">Workspaces</h2>
-      <div class="view-header__actions">
-        <button type="button" class="btn btn--subtle" @click="refresh" :disabled="loading">
-          <IconRotateCcw class="btn-icon" />
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
-        </button>
-      </div>
-    </header>
+
 
     <StatePanel
       v-if="error"
@@ -25,35 +17,42 @@
     </div>
 
     <FirstRunGuide
-      v-if="!loading && sites.length === 0"
+      v-if="!loading && (sites || []).length === 0"
       title="Workspaces become useful after your first site"
       body="This screen groups sites by project or client. You can create a workspace now, but it becomes meaningful once there are sites to assign."
-      :steps="workspaceSetupSteps"
       :links="workspaceSetupLinks"
       compact
     />
 
-    <!-- Create form -->
-    <div v-if="!loading" class="form-card">
-      <h3 class="form-card__title">Create new workspace</h3>
-      <form class="form-grid" @submit.prevent="onCreateWorkspace">
-        <label class="form-field">
-          <span class="form-label">Name</span>
-          <input v-model="createForm.name" type="text" required placeholder="Project Alpha" />
-        </label>
-        <label class="form-field form-field--full">
-          <span class="form-label">Description</span>
-          <input v-model="createForm.description" type="text" placeholder="Workspace description" />
-        </label>
-        <label class="form-field form-field--full">
-          <span class="form-label">Tags (comma separated)</span>
-          <input v-model="createForm.tagsText" type="text" placeholder="client-a, production" />
-        </label>
-        <div class="form-actions form-field--full">
-          <button type="submit" class="btn btn--primary" :disabled="loading">Create workspace</button>
+    <Dialog
+      v-model="showCreateModal"
+      :options="{ title: 'Create new workspace', size: 'lg' }"
+    >
+      <template #body-content>
+        <form class="form-body-compact" @submit.prevent="onCreateWorkspace">
+          <div class="form-grid-dialog">
+            <label class="form-field">
+              <span class="form-label">Name</span>
+              <input v-model="createForm.name" type="text" required placeholder="Project Alpha" />
+            </label>
+            <label class="form-field form-field--full">
+              <span class="form-label">Description</span>
+              <input v-model="createForm.description" type="text" placeholder="Workspace description" />
+            </label>
+            <label class="form-field form-field--full">
+              <span class="form-label">Tags (comma separated)</span>
+              <input v-model="createForm.tagsText" type="text" placeholder="client-a, production" />
+            </label>
+          </div>
+        </form>
+      </template>
+      <template #actions>
+        <div class="dialog-actions">
+          <Button theme="gray" variant="subtle" @click="showCreateModal = false">Cancel</Button>
+          <Button variant="solid" :loading="loading" @click="onCreateWorkspace">Create workspace</Button>
         </div>
-      </form>
-    </div>
+      </template>
+    </Dialog>
 
     <StatePanel
       v-if="loading"
@@ -62,66 +61,122 @@
       body="Pulling group assignments and workspace summaries."
     />
 
-    <StatePanel
-      v-else-if="workspaces.length === 0"
-      kind="empty"
-      title="No workspaces yet"
-      body="Create groups to organize sites by project or client."
-    />
+    <section v-if="!error && !loading && (workspaces || []).length === 0" class="bench-empty-state">
+      <div class="bench-empty-state__content">
+        <h2 class="bench-empty-state__title">No workspaces yet</h2>
+        <p class="bench-empty-state__description">Create groups to organize sites by project or client.</p>
+        <div class="bench-empty-state__actions">
+          <Button variant="solid" @click="showCreateModal = true">Create</Button>
+        </div>
+      </div>
+    </section>
 
     <!-- Workspace list -->
-    <div v-if="!loading && workspaces.length > 0" class="workspace-list">
-      <article v-for="workspace in workspaces" :key="workspace.id" class="workspace-card">
-        <div class="workspace-card__header">
-          <div>
-            <h4 class="workspace-card__name">{{ workspace.name }}</h4>
-            <p class="workspace-card__desc">{{ workspace.description || 'No description' }}</p>
-          </div>
-          <div class="workspace-card__meta">
-            <span class="meta-badge">{{ workspace.siteCount }} site(s)</span>
-          </div>
-        </div>
+    <div v-if="!error && !loading && (workspaces || []).length > 0" class="activity-list-container">
+      <ListView
+        :columns="workspaceColumns"
+        :rows="workspaces"
+        row-key="id"
+        :options="workspaceListOptions"
+      >
+        <template #default>
+          <ListHeader class="activity-list-header" />
+          <ListRows class="activity-list-rows" />
+        </template>
 
-        <div class="workspace-tags">
-          <span v-for="tag in workspace.tags" :key="tag" class="tag-pill">{{ tag }}</span>
-          <span v-if="workspace.tags.length === 0" class="tag-pill tag-pill--empty">no tags</span>
-        </div>
-
-        <div class="workspace-assign">
-          <select v-model="assignmentSelection[workspace.id]" class="workspace-assign__select">
-            <option value="">Assign site…</option>
-            <option v-for="site in assignableSites(workspace.id)" :key="site.id" :value="site.id">
-              {{ site.name }}
-            </option>
-          </select>
-          <button type="button" class="btn btn--subtle btn--sm" @click="onAssignSite(workspace.id)">Assign</button>
-        </div>
-
-        <ul v-if="assignedSites(workspace.id).length > 0" class="assigned-list">
-          <li v-for="site in assignedSites(workspace.id)" :key="site.id" class="assigned-item">
-            <span class="assigned-item__name">{{ site.name }}</span>
-            <div class="assigned-item__actions">
-              <a
-                v-if="site.status === 'running'"
-                :href="`http://${site.name}:8080`"
-                target="_blank"
-                class="btn btn--subtle btn--sm"
-                rel="noopener noreferrer"
-              >
-                View
-              </a>
-              <button type="button" class="btn btn--subtle btn--sm" @click="onUnassignSite(site.id)">Remove</button>
+        <template #cell="{ column, row }">
+          <template v-if="column.key === 'name'">
+            <div class="list-col">
+              <p class="list-col__primary">{{ row.name }}</p>
             </div>
-          </li>
-        </ul>
-
-        <div class="workspace-card__actions">
-          <button type="button" class="btn btn--subtle btn--sm" @click="onEditWorkspace(workspace.id)">Edit</button>
-          <button type="button" class="btn btn--danger btn--sm" @click="onDeleteWorkspace(workspace.id, workspace.name)">Delete</button>
-        </div>
-      </article>
+          </template>
+          <template v-else-if="column.key === 'description'">
+            <span class="cell-text cell-text--secondary">{{ row.description || '—' }}</span>
+          </template>
+          <template v-else-if="column.key === 'tags'">
+            <div class="flex flex-wrap gap-1">
+              <Badge
+                v-for="tag in (row.tags || [])"
+                :key="tag"
+                theme="gray"
+                variant="subtle"
+                size="sm"
+              >
+                {{ tag }}
+              </Badge>
+              <span v-if="!(row.tags && row.tags.length)" class="text-xs text-gray-400">—</span>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'sites'">
+            <Badge theme="gray" variant="solid" size="md">
+              {{ row.siteCount }} sites
+            </Badge>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="list-col list-col--actions">
+              <Dropdown :options="getWorkspaceActions(row)">
+                <template #default>
+                  <button class="btn btn--subtle btn--sm">
+                    <IconMoreHorizontal class="w-4 h-4" />
+                  </button>
+                </template>
+              </Dropdown>
+            </div>
+          </template>
+        </template>
+      </ListView>
     </div>
 
+    <Dialog
+      v-model="showAssignmentModal"
+      :options="{ title: 'Manage Workspace Assignments', size: 'xl' }"
+    >
+      <template #body-content>
+        <div v-if="activeWorkspaceId" class="assignment-panel">
+          <div v-if="(assignableSites(activeWorkspaceId) || []).length > 0" class="workspace-assign flex items-center gap-2 py-4 border-b border-gray-100 mb-4">
+            <select v-model="assignmentSelection[activeWorkspaceId]" class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+              <option value="">Select a site to assign…</option>
+              <option v-for="site in (assignableSites(activeWorkspaceId) || [])" :key="site.id" :value="site.id">
+                {{ site.name }}
+              </option>
+            </select>
+            <Button theme="gray" variant="solid" @click="onAssignSite(activeWorkspaceId)">Assign</Button>
+          </div>
+          <div v-else class="py-6 mb-4 text-center bg-gray-50 rounded-lg border border-dashed border-gray-200">
+            <p class="text-sm text-gray-500 mb-3">All sites are already assigned or no sites exist.</p>
+            <Button variant="subtle" size="sm" @click="router.push('/sites')">Manage Sites</Button>
+          </div>
+
+          <div class="assigned-section">
+            <h5 class="text-sm font-semibold mb-3">Assigned Sites</h5>
+            <div v-if="!assignedSites(activeWorkspaceId)?.length" class="text-sm text-gray-500 py-4 text-center bg-gray-50 rounded">
+              No sites assigned to this workspace yet.
+            </div>
+            <ul v-else class="assigned-list">
+              <li v-for="site in assignedSites(activeWorkspaceId)" :key="site.id" class="assigned-item">
+                <span class="assigned-item__name">{{ site.name }}</span>
+                <div class="assigned-item__actions">
+                  <Button
+                    v-if="site.status === 'running'"
+                    variant="subtle"
+                    size="sm"
+                    @click="window.open(`http://${site.name}:8080`, '_blank')"
+                  >
+                    View
+                  </Button>
+                  <Button variant="subtle" size="sm" theme="red" @click="onUnassignSite(site.id)">Remove</Button>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <div class="flex justify-end w-full">
+          <Button theme="gray" variant="subtle" @click="showAssignmentModal = false">Close</Button>
+        </div>
+      </template>
+    </Dialog>
     <ConfirmationDialog
       :open="deleteConfirmOpen"
       title="Delete workspace"
@@ -134,13 +189,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { Badge, Button, Dialog, Dropdown, ListView, ListHeader, ListRows } from 'frappe-ui';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
+import IconPlus from '~icons/lucide/plus';
 import IconCheckCircle from '~icons/lucide/check-circle';
+import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+import IconPencil from '~icons/lucide/pencil';
+import IconTrash from '~icons/lucide/trash-2';
+import IconLink from '~icons/lucide/link';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import { useWorkspaces } from '../composables/useWorkspaces';
+import { usePageHeaderActions } from '../composables/usePageHeaderActions';
+import { useRouter } from 'vue-router';
 
 const {
   workspaces,
@@ -156,6 +219,79 @@ const {
   refresh,
 } = useWorkspaces();
 
+const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
+const router = useRouter();
+
+const workspaceColumns = [
+  { key: 'name', label: 'Workspace', width: '200px' },
+  { key: 'description', label: 'Description', width: 'minmax(200px, 1fr)' },
+  { key: 'tags', label: 'Tags', width: '200px' },
+  { key: 'sites', label: 'Sites', width: '100px' },
+  { key: 'actions', label: '', width: '60px' },
+];
+
+const workspaceListOptions = {
+  selectable: false,
+  showTooltip: false,
+  rowHeight: '52px',
+};
+
+const getWorkspaceActions = (workspace: any) => [
+  {
+    label: 'Assign Site',
+    icon: IconLink,
+    onClick: () => onManageAssignments(workspace.id),
+  },
+  {
+    label: 'Edit',
+    icon: IconPencil,
+    onClick: () => onEditWorkspace(workspace.id),
+  },
+  {
+    label: 'Delete',
+    icon: IconTrash,
+    theme: 'red',
+    onClick: () => onDeleteWorkspace(workspace.id, workspace.name),
+  },
+];
+
+const showCreateModal = ref(false);
+const showAssignmentModal = ref(false);
+const activeWorkspaceId = ref<string | null>(null);
+
+const onManageAssignments = (id: string) => {
+  activeWorkspaceId.value = id;
+  showAssignmentModal.value = true;
+};
+
+watch(() => loading.value, () => {
+  setPageHeaderActions([
+    {
+      id: 'workspaces-create',
+      label: 'Create',
+      variant: 'primary',
+      icon: IconPlus,
+      onClick: () => {
+        showCreateModal.value = true;
+      },
+    },
+    {
+      id: 'workspaces-refresh',
+      label: loading.value ? 'Refreshing…' : 'Refresh',
+      variant: 'subtle',
+      disabled: loading.value,
+      icon: IconRotateCcw,
+      onClick: () => {
+        void refresh();
+      },
+    },
+  ]);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  clearPageHeaderActions();
+});
+
 const createForm = reactive({
   name: '',
   description: '',
@@ -163,11 +299,7 @@ const createForm = reactive({
 });
 
 const assignmentSelection = ref<Record<string, string>>({});
-const workspaceSetupSteps = computed(() => [
-  'Create a bench and at least one site so workspaces have something to organize.',
-  'Create a workspace for each client, project, or environment boundary you care about.',
-  'Assign sites into those workspaces so filtered navigation becomes useful.',
-]);
+
 const workspaceSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Create a site', to: '/sites' },
   { label: 'Manage benches', to: '/benches' },
@@ -185,16 +317,17 @@ const onCreateWorkspace = async () => {
     tags,
   });
 
+  showCreateModal.value = false;
   createForm.name = '';
   createForm.description = '';
   createForm.tagsText = '';
 };
 
 const assignedSites = (workspaceId: string) =>
-  computed(() => sites.value.filter((site) => site.groupId === workspaceId)).value;
+  computed(() => (sites.value || []).filter((site) => site.groupId === workspaceId)).value;
 
 const assignableSites = (workspaceId: string) =>
-  sites.value.filter((site) => !site.groupId || site.groupId === workspaceId);
+  (sites.value || []).filter((site) => !site.groupId || site.groupId === workspaceId);
 
 const onAssignSite = async (workspaceId: string) => {
   const siteId = assignmentSelection.value[workspaceId];
@@ -269,24 +402,7 @@ const onConfirmDeleteWorkspace = async (): Promise<void> => {
   gap: 16px;
 }
 
-.view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
 
-.view-header__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.view-header__actions {
-  display: flex;
-  gap: 8px;
-}
 
 /* Buttons */
 .btn {
@@ -330,144 +446,159 @@ const onConfirmDeleteWorkspace = async (): Promise<void> => {
   border: 1px solid var(--green-border);
 }
 
-/* Form card */
-.form-card {
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
+.form-grid-dialog {
+  display: grid;
+  gap: 16px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.form-body-compact {
+  padding: 4px 0;
+}
+
+.activity-list-container {
   background: var(--surface-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.form-card__title {
-  margin: 0;
-  padding: 14px 16px;
+.cell-text {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-light);
+  line-height: 1.4;
 }
 
-.form-grid {
+.cell-text--secondary {
+  color: var(--text-secondary);
+}
+
+/* ListView Overrides to match design system */
+.activity-list-header {
+  background-color: var(--surface-subtle) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  margin-bottom: 0 !important;
+  padding: 10px 16px !important;
+  border-radius: 0 !important;
+}
+
+.activity-list-rows {
+  padding: 0 !important;
+}
+
+:deep(.frappe-list-row) {
+  border-bottom: 1px solid var(--border-light) !important;
+  padding: 0 16px !important;
+  transition: background-color 100ms ease;
+  height: 52px !important;
+}
+
+:deep(.frappe-list-row:last-child) {
+  border-bottom: none !important;
+}
+
+:deep(.frappe-list-row:hover) {
+  background-color: var(--surface-hover) !important;
+}
+
+.bench-empty-state {
+  min-height: clamp(300px, 40vh, 500px);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  padding: 16px;
+  place-items: center;
+  padding: 24px;
 }
 
-.form-field { display: grid; gap: 4px; }
-.form-field--full { grid-column: 1 / -1; }
-.form-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
-.form-actions { display: flex; gap: 8px; padding-top: 4px; }
-
-/* Workspace list */
-.workspace-list {
-  display: grid;
-  gap: 12px;
+.bench-empty-state__content {
+  max-width: 520px;
+  text-align: center;
 }
 
-.workspace-card {
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--surface-card);
-  padding: 16px;
-  display: grid;
-  gap: 12px;
-}
-
-.workspace-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.workspace-card__name {
+.bench-empty-state__title {
   margin: 0;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--text-primary);
 }
 
-.workspace-card__desc {
-  margin: 2px 0 0;
-  font-size: 13px;
+.bench-empty-state__description {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.35;
   color: var(--text-secondary);
 }
 
-.meta-badge {
-  font-size: 12px;
-  color: var(--text-secondary);
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--surface-subtle);
+.bench-empty-state__actions {
+  margin-top: 24px;
 }
 
-.workspace-tags {
+.workspaces-view {
+  display: grid;
+  gap: 16px;
+}
+
+.form-grid-dialog {
+  display: grid;
+  gap: 16px;
+}
+
+.dialog-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-.tag-pill {
-  display: inline-flex;
-  padding: 2px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--border-light);
-  background: var(--surface-subtle);
-  color: var(--text-secondary);
-  font-size: 11px;
+.form-body-compact {
+  padding: 8px 0;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
   font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.tag-pill--empty {
-  color: var(--text-muted);
-  border-style: dashed;
-}
-
-.workspace-assign {
-  display: flex;
-  gap: 8px;
-}
-
-.workspace-assign__select {
-  flex: 1;
-  min-height: 24px;
-  font-size: 12px;
-}
-
-.assigned-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 4px;
-}
-
-.assigned-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+.form-field input,
+.form-field select {
+  width: 100%;
+  padding: 8px 12px;
   border-radius: 6px;
-  background: var(--surface-subtle);
-}
-
-.assigned-item__name {
-  font-size: 13px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
   color: var(--text-primary);
-  flex: 1;
+  font-size: 14px;
+  transition: border-color 100ms ease, box-shadow 100ms ease;
 }
 
-.assigned-item__actions {
-  display: flex;
-  gap: 4px;
+.form-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-light);
 }
 
-.workspace-card__actions {
+.form-field--full {
+  grid-column: 1 / -1;
+}
+
+.list-col__primary {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.list-col--actions {
   display: flex;
-  gap: 4px;
-  border-top: 1px solid var(--border-light);
-  padding-top: 12px;
+  justify-content: flex-end;
 }
 </style>
