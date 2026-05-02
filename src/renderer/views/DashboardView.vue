@@ -10,23 +10,6 @@
 
 
 
-    <section id="activity" class="dashboard-section">
-      <h2 class="section-heading">Activity</h2>
-      <p class="section-desc">Recent tasks and long-running operations across benches, sites, runtime, and imports.</p>
-      <TaskProgressCenter
-        :items="filteredTasks"
-        :loading="progressLoading"
-        :error="progressError"
-        :statusFilter="progressStatusFilter"
-        :resourceFilter="progressResourceFilter"
-        :recentOnly="progressRecentOnly"
-        @update:statusFilter="(value) => (progressStatusFilter.value = value)"
-        @update:resourceFilter="(value) => (progressResourceFilter.value = value)"
-        @update:recentOnly="(value) => (progressRecentOnly.value = value)"
-        @retrySubscription="retryProgressSubscription"
-      />
-    </section>
-
     <section id="shortcuts" class="dashboard-section">
       <h2 class="section-heading">Quick Actions</h2>
       <p class="section-desc">Jump directly into the core operational areas from the overview surface.</p>
@@ -71,47 +54,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive } from 'vue';
 import { RouterLink } from 'vue-router';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import TaskProgressCenter from '../components/TaskProgressCenter.vue';
 import { useIpc } from '../composables/useIpc';
-import { useProgressCenter } from '../composables/useProgressCenter';
-
-const {
-  filteredTasks,
-  loading: progressLoading,
-  error: progressError,
-  statusFilter,
-  resourceFilter,
-  recentOnly,
-  reconnect,
-} = useProgressCenter();
-
-const progressStatusFilter = computed({
-  get: () => statusFilter.value,
-  set: (value: 'all' | 'queued' | 'running' | 'success' | 'failure') => {
-    statusFilter.value = value;
-  },
-});
-
-const progressResourceFilter = computed({
-  get: () => resourceFilter.value,
-  set: (value: 'all' | 'bench' | 'site' | 'import' | 'runtime' | 'system') => {
-    resourceFilter.value = value;
-  },
-});
-
-const progressRecentOnly = computed({
-  get: () => recentOnly.value,
-  set: (value: boolean) => {
-    recentOnly.value = value;
-  },
-});
-
-const retryProgressSubscription = async (): Promise<void> => {
-  await reconnect();
-};
 
 const ipc = useIpc();
 const setupSummary = reactive({ benches: 0, sites: 0, workspaces: 0 });

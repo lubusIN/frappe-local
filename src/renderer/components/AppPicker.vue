@@ -33,7 +33,15 @@
         :columns="appColumns"
         :rows="rows"
         row-key="name"
-        :options="{ selectable: true, showTooltip: false, rowHeight: '80px' }"
+        :options="{
+          selectable: true,
+          showTooltip: false,
+          rowHeight: '80px',
+          emptyState: {
+            title: 'No Apps',
+            description: 'No apps found in the catalog.',
+          },
+        }"
         @update:selections="onSelectionsChange"
       >
         <template #default="{ selectable }">

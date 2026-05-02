@@ -19,6 +19,12 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     description: 'The control center for first-run setup, recent activity, and quick actions.',
   },
   {
+    path: '/activity',
+    name: 'activity',
+    title: 'Activity',
+    description: 'Recent tasks and long-running operations across benches, sites, runtime, and imports.',
+  },
+  {
     path: '/benches',
     name: 'benches',
     title: 'Benches',
@@ -97,6 +103,11 @@ export const navigationItems: NavigationItem[] = [
     label: 'Settings',
     description: 'Set runtime defaults, storage paths, and editor preferences.',
     path: '/settings',
+  },
+  {
+    label: 'Activity',
+    description: 'Recent tasks and long-running operations.',
+    path: '/activity',
   },
   {
     label: 'Diagnostics',

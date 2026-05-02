@@ -80,6 +80,7 @@ import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
 import IconLayoutGrid from '~icons/lucide/layout-grid';
 import IconTerminal from '~icons/lucide/terminal';
+import IconActivity from '~icons/lucide/activity';
 import IconArrowRightLeft from '~icons/lucide/arrow-right-left';
 import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
@@ -95,6 +96,7 @@ const { actions: headerActions } = usePageHeaderActions();
 
 const iconComponentMap: Record<string, any> = {
   '/': IconHome,
+  '/activity': IconActivity,
   '/benches': IconPackage,
   '/sites': IconGlobe,
   '/workspaces': IconLayoutGrid,

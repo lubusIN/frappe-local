@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
+import ActivityView from './views/ActivityView.vue';
 import BenchesView from './views/BenchesView.vue';
 import ConsoleView from './views/ConsoleView.vue';
 import DashboardView from './views/DashboardView.vue';
@@ -9,6 +10,7 @@ import SitesView from './views/SitesView.vue';
 import WorkspacesView from './views/WorkspacesView.vue';
 
 const componentMap = {
+  activity: ActivityView,
   dashboard: DashboardView,
   benches: BenchesView,
   sites: SitesView,
