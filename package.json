@@ -10,6 +10,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "build": "electron-forge package",
+    "icons:generate": "node scripts/generate-icons.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "precommit:check": "npm run lint && npm run typecheck && npm run test",

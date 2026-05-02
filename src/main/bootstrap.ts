@@ -20,6 +20,7 @@ import { InMemoryBenchAnalytics } from './bench-analytics';
 import { InMemorySiteAnalytics } from './site-analytics';
 import { getDefaultAppCatalogSeed } from './catalog-provider';
 import { runDiagnostics } from './diagnostics-service';
+import { getAppIconPath } from './app-icon';
 
 import { getTaskRunner } from './task-runner';
 
@@ -154,6 +155,7 @@ export const runApplicationBootstrap = async (
     bootstrapLogger.info('startup sequence completed');
   } catch (error) {
     bootstrapLogger.error('startup sequence failed', error);
+    const appIconPath = getAppIconPath();
 
     const fallbackWindow = new BrowserWindow({
       width: 920,
@@ -161,6 +163,7 @@ export const runApplicationBootstrap = async (
       minWidth: 760,
       minHeight: 520,
       backgroundColor: '#f7f3ea',
+      ...(appIconPath ? { icon: appIconPath } : {}),
     });
 
     await fallbackWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(buildStartupErrorHtml(context.appName))}`);

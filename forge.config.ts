@@ -1,8 +1,10 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerZIP } from '@electron-forge/maker-zip';
 import { VitePlugin } from '@electron-forge/plugin-vite';
+import path from 'node:path';
 
 const isDarwin = process.platform === 'darwin';
+const iconBasePath = path.resolve(process.cwd(), 'resources/icons/icon');
 
 /**
  * macOS Code Signing and Notarization Configuration
@@ -31,7 +33,8 @@ const macOSConfig = {
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    extraResource: ['./bin'],
+    extraResource: ['./bin', './resources/icons/icon.png'],
+    icon: iconBasePath,
     // Platform-specific configurations
     ...(isDarwin && {
       // macOS-specific settings

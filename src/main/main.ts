@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
 import { createMainLogger } from './logger';
+import { getAppIconPath } from './app-icon';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mainLogger = createMainLogger('main');
@@ -16,6 +17,7 @@ process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
 
 const createMainWindow = async (): Promise<void> => {
   mainLogger.info('creating main window');
+  const appIconPath = getAppIconPath();
 
   const window = new BrowserWindow({
     width: 1280,
@@ -28,6 +30,7 @@ const createMainWindow = async (): Promise<void> => {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    ...(appIconPath ? { icon: appIconPath } : {}),
   });
 
   window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
@@ -54,6 +57,11 @@ const createMainWindow = async (): Promise<void> => {
 };
 
 app.whenReady().then(async () => {
+  const appIconPath = getAppIconPath();
+  if (process.platform === 'darwin' && appIconPath) {
+    app.dock.setIcon(appIconPath);
+  }
+
   const bootstrapContext = createBootstrapContext(app.getName(), app.getVersion(), createMainWindow, app);
   await runApplicationBootstrap(bootstrapContext, ipcMain);
 

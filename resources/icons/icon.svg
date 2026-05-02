@@ -1,0 +1,29 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Frappe Cafe icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6c36d" />
+      <stop offset="100%" stop-color="#d9771b" />
+    </linearGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff8ec" />
+      <stop offset="100%" stop-color="#f2ddbf" />
+    </linearGradient>
+    <linearGradient id="coffee" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6d4020" />
+      <stop offset="100%" stop-color="#3a1f0f" />
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="240" fill="url(#bg)" />
+  <ellipse cx="512" cy="790" rx="245" ry="50" fill="#ab5b14" opacity="0.25" />
+  <g>
+    <rect x="278" y="322" width="420" height="325" rx="92" fill="url(#cup)" />
+    <path d="M698 386c79 0 142 60 142 130s-63 130-142 130h-36v-78h36c35 0 64-24 64-52s-29-52-64-52h-36v-78h36z" fill="url(#cup)" />
+    <rect x="324" y="330" width="328" height="156" rx="72" fill="url(#coffee)" />
+    <rect x="278" y="606" width="474" height="52" rx="26" fill="#ead1ad" />
+  </g>
+  <g fill="#fff5e3" opacity="0.92">
+    <path d="M406 250c-29-50-16-100 23-138 6-6 15-6 21 0s6 15 0 21c-29 30-39 64-16 103 14 24 25 48 25 72 0 33-16 62-37 88-6 6-15 7-21 1s-7-15-1-21c18-22 29-44 29-68 0-18-8-38-23-58z" />
+    <path d="M516 250c-29-50-16-100 23-138 6-6 15-6 21 0s6 15 0 21c-29 30-39 64-16 103 14 24 25 48 25 72 0 33-16 62-37 88-6 6-15 7-21 1s-7-15-1-21c18-22 29-44 29-68 0-18-8-38-23-58z" />
+    <path d="M626 250c-29-50-16-100 23-138 6-6 15-6 21 0s6 15 0 21c-29 30-39 64-16 103 14 24 25 48 25 72 0 33-16 62-37 88-6 6-15 7-21 1s-7-15-1-21c18-22 29-44 29-68 0-18-8-38-23-58z" />
+  </g>
+</svg>
