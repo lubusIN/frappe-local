@@ -134,6 +134,9 @@ export const runApplicationBootstrap = async (
         const result = await shell.openPath(targetPath);
         return result === '';
       },
+      openExternal: async (url: string) => {
+        await shell.openExternal(url);
+      },
       openInEditor,
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
       trackBenchOperation: (benchId, operation) => {

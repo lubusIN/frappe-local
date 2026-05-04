@@ -393,7 +393,7 @@ const getSiteActions = (site: any) => {
     actions.push({
       label: 'View',
       icon: IconExternalLink,
-      onClick: () => window.open(`http://${site.name}:${port}`, '_blank'),
+      onClick: () => ipc.openExternal(`http://${site.name}:${port}`),
     });
   }
 

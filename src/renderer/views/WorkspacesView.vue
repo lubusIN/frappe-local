@@ -160,7 +160,7 @@
                     v-if="site.status === 'running'"
                     variant="subtle"
                     size="sm"
-                    @click="window.open(`http://${site.name}:8080`, '_blank')"
+                    @click="ipc.openExternal(`http://${site.name}:8080`)"
                   >
                     View
                   </Button>
@@ -203,8 +203,10 @@ import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGui
 import StatePanel from '../components/StatePanel.vue';
 import { useWorkspaces } from '../composables/useWorkspaces';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
+import { useIpc } from '../composables/useIpc';
 import { useRouter } from 'vue-router';
 
+const ipc = useIpc();
 const {
   workspaces,
   sites,

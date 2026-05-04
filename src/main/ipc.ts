@@ -228,6 +228,7 @@ export type IpcOperations = {
   readonly openPath: (targetPath: string) => Promise<boolean>;
   readonly openInEditor: (targetPath: string, editorPreference: string) => Promise<boolean>;
   readonly pathExists: (targetPath: string) => boolean;
+  readonly openExternal: (url: string) => Promise<void>;
   readonly trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
   readonly trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
 };
@@ -1191,5 +1192,9 @@ export const registerIpcHandlers = (
   ipcMainLike.handle(ipcChannels.utilsPathExists, async (_event: unknown, path: unknown) => {
     if (typeof path !== 'string') return false;
     return fs.existsSync(path);
+  });
+  ipcMainLike.handle(ipcChannels.utilsOpenExternal, async (_event: unknown, url: unknown) => {
+    if (typeof url !== 'string') return;
+    await operations.openExternal(url);
   });
 };

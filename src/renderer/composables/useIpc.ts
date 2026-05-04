@@ -55,6 +55,7 @@ const unavailableBridge: RendererBridge = {
   onTerminalStateChange: () => noopDispose,
   onTaskRunnerProgress: () => noopDispose,
   pathExists: () => rejectUnavailable(),
+  openExternal: () => rejectUnavailable(),
 };
 
 export const isIpcBridgeAvailable = (): boolean => {

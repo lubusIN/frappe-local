@@ -82,6 +82,7 @@ const rendererBridge: RendererBridge = {
 		};
 	},
 	pathExists: async (path: string) => ipcRenderer.invoke(ipcChannels.utilsPathExists, path),
+	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);
