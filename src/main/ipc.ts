@@ -488,9 +488,26 @@ export const registerIpcHandlers = (
           await execPromise(getBinaryPath('podman'), initArgs);
         }
  
-        mainLogger.info('Starting podman machine...');
-        const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
-        return code === 0;
+        const isRunning = machines.some((m: any) => m.Running === true);
+        if (!isRunning) {
+          mainLogger.info('Starting podman machine...');
+          const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+          return code === 0;
+        } else {
+          try {
+            await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 5000);
+            return true;
+          } catch {
+            mainLogger.warn('Podman machine is unresponsive, attempting force restart...');
+            if (process.platform === 'darwin') {
+              try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
+            }
+            try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch {}
+            mainLogger.info('Restarting podman machine...');
+            const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+            return code === 0;
+          }
+        }
       }
 
       // On Linux, maybe just check if service is running? 

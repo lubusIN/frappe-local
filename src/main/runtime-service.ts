@@ -94,6 +94,24 @@ async function ensurePodmanRunning(): Promise<boolean> {
           logger.error('Failed to start podman machine');
           return false;
         }
+      } else {
+        // Machine is allegedly running. Do a health check.
+        try {
+          await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 5000);
+        } catch {
+          logger.warn('Podman is "running" but unresponsive. Auto-healing...');
+          if (process.platform === 'darwin') {
+            try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
+          }
+          try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch {}
+          
+          logger.info('Restarting podman machine...');
+          const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+          if (code !== 0) {
+            logger.error('Failed to auto-heal podman machine');
+            return false;
+          }
+        }
       }
       return true;
     } catch (err) {

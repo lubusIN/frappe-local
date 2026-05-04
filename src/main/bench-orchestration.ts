@@ -158,11 +158,11 @@ export const orchestrateBenchCreation = (
         const runtimeEnv = await getRuntimeEnv();
 
         context.startStep('pull', 'Pulling images');
-        await execPromise(command, [...commonArgs, 'pull', '--progress', 'plain'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, 300000);
+        await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, 300000);
         context.completeStep('pull', 'Images pulled');
 
         context.startStep('start', 'Starting bench containers');
-        const upArgs = [...commonArgs, 'up', '-d', '--remove-orphans', '--progress', 'plain'];
+        const upArgs = [...commonArgs, 'up', '-d', '--remove-orphans'];
         const { code, stderr } = await execPromise(
           command,
           upArgs,
@@ -297,7 +297,7 @@ export const orchestrateBenchCleaning = (
 
         for (const siteName of siteDirs) {
           context.startStep('drop', `Dropping site ${siteName}`);
-          const runtimeCmd = 'docker-compose';
+          const runtimeCmd = getBinaryPath('docker-compose');
           const runtimeEnv = await getRuntimeEnv();
           const dbPassword = 'admin';
 

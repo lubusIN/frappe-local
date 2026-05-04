@@ -315,7 +315,7 @@ const getBenchActions = (bench: any) => {
       onClick: () => onManageBench(bench.id),
     },
     {
-      label: 'View Progress Logs',
+      label: 'View Progress',
       icon: IconTerminal,
       onClick: () => onStatusClick(bench.id, 'bench'),
       hidden: !isBusy,
