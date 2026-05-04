@@ -4,12 +4,21 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runDiagnostics } from '../src/main/diagnostics-service';
 import type { Settings } from '../src/shared/domain/models';
+import { vi } from 'vitest';
+
+vi.mock('../src/main/utils/exec', () => ({
+  execPromise: vi.fn().mockImplementation((command, args) => {
+    if (command === 'podman' && args.includes('ls')) {
+      return Promise.resolve({ code: 0, stdout: '[{"Name": "podman-machine-default", "Running": true}]' });
+    }
+    return Promise.resolve({ code: 0, stdout: '[]' });
+  }),
+}));
 
 const createdPaths: string[] = [];
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  runtimePreference: 'docker',
   storagePath: '/tmp/frappe-cafe',
   terminalPreference: 'zsh',
   editorPreference: 'code',

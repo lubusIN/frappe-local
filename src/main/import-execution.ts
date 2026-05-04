@@ -127,7 +127,6 @@ export const executeImportPackage = async (
   ]);
 
   const compatibility = validateImportCompatibility(parsedPackage, {
-    targetRuntime: targetBench.runtime,
     targetFrappeVersion: targetBench.frappeVersion,
     availableAppIds: appCatalog.map((item) => item.id),
   });

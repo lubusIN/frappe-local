@@ -41,7 +41,7 @@ describe('export package schema', () => {
         name: 'Alpha Bench',
         path: '/Users/example/alpha',
         frappeVersion: '15.0.0',
-        runtime: 'docker',
+        runtime: 'podman',
         status: 'running',
         apps: ['frappe'],
         timestamps: {
@@ -83,7 +83,7 @@ describe('export site package writer', () => {
                   name: 'Alpha Bench',
                   path: '/Users/example/alpha',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe', 'payments'],
                   timestamps: {
@@ -125,7 +125,6 @@ describe('export site package writer', () => {
         settings: {
           get: async () => ({
             defaultFrappeVersion: '15.0.0',
-            runtimePreference: 'docker',
             storagePath: '/Users/example/.frappe-cafe',
             terminalPreference: 'zsh',
             editorPreference: 'code',

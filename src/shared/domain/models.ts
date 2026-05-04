@@ -3,7 +3,7 @@ import { z } from 'zod';
 const nonEmptyString = z.string().trim().min(1);
 const isoDateString = z.string().datetime();
 
-export const RuntimeSchema = z.enum(['docker', 'podman']);
+
 export const EntityStatusSchema = z.enum(['queued', 'running', 'stopped', 'success', 'failure']);
 
 export const TimestampsSchema = z.object({
@@ -16,7 +16,7 @@ export const BenchSchema = z.object({
   name: nonEmptyString,
   path: nonEmptyString,
   frappeVersion: nonEmptyString,
-  runtime: RuntimeSchema,
+
   status: EntityStatusSchema,
   apps: z.array(nonEmptyString),
   timestamps: TimestampsSchema,
@@ -69,7 +69,6 @@ export const AppSchema = z.object({
 
 export const SettingsSchema = z.object({
   defaultFrappeVersion: nonEmptyString,
-  runtimePreference: RuntimeSchema,
   storagePath: nonEmptyString,
   terminalPreference: z.string(),
   editorPreference: z.string(),
@@ -119,7 +118,7 @@ export type BenchRecord = {
   name: string;
   path: string;
   frappe_version: string;
-  runtime: z.infer<typeof RuntimeSchema>;
+
   status: z.infer<typeof EntityStatusSchema>;
   apps: string[];
   created_at: string;
@@ -133,13 +132,12 @@ export const normalizeTimestamp = (value: string): string => {
   return parsedDate.toISOString();
 };
 
-export const mapBenchRecordToDomain = (record: BenchRecord): Bench =>
+export const mapBenchRecordToDomain = (record: BenchRecord): Bench => 
   BenchSchema.parse({
     id: normalizeId(record.id),
     name: record.name,
     path: record.path,
     frappeVersion: record.frappe_version,
-    runtime: record.runtime,
     status: record.status,
     apps: record.apps,
     timestamps: {
@@ -153,7 +151,7 @@ export const mapBenchDomainToRecord = (bench: Bench): BenchRecord => ({
   name: bench.name,
   path: bench.path,
   frappe_version: bench.frappeVersion,
-  runtime: bench.runtime,
+
   status: bench.status,
   apps: bench.apps,
   created_at: normalizeTimestamp(bench.timestamps.createdAt),

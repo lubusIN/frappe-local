@@ -29,7 +29,7 @@ describe('import validation IPC handler', () => {
                   name: 'Alpha Bench',
                   path: '/Users/example/alpha',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe', 'erpnext'],
                   timestamps: {
@@ -114,7 +114,7 @@ describe('import validation IPC handler', () => {
                   name: 'Target Bench',
                   path: '/Users/example/target',
                   frappeVersion: '15.2.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe'],
                   timestamps: {
@@ -137,7 +137,6 @@ describe('import validation IPC handler', () => {
         settings: {
           get: async () => ({
             defaultFrappeVersion: '15.0.0',
-            runtimePreference: 'docker',
             storagePath: '/Users/example/.frappe-cafe',
             terminalPreference: 'zsh',
             editorPreference: 'code',

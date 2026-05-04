@@ -34,7 +34,7 @@ function makeStubBenchRepo() {
       name: 'frappe-bench',
       path: '/Users/dev/frappe-bench',
       frappeVersion: '15.0.0',
-      runtime: 'docker' as const,
+      runtime: 'podman' as const,
       status: 'running' as const,
       apps: ['frappe'],
       timestamps: {
@@ -51,7 +51,7 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'docker' | 'podman';
+      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({

@@ -6,7 +6,6 @@ import type { DiagnosticsReport } from '../src/shared/domain/diagnostics';
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  runtimePreference: 'docker',
   storagePath: '/Users/dev/.frappe-cafe',
   terminalPreference: 'zsh',
   editorPreference: 'code',
@@ -40,7 +39,7 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'docker' | 'podman';
+      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({

@@ -28,7 +28,7 @@ const sampleInput: CreateBenchInput = {
   name: 'test-bench',
   path: '/home/user/frappe-bench',
   frappeVersion: '15.0.0',
-  runtime: 'docker',
+  runtime: 'podman',
   status: 'stopped',
   apps: ['frappe'],
 };

@@ -119,7 +119,7 @@ describe('storage bootstrap', () => {
             name: 'alpha-bench',
             path: '/tmp/alpha-bench',
             frappe_version: '15.0.0',
-            runtime: 'docker',
+            runtime: 'podman',
             status: 'running',
             apps: ['frappe'],
             created_at: new Date('2026-04-10T00:00:00.000Z').toISOString(),

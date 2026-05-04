@@ -21,7 +21,7 @@ const createExportFixture = async (outputDirectory: string) => {
                 name: 'Alpha Bench',
                 path: '/Users/example/alpha',
                 frappeVersion: '15.0.0',
-                runtime: 'docker',
+                runtime: 'podman',
                 status: 'running',
                 apps: ['frappe', 'payments'],
                 timestamps: {
@@ -53,7 +53,6 @@ const createExportFixture = async (outputDirectory: string) => {
       settings: {
         get: async () => ({
           defaultFrappeVersion: '15.0.0',
-          runtimePreference: 'docker',
           storagePath: '/Users/example/.frappe-cafe',
           terminalPreference: 'zsh',
           editorPreference: 'code',
@@ -183,7 +182,7 @@ describe('import package compatibility validation', () => {
     const parsedPackage = await parseImportPackage(exportResult.artifactDirectory);
 
     const result = validateImportCompatibility(parsedPackage, {
-      targetRuntime: 'docker',
+      targetRuntime: 'podman',
       targetFrappeVersion: '15.2.0',
       availableAppIds: ['frappe', 'erpnext', 'payments'],
     });

@@ -8,7 +8,7 @@ const bench: Bench = {
   name: 'frappe-bench',
   path: '/Users/dev/frappe-bench',
   frappeVersion: '15.0.0',
-  runtime: 'docker',
+  runtime: 'podman',
   status: 'running',
   apps: ['frappe'],
   timestamps: {
@@ -33,7 +33,6 @@ const site: Site = {
 
 const settings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  runtimePreference: 'docker',
   storagePath: '/Users/dev/.frappe-cafe',
   terminalPreference: 'zsh',
   editorPreference: 'code -n',

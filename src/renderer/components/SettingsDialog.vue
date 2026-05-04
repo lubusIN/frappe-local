@@ -1,11 +1,10 @@
 <template>
   <Dialog
-    :open="open"
+    v-model="isShowing"
     :options="{
       title: 'Settings',
       size: 'xl',
     }"
-    @close="$emit('close')"
   >
     <template #body-content>
       <div class="settings-dialog-body">
@@ -85,6 +84,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Dialog, Button, FormControl, Switch, FormLabel, TextInput } from 'frappe-ui';
 import IconCheckCircle from '~icons/lucide/check-circle';
 import StatePanel from './StatePanel.vue';
@@ -92,7 +92,7 @@ import FrappeVersionSelect from './FrappeVersionSelect.vue';
 import { useSettings } from '../composables/useSettings';
 import { useIpc } from '../composables/useIpc';
 
-defineProps<{
+const props = defineProps<{
   open: boolean;
 }>();
 
@@ -102,6 +102,13 @@ const emit = defineEmits<{
 
 const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
 const ipc = useIpc();
+
+const isShowing = computed({
+  get: () => props.open,
+  set: (val) => {
+    if (!val) emit('close');
+  },
+});
 
 
 const onPickStoragePath = async () => {

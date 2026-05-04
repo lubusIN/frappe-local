@@ -21,7 +21,7 @@ function makeStubBenchRepo() {
       name: 'bench',
       path: '/tmp/bench',
       frappeVersion: '15.0.0',
-      runtime: 'docker' as const,
+      runtime: 'podman' as const,
       status: 'stopped' as const,
       apps: [],
       timestamps: {

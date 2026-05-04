@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execPromise } from './utils/exec';
 import path from 'node:path';
 import fs from 'node:fs';
 import git from 'isomorphic-git';
@@ -6,7 +6,7 @@ import http from 'isomorphic-git/http/node';
 import { getTaskRunner } from './task-runner';
 import type { Bench } from '../shared/domain/models';
 import type { AppRuntimePaths } from './config';
-import { ensureRuntimeRunning } from './runtime-service';
+import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
 
 const copyRecursiveSync = (src: string, dest: string) => {
   const exists = fs.existsSync(src);
@@ -25,18 +25,7 @@ const copyRecursiveSync = (src: string, dest: string) => {
   }
 };
 
-const execPromise = (command: string, args: string[], cwd: string, onOutput?: (data: string) => void): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, shell: true });
-    child.stdout.on('data', (chunk: Buffer) => onOutput?.(chunk.toString()));
-    child.stderr.on('data', (chunk: Buffer) => onOutput?.(chunk.toString()));
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Command failed with code ${code}`));
-    });
-  });
-};
+
 
 export const orchestrateBenchCreation = (
   bench: Bench,
@@ -52,12 +41,12 @@ export const orchestrateBenchCreation = (
       try {
         await benchesRepo.update(bench.id, { status: 'queued' });
 
-        context.startStep('runtime', `Checking ${bench.runtime} status`);
-        const isRuntimeReady = await ensureRuntimeRunning(bench.runtime);
+        context.startStep('runtime', `Checking podman status`);
+        const isRuntimeReady = await ensureRuntimeRunning();
         if (!isRuntimeReady) {
-          throw new Error(`${bench.runtime} is not running and could not be started automatically. Please start it manually.`);
+          throw new Error(`Podman is not running and could not be started automatically. Please start it manually.`);
         }
-        context.completeStep('runtime', `${bench.runtime} is ready`);
+        context.completeStep('runtime', `Podman is ready`);
 
         const templatesDir = path.join(runtimePaths.userDataPath, 'templates');
         const frappeDockerTemplatePath = path.join(templatesDir, 'frappe_docker');
@@ -129,17 +118,25 @@ export const orchestrateBenchCreation = (
         context.completeStep('env', 'Environment configured');
 
         context.startStep('start', 'Starting bench containers');
-        // Use 'podman compose' for podman, or 'docker-compose' (bundled) for docker
-        const command = bench.runtime === 'podman' ? 'podman' : 'docker-compose';
-        const args = bench.runtime === 'podman' ? ['compose', 'up', '-d'] : ['up', '-d'];
-        
-        await execPromise(
+        const command = 'docker-compose';
+        const args = ['up', '-d'];
+        const runtimeEnv = await getRuntimeEnv();
+        context.log('info', `[DEBUG] DOCKER_HOST=${runtimeEnv.DOCKER_HOST ?? 'NOT SET'}`, 'start');
+        context.log('info', `[DEBUG] DOCKER_CONFIG=${runtimeEnv.DOCKER_CONFIG ?? 'NOT SET'}`, 'start');
+        context.log('info', `[DEBUG] Running: ${command} ${args.join(' ')} in ${bench.path}`, 'start');
+        const { code, stderr } = await execPromise(
           command,
           args,
           bench.path,
-          (out) => context.log('info', out, 'start')
+          (out) => context.log('info', out, 'start'),
+          runtimeEnv
         );
+        context.log('info', `[DEBUG] Exit code: ${code}, stderr: ${stderr}`, 'start');
 
+        if (code !== 0) {
+          throw new Error(`Command failed with code ${code}: ${stderr}`);
+        }
+        
         context.completeStep('start', 'Containers started successfully');
 
         await benchesRepo.update(bench.id, { status: 'running' });

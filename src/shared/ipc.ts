@@ -97,7 +97,7 @@ export type BenchListItem = {
   readonly name: string;
   readonly path: string;
   readonly frappeVersion: string;
-  readonly runtime: 'docker' | 'podman';
+
   readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly appCount: number;
   readonly apps: string[];
@@ -117,7 +117,7 @@ export type BenchCreateInput = {
   readonly name: string;
   readonly path: string;
   readonly frappeVersion: string;
-  readonly runtime: 'docker' | 'podman';
+
   readonly apps: string[];
 };
 
@@ -125,7 +125,7 @@ export type BenchUpdateInput = {
   readonly name?: string;
   readonly path?: string;
   readonly frappeVersion?: string;
-  readonly runtime?: 'docker' | 'podman';
+
   readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly apps?: string[];
 };
@@ -161,7 +161,6 @@ export type SiteUpdateInput = {
 
 export type SettingsItem = {
   readonly defaultFrappeVersion: string;
-  readonly runtimePreference: 'docker' | 'podman';
   readonly storagePath: string;
   readonly terminalPreference: string;
   readonly editorPreference: string;
@@ -181,7 +180,7 @@ export type ImportPackageSummary = {
   readonly exportedAt: string;
   readonly siteName: string;
   readonly benchName: string;
-  readonly benchRuntime: 'docker' | 'podman';
+
   readonly benchFrappeVersion: string;
   readonly requiredAppIds: string[];
 };

@@ -24,7 +24,7 @@ const buildExportFixture = async (outputDirectory: string) => {
                 name: 'Source Bench',
                 path: '/Users/example/source-bench',
                 frappeVersion: '15.0.0',
-                runtime: 'docker',
+                runtime: 'podman',
                 status: 'running',
                 apps: ['frappe', 'erpnext'],
                 timestamps: {
@@ -56,7 +56,6 @@ const buildExportFixture = async (outputDirectory: string) => {
       settings: {
         get: async () => ({
           defaultFrappeVersion: '15.0.0',
-          runtimePreference: 'docker',
           storagePath: outputDirectory,
           terminalPreference: 'zsh',
           editorPreference: 'code',
@@ -112,7 +111,7 @@ describe('import execution', () => {
                   name: 'Target Bench',
                   path: '/Users/example/target-bench',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe'],
                   timestamps: {
@@ -150,7 +149,6 @@ describe('import execution', () => {
         settings: {
           get: async () => ({
             defaultFrappeVersion: '15.0.0',
-            runtimePreference: 'docker',
             storagePath: outputDirectory,
             terminalPreference: 'zsh',
             editorPreference: 'code',
@@ -211,7 +209,7 @@ describe('import execution', () => {
                   name: 'Target Bench',
                   path: '/Users/example/target-bench',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe'],
                   timestamps: {
@@ -258,7 +256,6 @@ describe('import execution', () => {
         settings: {
           get: async () => ({
             defaultFrappeVersion: '15.0.0',
-            runtimePreference: 'docker',
             storagePath: outputDirectory,
             terminalPreference: 'zsh',
             editorPreference: 'code',
@@ -324,7 +321,7 @@ describe('import execution', () => {
                   name: 'Target Bench',
                   path: '/Users/example/target-bench',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe'],
                   timestamps: {
@@ -356,7 +353,6 @@ describe('import execution', () => {
         settings: {
           get: async () => ({
             defaultFrappeVersion: '15.0.0',
-            runtimePreference: 'docker',
             storagePath: outputDirectory,
             terminalPreference: 'zsh',
             editorPreference: 'code',

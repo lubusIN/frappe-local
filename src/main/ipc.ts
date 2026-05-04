@@ -34,6 +34,9 @@ import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
 import { execPromise } from './utils/exec';
+import { createMainLogger } from './logger';
+
+const mainLogger = createMainLogger('ipc');
 
 import type { AppRuntimePaths } from './config';
 import { CURRENT_STORAGE_SCHEMA_VERSION } from './storage/schema';
@@ -163,7 +166,7 @@ export type AppRepositories = {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'docker' | 'podman';
+
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => Promise<Bench>;
@@ -171,7 +174,7 @@ export type AppRepositories = {
       name?: string;
       path?: string;
       frappeVersion?: string;
-      runtime?: 'docker' | 'podman';
+
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps?: string[];
     }) => Promise<Bench | null>;
@@ -267,7 +270,7 @@ const toBenchListItem = (bench: Bench): BenchListItem => ({
   name: bench.name,
   path: bench.path,
   frappeVersion: bench.frappeVersion,
-  runtime: bench.runtime,
+
   status: bench.status,
   appCount: bench.apps.length,
   apps: bench.apps,
@@ -289,7 +292,6 @@ const toSiteListItem = (site: Site): SiteListItem => ({
 
 const toSettingsItem = (settings: Settings): SettingsItem => ({
   defaultFrappeVersion: settings.defaultFrappeVersion,
-  runtimePreference: settings.runtimePreference,
   storagePath: settings.storagePath,
   terminalPreference: settings.terminalPreference,
   editorPreference: settings.editorPreference,
@@ -441,8 +443,8 @@ export const registerIpcHandlers = (
     return lastDiagnosticsReport;
   });
 
-  ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: string): Promise<boolean> => {
-    if (checkType !== 'runtime-health') return false;
+  ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: unknown): Promise<boolean> => {
+    if (typeof checkType !== 'string' || checkType !== 'runtime-health') return false;
 
     mainLogger.info('Attempting to fix runtime issues...');
 
@@ -776,7 +778,6 @@ export const registerIpcHandlers = (
       : null;
 
     const compatibility = validateImportCompatibility(parsedPackage, {
-      targetRuntime: selectedBench?.runtime ?? settings?.runtimePreference,
       targetFrappeVersion: selectedBench?.frappeVersion ?? settings?.defaultFrappeVersion,
       availableAppIds: appCatalog.map((item) => item.id),
     });
@@ -788,7 +789,7 @@ export const registerIpcHandlers = (
         exportedAt: parsedPackage.manifest.exportedAt,
         siteName: parsedPackage.manifest.site.name,
         benchName: parsedPackage.manifest.bench.name,
-        benchRuntime: parsedPackage.manifest.bench.runtime,
+
         benchFrappeVersion: parsedPackage.manifest.bench.frappeVersion,
         requiredAppIds: parsedPackage.manifest.requiredApps.map((item) => item.id),
       },

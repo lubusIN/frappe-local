@@ -5,7 +5,6 @@ import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  runtimePreference: 'docker',
   storagePath: '/Users/dev/.frappe-cafe',
   terminalPreference: 'zsh',
   editorPreference: 'code',
@@ -30,7 +29,7 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'docker' | 'podman';
+      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({
@@ -148,7 +147,6 @@ describe('settings IPC handlers', () => {
     const result = await handlers.get(ipcChannels.settingsGet)?.();
     expect(result).toMatchObject({
       defaultFrappeVersion: '15.0.0',
-      runtimePreference: 'docker',
       updateChannel: 'stable',
       autoUpdateEnabled: true,
     });

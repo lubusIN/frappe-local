@@ -29,7 +29,7 @@ describe('import execution IPC handler', () => {
                   name: 'Source Bench',
                   path: '/Users/example/source-bench',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe'],
                   timestamps: {
@@ -108,7 +108,7 @@ describe('import execution IPC handler', () => {
                   name: 'Target Bench',
                   path: '/Users/example/target-bench',
                   frappeVersion: '15.0.0',
-                  runtime: 'docker',
+                  runtime: 'podman',
                   status: 'running',
                   apps: ['frappe'],
                   timestamps: {
@@ -159,7 +159,6 @@ describe('import execution IPC handler', () => {
         settings: {
           get: async () => ({
             defaultFrappeVersion: '15.0.0',
-            runtimePreference: 'docker',
             storagePath: outputDirectory,
             terminalPreference: 'zsh',
             editorPreference: 'code',

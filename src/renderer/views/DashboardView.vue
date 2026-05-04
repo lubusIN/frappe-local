@@ -43,7 +43,7 @@
           </div>
           <div class="text-left">
             <p class="shortcut-card__title">Configure Settings</p>
-            <p class="shortcut-card__desc">Set runtime defaults and preferences</p>
+            <p class="shortcut-card__desc">Configure global settings and defaults</p>
           </div>
         </button>
       </div>

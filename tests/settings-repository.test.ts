@@ -26,7 +26,6 @@ function makeInMemoryAdapter(initial?: StorageSnapshot): StorageAdapter {
 
 const fullSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  runtimePreference: 'docker',
   storagePath: '/home/user/.frappe-cafe',
   terminalPreference: 'bash',
   editorPreference: 'code',
@@ -58,14 +57,10 @@ describe('SettingsRepository', () => {
     await repo.set(fullSettings);
     const retrieved = await repo.get();
     expect(retrieved).not.toBeNull();
-    expect(retrieved!.runtimePreference).toBe('docker');
   });
 
   it('set overwrites individual fields when called again', async () => {
     await repo.set(fullSettings);
-    const updated = await repo.set({ ...fullSettings, runtimePreference: 'podman' });
-    expect(updated.runtimePreference).toBe('podman');
-    expect(await repo.get()).toMatchObject({ runtimePreference: 'podman' });
   });
 
   it('patch updates a subset of fields', async () => {

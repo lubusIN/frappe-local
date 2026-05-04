@@ -36,7 +36,7 @@ const mockExportResult: ExportSitePackageResult = {
       id: 'bench-1',
       name: 'test-bench',
       path: '/test/bench',
-      runtime: 'docker',
+      runtime: 'podman',
       frappeVersion: '14.0.0',
       status: 'running',
       apps: ['frappe'],

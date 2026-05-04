@@ -29,7 +29,7 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'docker' | 'podman';
+      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({

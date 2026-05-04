@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type DiagnosticsCheckType = 'path-writability' | 'runtime-preference' | 'storage-access';
+export type DiagnosticsCheckType = 'path-writability' | 'runtime-preference' | 'storage-access' | 'runtime-health';
 
 export const diagnosticsCheckStatuses = ['passed', 'warning', 'failed', 'skipped'] as const;
 export type DiagnosticsCheckStatus = (typeof diagnosticsCheckStatuses)[number];

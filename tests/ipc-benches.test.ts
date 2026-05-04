@@ -9,7 +9,7 @@ const benches: Bench[] = [
     name: 'frappe-bench',
     path: '/Users/dev/frappe-bench',
     frappeVersion: '15.0.0',
-    runtime: 'docker',
+    runtime: 'podman',
     status: 'running',
     apps: ['frappe', 'erpnext'],
     timestamps: {
@@ -37,7 +37,7 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'docker' | 'podman';
+      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => {
@@ -56,7 +56,7 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       name?: string;
       path?: string;
       frappeVersion?: string;
-      runtime?: 'docker' | 'podman';
+      runtime?: 'podman';
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps?: string[];
     }) => {
@@ -167,7 +167,7 @@ describe('benches IPC handlers', () => {
         name: 'frappe-bench',
         path: '/Users/dev/frappe-bench',
         frappeVersion: '15.0.0',
-        runtime: 'docker',
+        runtime: 'podman',
         status: 'running',
         appCount: 2,
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
@@ -214,7 +214,7 @@ describe('benches IPC handlers', () => {
       name: 'new-bench',
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
-      runtime: 'docker',
+      runtime: 'podman',
       apps: ['frappe'],
     });
 
@@ -222,7 +222,7 @@ describe('benches IPC handlers', () => {
       name: 'new-bench',
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
-      runtime: 'docker',
+      runtime: 'podman',
       status: 'queued',
       appCount: 1,
     });

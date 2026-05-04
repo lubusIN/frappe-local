@@ -174,7 +174,6 @@
           <AppPicker
             v-model="createForm.appsSelected"
             :disabled="creating || loading"
-            :runtime="createForm.runtime"
             :frappe-version="createForm.frappeVersion"
           />
         </div>
@@ -387,7 +386,6 @@ const createForm = reactive({
   name: '',
   path: '',
   frappeVersion: 'version-16',
-  runtime: 'podman' as 'docker' | 'podman',
   appsSelected: [] as string[],
 });
 
@@ -445,7 +443,6 @@ const onCreateBench = async () => {
     name: createForm.name,
     path: createForm.path,
     frappeVersion: createForm.frappeVersion,
-    runtime: createForm.runtime,
     apps: [...createForm.appsSelected],
   });
 

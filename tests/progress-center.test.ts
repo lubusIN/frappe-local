@@ -75,7 +75,7 @@ describe('progress-center', () => {
         stepName: null,
         timestamp: new Date('2026-04-19T08:45:00.000Z').toISOString(),
         resource: 'runtime',
-        resourceId: 'docker',
+        resourceId: 'podman',
       },
       {
         taskId: 'old-site',

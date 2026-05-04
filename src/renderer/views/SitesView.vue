@@ -68,7 +68,7 @@
             <AppPicker
               v-model="createForm.appsSelected"
               :disabled="creating || loading"
-              :runtime="selectedBench?.runtime"
+
               :frappe-version="selectedBench?.frappeVersion"
             />
           </label>

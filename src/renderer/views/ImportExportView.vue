@@ -77,7 +77,7 @@
               <select v-model="draft.benchId" :disabled="validating || benches.length === 0">
                 <option value="">Select a bench…</option>
                 <option v-for="bench in benches" :key="bench.id" :value="bench.id">
-                  {{ bench.name }} ({{ bench.runtime }}, Frappe {{ bench.frappeVersion }})
+                  {{ bench.name }} (Frappe {{ bench.frappeVersion }})
                 </option>
               </select>
             </label>

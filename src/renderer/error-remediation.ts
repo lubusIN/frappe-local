@@ -43,7 +43,6 @@ export const buildErrorRemediationNotice = (
         reason,
         steps: [
           'Review the dependency guidance listed below for each blocked dependency.',
-          'Open Settings to confirm the preferred runtime is correct for this machine.',
           'Run repair again after resolving the missing dependency outside the app if needed.',
         ],
         actions: [
@@ -58,7 +57,6 @@ export const buildErrorRemediationNotice = (
       reason,
       steps: [
         'Re-check runtime health to confirm the latest dependency state.',
-        'Open Settings and verify the selected runtime preference matches the installed tools.',
       ],
       actions: [
         { id: 'retry', label: 'Re-check runtime' },

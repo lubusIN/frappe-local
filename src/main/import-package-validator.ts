@@ -42,7 +42,7 @@ export type ImportValidationIssue = {
   readonly severity: 'error' | 'warning';
   readonly code:
     | 'unsupported-package-version'
-    | 'runtime-incompatible'
+
     | 'frappe-version-too-low'
     | 'frappe-version-warning'
     | 'missing-required-app';
@@ -56,7 +56,7 @@ export type ImportValidationResult = {
 
 export type ImportCompatibilityContext = {
   readonly supportedPackageVersions?: readonly number[];
-  readonly targetRuntime?: 'docker' | 'podman';
+
   readonly targetFrappeVersion?: string;
   readonly availableAppIds?: readonly string[];
 };
@@ -109,16 +109,7 @@ export const validateImportCompatibility = (
     });
   }
 
-  if (
-    context.targetRuntime &&
-    parsedPackage.manifest.bench.runtime !== context.targetRuntime
-  ) {
-    issues.push({
-      severity: 'error',
-      code: 'runtime-incompatible',
-      message: `Exported site expects ${parsedPackage.manifest.bench.runtime}, but the selected target uses ${context.targetRuntime}.`,
-    });
-  }
+
 
   const targetFrappeVersion = context.targetFrappeVersion;
   if (targetFrappeVersion) {

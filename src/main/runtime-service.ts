@@ -1,15 +1,61 @@
 import { execPromise } from './utils/exec';
 import { createMainLogger } from './logger';
+import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 
 const logger = createMainLogger('runtime');
 
-export async function ensureRuntimeRunning(runtime: 'docker' | 'podman'): Promise<boolean> {
-  if (runtime === 'podman') {
-    return ensurePodmanRunning();
+export async function ensureRuntimeRunning(): Promise<boolean> {
+  return ensurePodmanRunning();
+}
+
+export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
+  // Create an isolated Docker config directory so docker-compose does NOT read
+  // ~/.docker/config.json (which may have "currentContext": "desktop-linux"
+  // that forces connection to Docker Desktop's socket instead of our Podman socket).
+  const isolatedConfigDir = path.join(os.tmpdir(), 'frappe-cafe-docker-config');
+  try {
+    if (!fs.existsSync(isolatedConfigDir)) {
+      fs.mkdirSync(isolatedConfigDir, { recursive: true });
+    }
+    const configPath = path.join(isolatedConfigDir, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      fs.writeFileSync(configPath, '{}', 'utf8');
+    }
+  } catch (err) {
+    logger.warn(`Failed to create isolated Docker config dir: ${err}`);
   }
-  return ensureDockerRunning();
+
+  const env: NodeJS.ProcessEnv = {
+    DOCKER_CONFIG: isolatedConfigDir,
+  };
+  
+  if (process.platform === 'darwin' || process.platform === 'win32') {
+    try {
+      // Try machine inspect first (most reliable for machine-based podman)
+      let { stdout } = await execPromise('podman', ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
+      let socketPath = stdout.trim();
+      
+      // If that fails, try podman info (works if the machine is already the default context)
+      if (!socketPath) {
+        const infoResult = await execPromise('podman', ['info', '--format', '{{.Host.RemoteSocket.Path}}']);
+        socketPath = infoResult.stdout.trim();
+      }
+
+      if (socketPath) {
+        const prefix = process.platform === 'win32' ? 'npipe://' : 'unix://';
+        env.DOCKER_HOST = socketPath.startsWith(prefix) ? socketPath : `${prefix}${socketPath}`;
+        logger.info(`Detected podman socket at ${env.DOCKER_HOST}`);
+      } else {
+        logger.warn('Could not detect podman socket path');
+      }
+    } catch (err) {
+      logger.warn(`Failed to detect podman socket: ${err}`);
+    }
+  }
+  
+  return env;
 }
 
 async function ensurePodmanRunning(): Promise<boolean> {
@@ -58,43 +104,4 @@ async function ensurePodmanRunning(): Promise<boolean> {
   return true;
 }
 
-async function ensureDockerRunning(): Promise<boolean> {
-  try {
-    const { code } = await execPromise('docker', ['info']);
-    if (code === 0) return true;
 
-    logger.info('Docker not responding, attempting to start Docker Desktop...');
-    if (process.platform === 'darwin') {
-      try {
-        await execPromise('open', ['-g', '-a', 'Docker']);
-      } catch (err) {
-        logger.error('Failed to open Docker app');
-      }
-    } else if (process.platform === 'win32') {
-      const dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe';
-      if (fs.existsSync(dockerPath)) {
-        try {
-          await execPromise(`"${dockerPath}"`, []);
-        } catch (err) {
-          logger.error('Failed to start Docker Desktop on Windows');
-        }
-      }
-    }
-    
-    // Wait for Docker to start (poll for up to 30s)
-    for (let i = 0; i < 15; i++) {
-      logger.info(`Waiting for Docker to initialize... (${i+1}/15)`);
-      await new Promise(r => setTimeout(r, 2000));
-      const { code: checkCode } = await execPromise('docker', ['info']);
-      if (checkCode === 0) {
-        logger.info('Docker is now running');
-        return true;
-      }
-    }
-    
-    return false;
-  } catch (err) {
-    logger.error(`Failed to ensure docker: ${err}`);
-    return false;
-  }
-}

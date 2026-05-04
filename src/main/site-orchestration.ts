@@ -1,9 +1,10 @@
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { execPromise } from './utils/exec';
 import type { Bench, Site } from '../shared/domain/models';
 import type { SiteCreateInput } from '../shared/ipc';
 import { canAttachSiteToBench } from '../shared/domain/site-lifecycle';
 import { getTaskRunner } from './task-runner';
+import { getRuntimeEnv } from './runtime-service';
 
 export type SiteCreationDependencies = {
   readonly benches: {
@@ -24,18 +25,7 @@ export type SiteCreationDependencies = {
   };
 };
 
-const execPromise = (command: string, args: string[], cwd: string, onOutput?: (data: string) => void): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, shell: true });
-    child.stdout.on('data', (chunk: Buffer) => onOutput?.(chunk.toString()));
-    child.stderr.on('data', (chunk: Buffer) => onOutput?.(chunk.toString()));
-    child.on('error', reject);
-    child.on('close', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Command failed with code ${code}`));
-    });
-  });
-};
+
 
 export const orchestrateSiteCreation = async (
   dependencies: SiteCreationDependencies,
@@ -68,7 +58,7 @@ export const orchestrateSiteCreation = async (
         
         context.startStep('init', 'Preparing site environment');
         // In frappe_docker, we run commands via compose
-        const runtimeCmd = bench.runtime === 'podman' ? 'podman' : 'docker-compose';
+        const runtimeCmd = 'docker-compose';
         
         context.startStep('new-site', `Running bench new-site ${input.name}`);
         
@@ -76,10 +66,10 @@ export const orchestrateSiteCreation = async (
         const dbPassword = 'admin';
         const adminPassword = 'admin';
         
-        await execPromise(
+        const runtimeEnv = await getRuntimeEnv();
+        const { code, stderr } = await execPromise(
           runtimeCmd,
           [
-            bench.runtime === 'podman' ? 'compose' : '',
             'exec',
             'backend',
             'bench',
@@ -92,8 +82,13 @@ export const orchestrateSiteCreation = async (
             ...input.apps.filter(app => app !== 'frappe').map(app => `--install-app ${app}`)
           ].filter(Boolean),
           bench.path,
-          (out) => context.log('info', out, 'new-site')
+          (out) => context.log('info', out, 'new-site'),
+          runtimeEnv
         );
+
+        if (code !== 0) {
+          throw new Error(`Command failed with code ${code}: ${stderr}`);
+        }
         
         context.completeStep('new-site', 'Site created successfully');
         await dependencies.sites.update(createdSite.id, { status: 'running' });

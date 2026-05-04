@@ -3,8 +3,10 @@ import fs from 'node:fs/promises';
 import type { AppRuntimePaths } from './config';
 
 import type { DiagnosticsCheckResult, DiagnosticsReport } from '../shared/domain/diagnostics';
+import type { Settings } from '../shared/domain/models';
 import { createMainLogger } from './logger';
 import { execPromise } from './utils/exec';
+import { getRuntimeEnv } from './runtime-service';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
@@ -79,19 +81,7 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
   }
 };
 
-const checkRuntimePreference = (runtimePreference: string): DiagnosticsCheckResult => {
-  const validRuntimes = ['docker', 'podman'];
-  const isValid = validRuntimes.includes(runtimePreference);
 
-  return {
-    type: 'runtime-preference',
-    status: isValid ? 'passed' : 'warning',
-    title: 'Runtime Preference Configuration',
-    description: isValid ? `Runtime preference set to: ${runtimePreference}` : `Unknown runtime preference: ${runtimePreference}`,
-    remediation: !isValid ? `Update runtime preference in Settings to one of: ${validRuntimes.join(', ')}` : undefined,
-    timestamp: new Date().toISOString(),
-  };
-};
 
 const parsePodmanJson = (stdout: string) => {
   try {
@@ -113,9 +103,41 @@ const parsePodmanJson = (stdout: string) => {
   }
 };
 
+const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => {
+  const checks: DiagnosticsCheckResult[] = [];
+  
+  try {
+    const { code } = await execPromise('docker-compose', ['--version']);
+    if (code === 0) {
+      checks.push({
+        type: 'runtime-health',
+        status: 'passed',
+        title: 'Docker Compose Binary',
+        description: 'docker-compose binary is available and executable',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      throw new Error('Non-zero exit code');
+    }
+  } catch {
+    checks.push({
+      type: 'runtime-health',
+      status: 'failed',
+      title: 'Docker Compose Binary',
+      description: 'docker-compose binary not found or not executable',
+      remediation: 'Install docker-compose and ensure it is in your PATH.',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return checks;
+};
+
 const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
   let podmanAvailable = false;
+
+  const failureStatus = 'failed';
 
   // Check 1: Podman Binary
   try {
@@ -135,7 +157,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   } catch {
     checks.push({
       type: 'runtime-health',
-      status: 'failed',
+      status: failureStatus,
       title: 'Podman Binary',
       description: 'Podman binary not found or not executable',
       remediation: 'Install Podman from https://podman.io/ and ensure it is in your PATH.',
@@ -176,7 +198,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
             } else {
               checks.push({
                 type: 'runtime-health',
-                status: 'failed',
+                status: failureStatus,
                 title: 'Podman Machine',
                 description: 'Podman machine exists but is not running',
                 remediation: 'Click "Attempt Fix" to start the Podman machine.',
@@ -186,7 +208,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
           } else {
             checks.push({
               type: 'runtime-health',
-              status: 'failed',
+              status: failureStatus,
               title: 'Podman Machine',
               description: 'No Podman machine found',
               remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
@@ -199,7 +221,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
       } catch (err) {
         checks.push({
           type: 'runtime-health',
-          status: 'failed',
+          status: failureStatus,
           title: 'Podman Machine',
           description: `Unable to query Podman machine status: ${err instanceof Error ? err.message : 'Unknown error'}`,
           remediation: 'Ensure Podman Desktop is running or check `podman machine ls` manually.',
@@ -224,15 +246,47 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
       } else {
         checks.push({
           type: 'runtime-health',
-          status: 'failed',
+          status: failureStatus,
           title: 'Podman Engine',
           description: 'Cannot connect to Podman engine',
           remediation: 'Ensure the Podman machine or service is started.',
           timestamp: new Date().toISOString(),
         });
       }
-    } catch {
-      // Already handled binary check
+    } catch (_podmanEngineErr) {
+      // Already handled by binary availability check
+    }
+
+    // Check 4: Orchestrator Engine Connection
+    try {
+      const runtimeEnv = await getRuntimeEnv();
+      const { code, stderr } = await execPromise('docker-compose', ['version'], undefined, undefined, runtimeEnv);
+      if (code === 0) {
+        checks.push({
+          type: 'runtime-health',
+          status: 'passed',
+          title: 'Orchestrator Connection',
+          description: `Orchestrator connected to engine via ${runtimeEnv.DOCKER_HOST || 'default socket'}`,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        checks.push({
+          type: 'runtime-health',
+          status: failureStatus,
+          title: 'Orchestrator Connection',
+          description: `Orchestrator failed to connect to engine: ${stderr}`,
+          remediation: 'Verify Podman socket availability and DOCKER_HOST configuration.',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      checks.push({
+        type: 'runtime-health',
+        status: failureStatus,
+        title: 'Orchestrator Connection',
+        description: `Failed to test orchestrator connectivity: ${err instanceof Error ? err.message : String(err)}`,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
@@ -255,17 +309,11 @@ export const runDiagnostics = async (context: DiagnosticsContext): Promise<Diagn
   const storageAccessCheck = await checkPathExists(context.runtimePaths.storagePath);
   checks.push(storageAccessCheck);
 
-  // Check runtime preference
-  const settings = await context.settingsRepository.get();
-  const runtimePreference = settings?.runtimePreference ?? 'docker';
-  const runtimeCheck = checkRuntimePreference(runtimePreference);
-  checks.push(runtimeCheck);
+  const podmanChecks = await checkPodmanHealth();
+  checks.push(...podmanChecks);
 
-  // Check Podman health if it is the preferred runtime
-  if (runtimePreference === 'podman') {
-    const podmanChecks = await checkPodmanHealth();
-    checks.push(...podmanChecks);
-  }
+  const dockerComposeChecks = await checkDockerComposeHealth();
+  checks.push(...dockerComposeChecks);
 
   // Determine severity
   const failedChecks = checks.filter((c) => c.status === 'failed');
