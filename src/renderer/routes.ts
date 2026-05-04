@@ -17,6 +17,7 @@ const componentMap = {
   console: ConsoleView,
   importExport: ImportExportView,
   diagnostics: () => import('./views/DiagnosticsView.vue'),
+  settings: () => import('./views/SettingsView.vue'),
 } as const;
 
 export { navigationItems };

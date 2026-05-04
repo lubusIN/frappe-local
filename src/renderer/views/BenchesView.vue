@@ -55,8 +55,8 @@
                   :class="`status-pill--${row.status}`"
                   @click.stop="onStatusClick(row.id, 'bench')"
                 >
-                  {{ formatStatusLabel(row.status) }}
-                  <span v-if="row.status === 'queued'" class="status-spinner"></span>
+                  {{ formatStatusLabel(row) }}
+                  <span v-if="isResourceBusy(row.id, 'bench')" class="status-spinner"></span>
                 </span>
               </span>
             </td>
@@ -239,6 +239,7 @@ import IconSquare from '~icons/lucide/square';
 import IconFileText from '~icons/lucide/file-text';
 import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
+import IconTerminal from '~icons/lucide/terminal';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
@@ -266,6 +267,7 @@ const {
   remove,
   listLogs,
   openFolder,
+  cleanSites,
   refresh,
 } = useBenches();
 
@@ -304,22 +306,30 @@ const onManageBench = (id: string) => {
 };
 
 const getBenchActions = (bench: any) => {
-  return [
+  const isBusy = isResourceBusy(bench.id, 'bench');
+  
+  const actions = [
     {
       label: 'Sites',
       icon: IconExternalLink,
       onClick: () => onManageBench(bench.id),
     },
     {
+      label: 'View Progress Logs',
+      icon: IconTerminal,
+      onClick: () => onStatusClick(bench.id, 'bench'),
+      hidden: !isBusy,
+    },
+    {
       label: bench.status === 'running' ? 'Restart' : 'Start',
       icon: IconPlay,
-      disabled: updating.value,
+      disabled: updating.value || isBusy,
       onClick: () => onSetBenchStatus(bench.id, 'running'),
     },
     {
       label: 'Stop',
       icon: IconSquare,
-      disabled: updating.value || bench.status === 'stopped' || bench.status === 'queued',
+      disabled: updating.value || bench.status === 'stopped' || isBusy,
       onClick: () => onSetBenchStatus(bench.id, 'stopped'),
     },
     {
@@ -335,13 +345,25 @@ const getBenchActions = (bench: any) => {
       onClick: () => onOpenBenchFolder(bench.id),
     },
     {
+      label: 'Clean Bench',
+      icon: IconTrash,
+      disabled: updating.value || (bench.status !== 'running' && bench.status !== 'success') || isBusy,
+      onClick: () => {
+        if (confirm(`Are you sure you want to clean all sites from bench "${bench.name}"? This will drop all databases and delete all site files.`)) {
+          void cleanSites(bench.id);
+        }
+      },
+    },
+    {
       label: 'Delete',
       icon: IconTrash,
       theme: 'red',
-      disabled: updating.value || deleting.value || bench.status === 'running',
+      disabled: updating.value || deleting.value || bench.status === 'running' || isBusy,
       onClick: () => onDeleteBench(bench.id, bench.name),
     },
   ];
+
+  return actions.filter(a => !a.hidden);
 };
 
 const { tasks } = useProgressCenter();
@@ -352,10 +374,33 @@ const selectedTask = computed(() => {
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
-const formatStatusLabel = (status: string) => {
-  if (status === 'queued') return 'Creating...';
-  if (status === 'running') return 'Running';
-  return status;
+const formatStatusLabel = (row: any) => {
+  // Check for active tasks first to provide live progress labels
+  const task = (tasks.value || []).find(
+    (t) => t.resourceId === row.id && t.resource === 'bench' && (t.status === 'running' || t.status === 'queued')
+  );
+
+  if (task) {
+    const name = task.taskName.toLowerCase();
+    if (name.includes('create bench')) return 'Creating';
+    if (name.includes('restart bench')) return 'Restarting';
+    if (name.includes('start bench')) return 'Starting';
+    if (name.includes('stop bench')) return 'Stopping';
+    if (name.includes('delete bench')) return 'Deleting';
+    if (name.includes('clean bench')) return 'Cleaning';
+    return task.stepName ? task.stepName.replace(/\.\.\./g, '') : 'Processing';
+  }
+
+  if (row.status === 'running') return 'Running';
+  if (row.status === 'stopped') return 'Stopped';
+  if (row.status === 'queued') return 'Queued';
+  if (row.status === 'failure') return 'Failed';
+  return row.status;
+};
+
+const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
+  const task = (tasks.value || []).find(t => t.resourceId === id && t.resource === resource);
+  return task && (task.status === 'running' || task.status === 'queued');
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
@@ -425,9 +470,14 @@ onBeforeUnmount(() => {
 });
 
 watch(() => createForm.name, (newName, oldName) => {
-  const basePath = settingsForm.value.storagePath || '~/Library/Application Support/Frappe Cafe';
-  if (!createForm.path || createForm.path === `${basePath}/${oldName}`) {
-    createForm.path = `${basePath}/${newName}`;
+  const basePath = settingsForm.value.storagePath;
+  if (!basePath) return;
+
+  const oldDefaultPath = `${basePath}/benches/${oldName}`;
+  const newDefaultPath = `${basePath}/benches/${newName}`;
+
+  if (!createForm.path || createForm.path === oldDefaultPath || createForm.path === `${basePath}/${oldName}`) {
+    createForm.path = newDefaultPath;
   }
 });
 
@@ -453,6 +503,9 @@ const onCreateBench = async () => {
 };
 
 const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
+  const label = status === 'running' ? 'Starting' : 'Stopping';
+  toast.success(`${label} bench stack...`);
+
   await update(id, { status });
 };
 
@@ -896,7 +949,8 @@ const onOpenBenchFolder = async (id: string) => {
 .status-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  gap: 6px;
+  padding: 2px 10px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 500;
@@ -936,14 +990,14 @@ const onOpenBenchFolder = async (id: string) => {
 }
 
 .status-spinner {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 6px;
+  display: block;
+  width: 10px;
+  height: 10px;
   border: 1.5px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes spin {

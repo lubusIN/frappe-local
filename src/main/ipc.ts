@@ -34,6 +34,7 @@ import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
 import { execPromise } from './utils/exec';
+import { getBinaryPath } from './utils/binaries';
 import { createMainLogger } from './logger';
 
 const mainLogger = createMainLogger('ipc');
@@ -64,8 +65,8 @@ import {
 } from '../shared/domain/site-lifecycle';
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
-import { orchestrateSiteCreation } from './site-orchestration';
-import { orchestrateBenchCreation } from './bench-orchestration';
+import { orchestrateSiteCreation, orchestrateSiteDeletion } from './site-orchestration';
+import { orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
 import { parseImportPackage, validateImportCompatibility } from './import-package-validator';
 import { executeImportPackage } from './import-execution';
 import { exportSitePackage } from './export-package-writer';
@@ -387,7 +388,7 @@ export const registerIpcHandlers = (
     configPath: '',
     storagePath: '',
   },
-  initialDiagnosticsReport: DiagnosticsReport | null = null
+  initialDiagnosticsReport: { current: DiagnosticsReport | null } = { current: null }
 ): void => {
   let taskEventSubscriptionCount = 0;
 
@@ -426,7 +427,7 @@ export const registerIpcHandlers = (
     return runManualUpdateCheck();
   });
 
-  let lastDiagnosticsReport: DiagnosticsReport | null = initialDiagnosticsReport;
+  let lastDiagnosticsReport: DiagnosticsReport | null = initialDiagnosticsReport.current;
 
   ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
     const report = await runDiagnostics({
@@ -440,7 +441,7 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.diagnosticsGetLast, async (): Promise<DiagnosticsReport | null> => {
-    return lastDiagnosticsReport;
+    return lastDiagnosticsReport || initialDiagnosticsReport.current;
   });
 
   ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: unknown): Promise<boolean> => {
@@ -451,7 +452,7 @@ export const registerIpcHandlers = (
     try {
       // 1. Check if podman binary is actually there
       try {
-        await execPromise('podman', ['--version']);
+        await execPromise(getBinaryPath('podman'), ['--version']);
       } catch {
         mainLogger.error('Podman binary not found, cannot fix.');
         return false;
@@ -459,8 +460,22 @@ export const registerIpcHandlers = (
 
       // 2. Machine handling (Mac/Windows)
       if (process.platform === 'darwin' || process.platform === 'win32') {
-        const { stdout } = await execPromise('podman', ['machine', 'ls', '--format', 'json']);
+        const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
         const machines = JSON.parse(stdout || '[]');
+
+        // On Mac, ensure helper is installed first if needed
+        if (process.platform === 'darwin') {
+          try {
+            await execPromise('/usr/local/bin/podman-mac-helper', ['--version']);
+          } catch {
+            mainLogger.info('Podman Mac Helper not found, attempting elevated installation...');
+            const helperPath = getBinaryPath('podman-mac-helper');
+            // Use osascript to prompt for administrator password
+            const appleScript = `do shell script "${helperPath} install" with administrator privileges`;
+            await execPromise('osascript', ['-e', appleScript]);
+            mainLogger.info('Podman Mac Helper installed successfully.');
+          }
+        }
 
         if (machines.length === 0) {
           mainLogger.info('No podman machine found, initializing...');
@@ -470,11 +485,11 @@ export const registerIpcHandlers = (
             initArgs.push('--image', bundledImagePath);
             mainLogger.info(`Using bundled Podman machine image at ${bundledImagePath}`);
           }
-          await execPromise('podman', initArgs);
+          await execPromise(getBinaryPath('podman'), initArgs);
         }
-
+ 
         mainLogger.info('Starting podman machine...');
-        const { code } = await execPromise('podman', ['machine', 'start']);
+        const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
         return code === 0;
       }
 
@@ -537,10 +552,25 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.benchesCreate, async (_event: unknown, input: unknown) => {
     const rawInput = input as BenchCreateInput;
+    const benches = await repositories.benches.findAll();
+    const normalizedPath = resolveUserPath(rawInput.path);
+    
+    // Check for duplicate name or path
+    if (benches.some((b) => b.name === rawInput.name)) {
+      throw new Error(`A bench with the name "${rawInput.name}" already exists.`);
+    }
+    if (benches.some((b) => b.path === normalizedPath)) {
+      throw new Error(`A bench is already registered at this path.`);
+    }
+
+    const existingPorts = benches.map(b => b.httpPort).filter((p): p is number => p !== undefined);
+    const nextPort = existingPorts.length > 0 ? Math.max(...existingPorts) + 1 : 8080;
+
     const payload = CreateBenchInputSchema.parse({
       ...rawInput,
       path: resolveUserPath(rawInput.path),
       status: 'queued',
+      httpPort: nextPort,
     });
     const created = await repositories.benches.create(payload);
     operations.trackBenchOperation?.(created.id, 'create');
@@ -561,9 +591,24 @@ export const registerIpcHandlers = (
       ...rawInput,
       ...(typeof rawInput.path === 'string' ? { path: resolveUserPath(rawInput.path) } : {}),
     });
+
+    const benches = await repositories.benches.findAll();
+    const existing = benches.find(b => b.id === id);
+
     const updated = await repositories.benches.update(id, payload);
     if (updated) {
       operations.trackBenchOperation?.(updated.id, 'update');
+
+      // Handle status transition orchestration. 
+      // We allow 'running' even if already running to support 'Restart' action.
+      if (payload.status && (payload.status !== existing?.status || payload.status === 'running')) {
+        if (payload.status === 'running') {
+          const isRestart = existing?.status === 'running';
+          orchestrateBenchStart(updated, repositories.benches, isRestart);
+        } else if (payload.status === 'stopped') {
+          orchestrateBenchStop(updated, repositories.benches);
+        }
+      }
     }
     return updated ? toBenchListItem(updated) : null;
   });
@@ -573,23 +618,14 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    const benches = await repositories.benches.findAll();
-    const bench = benches.find((entry) => entry.id === id);
-    if (!bench || bench.status === 'running') {
+    const bench = await repositories.benches.findById(id);
+    if (!bench) {
       return false;
     }
 
-    const sites = await repositories.sites.findAll();
-    const hasAttachedSites = sites.some((site) => site.benchId === id);
-    if (hasAttachedSites) {
-      return false;
-    }
-
-    const deleted = await repositories.benches.delete(id);
-    if (deleted) {
-      operations.trackBenchOperation?.(id, 'delete');
-    }
-    return deleted;
+    orchestrateBenchDeletion(bench, repositories.benches, repositories.sites);
+    operations.trackBenchOperation?.(id, 'delete');
+    return true;
   });
 
   ipcMainLike.handle(ipcChannels.benchesLogs, async (_event: unknown, id: unknown) => {
@@ -630,6 +666,21 @@ export const registerIpcHandlers = (
       operations.trackBenchOperation?.(bench.id, 'open-folder');
     }
     return opened;
+  });
+
+  ipcMainLike.handle(ipcChannels.benchesCleanSites, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
+      return false;
+    }
+
+    orchestrateBenchCleaning(bench, repositories.sites);
+    return true;
   });
 
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
@@ -697,11 +748,18 @@ export const registerIpcHandlers = (
 
     const benches = await repositories.benches.findAll();
     const bench = benches.find((entry) => entry.id === site.benchId);
-    if (!bench || !canAttachSiteToBench(bench.status)) {
+    if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
       return false;
     }
 
-    const deleted = await repositories.sites.delete(id);
+    const deleted = await orchestrateSiteDeletion(
+      {
+        sites: repositories.sites,
+        benches: repositories.benches,
+      },
+      id
+    );
+
     if (deleted) {
       operations.trackSiteOperation?.(id, 'delete');
     }
@@ -1109,5 +1167,9 @@ export const registerIpcHandlers = (
     const settings = await repositories.settings.get();
     const editorPreference = settings?.editorPreference || 'code';
     return operations.openInEditor(devcontainerTarget, editorPreference);
+  });
+  ipcMainLike.handle(ipcChannels.utilsPathExists, async (_event: unknown, path: unknown) => {
+    if (typeof path !== 'string') return false;
+    return fs.existsSync(path);
   });
 };

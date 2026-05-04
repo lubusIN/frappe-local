@@ -6,6 +6,7 @@ import type { DiagnosticsCheckResult, DiagnosticsReport } from '../shared/domain
 import type { Settings } from '../shared/domain/models';
 import { createMainLogger } from './logger';
 import { execPromise } from './utils/exec';
+import { getBinaryPath } from './utils/binaries';
 import { getRuntimeEnv } from './runtime-service';
 
 type DiagnosticsContext = {
@@ -107,7 +108,7 @@ const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => 
   const checks: DiagnosticsCheckResult[] = [];
   
   try {
-    const { code } = await execPromise('docker-compose', ['--version']);
+    const { code } = await execPromise(getBinaryPath('docker-compose'), ['--version'], undefined, undefined, undefined, 10000);
     if (code === 0) {
       checks.push({
         type: 'runtime-health',
@@ -133,6 +134,34 @@ const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => 
   return checks;
 };
 
+const checkPodmanHelper = async (): Promise<DiagnosticsCheckResult | null> => {
+  if (process.platform !== 'darwin') return null;
+  
+  try {
+    const { code } = await execPromise('/usr/local/bin/podman-mac-helper', ['--version']);
+    if (code === 0) {
+      return {
+        type: 'runtime-health',
+        status: 'passed',
+        title: 'Podman Mac Helper',
+        description: 'Podman Mac Helper is installed and accessible',
+        timestamp: new Date().toISOString(),
+      };
+    }
+  } catch {
+    // Ignore error and fall through to failure
+  }
+
+  return {
+    type: 'runtime-health',
+    status: 'failed',
+    title: 'Podman Mac Helper',
+    description: 'Podman Mac Helper is not installed. This is required for rootless privileged ports and machine management.',
+    remediation: 'Install the helper using: sudo podman-mac-helper install',
+    timestamp: new Date().toISOString(),
+  };
+};
+
 const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
   let podmanAvailable = false;
@@ -141,7 +170,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
 
   // Check 1: Podman Binary
   try {
-    const { code } = await execPromise('podman', ['--version']);
+    const { code } = await execPromise(getBinaryPath('podman'), ['--version'], undefined, undefined, undefined, 10000);
     if (code === 0) {
       podmanAvailable = true;
       checks.push({
@@ -166,6 +195,11 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
     return checks; // Cannot proceed with further podman checks
   }
 
+  const helperCheck = await checkPodmanHelper();
+  if (helperCheck) {
+    checks.push(helperCheck);
+  }
+
   // Check 2: Podman System Connection / VM Status
   if (podmanAvailable) {
     const isVmRequired = process.platform === 'darwin' || process.platform === 'win32';
@@ -180,7 +214,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
 
     if (isVmRequired) {
       try {
-        const { stdout, code } = await execPromise('podman', ['machine', 'ls', '--format', 'json']);
+        const { stdout, code } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json'], undefined, undefined, undefined, 10000);
         if (code === 0) {
           const machines = parsePodmanJson(stdout);
 
@@ -234,7 +268,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   // Check 3: Podman Engine Connection
   if (podmanAvailable) {
     try {
-      const { code } = await execPromise('podman', ['ps']);
+      const { code } = await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 10000);
       if (code === 0) {
         checks.push({
           type: 'runtime-health',
@@ -260,7 +294,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
     // Check 4: Orchestrator Engine Connection
     try {
       const runtimeEnv = await getRuntimeEnv();
-      const { code, stderr } = await execPromise('docker-compose', ['version'], undefined, undefined, runtimeEnv);
+      const { code, stderr } = await execPromise(getBinaryPath('docker-compose'), ['version'], undefined, undefined, runtimeEnv, 10000);
       if (code === 0) {
         checks.push({
           type: 'runtime-health',

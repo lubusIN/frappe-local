@@ -46,8 +46,6 @@ export const useDiagnostics = () => {
     ipc.getLastDiagnosticsReport().then((last) => {
       if (last) {
         report.value = last;
-      } else {
-        void run();
       }
     });
   });

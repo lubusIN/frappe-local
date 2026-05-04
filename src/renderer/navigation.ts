@@ -60,6 +60,12 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     title: 'Diagnostics',
     description: 'Monitor system health and fix runtime issues.',
   },
+  {
+    path: '/settings',
+    name: 'settings',
+    title: 'Settings',
+    description: 'Configure application preferences and environment defaults.',
+  },
 ];
 
 export const navigationItems: NavigationItem[] = [
@@ -102,5 +108,10 @@ export const navigationItems: NavigationItem[] = [
     label: 'Diagnostics',
     description: 'Check Podman status and system health.',
     path: '/diagnostics',
+  },
+  {
+    label: 'Settings',
+    description: 'Configure app preferences.',
+    path: '/settings',
   },
 ];

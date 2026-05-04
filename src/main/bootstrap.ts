@@ -124,15 +124,7 @@ export const runApplicationBootstrap = async (
       groups: new GroupRepository(adapter),
     };
 
-    const initialDiagnosticsReport = await runDiagnostics({
-      runtimePaths: context.runtimePaths,
-      settingsRepository: repositories.settings,
-      appVersion: context.appVersion,
-    });
 
-    if (initialDiagnosticsReport.hasCriticalIssues || initialDiagnosticsReport.hasWarnings) {
-      bootstrapLogger.warn(`startup diagnostics: ${initialDiagnosticsReport.summary}`);
-    }
 
     const benchAnalytics = new InMemoryBenchAnalytics();
     const siteAnalytics = new InMemorySiteAnalytics();
@@ -150,7 +142,8 @@ export const runApplicationBootstrap = async (
       trackSiteOperation: (siteId, operation) => {
         siteAnalytics.track(siteId, operation);
       },
-    }, undefined, undefined, context.appVersion, context.runtimePaths, initialDiagnosticsReport);
+    }, undefined, undefined, context.appVersion, context.runtimePaths, undefined);
+    
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');
   } catch (error) {

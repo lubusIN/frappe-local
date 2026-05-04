@@ -9,6 +9,7 @@ export type SiteWizardDraft = {
   readonly groupId: string;
   readonly appsText: string;
   readonly appsSelected?: string[];
+  readonly force: boolean;
 };
 
 export type SiteWizardBuildResult = {
@@ -78,6 +79,7 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
       path: draft.path.trim(),
       groupId: draft.groupId.trim() ? draft.groupId.trim() : null,
       apps: selectedApps.length > 0 ? selectedApps : parseAppsText(draft.appsText),
+      force: draft.force,
     },
     errors: [],
   };

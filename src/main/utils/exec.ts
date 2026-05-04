@@ -11,15 +11,13 @@ export const execPromise = (
   args: string[],
   cwd?: string,
   onOutput?: (data: string) => void,
-  env?: NodeJS.ProcessEnv
+  env?: NodeJS.ProcessEnv,
+  timeout = 0
 ): Promise<ExecResult> => {
   return new Promise((resolve, reject) => {
     let stdout = '';
     let stderr = '';
 
-    // Merge process.env (which includes the bundled bin/ PATH from main.ts)
-    // with any additional env vars. Use shell: false to avoid zsh profile
-    // resetting PATH and losing our bundled binaries.
     const mergedEnv = { ...process.env, ...env };
 
     const child = spawn(command, args, {
@@ -27,6 +25,16 @@ export const execPromise = (
       shell: false,
       env: mergedEnv,
     });
+
+    onOutput?.(`$ ${command} ${args.join(' ')}\n`);
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    if (timeout > 0) {
+      timeoutId = setTimeout(() => {
+        child.kill();
+        reject(new Error(`Command timed out after ${timeout}ms: ${command} ${args.join(' ')}`));
+      }, timeout);
+    }
 
     child.stdout.on('data', (chunk: Buffer) => {
       const data = chunk.toString();
@@ -40,9 +48,13 @@ export const execPromise = (
       onOutput?.(data);
     });
 
-    child.on('error', reject);
+    child.on('error', (err) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      reject(err);
+    });
 
     child.on('close', (code) => {
+      if (timeoutId) clearTimeout(timeoutId);
       resolve({ stdout, stderr, code });
     });
   });

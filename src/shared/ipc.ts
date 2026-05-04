@@ -18,6 +18,7 @@ export const ipcChannels = {
   benchesDelete: 'benches:delete',
   benchesLogs: 'benches:logs',
   benchesOpenFolder: 'benches:open-folder',
+  benchesCleanSites: 'benches:clean-sites',
   sitesList: 'sites:list',
   sitesCreate: 'sites:create',
   sitesUpdate: 'sites:update',
@@ -49,6 +50,7 @@ export const ipcChannels = {
   taskRunnerSubscribe: 'task-runner:subscribe',
   taskRunnerUnsubscribe: 'task-runner:unsubscribe',
   taskRunnerProgressEvent: 'task-runner:progress-event',
+  utilsPathExists: 'utils:path-exists',
 } as const;
 
 export type AppHealthResponse = {
@@ -307,6 +309,7 @@ export type RendererBridge = {
   readonly deleteBench: (id: string) => Promise<boolean>;
   readonly listBenchLogs: (id: string) => Promise<LifecycleLogItem[]>;
   readonly openBenchFolder: (id: string) => Promise<boolean>;
+  readonly cleanBenchSites: (id: string) => Promise<boolean>;
   readonly listSites: () => Promise<SiteListItem[]>;
   readonly createSite: (input: SiteCreateInput) => Promise<SiteListItem>;
   readonly updateSite: (id: string, input: SiteUpdateInput) => Promise<SiteListItem | null>;
@@ -337,6 +340,7 @@ export type RendererBridge = {
   readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;
+  readonly pathExists: (path: string) => Promise<boolean>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

@@ -19,6 +19,7 @@ const rendererBridge: RendererBridge = {
 	deleteBench: async (id) => ipcRenderer.invoke(ipcChannels.benchesDelete, id),
 	listBenchLogs: async (id) => ipcRenderer.invoke(ipcChannels.benchesLogs, id),
 	openBenchFolder: async (id) => ipcRenderer.invoke(ipcChannels.benchesOpenFolder, id),
+	cleanBenchSites: async (id) => ipcRenderer.invoke(ipcChannels.benchesCleanSites, id),
 	listSites: async () => ipcRenderer.invoke(ipcChannels.sitesList),
 	createSite: async (input) => ipcRenderer.invoke(ipcChannels.sitesCreate, input),
 	updateSite: async (id, input) => ipcRenderer.invoke(ipcChannels.sitesUpdate, id, input),
@@ -80,6 +81,7 @@ const rendererBridge: RendererBridge = {
 			ipcRenderer.removeListener(ipcChannels.taskRunnerProgressEvent, handler);
 		};
 	},
+	pathExists: async (path: string) => ipcRenderer.invoke(ipcChannels.utilsPathExists, path),
 };
 
 contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);

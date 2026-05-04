@@ -16,7 +16,7 @@ export const BenchSchema = z.object({
   name: nonEmptyString,
   path: nonEmptyString,
   frappeVersion: nonEmptyString,
-
+  httpPort: z.number().int().min(1024).max(65535).optional(),
   status: EntityStatusSchema,
   apps: z.array(nonEmptyString),
   timestamps: TimestampsSchema,

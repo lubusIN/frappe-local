@@ -1,4 +1,5 @@
 import { execPromise } from './utils/exec';
+import { getBinaryPath } from './utils/binaries';
 import { createMainLogger } from './logger';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -34,12 +35,12 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
   if (process.platform === 'darwin' || process.platform === 'win32') {
     try {
       // Try machine inspect first (most reliable for machine-based podman)
-      let { stdout } = await execPromise('podman', ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
+      let { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
       let socketPath = stdout.trim();
       
       // If that fails, try podman info (works if the machine is already the default context)
       if (!socketPath) {
-        const infoResult = await execPromise('podman', ['info', '--format', '{{.Host.RemoteSocket.Path}}']);
+        const infoResult = await execPromise(getBinaryPath('podman'), ['info', '--format', '{{.Host.RemoteSocket.Path}}']);
         socketPath = infoResult.stdout.trim();
       }
 
@@ -61,7 +62,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
 async function ensurePodmanRunning(): Promise<boolean> {
   try {
     // 1. Check if podman binary is available
-    await execPromise('podman', ['--version']);
+    await execPromise(getBinaryPath('podman'), ['--version']);
   } catch {
     logger.error('Podman binary not found');
     return false;
@@ -70,16 +71,16 @@ async function ensurePodmanRunning(): Promise<boolean> {
   // 2. On Mac/Windows, check machine status
   if (process.platform === 'darwin' || process.platform === 'win32') {
     try {
-      const { stdout } = await execPromise('podman', ['machine', 'ls', '--format', 'json']);
+      const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
       const machines = JSON.parse(stdout || '[]');
       
       if (machines.length === 0) {
         logger.info('No podman machine found, initializing default...');
-        await execPromise('podman', ['machine', 'init']);
+        await execPromise(getBinaryPath('podman'), ['machine', 'init']);
       }
 
       // Check if any machine is running
-      const { stdout: statusOutput } = await execPromise('podman', ['machine', 'ls', '--format', 'json']);
+      const { stdout: statusOutput } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
       const refreshedMachines = JSON.parse(statusOutput || '[]');
       const running = refreshedMachines.some((m: any) => m.Running || m.LastUp); 
       
@@ -88,7 +89,7 @@ async function ensurePodmanRunning(): Promise<boolean> {
 
       if (!isActuallyRunning) {
         logger.info('Starting podman machine...');
-        const { code } = await execPromise('podman', ['machine', 'start']);
+        const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
         if (code !== 0) {
           logger.error('Failed to start podman machine');
           return false;

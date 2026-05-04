@@ -24,73 +24,76 @@
       compact
     />
 
-    <!-- Wizard form -->
-    <div v-if="allBenches.length > 0" class="form-card">
-      <div class="form-card__header">
-        <h3 class="form-card__title">Create new site</h3>
-        <div class="wizard-steps">
-          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }">1. Bench</span>
-          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }">2. Configure</span>
-          <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 3 }">3. Confirm</span>
+    <!-- Creation Dialog -->
+    <Dialog v-model="showCreateSiteModal" :options="{ title: 'New site', size: '3xl' }">
+      <template #body-content>
+        <div class="site-wizard-dialog">
+          <div class="wizard-header">
+            <div class="wizard-steps">
+              <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }">1. Bench</span>
+              <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }">2. Configure</span>
+              <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 3 }">3. Confirm</span>
+            </div>
+          </div>
+
+          <form class="form-body" @submit.prevent="onCreateSite">
+            <p v-if="wizardErrors.length > 0" class="form-error">{{ wizardErrors.join(' ') }}</p>
+
+            <div v-if="wizardStep === 1" class="form-grid">
+              <label class="form-field form-field--full">
+                <span class="form-label">Select bench</span>
+                <select v-model="createForm.benchId" :disabled="benchLoading" class="form-select">
+                  <option value="">Choose a bench…</option>
+                  <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
+                    {{ bench.name }} ({{ bench.status }})
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <div v-if="wizardStep === 2" class="form-grid">
+              <label class="form-field form-field--full">
+                <span class="form-label">Site name</span>
+                <input v-model="createForm.name" type="text" required placeholder="my-site.local" class="form-input" />
+                <p v-if="createForm.name" class="form-help">Path: {{ createForm.path }}</p>
+              </label>
+              <div class="form-field form-field--full form-field--switch">
+                <Switch
+                  v-model="createForm.force"
+                  label="Force"
+                  description="Overwrite existing site"
+                />
+              </div>
+              <label class="form-field form-field--full">
+                <span class="form-label">Apps</span>
+                <AppPicker
+                  v-model="createForm.appsSelected"
+                  :disabled="creating || loading"
+                  :frappe-version="selectedBench?.frappeVersion"
+                />
+              </label>
+            </div>
+
+            <div v-if="wizardStep === 3" class="wizard-summary">
+              <div class="wizard-summary__row"><span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong></div>
+              <div class="wizard-summary__row"><span>Site</span><strong>{{ createForm.name }}</strong></div>
+              <div class="wizard-summary__row"><span>Path</span><strong>{{ createForm.path }}</strong></div>
+              <div class="wizard-summary__row" v-if="createForm.force"><span>Force</span><strong>Yes (Overwrite)</strong></div>
+              <div class="wizard-summary__row"><span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong></div>
+            </div>
+          </form>
         </div>
-      </div>
-
-      <form class="form-body" @submit.prevent="onCreateSite">
-        <p v-if="wizardErrors.length > 0" class="form-error">{{ wizardErrors.join(' ') }}</p>
-
-        <div v-if="wizardStep === 1" class="form-grid">
-          <label class="form-field form-field--full">
-            <span class="form-label">Select bench</span>
-            <select v-model="createForm.benchId" :disabled="benchLoading">
-              <option value="">Choose a bench…</option>
-              <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
-                {{ bench.name }} ({{ bench.status }})
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <div v-if="wizardStep === 2" class="form-grid">
-          <label class="form-field">
-            <span class="form-label">Site name</span>
-            <input v-model="createForm.name" type="text" required placeholder="my-site.local" />
-          </label>
-          <label class="form-field">
-            <span class="form-label">Group ID (optional)</span>
-            <input v-model="createForm.groupId" type="text" placeholder="client-a" />
-          </label>
-          <label class="form-field form-field--full">
-            <span class="form-label">Path</span>
-            <input v-model="createForm.path" type="text" required placeholder="/path/to/site" />
-          </label>
-          <label class="form-field form-field--full">
-            <span class="form-label">Apps</span>
-            <AppPicker
-              v-model="createForm.appsSelected"
-              :disabled="creating || loading"
-
-              :frappe-version="selectedBench?.frappeVersion"
-            />
-          </label>
-        </div>
-
-        <div v-if="wizardStep === 3" class="wizard-summary">
-          <div class="wizard-summary__row"><span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong></div>
-          <div class="wizard-summary__row"><span>Site</span><strong>{{ createForm.name }}</strong></div>
-          <div class="wizard-summary__row"><span>Path</span><strong>{{ createForm.path }}</strong></div>
-          <div class="wizard-summary__row"><span>Group</span><strong>{{ createForm.groupId || 'None' }}</strong></div>
-          <div class="wizard-summary__row"><span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong></div>
-        </div>
-
-        <div class="form-actions">
-          <button v-if="wizardStep > 1" class="btn btn--subtle" type="button" @click="onPreviousStep">Back</button>
-          <button v-if="wizardStep < 3" class="btn btn--primary" type="button" @click="onNextStep">Next</button>
-          <button v-if="wizardStep === 3" class="btn btn--primary" type="submit" :disabled="creating || loading">
+      </template>
+      <template #actions>
+        <div class="dialog-actions">
+          <Button v-if="wizardStep > 1" theme="gray" variant="subtle" @click="onPreviousStep">Back</Button>
+          <Button v-if="wizardStep < 3" theme="gray" variant="solid" @click="onNextStep">Next</Button>
+          <Button v-if="wizardStep === 3" theme="gray" variant="solid" :loading="creating" :disabled="loading" @click="onCreateSite">
             {{ creating ? 'Creating…' : 'Create site' }}
-          </button>
+          </Button>
         </div>
-      </form>
-    </div>
+      </template>
+    </Dialog>
 
     <StatePanel
       v-if="!error && loading"
@@ -103,6 +106,12 @@
       <div class="bench-empty-state__content">
         <h2 class="bench-empty-state__title">No sites yet</h2>
         <p class="bench-empty-state__description">Create your first site to manage runtime status, inspect logs, and open paths quickly.</p>
+        <div v-if="creatableBenches.length > 0" class="bench-empty-state__actions">
+          <Button theme="gray" variant="solid" @click="showCreateSiteModal = true">Create site</Button>
+        </div>
+        <div v-else class="bench-empty-state__actions">
+          <Button theme="gray" variant="subtle" @click="$router.push('/benches')">Go to Benches</Button>
+        </div>
       </div>
     </section>
 
@@ -149,11 +158,9 @@
             </div>
           </template>
           <template v-else-if="column.key === 'benchId'">
-            <span class="cell-text cell-text--secondary">{{ row.benchId }}</span>
+            <span class="cell-text cell-text--secondary">{{ getBenchName(row.benchId) }}</span>
           </template>
-          <template v-else-if="column.key === 'groupId'">
-            <span class="cell-text cell-text--secondary">{{ row.groupId ?? '—' }}</span>
-          </template>
+
           <template v-else-if="column.key === 'appCount'">
             <span class="cell-text cell-text--secondary">{{ row.appCount }}</span>
           </template>
@@ -163,8 +170,8 @@
               :class="`status-pill--${row.status}`"
               @click.stop="onStatusClick(row.id, 'site')"
             >
-              {{ formatStatusLabel(row.status) }}
-              <span v-if="row.status === 'queued'" class="status-spinner"></span>
+              {{ formatStatusLabel(row) }}
+              <span v-if="isResourceBusy(row.id, 'site')" class="status-spinner"></span>
             </span>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -240,7 +247,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { Badge, Button, Dialog, Dropdown, ListView, ListHeader, ListRows, ListEmptyState } from 'frappe-ui';
+import { Badge, Button, Dialog, Dropdown, ListView, ListHeader, ListRows, ListEmptyState, Switch, toast } from 'frappe-ui';
+import IconPlus from '~icons/lucide/plus';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconCheckCircle from '~icons/lucide/check-circle';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
@@ -259,6 +267,8 @@ import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
 import { useIpc } from '../composables/useIpc';
+
+const ipc = useIpc();
 import { useSites } from '../composables/useSites';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
@@ -292,20 +302,7 @@ const {
 
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
 
-watch(() => loading.value, () => {
-  setPageHeaderActions([
-    {
-      id: 'sites-refresh',
-      label: loading.value ? 'Refreshing…' : 'Refresh',
-      variant: 'subtle',
-      disabled: loading.value,
-      icon: IconRotateCcw,
-      onClick: () => {
-        void refresh();
-      },
-    },
-  ]);
-}, { immediate: true });
+
 
 onBeforeUnmount(() => {
   clearPageHeaderActions();
@@ -319,10 +316,30 @@ const selectedTask = computed(() => {
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
-const formatStatusLabel = (status: string) => {
-  if (status === 'queued') return 'Creating...';
-  if (status === 'running') return 'Running';
-  return status;
+const formatStatusLabel = (row: any) => {
+  // Check for active tasks first
+  const task = (tasks.value || []).find(
+    (t) => t.resourceId === row.id && t.resource === 'site' && (t.status === 'running' || t.status === 'queued')
+  );
+
+  if (task) {
+    const name = task.taskName.toLowerCase();
+    if (name.includes('create site')) return 'Creating';
+    if (name.includes('stop site')) return 'Stopping';
+    if (name.includes('start site')) return 'Starting';
+    return task.stepName || 'Processing';
+  }
+
+  if (row.status === 'running') return 'Running';
+  if (row.status === 'stopped') return 'Stopped';
+  if (row.status === 'queued') return 'Queued';
+  if (row.status === 'failure') return 'Failed';
+  return row.status;
+};
+
+const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
+  const task = (tasks.value || []).find(t => t.resourceId === id && t.resource === resource);
+  return task && (task.status === 'running' || task.status === 'queued');
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
@@ -351,7 +368,6 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
 const siteColumns = [
   { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
   { key: 'benchId', label: 'Bench', width: '120px' },
-  { key: 'groupId', label: 'Group', width: '100px' },
   { key: 'appCount', label: 'Apps', width: '80px' },
   { key: 'status', label: 'Status', width: '120px' },
   { key: 'actions', label: '', width: '60px' },
@@ -433,8 +449,10 @@ const createForm = reactive({
   path: '',
   appsText: '',
   appsSelected: [] as string[],
+  force: false,
 });
 
+const showCreateSiteModal = ref(false);
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<string[]>([]);
 const allBenches = ref<Awaited<ReturnType<ReturnType<typeof useIpc>['listBenches']>>>([]);
@@ -458,7 +476,7 @@ const loadBenchOptions = async () => {
   benchLoading.value = true;
 
   try {
-    const ipc = useIpc();
+
     const benches = await ipc.listBenches();
     allBenches.value = benches;
   } catch (err) {
@@ -469,13 +487,8 @@ const loadBenchOptions = async () => {
 };
 
 const applyPathDefault = () => {
-  if (!selectedBench.value || !createForm.name.trim()) {
-    return;
-  }
-
-  if (!createForm.path.trim()) {
-    createForm.path = suggestSitePath(selectedBench.value.path, createForm.name);
-  }
+  if (!selectedBench.value) return;
+  createForm.path = suggestSitePath(selectedBench.value.path, createForm.name);
 };
 
 watch(
@@ -492,8 +505,25 @@ watch(
   }
 );
 
-const onNextStep = () => {
+const onNextStep = async () => {
   const errors = getSiteWizardStepErrors(wizardStep.value, createForm);
+
+  if (wizardStep.value === 2) {
+    // 1. Check against local site list (database)
+    const duplicateInDb = sites.value.find(s => s.name === createForm.name.trim());
+    if (duplicateInDb && !createForm.force) {
+      errors.push(`A site named "${createForm.name}" already exists in the database. Enable "Force create" to overwrite.`);
+    }
+
+    // 2. Check against filesystem
+    if (!createForm.force) {
+      const exists = await ipc.pathExists(createForm.path);
+      if (exists) {
+        errors.push('Site already exists at this path. Enable "Force create" to overwrite.');
+      }
+    }
+  }
+
   wizardErrors.value = errors;
 
   if (errors.length > 0) {
@@ -512,6 +542,11 @@ const onPreviousStep = () => {
   }
 };
 
+const getBenchName = (id: string) => {
+  const bench = allBenches.value.find((b) => b.id === id);
+  return bench ? bench.name : id;
+};
+
 const onCreateSite = async () => {
   const result = buildSiteCreatePayload(createForm);
   wizardErrors.value = result.errors;
@@ -522,6 +557,7 @@ const onCreateSite = async () => {
 
   await create(result.payload);
 
+  showCreateSiteModal.value = false;
   createForm.name = '';
   createForm.benchId = '';
   createForm.groupId = '';
@@ -627,7 +663,7 @@ const onOpenSiteFolder = async (id: string) => {
 const onExportSite = async (id: string, name: string) => {
   try {
     exporting.value = true;
-    const ipc = useIpc();
+
     
     // Prompt user for output directory
     const outputDir = window.prompt(`Enter output directory path for exporting "${name}":`);
@@ -654,6 +690,36 @@ const onExportSite = async (id: string, name: string) => {
 onMounted(() => {
   void loadBenchOptions();
 });
+
+watch([() => loading.value, () => creatableBenches.value.length], () => {
+  const actions = [];
+
+  if (creatableBenches.value.length > 0) {
+    actions.push({
+      id: 'sites-create',
+      label: 'Create',
+      variant: 'primary',
+      disabled: loading.value,
+      icon: IconPlus,
+      onClick: () => {
+        showCreateSiteModal.value = true;
+      },
+    });
+  }
+
+  actions.push({
+    id: 'sites-refresh',
+    label: loading.value ? 'Refreshing…' : 'Refresh',
+    variant: 'subtle',
+    disabled: loading.value,
+    icon: IconRotateCcw,
+    onClick: () => {
+      void refresh();
+    },
+  });
+
+  setPageHeaderActions(actions);
+}, { immediate: true });
 </script>
 
 <style scoped>
@@ -738,6 +804,12 @@ onMounted(() => {
   font-size: 16px;
   line-height: 1.35;
   color: var(--text-secondary);
+}
+
+.bench-empty-state__actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .sites-view {
@@ -854,7 +926,16 @@ onMounted(() => {
 }
 
 .form-field--full {
-  grid-column: 1 / -1;
+  grid-column: span 2;
+}
+
+.form-field--switch {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  margin-top: 4px;
 }
 
 .form-label {
@@ -990,7 +1071,8 @@ onMounted(() => {
 .status-pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  gap: 6px;
+  padding: 2px 10px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 500;
@@ -1030,19 +1112,38 @@ onMounted(() => {
 }
 
 .status-spinner {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 6px;
+  display: block;
+  width: 10px;
+  height: 10px;
   border: 1.5px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.form-help {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.site-wizard-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.wizard-header {
+  margin-bottom: 4px;
 }
 
 /* Logs panel */

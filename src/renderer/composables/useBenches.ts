@@ -13,8 +13,10 @@ export const useBenches = () => {
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
-  const load = async () => {
-    loading.value = true;
+  const load = async (silent = false) => {
+    if (!silent) {
+      loading.value = true;
+    }
     error.value = null;
 
     try {
@@ -24,7 +26,9 @@ export const useBenches = () => {
       error.value = String(err);
       benches.value = [];
     } finally {
-      loading.value = false;
+      if (!silent) {
+        loading.value = false;
+      }
     }
   };
 
@@ -76,14 +80,10 @@ export const useBenches = () => {
     try {
       const ipc = useIpc();
       const deleted = await ipc.deleteBench(id);
-
-      if (!deleted) {
-        error.value = 'Unable to delete bench. Stop it and remove attached sites first.';
-        return;
+      if (deleted) {
+        await load();
+        successMessage.value = 'Bench deletion started.';
       }
-
-      benches.value = benches.value.filter((bench) => bench.id !== id);
-      successMessage.value = 'Bench deleted.';
     } catch (err) {
       error.value = String(err);
     } finally {
@@ -126,12 +126,32 @@ export const useBenches = () => {
     }
   };
 
+  const cleanSites = async (id: string) => {
+    updating.value = true;
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const cleaning = await ipc.cleanBenchSites(id);
+      if (!cleaning) {
+        error.value = 'Unable to clean bench. Verify the bench is running.';
+        return;
+      }
+      successMessage.value = 'Bench cleaning task started.';
+    } catch (err) {
+      error.value = String(err);
+    } finally {
+      updating.value = false;
+    }
+  };
+
   const pollingInterval = ref<ReturnType<typeof setInterval> | null>(null);
 
   const startPolling = () => {
     if (pollingInterval.value) return;
     pollingInterval.value = setInterval(() => {
-      void load();
+      void load(true);
     }, 3000);
   };
 
@@ -174,6 +194,7 @@ export const useBenches = () => {
     remove,
     listLogs,
     openFolder,
+    cleanSites,
     refresh: load,
   };
 };

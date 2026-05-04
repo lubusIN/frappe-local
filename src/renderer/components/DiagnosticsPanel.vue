@@ -46,7 +46,7 @@
         </div>
 
         <div class="diagnostics-grid">
-          <div v-for="check in report.checks" :key="`${check.type}-${check.timestamp}`" class="check-card">
+          <div v-for="check in report.checks" :key="`${check.type}-${check.title}`" class="check-card">
             <div class="check-card__header">
               <strong class="check-card__title">{{ check.title }}</strong>
               <span class="status-pill" :class="`status-pill--${check.status}`">
