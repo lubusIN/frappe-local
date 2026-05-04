@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs';
 import { execPromise } from './utils/exec';
 import { getBinaryPath } from './utils/binaries';
 import type { Bench, Site } from '../shared/domain/models';
@@ -6,6 +7,7 @@ import type { SiteCreateInput } from '../shared/ipc';
 import { canAttachSiteToBench } from '../shared/domain/site-lifecycle';
 import { getTaskRunner } from './task-runner';
 import { getRuntimeEnv } from './runtime-service';
+import { addHostsEntry, removeHostsEntry } from './hosts-manager';
 
 export type SiteCreationDependencies = {
   readonly benches: {
@@ -63,7 +65,7 @@ export const orchestrateSiteCreation = async (
         context.startStep('new-site', `Running bench new-site ${input.name}`);
         
         // We assume the service name is 'backend' in frappe_docker
-        const dbPassword = 'admin';
+        const dbPassword = '123';
         const adminPassword = 'admin';
         
         const runtimeEnv = await getRuntimeEnv();
@@ -74,7 +76,7 @@ export const orchestrateSiteCreation = async (
           'bench',
           'new-site',
           input.force ? '--force' : '',
-          '--no-mariadb-socket',
+          '--mariadb-user-host-login-scope', '%',
           '--db-host', 'db',
           '--admin-password', adminPassword,
           '--db-root-password', dbPassword,
@@ -98,6 +100,15 @@ export const orchestrateSiteCreation = async (
         }
         
         context.completeStep('new-site', 'Site created successfully');
+
+        context.startStep('hosts', 'Configuring local domain');
+        const hostsAdded = await addHostsEntry(input.name, bench.id);
+        if (hostsAdded) {
+          context.completeStep('hosts', `Mapped ${input.name} → 127.0.0.1`);
+        } else {
+          context.log('warning', `Could not add hosts entry for ${input.name}. You may need to add it manually to /etc/hosts.`, 'hosts');
+        }
+
         await dependencies.sites.update(createdSite.id, { status: 'running' });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -114,6 +125,7 @@ export const orchestrateSiteDeletion = async (
   dependencies: {
     sites: {
       findById: (id: string) => Promise<Site | null>;
+      update: (id: string, input: { status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Site | null>;
       delete: (id: string) => Promise<boolean>;
     };
     benches: {
@@ -130,6 +142,8 @@ export const orchestrateSiteDeletion = async (
     return dependencies.sites.delete(siteId);
   }
 
+  await dependencies.sites.update(siteId, { status: 'queued' });
+
   const taskRunner = getTaskRunner();
   taskRunner.enqueue({
     name: `Delete Site: ${site.name}`,
@@ -140,7 +154,7 @@ export const orchestrateSiteDeletion = async (
         const runtimeCmd = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
         const runtimeEnv = await getRuntimeEnv();
-        const dbPassword = 'admin';
+        const dbPassword = '123';
 
         const args = [
           '-p', projectName,
@@ -149,30 +163,57 @@ export const orchestrateSiteDeletion = async (
           'bench',
           'drop-site',
           '--no-backup',
-          '--root-password', dbPassword,
+          '--db-root-username', 'root',
+          '--db-root-password', dbPassword,
           '--force',
           site.name
         ];
 
         context.log('info', `Running: ${runtimeCmd} ${args.join(' ')}`, 'drop-site');
 
-        const { code, stderr } = await execPromise(
-          runtimeCmd,
-          args,
-          bench.path,
-          (out) => context.log('info', out, 'drop-site'),
-          runtimeEnv
-        );
+        try {
+          const { code, stderr } = await execPromise(
+            runtimeCmd,
+            args,
+            bench.path,
+            (out) => context.log('info', out, 'drop-site'),
+            runtimeEnv
+          );
 
-        if (code !== 0) {
-          throw new Error(`Command failed with code ${code}: ${stderr}`);
+          if (code !== 0) {
+            context.log('warning', `Command failed with code ${code}: ${stderr}`, 'drop-site');
+          } else {
+            context.completeStep('drop-site', 'Site dropped successfully');
+          }
+        } catch (execError) {
+          const message = execError instanceof Error ? execError.message : String(execError);
+          context.log('warning', `Failed to drop site database: ${message}`, 'drop-site');
         }
 
-        context.completeStep('drop-site', 'Site dropped successfully');
+        context.startStep('rm-dir', `Removing site directory`);
+        try {
+          const siteFolderPath = path.join(bench.path, 'sites', site.name);
+          if (fs.existsSync(siteFolderPath)) {
+            fs.rmSync(siteFolderPath, { recursive: true, force: true });
+          }
+          context.completeStep('rm-dir', `Site directory removed`);
+        } catch (fsError) {
+          context.log('warning', `Failed to remove site directory: ${fsError instanceof Error ? fsError.message : String(fsError)}`, 'rm-dir');
+        }
+
+        context.startStep('hosts', 'Removing local domain mapping');
+        const hostsRemoved = await removeHostsEntry(site.name);
+        if (hostsRemoved) {
+          context.completeStep('hosts', `Removed ${site.name} from /etc/hosts`);
+        } else {
+          context.log('warning', `Could not remove hosts entry for ${site.name}. You may need to remove it manually from /etc/hosts.`, 'hosts');
+        }
+
         await dependencies.sites.delete(siteId);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         context.log('error', message, 'drop-site');
+        await dependencies.sites.update(siteId, { status: 'failure' });
         throw error;
       }
     }

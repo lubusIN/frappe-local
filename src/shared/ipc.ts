@@ -99,7 +99,7 @@ export type BenchListItem = {
   readonly name: string;
   readonly path: string;
   readonly frappeVersion: string;
-
+  readonly httpPort?: number;
   readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly appCount: number;
   readonly apps: string[];

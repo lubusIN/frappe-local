@@ -8,6 +8,7 @@ import { getTaskRunner } from './task-runner';
 import type { Bench, Site } from '../shared/domain/models';
 import type { AppRuntimePaths } from './config';
 import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
+import { removeAllHostsEntriesForBench } from './hosts-manager';
 
 const ensureBenchEnvConfigured = (benchPath: string, frappeVersion: string, httpPort?: number) => {
   const exampleEnvPath = path.join(benchPath, 'example.env');
@@ -299,7 +300,7 @@ export const orchestrateBenchCleaning = (
           context.startStep('drop', `Dropping site ${siteName}`);
           const runtimeCmd = getBinaryPath('docker-compose');
           const runtimeEnv = await getRuntimeEnv();
-          const dbPassword = 'admin';
+          const dbPassword = '123';
 
           const args = [
             'exec',
@@ -307,7 +308,8 @@ export const orchestrateBenchCleaning = (
             'bench',
             'drop-site',
             '--no-backup',
-            '--root-password', dbPassword,
+            '--db-root-username', 'root',
+            '--db-root-password', dbPassword,
             '--force',
             siteName
           ];
@@ -382,6 +384,15 @@ export const orchestrateBenchDeletion = (
         // Remove bench
         await benchesRepo.delete(bench.id);
         context.completeStep('db', 'Database records removed');
+
+        // Remove hosts entries for all sites in this bench
+        context.startStep('hosts', 'Removing local domain mappings');
+        try {
+          await removeAllHostsEntriesForBench(bench.id);
+          context.completeStep('hosts', 'Domain mappings removed');
+        } catch (hostsErr) {
+          context.log('warning', `Could not remove hosts entries: ${hostsErr instanceof Error ? hostsErr.message : String(hostsErr)}`);
+        }
 
         // Remove folder
         context.startStep('fs', 'Removing bench directory');

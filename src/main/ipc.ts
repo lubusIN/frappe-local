@@ -271,7 +271,7 @@ const toBenchListItem = (bench: Bench): BenchListItem => ({
   name: bench.name,
   path: bench.path,
   frappeVersion: bench.frappeVersion,
-
+  httpPort: bench.httpPort,
   status: bench.status,
   appCount: bench.apps.length,
   apps: bench.apps,
@@ -754,19 +754,22 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.sitesDelete, async (_event: unknown, id: unknown) => {
     if (typeof id !== 'string') {
-      return false;
+      throw new Error('Invalid site ID provided.');
     }
 
     const sites = await repositories.sites.findAll();
     const site = sites.find((entry) => entry.id === id);
-    if (!site || site.status === 'running') {
-      return false;
+    if (!site) {
+      throw new Error('Site not found.');
+    }
+    if (site.status === 'running') {
+      throw new Error('Cannot delete a running site. Please stop it first.');
     }
 
     const benches = await repositories.benches.findAll();
     const bench = benches.find((entry) => entry.id === site.benchId);
-    if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
-      return false;
+    if (bench && bench.status !== 'running' && bench.status !== 'success') {
+      throw new Error(`Cannot delete site because its parent bench is not running. (Current status: ${bench.status})`);
     }
 
     const deleted = await orchestrateSiteDeletion(

@@ -327,6 +327,7 @@ const formatStatusLabel = (row: any) => {
     if (name.includes('create site')) return 'Creating';
     if (name.includes('stop site')) return 'Stopping';
     if (name.includes('start site')) return 'Starting';
+    if (name.includes('delete site')) return 'Deleting';
     return task.stepName || 'Processing';
   }
 
@@ -387,10 +388,12 @@ const getSiteActions = (site: any) => {
   const actions = [];
 
   if (site.status === 'running') {
+    const bench = allBenches.value.find(b => b.id === site.benchId);
+    const port = bench?.httpPort ?? 8080;
     actions.push({
       label: 'View',
       icon: IconExternalLink,
-      onClick: () => window.open(`http://${site.name}:8080`, '_blank'),
+      onClick: () => window.open(`http://${site.name}:${port}`, '_blank'),
     });
   }
 
@@ -433,7 +436,7 @@ const getSiteActions = (site: any) => {
     label: 'Delete',
     icon: IconTrash,
     theme: 'red',
-    disabled: updating.value || deleting.value || site.status === 'running',
+    disabled: updating.value || deleting.value || isResourceBusy(site.id, 'site'),
     onClick: () => onDeleteSite(site.id, site.name),
   });
 

@@ -75,17 +75,12 @@ export const useSites = () => {
 
     try {
       const ipc = useIpc();
-      const deleted = await ipc.deleteSite(id);
-
-      if (!deleted) {
-        error.value = 'Unable to delete site. Stop it before deleting.';
-        return;
-      }
-
-      sites.value = sites.value.filter((site) => site.id !== id);
-      successMessage.value = 'Site deleted.';
+      await ipc.deleteSite(id);
+      await load();
+      successMessage.value = 'Site deletion started.';
     } catch (err) {
-      error.value = String(err);
+      const message = err instanceof Error ? err.message : String(err);
+      error.value = message.replace(/^Error invoking remote method '[^']*': /, '');
     } finally {
       deleting.value = false;
     }
