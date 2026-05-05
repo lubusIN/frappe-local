@@ -1,7 +1,5 @@
 <template>
   <section class="sites-view">
-
-
     <StatePanel
       v-if="error"
       kind="error"
@@ -10,11 +8,6 @@
       action-label="Retry"
       @action="refresh"
     />
-
-    <div v-if="successMessage" class="alert alert--success">
-      <IconCheckCircle class="alert-icon" />
-      {{ successMessage }}
-    </div>
 
     <FirstRunGuide
       v-if="!loading && !benchLoading && allBenches.length === 0"
@@ -25,7 +18,7 @@
     />
 
     <!-- Creation Dialog -->
-    <Dialog v-model="showCreateSiteModal" :options="{ title: 'New site', size: '3xl' }">
+    <Dialog v-model="showCreateSiteModal" :options="{ title: 'New site', description: 'Create a new Frappe site in an existing bench.', size: '3xl' }">
       <template #body-content>
         <div class="site-wizard-dialog">
           <div class="wizard-header">
@@ -37,12 +30,12 @@
           </div>
 
           <form class="form-body" @submit.prevent="onCreateSite">
-            <p v-if="wizardErrors.length > 0" class="form-error">{{ wizardErrors.join(' ') }}</p>
+            <p v-if="wizardErrors.length > 0" class="text-red-500 text-sm mb-4">{{ wizardErrors.join(' ') }}</p>
 
             <div v-if="wizardStep === 1" class="form-grid">
-              <label class="form-field form-field--full">
-                <span class="form-label">Select bench</span>
-                <select v-model="createForm.benchId" :disabled="benchLoading" class="form-select">
+              <label class="form-field">
+                <span class="text-xs font-medium text-gray-600 mb-1">Select bench</span>
+                <select v-model="createForm.benchId" :disabled="benchLoading" class="p-2 border rounded">
                   <option value="">Choose a bench…</option>
                   <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
                     {{ bench.name }} ({{ bench.status }})
@@ -52,20 +45,18 @@
             </div>
 
             <div v-if="wizardStep === 2" class="form-grid">
-              <label class="form-field form-field--full">
-                <span class="form-label">Site name</span>
-                <input v-model="createForm.name" type="text" required placeholder="my-site.local" class="form-input" />
-                <p v-if="createForm.name" class="form-help">Path: {{ createForm.path }}</p>
+              <label class="form-field">
+                <span class="text-xs font-medium text-gray-600 mb-1">Site name</span>
+                <input v-model="createForm.name" type="text" required placeholder="my-site.local" class="p-2 border rounded" />
               </label>
-              <div class="form-field form-field--full form-field--switch">
+              <div class="flex items-center gap-2">
                 <Switch
                   v-model="createForm.force"
-                  label="Force"
-                  description="Overwrite existing site"
+                  label="Force create"
                 />
               </div>
-              <label class="form-field form-field--full">
-                <span class="form-label">Apps</span>
+              <label class="form-field">
+                <span class="text-xs font-medium text-gray-600 mb-1">Apps</span>
                 <AppPicker
                   v-model="createForm.appsSelected"
                   :disabled="creating || loading"
@@ -74,21 +65,20 @@
               </label>
             </div>
 
-            <div v-if="wizardStep === 3" class="wizard-summary">
-              <div class="wizard-summary__row"><span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong></div>
-              <div class="wizard-summary__row"><span>Site</span><strong>{{ createForm.name }}</strong></div>
-              <div class="wizard-summary__row"><span>Path</span><strong>{{ createForm.path }}</strong></div>
-              <div class="wizard-summary__row" v-if="createForm.force"><span>Force</span><strong>Yes (Overwrite)</strong></div>
-              <div class="wizard-summary__row"><span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong></div>
+            <div v-if="wizardStep === 3" class="wizard-summary p-4 bg-gray-50 rounded">
+              <div class="flex justify-between mb-2"><span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong></div>
+              <div class="flex justify-between mb-2"><span>Site</span><strong>{{ createForm.name }}</strong></div>
+              <div class="flex justify-between mb-2" v-if="createForm.force"><span>Force</span><strong>Yes</strong></div>
+              <div class="flex justify-between"><span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong></div>
             </div>
           </form>
         </div>
       </template>
       <template #actions>
         <div class="dialog-actions">
-          <Button v-if="wizardStep > 1" theme="gray" variant="subtle" @click="onPreviousStep">Back</Button>
-          <Button v-if="wizardStep < 3" theme="gray" variant="solid" @click="onNextStep">Next</Button>
-          <Button v-if="wizardStep === 3" theme="gray" variant="solid" :loading="creating" :disabled="loading" @click="onCreateSite">
+          <Button v-if="wizardStep > 1" variant="subtle" @click="onPreviousStep">Back</Button>
+          <Button v-if="wizardStep < 3" variant="solid" @click="onNextStep">Next</Button>
+          <Button v-if="wizardStep === 3" variant="solid" :loading="creating" :disabled="loading" @click="onCreateSite">
             {{ creating ? 'Creating…' : 'Create site' }}
           </Button>
         </div>
@@ -96,32 +86,30 @@
     </Dialog>
 
     <StatePanel
-      v-if="!error && loading"
+      v-if="!error && loading && sites.length === 0"
       kind="loading"
       title="Loading sites"
       body="Fetching sites and active status metadata."
     />
 
-    <section v-if="!error && !loading && sites.length === 0" class="bench-empty-state">
-      <div class="bench-empty-state__content">
-        <h2 class="bench-empty-state__title">No sites yet</h2>
-        <p class="bench-empty-state__description">Create your first site to manage runtime status, inspect logs, and open paths quickly.</p>
-        <div v-if="creatableBenches.length > 0" class="bench-empty-state__actions">
-          <Button theme="gray" variant="solid" @click="showCreateSiteModal = true">Create site</Button>
-        </div>
-        <div v-else class="bench-empty-state__actions">
-          <Button theme="gray" variant="subtle" @click="$router.push('/benches')">Go to Benches</Button>
-        </div>
+    <section v-if="!error && (!loading || sites.length > 0) && sites.length === 0" class="bench-empty-state">
+      <h2 class="bench-empty-state__title">No sites yet</h2>
+      <p class="bench-empty-state__description">Create your first site to manage runtime status, inspect logs, and access dashboards.</p>
+      <div v-if="creatableBenches.length > 0" class="mt-6">
+        <Button variant="solid" @click="showCreateSiteModal = true">Create site</Button>
+      </div>
+      <div v-else class="mt-6">
+        <Button variant="subtle" @click="$router.push('/benches')">Go to Benches</Button>
       </div>
     </section>
 
     <!-- Filters -->
-    <div v-if="!error && !loading && sites.length > 0" class="filter-bar">
-      <select v-model="siteFilters.benchId" class="filter-bar__select">
+    <div v-if="!error && !loading && sites.length > 0" class="flex gap-4 mb-6">
+      <select v-model="siteFilters.benchId" class="p-2 border rounded text-sm bg-white">
         <option value="">All benches</option>
         <option v-for="bench in allBenches" :key="bench.id" :value="bench.id">{{ bench.name }}</option>
       </select>
-      <select v-model="siteFilters.status" class="filter-bar__select">
+      <select v-model="siteFilters.status" class="p-2 border rounded text-sm bg-white">
         <option value="">All statuses</option>
         <option value="running">Running</option>
         <option value="stopped">Stopped</option>
@@ -129,65 +117,53 @@
         <option value="success">Success</option>
         <option value="failure">Failure</option>
       </select>
-      <input v-model="siteFilters.search" type="text" class="filter-bar__search" placeholder="Search sites…" />
+      <input v-model="siteFilters.search" type="text" class="p-2 border rounded text-sm bg-white flex-1" placeholder="Search sites…" />
     </div>
 
-    <StatePanel
-      v-if="!error && !loading && sites.length > 0 && filteredSites.length === 0"
-      kind="empty"
-      title="No matching sites"
-      body="Adjust your filters to see more results."
-    />
-    <div v-if="!error && !loading && filteredSites.length > 0" class="activity-list-container">
-      <ListView
-        :columns="siteColumns"
-        :rows="filteredSites"
-        row-key="id"
-        :options="siteListOptions"
-      >
-        <template #default>
-          <ListHeader class="activity-list-header" />
-          <ListRows class="activity-list-rows" />
+    <ListView
+      v-if="!error && (!loading || sites.length > 0) && filteredSites.length > 0"
+      :columns="siteColumns"
+      :rows="filteredSites"
+      row-key="id"
+      :options="siteListOptions"
+    >
+      <template #cell="{ column, row }">
+        <template v-if="column.key === 'name'">
+          <div class="py-3">
+            <div class="font-medium text-gray-900">{{ row.name }}</div>
+          </div>
+        </template>
+        <template v-else-if="column.key === 'benchId'">
+          <span class="text-sm text-gray-600">{{ getBenchName(row.benchId) }}</span>
         </template>
 
-        <template #cell="{ column, row }">
-          <template v-if="column.key === 'name'">
-            <div class="list-col list-col--name">
-              <p class="list-col__primary">{{ row.name }}</p>
-              <p class="list-col__secondary">{{ row.path }}</p>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'benchId'">
-            <span class="cell-text cell-text--secondary">{{ getBenchName(row.benchId) }}</span>
-          </template>
-
-          <template v-else-if="column.key === 'appCount'">
-            <span class="cell-text cell-text--secondary">{{ row.appCount }}</span>
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <span
-              class="status-pill status-pill--interactive"
-              :class="`status-pill--${row.status}`"
+        <template v-else-if="column.key === 'appCount'">
+          <span class="text-sm text-gray-600">{{ row.appCount }}</span>
+        </template>
+        <template v-else-if="column.key === 'status'">
+          <div class="flex items-center">
+            <Badge
+              variant="subtle"
+              :theme="getStatusTheme(row.status)"
+              class="cursor-pointer"
               @click.stop="onStatusClick(row.id, 'site')"
             >
               {{ formatStatusLabel(row) }}
-              <span v-if="isResourceBusy(row.id, 'site')" class="status-spinner"></span>
-            </span>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="list-col list-col--actions">
-              <Dropdown :options="getSiteActions(row)">
-                <template #default>
-                  <button class="btn btn--subtle btn--sm">
-                    <IconMoreHorizontal class="w-4 h-4" />
-                  </button>
-                </template>
-              </Dropdown>
-            </div>
-          </template>
+              <span v-if="isResourceBusy(row.id, 'site')" class="ml-1 inline-block w-2 h-2 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+            </Badge>
+          </div>
         </template>
-      </ListView>
-    </div>
+        <template v-else-if="column.key === 'actions'">
+          <div class="flex justify-end" @click.stop>
+            <Dropdown :options="getSiteActions(row)">
+              <template #default>
+                <Button variant="subtle" icon="more-horizontal" />
+              </template>
+            </Dropdown>
+          </div>
+        </template>
+      </template>
+    </ListView>
 
     <ConfirmationDialog
       :open="deleteConfirmOpen"
@@ -196,7 +172,7 @@
       confirm-label="Delete site"
       :confirmation-phrase="pendingDeleteSiteName || null"
       :typed-value="deleteTypedValue"
-      @update:typedValue="onDeleteTypedValue"
+      @update:typedValue="val => deleteTypedValue = val"
       @cancel="onCancelDeleteSite"
       @confirm="onConfirmDeleteSite"
     />
@@ -211,27 +187,21 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { Badge, Button, Dialog, Dropdown, ListView, ListHeader, ListRows, ListEmptyState, Switch, toast } from 'frappe-ui';
+import { useRoute } from 'vue-router';
+import { Badge, Button, Dialog, Dropdown, ListView, Switch, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
-import IconRotateCcw from '~icons/lucide/rotate-ccw';
-import IconCheckCircle from '~icons/lucide/check-circle';
-import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconPlay from '~icons/lucide/play';
 import IconSquare from '~icons/lucide/square';
-import IconFileText from '~icons/lucide/file-text';
 import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
 import { useIpc } from '../composables/useIpc';
-
-const ipc = useIpc();
 import { useSites } from '../composables/useSites';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
@@ -243,7 +213,9 @@ import {
 } from '../site-wizard';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
-import { filterSiteLogs, type LogLevelFilter } from '../site-log-filters';
+
+const ipc = useIpc();
+const route = useRoute();
 
 const {
   sites,
@@ -251,21 +223,14 @@ const {
   creating,
   updating,
   deleting,
-  loadingLogs,
-  openingFolder,
   error,
-  successMessage,
   create,
   update,
   remove,
-  listLogs,
-  openFolder,
   refresh,
 } = useSites();
 
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
-
-
 
 onBeforeUnmount(() => {
   clearPageHeaderActions();
@@ -280,7 +245,6 @@ const selectedTask = computed(() => {
 });
 
 const formatStatusLabel = (row: any) => {
-  // Check for active tasks first
   const task = (tasks.value || []).find(
     (t) => t.resourceId === row.id && t.resource === 'site' && (t.status === 'running' || t.status === 'queued')
   );
@@ -307,39 +271,37 @@ const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
-  // Find by resource ID and type
   const task = tasks.value.find(t => t.resourceId === resourceId && t.resource === resource);
-  
   if (task) {
     selectedTaskId.value = task.taskId;
     return;
   }
-
-  // Fallback 1: Try finding any recent task for this resource type that isn't successful
-  const recentTask = tasks.value.find(t => t.resource === resource && t.status !== 'success');
-  if (recentTask) {
-    selectedTaskId.value = recentTask.taskId;
-    return;
-  }
-
-  // Fallback 2: Just find the most recent task for this resource type
   const anyTask = tasks.value.find(t => t.resource === resource);
   if (anyTask) {
     selectedTaskId.value = anyTask.taskId;
   }
 };
 
-const siteColumns = [
+const getStatusTheme = (status: string) => {
+  if (status === 'running') return 'green';
+  if (status === 'stopped') return 'gray';
+  if (status === 'queued') return 'blue';
+  if (status === 'failure') return 'red';
+  return 'gray';
+};
+
+const siteColumns = reactive([
   { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
   { key: 'benchId', label: 'Bench', width: '120px' },
   { key: 'appCount', label: 'Apps', width: '80px' },
   { key: 'status', label: 'Status', width: '120px' },
   { key: 'actions', label: '', width: '60px' },
-];
+]);
 
 const siteListOptions = computed(() => ({
   selectable: false,
-  showTooltip: false,
+  showTooltip: true,
+  resizeColumn: true,
   rowHeight: '52px',
   emptyState: {
     title: 'No Sites',
@@ -360,12 +322,14 @@ const getSiteActions = (site: any) => {
     });
   }
 
-  actions.push({
-    label: site.status === 'running' ? 'Restart' : 'Start',
-    icon: IconPlay,
-    disabled: updating.value || !canStartSite(site.id),
-    onClick: () => onSetSiteStatus(site.id, 'running'),
-  });
+  if (site.status !== 'running') {
+    actions.push({
+      label: 'Start',
+      icon: IconPlay,
+      disabled: updating.value || !canStartSite(site.id),
+      onClick: () => onSetSiteStatus(site.id, 'running'),
+    });
+  }
 
   actions.push({
     label: 'Stop',
@@ -373,15 +337,6 @@ const getSiteActions = (site: any) => {
     disabled: updating.value || !canStopSite(site.id),
     onClick: () => onSetSiteStatus(site.id, 'stopped'),
   });
-
-
-  actions.push({
-    label: 'Open Folder',
-    icon: IconFolder,
-    disabled: openingFolder.value,
-    onClick: () => onOpenSiteFolder(site.id),
-  });
-
 
   actions.push({
     label: 'Delete',
@@ -394,13 +349,10 @@ const getSiteActions = (site: any) => {
   return actions;
 };
 
-
 const createForm = reactive({
   name: '',
   benchId: '',
-
   path: '',
-  appsText: '',
   appsSelected: [] as string[],
   force: false,
 });
@@ -408,7 +360,7 @@ const createForm = reactive({
 const showCreateSiteModal = ref(false);
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<string[]>([]);
-const allBenches = ref<Awaited<ReturnType<ReturnType<typeof useIpc>['listBenches']>>>([]);
+const allBenches = ref<any[]>([]);
 const benchLoading = ref(false);
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 
@@ -427,9 +379,7 @@ const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
 
 const loadBenchOptions = async () => {
   benchLoading.value = true;
-
   try {
-
     const benches = await ipc.listBenches();
     allBenches.value = benches;
   } catch (err) {
@@ -444,31 +394,16 @@ const applyPathDefault = () => {
   createForm.path = suggestSitePath(selectedBench.value.path, createForm.name);
 };
 
-watch(
-  () => createForm.benchId,
-  () => {
-    applyPathDefault();
-  }
-);
-
-watch(
-  () => createForm.name,
-  () => {
-    applyPathDefault();
-  }
-);
+watch(() => createForm.benchId, applyPathDefault);
+watch(() => createForm.name, applyPathDefault);
 
 const onNextStep = async () => {
   const errors = getSiteWizardStepErrors(wizardStep.value, createForm);
-
   if (wizardStep.value === 2) {
-    // 1. Check against local site list (database)
     const duplicateInDb = sites.value.find(s => s.name === createForm.name.trim());
     if (duplicateInDb && !createForm.force) {
       errors.push(`A site named "${createForm.name}" already exists in the database. Enable "Force create" to overwrite.`);
     }
-
-    // 2. Check against filesystem
     if (!createForm.force) {
       const exists = await ipc.pathExists(createForm.path);
       if (exists) {
@@ -476,23 +411,14 @@ const onNextStep = async () => {
       }
     }
   }
-
   wizardErrors.value = errors;
-
-  if (errors.length > 0) {
-    return;
-  }
-
-  if (wizardStep.value < 3) {
-    wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
-  }
+  if (errors.length > 0) return;
+  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
 };
 
 const onPreviousStep = () => {
   wizardErrors.value = [];
-  if (wizardStep.value > 1) {
-    wizardStep.value = (wizardStep.value - 1) as SiteWizardStep;
-  }
+  if (wizardStep.value > 1) wizardStep.value = (wizardStep.value - 1) as SiteWizardStep;
 };
 
 const getBenchName = (id: string) => {
@@ -503,19 +429,11 @@ const getBenchName = (id: string) => {
 const onCreateSite = async () => {
   const result = buildSiteCreatePayload(createForm);
   wizardErrors.value = result.errors;
-
-  if (!result.payload) {
-    return;
-  }
-
+  if (!result.payload) return;
   await create(result.payload);
-
   showCreateSiteModal.value = false;
   createForm.name = '';
   createForm.benchId = '';
-
-  createForm.path = '';
-  createForm.appsText = '';
   createForm.appsSelected = [];
   wizardStep.value = 1;
   wizardErrors.value = [];
@@ -526,23 +444,14 @@ const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
 };
 
-
 const canStartSite = (siteId: string): boolean => {
   const site = sites.value.find((entry) => entry.id === siteId);
-  if (!site) {
-    return false;
-  }
-
-  return canStartSiteFromUi(site, allBenches.value);
+  return site ? canStartSiteFromUi(site, allBenches.value) : false;
 };
 
 const canStopSite = (siteId: string): boolean => {
   const site = sites.value.find((entry) => entry.id === siteId);
-  if (!site) {
-    return false;
-  }
-
-  return canStopSiteFromUi(site);
+  return site ? canStopSiteFromUi(site) : false;
 };
 
 const deleteConfirmOpen = ref(false);
@@ -570,29 +479,21 @@ const onConfirmDeleteSite = async (): Promise<void> => {
     onCancelDeleteSite();
     return;
   }
-
   deleteConfirmOpen.value = false;
   await remove(id);
   onCancelDeleteSite();
 };
 
-const onDeleteTypedValue = (value: string): void => {
-  deleteTypedValue.value = value;
-};
-
-
-const onOpenSiteFolder = async (id: string) => {
-  await openFolder(id);
-};
-
 
 onMounted(() => {
   void loadBenchOptions();
+  if (route.query.benchId && typeof route.query.benchId === 'string') {
+    siteFilters.benchId = route.query.benchId;
+  }
 });
 
 watch([() => loading.value, () => creatableBenches.value.length], () => {
   const actions = [];
-
   if (creatableBenches.value.length > 0) {
     actions.push({
       id: 'sites-create',
@@ -605,499 +506,81 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
       },
     });
   }
-
   setPageHeaderActions(actions);
 }, { immediate: true });
 </script>
 
 <style scoped>
-.activity-view {
+.sites-view {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.activity-list-container {
-  background: var(--surface-card);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.cell-text {
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.cell-text--secondary {
-  color: var(--text-secondary);
-}
-
-/* ListView Overrides to match design system */
-.activity-list-header {
-  background-color: var(--surface-subtle) !important;
-  border-bottom: 1px solid var(--border-light) !important;
-  margin-bottom: 0 !important;
-  padding: 10px 16px !important;
-  border-radius: 0 !important;
-}
-
-.activity-list-rows {
-  padding: 0 !important;
-}
-
-:deep(.frappe-list-row) {
-  border-bottom: 1px solid var(--border-light) !important;
-  padding: 0 16px !important;
-  transition: background-color 100ms ease;
-  height: 52px !important;
-}
-
-:deep(.frappe-list-row:last-child) {
-  border-bottom: none !important;
-}
-
-:deep(.frappe-list-row:hover) {
-  background-color: var(--surface-hover) !important;
-}
-
-.activity-list-empty {
-  padding: 80px 20px !important;
-  background: var(--surface-card);
 }
 
 .bench-empty-state {
-  min-height: clamp(300px, 40vh, 500px);
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.bench-empty-state__content {
-  max-width: 520px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  background: white;
   text-align: center;
 }
 
 .bench-empty-state__title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  line-height: 1.2;
   color: var(--text-primary);
 }
 
 .bench-empty-state__description {
-  margin: 10px 0 0;
-  font-size: 16px;
-  line-height: 1.35;
-  color: var(--text-secondary);
-}
-
-.bench-empty-state__actions {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-.sites-view {
-  display: grid;
-  gap: 16px;
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-default);
-  background: var(--surface-card);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 100ms ease;
-  white-space: nowrap;
-}
-
-.btn:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
-
-.btn--subtle {
-  border-color: var(--border-default);
-  background: var(--surface-card);
-}
-
-.btn--primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-text);
-}
-
-.btn--primary:hover:not(:disabled) {
-  background: var(--primary-hover);
-}
-
-.btn--danger {
-  border-color: var(--red-border);
-  color: var(--red-text);
-  background: var(--surface-card);
-}
-
-.btn--danger:hover:not(:disabled) {
-  background: var(--red-light);
-}
-
-.btn--sm {
-  min-height: 24px;
-  padding: 0 8px;
-  font-size: 11px;
-}
-
-/* Alert */
-.alert {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-}
-
-.alert--success {
-  color: var(--green-text);
-  background: var(--green-light);
-  border: 1px solid var(--green-border);
-}
-
-/* Form card */
-.form-card {
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--surface-card);
-  overflow: hidden;
-}
-
-.form-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-light);
-}
-
-.form-card__title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.form-body {
-  padding: 16px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.form-field {
-  display: grid;
-  gap: 4px;
-}
-
-.form-field--full {
-  grid-column: span 2;
-}
-
-.form-field--switch {
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  user-select: none;
-  margin-top: 4px;
-}
-
-.form-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.form-error {
-  margin: 0 0 12px;
-  font-size: 13px;
-  color: var(--red-text);
-}
-
-.form-actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 12px;
-}
-
-/* Wizard steps */
-.wizard-steps {
-  display: flex;
-  gap: 4px;
-}
-
-.wizard-step {
-  padding: 3px 10px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--surface-subtle);
+  margin: 8px 0 24px;
+  font-size: 14px;
   color: var(--text-muted);
-  border: 1px solid var(--border-light);
-}
-
-.wizard-step--active {
-  background: var(--primary);
-  color: var(--primary-text);
-  border-color: var(--primary);
-}
-
-.wizard-step--done {
-  background: var(--green-light);
-  color: var(--green-text);
-  border-color: var(--green-border);
-}
-
-.wizard-summary {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border-radius: 6px;
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-light);
-}
-
-.wizard-summary__row {
-  display: flex;
-  gap: 12px;
-  font-size: 13px;
-}
-
-.wizard-summary__row span {
-  min-width: 80px;
-  color: var(--text-secondary);
-}
-
-.wizard-summary__row strong {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-/* Filter bar */
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-bar__select {
-  min-width: 140px;
-}
-
-.filter-bar__search {
-  flex: 1;
-  min-width: 200px;
-}
-
-/* List table */
-.list-table {
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--surface-card);
-  overflow: hidden;
-}
-
-.list-col--name {
-  min-width: 0;
-}
-
-.list-col__primary {
-  margin: 0;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.list-col__secondary {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.list-col--meta {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.list-col--actions {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-/* Status pill */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--gray-light);
-  color: var(--gray-text);
-  text-transform: capitalize;
-}
-
-.status-pill--interactive {
-  cursor: pointer;
-  transition: filter 100ms ease;
-}
-
-.status-pill--interactive:hover {
-  filter: brightness(0.95);
-}
-
-.status-pill--running,
-.status-pill--success {
-  background: var(--green-light, #f0fdf4);
-  color: var(--green-text, #166534);
-}
-
-.status-pill--queued {
-  background: var(--blue-light, #eff6ff);
-  color: var(--blue-text, #1e40af);
-}
-
-.status-pill--stopped {
-  background: var(--gray-light, #f3f4f6);
-  color: var(--gray-text, #4b5563);
-}
-
-.status-pill--failure {
-  background: var(--red-light, #fef2f2);
-  color: var(--red-text, #991b1b);
-}
-
-.status-spinner {
-  display: block;
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.form-help {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 .site-wizard-dialog {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-height: 65vh;
-  overflow-y: auto;
-  padding: 2px;
+  gap: 16px;
 }
 
-.wizard-header {
-  margin-bottom: 4px;
+.wizard-steps {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 12px;
 }
 
-/* Logs panel */
-.logs-panel-dialog {
+.wizard-step {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.wizard-step--active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.wizard-step--done {
+  color: var(--green-600);
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.form-field {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  height: 500px;
-  margin: -16px;
-}
-
-.logs-panel__header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-light);
-  background: var(--surface-subtle);
-}
-
-.logs-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 16px 16px;
-}
-
-.empty-logs {
-  padding: 40px;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.logs-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
-}
-
-.logs-list__item {
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: var(--surface-subtle);
-}
-
-.logs-list__item--error {
-  background: var(--red-light);
-}
-
-.logs-list__message {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-primary);
-  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.logs-list__meta {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
+  gap: 6px;
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
 }
 </style>

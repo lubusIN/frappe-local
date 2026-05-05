@@ -59,6 +59,18 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--surface-bg);
+  user-select: none;
+}
+
+input,
+textarea,
+select,
+pre,
+code,
+[role="alert"],
+[role="status"],
+.selectable-text {
+  user-select: text;
 }
 
 #app {

@@ -41,7 +41,7 @@ export const useSettings = () => {
 
     try {
       const ipc = useIpc();
-      const saved = await ipc.setSettings(form.value);
+      const saved = await ipc.setSettings({ ...form.value });
       form.value = saved;
       successMessage.value = 'Settings saved.';
     } catch (err) {

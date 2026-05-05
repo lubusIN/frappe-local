@@ -508,16 +508,12 @@ export const registerIpcHandlers = (
       operations.trackSiteOperation?.(updated.id, 'update');
 
       if (targetStatus && targetStatus !== existing?.status) {
-        if (targetStatus === 'running' || targetStatus === 'stopped') {
-          // Set to queued in DB immediately so UI shows pending state
-          updated = (await repositories.sites.update(id, { status: 'queued' })) ?? updated;
-          
-          const benches = await repositories.benches.findAll();
-          orchestrateSiteCreation(updated, { benches: repositories.benches, sites: repositories.sites }, benches);
-        } else {
-          // Normal status update without orchestration
-          updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
-        }
+        // For now, we just update the status in the DB as frappe_docker
+        // manages site availability via the shared backend container.
+        updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
+      } else {
+        // Normal status update without orchestration
+        updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
       }
     }
     return updated ? toSiteListItem(updated) : null;

@@ -85,13 +85,18 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
     }
 
     if (process.platform === 'darwin') {
-      // Use sed via osascript to remove the line
-      const escapedName = siteName.replace(/\./g, '\\.');
-      const sedPattern = `/${escapedName}.*${MARKER_PREFIX.replace(/[#:]/g, '\\$&')}/d`;
-      const script = `do shell script "sed -i '' '${sedPattern}' ${HOSTS_FILE}" with administrator privileges`;
-      const { code } = await execPromise('osascript', ['-e', script]);
-      if (code !== 0) {
-        logger.error(`Failed to remove hosts entry for ${siteName}`);
+      // Create a temporary file with the new content and copy it over with privileges
+      const tempPath = `/tmp/frappe-cafe-hosts-${Date.now()}`;
+      try {
+        fs.writeFileSync(tempPath, newContent);
+        const script = `do shell script "cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'" with administrator privileges`;
+        const { code } = await execPromise('osascript', ['-e', script]);
+        if (code !== 0) {
+          logger.error(`Failed to remove hosts entry for ${siteName} (osascript failed)`);
+          return false;
+        }
+      } catch (err) {
+        logger.error(`Failed to write temp hosts file: ${err}`);
         return false;
       }
     } else {
@@ -127,10 +132,19 @@ export const removeAllHostsEntriesForBench = async (benchId: string): Promise<bo
     }
 
     if (process.platform === 'darwin') {
-      const escapedMarker = marker.replace(/[#:]/g, '\\$&');
-      const script = `do shell script "sed -i '' '/${escapedMarker}/d' ${HOSTS_FILE}" with administrator privileges`;
-      const { code } = await execPromise('osascript', ['-e', script]);
-      return code === 0;
+      const lines = content.split('\n');
+      const filtered = lines.filter((line) => !line.includes(marker));
+      const newContent = filtered.join('\n');
+      const tempPath = `/tmp/frappe-cafe-bench-hosts-${Date.now()}`;
+      try {
+        fs.writeFileSync(tempPath, newContent);
+        const script = `do shell script "cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'" with administrator privileges`;
+        const { code } = await execPromise('osascript', ['-e', script]);
+        return code === 0;
+      } catch (err) {
+        logger.error(`Failed to remove bench hosts entries: ${err}`);
+        return false;
+      }
     } else {
       const lines = content.split('\n');
       const filtered = lines.filter(line => !line.includes(marker));

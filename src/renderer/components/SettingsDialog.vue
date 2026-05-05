@@ -50,26 +50,6 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-6">
-              <div class="space-y-1.5">
-                <FormLabel label="Update Channel" />
-                <FormControl
-                  type="select"
-                  v-model="form.updateChannel"
-                  :options="[
-                    { label: 'Stable', value: 'stable' },
-                    { label: 'Beta', value: 'beta' },
-                  ]"
-                />
-              </div>
-
-              <div class="flex items-center pt-7">
-                <Switch
-                  label="Enable auto updates"
-                  v-model="form.autoUpdateEnabled"
-                />
-              </div>
-            </div>
           </form>
         </div>
       </div>
@@ -122,8 +102,8 @@ const onSave = async () => {
   await save();
   if (!error.value) {
     setTimeout(() => {
-      emit('close');
-    }, 500);
+      successMessage.value = null;
+    }, 2000);
   }
 };
 </script>

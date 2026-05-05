@@ -4,11 +4,20 @@
       <div class="modal-header">
         <div class="modal-header__title-group">
           <h3 class="modal-title">{{ task.taskName }}</h3>
-          <span class="status-pill" :class="`status-pill--${task.status}`">{{ task.status }}</span>
+          <span class="status-pill" :class="`status-pill--${task.status}`">
+            {{ formattedStatus }}
+            <span v-if="task.status === 'running' || task.status === 'queued'" class="status-spinner"></span>
+          </span>
         </div>
-        <button type="button" class="btn btn--subtle btn--sm" @click="$emit('close')">Close</button>
+        <div class="modal-header__actions">
+          <button v-if="task.logs.length > 0" type="button" class="btn btn--subtle btn--sm" @click="onCopyLogs">
+            <IconCopy class="w-3.5 h-3.5 mr-1.5" />
+            {{ copied ? 'Copied!' : 'Copy' }}
+          </button>
+          <button type="button" class="btn btn--subtle btn--sm" @click="$emit('close')">Close</button>
+        </div>
       </div>
-      <div class="modal-body logs-container" ref="logsContainer">
+      <div class="modal-body logs-container selectable-text" ref="logsContainer">
         <div v-if="task.logs.length === 0" class="logs-empty">
           No log entries yet...
         </div>
@@ -25,7 +34,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, computed } from 'vue';
+import { toast } from 'frappe-ui';
+import IconCopy from '~icons/lucide/copy';
 import type { ProgressTaskSummary } from '../progress-center';
 
 const props = defineProps<{
@@ -38,6 +49,27 @@ defineEmits<{
 
 const logsContainer = ref<HTMLElement | null>(null);
 
+const formattedStatus = computed(() => {
+  if (!props.task) return '';
+  
+  if (props.task.status === 'running' || props.task.status === 'queued') {
+    const name = props.task.taskName.toLowerCase();
+    if (name.includes('create bench') || name.includes('create site')) return 'Creating';
+    if (name.includes('stop site') || name.includes('stop bench')) return 'Stopping';
+    if (name.includes('start site') || name.includes('start bench')) return 'Starting';
+    if (name.includes('restart bench') || name.includes('restart site')) return 'Restarting';
+    if (name.includes('delete site') || name.includes('delete bench')) return 'Deleting';
+    if (name.includes('clean bench')) return 'Cleaning';
+    
+    return props.task.stepName ? props.task.stepName.replace(/\.\.\./g, '') : 'Processing';
+  }
+
+  if (props.task.status === 'success') return 'Success';
+  if (props.task.status === 'failure') return 'Failed';
+  
+  return props.task.status;
+});
+
 const formatTime = (ts: string) => {
   return new Date(ts).toLocaleTimeString(undefined, { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
@@ -49,6 +81,27 @@ watch(() => props.task?.logs.length, async () => {
     logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
   }
 });
+
+const copied = ref(false);
+
+const onCopyLogs = async () => {
+  if (!props.task?.logs.length || copied.value) return;
+  
+  const text = props.task.logs
+    .map(log => `[${formatTime(log.timestamp)}] ${log.message}`)
+    .join('\n');
+    
+  try {
+    await navigator.clipboard.writeText(text);
+    copied.value = true;
+    toast.success('Logs copied to clipboard');
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
+  } catch (err) {
+    toast.error('Failed to copy logs');
+  }
+};
 </script>
 
 <style scoped>
@@ -80,6 +133,13 @@ watch(() => props.task?.logs.length, async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+}
+
+.modal-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .modal-header__title-group {
@@ -152,17 +212,49 @@ watch(() => props.task?.logs.length, async () => {
 }
 
 .status-pill {
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
   border-radius: 10px;
   font-size: 11px;
   font-weight: 500;
   background: var(--gray-light);
   color: var(--gray-text);
+  text-transform: capitalize;
 }
 
-.status-pill--running { background: var(--blue-light); color: var(--blue-text); }
-.status-pill--success { background: var(--green-light); color: var(--green-text); }
-.status-pill--failure { background: var(--red-light); color: var(--red-text); }
+.status-pill--running,
+.status-pill--success {
+  background: var(--green-light, #f0fdf4);
+  color: var(--green-text, #166534);
+}
+
+.status-pill--queued {
+  background: var(--blue-light, #eff6ff);
+  color: var(--blue-text, #1e40af);
+}
+
+.status-pill--failure {
+  background: var(--red-light, #fef2f2);
+  color: var(--red-text, #991b1b);
+}
+
+.status-spinner {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .btn {
   display: inline-flex;

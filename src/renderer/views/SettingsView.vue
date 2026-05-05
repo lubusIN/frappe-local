@@ -52,23 +52,6 @@ const channelOptions = [
             </select>
           </label>
 
-          <label class="form-field">
-            <span class="form-label">Update Channel</span>
-            <select v-model="form.updateChannel" class="form-select">
-              <option v-for="opt in channelOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <div class="form-section border-t pt-6 space-y-4">
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <span class="font-medium">Auto-update Enabled</span>
-            <span class="text-sm opacity-60">Keep the application up to date automatically.</span>
-          </div>
-          <Switch v-model="form.autoUpdateEnabled" />
-        </div>
 
         <div class="flex items-center justify-between">
           <div class="flex flex-col">

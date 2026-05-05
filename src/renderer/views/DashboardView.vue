@@ -7,11 +7,7 @@
       :links="gettingStartedLinks"
     />
 
-
-
     <section id="shortcuts" class="dashboard-section">
-      <h2 class="section-heading">Quick Actions</h2>
-      <p class="section-desc">Jump directly into the core operational areas from the overview surface.</p>
       <div class="shortcut-grid">
         <RouterLink to="/benches" class="shortcut-card">
           <div class="shortcut-card__icon">

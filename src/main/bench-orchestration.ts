@@ -219,7 +219,7 @@ export const orchestrateBenchStart = (
           '-f', 'overrides/compose.mariadb.yaml',
           '-f', 'overrides/compose.redis.yaml',
           '-f', 'overrides/compose.noproxy.yaml',
-          'up', '-d', '--remove-orphans'
+          'up', '-d', '--force-recreate', '--remove-orphans'
         ];
         const runtimeEnv = await getRuntimeEnv();
         const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'start'), runtimeEnv, 300000);
