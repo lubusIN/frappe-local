@@ -270,6 +270,19 @@ export const registerIpcHandlers = (
     return getLastDiagnosticsReport();
   });
 
+  ipcMainLike.handle(ipcChannels.benchesPickFolder, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Select Bench Directory',
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return result.filePaths[0];
+  });
+
   ipcMainLike.handle(ipcChannels.benchesList, async () => {
     const benches = await repositories.benches.findAll();
     return benches.map(toBenchListItem);

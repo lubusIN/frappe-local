@@ -430,14 +430,14 @@ onBeforeUnmount(() => {
   clearPageHeaderActions();
 });
 
-watch(() => createForm.name, (newName, oldName) => {
-  const basePath = settingsForm.value.storagePath;
-  if (!basePath) return;
+watch(() => [createForm.name, settingsForm.value.storagePath], ([newName, storagePath], [oldName]) => {
+  if (!storagePath) return;
 
-  const oldDefaultPath = `${basePath}/benches/${oldName}`;
-  const newDefaultPath = `${basePath}/benches/${newName}`;
+  const oldDefaultPath = oldName ? `${storagePath}/benches/${oldName}` : '';
+  const newDefaultPath = newName ? `${storagePath}/benches/${newName}` : '';
 
-  if (!createForm.path || createForm.path === oldDefaultPath || createForm.path === `${basePath}/${oldName}`) {
+  // If path is empty, or matches the old default, or is just the base storage path, update it
+  if (!createForm.path || createForm.path === oldDefaultPath || createForm.path === `${storagePath}/benches` || createForm.path === storagePath) {
     createForm.path = newDefaultPath;
   }
 });
@@ -445,7 +445,13 @@ watch(() => createForm.name, (newName, oldName) => {
 const triggerFolderPicker = async () => {
   const selectedPath = await ipc.pickBenchFolder();
   if (selectedPath) {
-    createForm.path = selectedPath;
+    // If the selected path doesn't already end with the bench name, append it
+    const name = createForm.name.trim();
+    if (name && !selectedPath.endsWith(name)) {
+      createForm.path = selectedPath.endsWith('/') ? `${selectedPath}${name}` : `${selectedPath}/${name}`;
+    } else {
+      createForm.path = selectedPath;
+    }
   }
 };
 

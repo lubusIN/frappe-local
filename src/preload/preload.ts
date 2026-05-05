@@ -31,48 +31,8 @@ const rendererBridge: RendererBridge = {
 	syncCatalog: async (apps) => ipcRenderer.invoke(ipcChannels.catalogSync, apps),
 	openSiteExternal: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenExternal, id),
 
-	exportSitePackage: async (input) => ipcRenderer.invoke(ipcChannels.exportSitePackage, input),
-	validateImportPackage: async (input) => ipcRenderer.invoke(ipcChannels.importValidatePackage, input),
-	executeImportPackage: async (input) => ipcRenderer.invoke(ipcChannels.importExecutePackage, input),
-
-	terminalCreate: async (benchId, siteId = null) =>
-		ipcRenderer.invoke(ipcChannels.terminalCreate, benchId, siteId),
-	terminalWrite: async (sessionId, data) => ipcRenderer.invoke(ipcChannels.terminalWrite, sessionId, data),
-	terminalClose: async (sessionId, force = false) =>
-		ipcRenderer.invoke(ipcChannels.terminalClose, sessionId, force),
-	terminalClear: async (sessionId) => ipcRenderer.invoke(ipcChannels.terminalClear, sessionId),
-	terminalResize: async (sessionId, dimensions) =>
-		ipcRenderer.invoke(ipcChannels.terminalResize, sessionId, dimensions),
-	terminalInspect: async (sessionId) => ipcRenderer.invoke(ipcChannels.terminalInspect, sessionId),
-	terminalOpenFolder: async (benchId, siteId = null) =>
-		ipcRenderer.invoke(ipcChannels.terminalOpenFolder, benchId, siteId),
-	terminalOpenEditor: async (benchId, siteId = null) =>
-		ipcRenderer.invoke(ipcChannels.terminalOpenEditor, benchId, siteId),
-	terminalOpenDevcontainer: async (benchId) =>
-		ipcRenderer.invoke(ipcChannels.terminalOpenDevcontainer, benchId),
 	subscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerSubscribe),
 	unsubscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerUnsubscribe),
-	onTerminalOutput: (listener) => {
-		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
-		ipcRenderer.on(ipcChannels.terminalOutputEvent, handler);
-		return () => {
-			ipcRenderer.removeListener(ipcChannels.terminalOutputEvent, handler);
-		};
-	},
-	onTerminalError: (listener) => {
-		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
-		ipcRenderer.on(ipcChannels.terminalErrorEvent, handler);
-		return () => {
-			ipcRenderer.removeListener(ipcChannels.terminalErrorEvent, handler);
-		};
-	},
-	onTerminalStateChange: (listener) => {
-		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
-		ipcRenderer.on(ipcChannels.terminalStateChangeEvent, handler);
-		return () => {
-			ipcRenderer.removeListener(ipcChannels.terminalStateChangeEvent, handler);
-		};
-	},
 	onTaskRunnerProgress: (listener) => {
 		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
 		ipcRenderer.on(ipcChannels.taskRunnerProgressEvent, handler);
