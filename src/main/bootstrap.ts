@@ -158,6 +158,20 @@ export const runApplicationBootstrap = async (
     
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');
+
+    // Run initial diagnostics in background after a short delay
+    setTimeout(() => {
+      runDiagnostics({
+        runtimePaths: context.runtimePaths,
+        settingsRepository: {
+          get: async () => {
+            const settings = await repositories.settings.findAll();
+            return settings[0] || null;
+          },
+        },
+        appVersion: context.appVersion,
+      }).catch((err) => bootstrapLogger.error('Initial background diagnostics failed', err));
+    }, 1000);
   } catch (error) {
     bootstrapLogger.error('startup sequence failed', error);
     const appIconPath = getAppIconPath();

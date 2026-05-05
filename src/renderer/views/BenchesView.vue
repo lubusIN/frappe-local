@@ -454,9 +454,10 @@ watchEffect(() => {
     },
     {
       id: 'benches-refresh',
-      label: loading.value ? 'Refreshing…' : 'Refresh',
+      label: loading.value ? 'Refreshing' : 'Refresh',
       variant: 'subtle',
       disabled: loading.value,
+      loading: loading.value,
       icon: IconRotateCcw,
       onClick: () => {
         void refresh();

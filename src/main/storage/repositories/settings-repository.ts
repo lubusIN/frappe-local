@@ -27,9 +27,12 @@ export class SettingsRepository {
     return result!;
   }
 
-  async patch(input: UpdateSettingsInput): Promise<Settings | null> {
-    const existing = await this.get();
-    if (!existing) return null;
+  async findAll(): Promise<Settings[]> {
+    const s = await this.get();
+    return s ? [s] : [];
+  }
+
+  async update(input: UpdateSettingsInput): Promise<Settings> {
     return this.set(input);
   }
 }

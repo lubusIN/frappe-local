@@ -80,19 +80,6 @@ async function ensurePodmanRunning(): Promise<boolean> {
     // 2. On Mac/Windows, check machine status
     if (process.platform === 'darwin' || process.platform === 'win32') {
       
-      // On Mac, ensure helper is installed first if needed
-      if (process.platform === 'darwin') {
-        try {
-          await execPromise('/usr/local/bin/podman-mac-helper', ['--version']);
-        } catch {
-          logger.info('Podman Mac Helper not found, attempting elevated installation...');
-          const helperPath = getBinaryPath('podman-mac-helper');
-          // Use osascript to prompt for administrator password
-          const appleScript = `do shell script "${helperPath} install" with administrator privileges`;
-          await execPromise('osascript', ['-e', appleScript]);
-          logger.info('Podman Mac Helper installed successfully.');
-        }
-      }
 
       const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
       const machines = JSON.parse(stdout || '[]');

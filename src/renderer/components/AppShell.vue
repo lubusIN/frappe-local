@@ -47,13 +47,17 @@
               :disabled="Boolean(action.disabled)"
               @click="action.onClick"
             >
-              <component
-                v-if="action.icon"
-                :is="action.icon"
-                class="page-header__btn-icon"
+              <div
+                v-if="action.loading"
+                class="page-header__btn-spinner"
                 aria-hidden="true"
+              ></div>
+              <component
+                :is="action.icon"
+                v-else-if="action.icon"
+                class="page-header__btn-icon"
               />
-              {{ action.label }}
+              <span class="page-header__btn-text">{{ action.label }}</span>
             </button>
           </div>
         </div>
@@ -83,7 +87,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
-import { Sidebar, SidebarItem } from 'frappe-ui';
+import { Sidebar, SidebarItem, Button } from 'frappe-ui';
 import IconHome from '~icons/lucide/home';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
@@ -103,7 +107,7 @@ import SettingsDialog from './SettingsDialog.vue';
 
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
-const { actions: headerActions } = usePageHeaderActions();
+const { actions: headerActions, setActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
 
@@ -257,30 +261,32 @@ onMounted(() => {
   gap: 8px;
 }
 
+
 .page-header__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 12px;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 14px;
   border-radius: 6px;
   border: 1px solid var(--border-default);
   background: var(--surface-card);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 100ms ease;
+  transition: all 150ms ease;
   white-space: nowrap;
 }
 
 .page-header__btn:hover:not(:disabled) {
   background: var(--surface-hover);
+  border-color: var(--border-hover);
 }
 
 .page-header__btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -292,12 +298,32 @@ onMounted(() => {
 
 .page-header__btn--primary:hover:not(:disabled) {
   background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .page-header__btn-icon {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+}
+
+.page-header__btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: page-header-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes page-header-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.page-header__btn-text {
+  line-height: 1;
 }
 
 .page-header__title {

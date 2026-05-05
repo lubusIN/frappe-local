@@ -23,7 +23,7 @@ import type {
   UpdateStrategyStatus,
 } from '../shared/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
-import { runDiagnostics } from './diagnostics-service';
+import { runDiagnostics, getLastDiagnosticsReport } from './diagnostics-service';
 import { ensureRuntimeRunning } from './runtime-service';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
 import { ipcChannels } from '../shared/ipc';
@@ -305,7 +305,20 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
-    return runDiagnostics(repositories, runtimePaths);
+    return runDiagnostics({
+      runtimePaths,
+      settingsRepository: {
+        get: async () => {
+          const settings = await repositories.settings.findAll();
+          return settings[0] || null;
+        },
+      },
+      appVersion,
+    });
+  });
+
+  ipcMainLike.handle(ipcChannels.diagnosticsGetLast, async (): Promise<DiagnosticsReport | null> => {
+    return getLastDiagnosticsReport();
   });
 
   ipcMainLike.handle(ipcChannels.benchesList, async () => {

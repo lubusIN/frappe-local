@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import dns from 'node:dns/promises';
 import type { AppRuntimePaths } from './config';
 
 import type { DiagnosticsCheckResult, DiagnosticsReport } from '../shared/domain/diagnostics';
@@ -20,6 +21,35 @@ type DiagnosticsContext = {
 
 const diagnosticsLogger = createMainLogger('diagnostics');
 
+const checkNetworkConnectivity = async (): Promise<DiagnosticsCheckResult> => {
+  const title = 'Internet Connectivity';
+  try {
+    await dns.lookup('google.com');
+    return {
+      type: 'runtime-health',
+      status: 'passed',
+      title,
+      description: 'System is connected to the internet. Internet access is required for downloading app templates and syncing the app catalog.',
+      timestamp: new Date().toISOString(),
+    };
+  } catch {
+    return {
+      type: 'runtime-health',
+      status: 'warning',
+      title,
+      description: 'System appears to be offline',
+      remediation: 'Check your internet connection. Some features like template updates and catalog syncing will be unavailable.',
+      timestamp: new Date().toISOString(),
+    };
+  }
+};
+
+let lastReport: DiagnosticsReport | null = null;
+
+export const getLastDiagnosticsReport = (): DiagnosticsReport | null => {
+  return lastReport;
+};
+
 const checkPathWritability = async (targetPath: string): Promise<DiagnosticsCheckResult> => {
   const title = `Path Writability: ${targetPath}`;
 
@@ -32,7 +62,7 @@ const checkPathWritability = async (targetPath: string): Promise<DiagnosticsChec
       type: 'path-writability',
       status: 'passed',
       title,
-      description: `Successfully verified write access to ${targetPath}`,
+      description: `Successfully verified write access to ${targetPath}. Frappe Cafe needs this to store bench templates and site metadata.`,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
@@ -68,7 +98,7 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
       type: 'storage-access',
       status: 'passed',
       title,
-      description: `Storage directory accessible`,
+      description: `Storage directory accessible. Frappe Cafe uses this to store bench templates and site metadata.`,
       timestamp: new Date().toISOString(),
     };
   } catch {
@@ -134,33 +164,6 @@ const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => 
   return checks;
 };
 
-const checkPodmanHelper = async (): Promise<DiagnosticsCheckResult | null> => {
-  if (process.platform !== 'darwin') return null;
-  
-  try {
-    const { code } = await execPromise('/usr/local/bin/podman-mac-helper', ['--version']);
-    if (code === 0) {
-      return {
-        type: 'runtime-health',
-        status: 'passed',
-        title: 'Podman Mac Helper',
-        description: 'Podman Mac Helper is installed and accessible',
-        timestamp: new Date().toISOString(),
-      };
-    }
-  } catch {
-    // Ignore error and fall through to failure
-  }
-
-  return {
-    type: 'runtime-health',
-    status: 'failed',
-    title: 'Podman Mac Helper',
-    description: 'Podman Mac Helper is not installed. This is required for rootless privileged ports and machine management.',
-    remediation: 'Install the helper using: sudo podman-mac-helper install',
-    timestamp: new Date().toISOString(),
-  };
-};
 
 const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
@@ -195,12 +198,6 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
     return checks; // Cannot proceed with further podman checks
   }
 
-  const helperCheck = await checkPodmanHelper();
-  if (helperCheck) {
-    checks.push(helperCheck);
-  }
-
-  // Check 2: Podman System Connection / VM Status
   if (podmanAvailable) {
     const isVmRequired = process.platform === 'darwin' || process.platform === 'win32';
     
@@ -226,7 +223,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
                 type: 'runtime-health',
                 status: 'passed',
                 title: 'Podman Machine',
-                description: `Podman machine '${activeMachine.Name}' is running`,
+                description: `Podman machine '${activeMachine.Name}' is running. On macOS and Windows, this virtual machine is required to run Linux containers.`,
                 timestamp: new Date().toISOString(),
               });
             } else {
@@ -234,7 +231,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
                 type: 'runtime-health',
                 status: failureStatus,
                 title: 'Podman Machine',
-                description: 'Podman machine exists but is not running',
+                description: 'Podman machine exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.',
                 remediation: 'Click "Attempt Fix" to start the Podman machine.',
                 timestamp: new Date().toISOString(),
               });
@@ -262,6 +259,14 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
           timestamp: new Date().toISOString(),
         });
       }
+    } else {
+      checks.push({
+        type: 'runtime-health',
+        status: 'skipped',
+        title: 'Podman Machine',
+        description: 'Podman machine is not required on native Linux environments.',
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
@@ -349,6 +354,10 @@ export const runDiagnostics = async (context: DiagnosticsContext): Promise<Diagn
   const dockerComposeChecks = await checkDockerComposeHealth();
   checks.push(...dockerComposeChecks);
 
+  // Check network connectivity
+  const networkCheck = await checkNetworkConnectivity();
+  checks.push(networkCheck);
+
   // Determine severity
   const failedChecks = checks.filter((c) => c.status === 'failed');
   const warningChecks = checks.filter((c) => c.status === 'warning');
@@ -371,6 +380,8 @@ export const runDiagnostics = async (context: DiagnosticsContext): Promise<Diagn
     completedAt: new Date().toISOString(),
     appVersion: context.appVersion,
   };
+
+  lastReport = report;
 
   diagnosticsLogger.info(`Diagnostics completed: ${passedChecks.length} passed, ${warningChecks.length} warnings, ${failedChecks.length} failed`);
 

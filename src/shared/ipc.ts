@@ -6,6 +6,7 @@ export const ipcChannels = {
   updateGetStatus: 'update:get-status',
   updateCheckNow: 'update:check-now',
   catalogList: 'catalog:list',
+  catalogSync: 'catalog:sync',
   diagnosticsRun: 'diagnostics:run',
   diagnosticsGetLast: 'diagnostics:get-last',
   runtimeFix: 'runtime:fix',
@@ -25,6 +26,7 @@ export const ipcChannels = {
   sitesDelete: 'sites:delete',
   sitesLogs: 'sites:logs',
   sitesOpenFolder: 'sites:open-folder',
+  sitesOpenExternal: 'sites:open-external',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   exportSitePackage: 'export:site-package',
@@ -281,6 +283,7 @@ export type RendererBridge = {
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
   readonly fixRuntime: (checkType: string) => Promise<boolean>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
+  readonly syncCatalog: (apps: CatalogAppItem[]) => Promise<boolean>;
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
   readonly listBenches: () => Promise<BenchListItem[]>;
@@ -297,6 +300,7 @@ export type RendererBridge = {
   readonly deleteSite: (id: string) => Promise<boolean>;
   readonly listSiteLogs: (id: string) => Promise<LifecycleLogItem[]>;
   readonly openSiteFolder: (id: string) => Promise<boolean>;
+  readonly openSiteExternal: (id: string) => Promise<boolean>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
   readonly exportSitePackage: (input: ExportSitePackageInput) => Promise<ExportSitePackageResponse>;
