@@ -14,7 +14,6 @@ const iconBasePath = path.resolve(process.cwd(), 'resources/icons/icon');
  * 2. Ensure Apple Developer certificate is installed in Keychain
  * 3. Uncomment signing and notarization config below
  * 
- * See docs/PACKAGING.md for detailed setup instructions
  */
 const macOSConfig = {
   // osxSign: {
