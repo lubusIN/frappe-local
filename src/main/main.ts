@@ -5,6 +5,8 @@ import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
 import { createMainLogger } from './logger';
 import { getAppIconPath } from './app-icon';
 
+const APP_DISPLAY_NAME = 'Frappe Cafe';
+
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mainLogger = createMainLogger('main');
 
@@ -14,6 +16,7 @@ const binPath = isDev
   : path.join(process.resourcesPath, 'bin');
 
 process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
+app.setName(APP_DISPLAY_NAME);
 
 const createMainWindow = async (): Promise<void> => {
   mainLogger.info('creating main window');
@@ -58,11 +61,21 @@ const createMainWindow = async (): Promise<void> => {
 
 app.whenReady().then(async () => {
   const appIconPath = getAppIconPath();
+
+  if (process.platform === 'darwin') {
+    app.setAboutPanelOptions({
+      applicationName: APP_DISPLAY_NAME,
+      applicationVersion: app.getVersion(),
+      version: app.getVersion(),
+      ...(appIconPath ? { iconPath: appIconPath } : {}),
+    });
+  }
+
   if (process.platform === 'darwin' && appIconPath && app.dock) {
     app.dock.setIcon(appIconPath);
   }
 
-  const bootstrapContext = createBootstrapContext(app.getName(), app.getVersion(), createMainWindow, app);
+  const bootstrapContext = createBootstrapContext(APP_DISPLAY_NAME, app.getVersion(), createMainWindow, app);
   await runApplicationBootstrap(bootstrapContext, ipcMain);
 
   app.on('activate', async () => {

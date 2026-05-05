@@ -9,6 +9,7 @@ import type { Bench, Site } from '../shared/domain/models';
 import type { AppRuntimePaths } from './config';
 import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
 import { removeAllHostsEntriesForBench } from './hosts-manager';
+import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 
 const ensureBenchEnvConfigured = (benchPath: string, frappeVersion: string, httpPort?: number) => {
   const exampleEnvPath = path.join(benchPath, 'example.env');
@@ -200,37 +201,96 @@ export const orchestrateBenchStart = (
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       try {
-        await benchesRepo.update(bench.id, { status: 'queued' });
+        // Precondition checks
+        context.startStep('validation', 'Validating bench configuration');
+        
+        if (!bench.path) {
+          throw new Error(`Bench path is not configured for ${bench.name}`);
+        }
+        
+        if (!fs.existsSync(bench.path)) {
+          throw new Error(`Bench directory does not exist at ${bench.path}. Please check the path or delete and recreate the bench.`);
+        }
+        
+        // Check for compose.yaml
+        const composeYamlPath = path.join(bench.path, 'compose.yaml');
+        if (!fs.existsSync(composeYamlPath)) {
+          throw new Error(`Docker compose configuration not found at ${composeYamlPath}. Bench may be incomplete or corrupted.`);
+        }
+        
+        // Check for required override files
+        const requiredOverrides = [
+          'overrides/compose.mariadb.yaml',
+          'overrides/compose.redis.yaml',
+          'overrides/compose.noproxy.yaml'
+        ];
+        
+        for (const override of requiredOverrides) {
+          const overridePath = path.join(bench.path, override);
+          if (!fs.existsSync(overridePath)) {
+            throw new Error(`Required override file not found at ${overridePath}. Bench may be incomplete.`);
+          }
+        }
+        
+        context.completeStep('validation', 'Bench configuration valid');
+        
+        context.log('info', `Orchestrating ${isRestart ? 'restart' : 'start'} for bench ${bench.name} (${bench.id})`);
 
+        context.startStep('runtime', 'Checking podman status');
         const isRuntimeReady = await ensureRuntimeRunning();
         if (!isRuntimeReady) {
-          throw new Error(`Podman is not running.`);
+          throw new Error('Podman is not running and could not be started automatically.');
         }
+        context.completeStep('runtime', 'Podman is ready');
 
-        // Ensure .env is configured correctly for our stack
+        context.startStep('env', 'Configuring environment');
         ensureBenchEnvConfigured(bench.path, bench.frappeVersion, bench.httpPort);
+        context.completeStep('env', 'Environment configured');
 
-        context.startStep('start', 'Starting bench containers');
         const command = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
-        const args = [
+        const commonArgs = [
           '-p', projectName,
           '-f', 'compose.yaml',
           '-f', 'overrides/compose.mariadb.yaml',
           '-f', 'overrides/compose.redis.yaml',
-          '-f', 'overrides/compose.noproxy.yaml',
-          'up', '-d', '--force-recreate', '--remove-orphans'
+          '-f', 'overrides/compose.noproxy.yaml'
         ];
         const runtimeEnv = await getRuntimeEnv();
-        const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'start'), runtimeEnv, 300000);
+
+        if (!isRestart) {
+          context.startStep('pull', 'Checking for image updates');
+          await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, 300000);
+          context.completeStep('pull', 'Images updated');
+        }
+
+        context.startStep('start', isRestart ? 'Restarting containers' : 'Starting containers');
+        const upArgs = [
+          ...commonArgs,
+          'up', '-d',
+          '--force-recreate',
+          '--remove-orphans'
+        ];
+        
+        context.log('info', `Running: ${command} ${upArgs.join(' ')}`);
+        
+        const { code, stderr } = await execPromise(
+          command,
+          upArgs,
+          bench.path,
+          (out) => context.log('info', out, 'start'),
+          runtimeEnv,
+          300000
+        );
 
         if (code !== 0) {
-          throw new Error(`Command failed: ${stderr}`);
+          throw new Error(`Command failed with code ${code}: ${stderr}`);
         }
         
-        context.completeStep('start', 'Containers started successfully');
+        context.completeStep('start', 'Containers are running');
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
+        context.log('error', error instanceof Error ? error.message : String(error));
         await benchesRepo.update(bench.id, { status: 'failure' });
         throw error;
       }
@@ -282,56 +342,90 @@ export const orchestrateBenchCleaning = (
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       try {
-        context.startStep('scan', 'Scanning for sites in bench directory');
+        context.startStep('scan', 'Scanning for sites');
+        
+        // 1. Get sites from DB
+        let allSites = await sitesRepo.findAll();
+        let dbSites = allSites.filter(s => s.benchId === bench.id).map(s => s.name);
+        
+        // 2. Get sites from Disk
+        let diskSites: string[] = [];
         const sitesPath = path.join(bench.path, 'sites');
-        if (!fs.existsSync(sitesPath)) {
-          throw new Error(`Sites directory not found at ${sitesPath}`);
+        if (fs.existsSync(sitesPath)) {
+          const entries = fs.readdirSync(sitesPath, { withFileTypes: true });
+          diskSites = entries
+            .filter((e) => e.isDirectory() && !['assets', 'languages'].includes(e.name))
+            .map((e) => e.name);
+        } else {
+          context.log('info', 'Sites directory not found on disk, skipping disk scan');
         }
 
-        const entries = fs.readdirSync(sitesPath, { withFileTypes: true });
-        const siteDirs = entries
-          .filter((e) => e.isDirectory() && !['assets', 'languages'].includes(e.name))
-          .map((e) => e.name);
+        // Unique set of sites to clean
+        let sitesToClean = Array.from(new Set([...dbSites, ...diskSites]));
 
-        context.log('info', `Found ${siteDirs.length} sites to clean`);
-        context.completeStep('scan', `Found ${siteDirs.length} sites`);
+        context.log('info', `Found ${sitesToClean.length} total sites to clean (${dbSites.length} in DB, ${diskSites.length} on disk)`);
+        context.completeStep('scan', `Found ${sitesToClean.length} sites`);
 
-        for (const siteName of siteDirs) {
+        // Re-verify bench state before proceeding with cleanup to avoid race conditions
+        context.startStep('verify', 'Verifying bench consistency');
+        const updatedSites = await sitesRepo.findAll();
+        const reVerifyDbSites = updatedSites.filter(s => s.benchId === bench.id).map(s => s.name);
+        
+        // Check if new sites were added during scan
+        const newSitesAdded = reVerifyDbSites.filter(s => !dbSites.includes(s));
+        if (newSitesAdded.length > 0) {
+          context.log('warning', `New sites detected during verification: ${newSitesAdded.join(', ')}. Adding to cleanup list.`);
+          sitesToClean = Array.from(new Set([...sitesToClean, ...newSitesAdded]));
+        }
+        context.completeStep('verify', 'Bench consistency verified');
+
+        const runtimeCmd = getBinaryPath('docker-compose');
+        const runtimeEnv = await getRuntimeEnv();
+        const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
+        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+
+        // Refresh sites list for cleanup operations
+        allSites = await sitesRepo.findAll();
+
+        for (const siteName of sitesToClean) {
           context.startStep('drop', `Dropping site ${siteName}`);
-          const runtimeCmd = getBinaryPath('docker-compose');
-          const runtimeEnv = await getRuntimeEnv();
-          const dbPassword = '123';
-
+          
           const args = [
+            '-p', projectName,
             'exec',
-            'backend',
+            '-T',
+            DOCKER_SERVICES.BACKEND,
             'bench',
             'drop-site',
             '--no-backup',
-            '--db-root-username', 'root',
+            '--db-root-username', DATABASE_CREDENTIALS.DB_ROOT_USERNAME,
             '--db-root-password', dbPassword,
             '--force',
             siteName
           ];
 
           try {
-            const { code, stderr } = await execPromise(runtimeCmd, args, bench.path, (out) => context.log('info', out, 'drop'), runtimeEnv, 60000);
+            // Only try to run bench command if the bench is running and site directory exists on disk
+            // (or if we want to try anyway and ignore failure)
+            const { code, stderr } = await execPromise(runtimeCmd, args, bench.path, (out) => context.log('info', out, 'drop'), runtimeEnv, OPERATION_TIMEOUTS.BENCH_CLEANUP);
             if (code !== 0) {
-              context.log('warn', `Failed to drop site ${siteName}: ${stderr}`);
+              context.log('warning', `Bench command failed for ${siteName} (it might not exist on disk): ${stderr}`);
             }
           } catch (err) {
             context.log('error', `Error dropping site ${siteName}: ${err instanceof Error ? err.message : String(err)}`);
           }
 
-          // Cleanup from DB if exists
-          const allSites = await sitesRepo.findAll();
+          // Cleanup from DB
           const registeredSite = allSites.find(s => s.name === siteName && s.benchId === bench.id);
           if (registeredSite) {
             await sitesRepo.delete(registeredSite.id);
+            context.log('info', `Deleted site record: ${siteName}`);
           }
           
           context.completeStep('drop', `Finished cleaning ${siteName}`);
         }
+
+        context.log('info', 'Bench cleaning completed successfully');
       } catch (error) {
         context.log('error', `Bench cleaning failed: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
@@ -362,14 +456,15 @@ export const orchestrateBenchDeletion = (
         const runtimeEnv = await getRuntimeEnv();
         
         try {
-          const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, 30000);
+          const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
           if (code !== 0) {
-            context.log('warn', `Docker cleanup returned non-zero code: ${stderr}`);
+            throw new Error(`Docker cleanup failed with code ${code}: ${stderr}`);
           }
+          context.completeStep('deleting', 'Docker cleanup finished');
         } catch (err) {
-          context.log('warn', `Docker cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
+          context.log('error', `Docker cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
+          throw err;
         }
-        context.completeStep('deleting', 'Docker cleanup finished');
 
         context.startStep('db', 'Removing database records');
         
@@ -402,7 +497,7 @@ export const orchestrateBenchDeletion = (
           }
           context.completeStep('fs', 'Bench directory removed');
         } catch (fsErr) {
-          context.log('warn', `Could not remove directory: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`);
+          context.log('warning', `Could not remove directory: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`);
           context.completeStep('fs', 'Bench directory removal skipped');
         }
       } catch (error) {

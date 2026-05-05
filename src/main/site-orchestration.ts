@@ -8,6 +8,7 @@ import { canAttachSiteToBench } from '../shared/domain/site-lifecycle';
 import { getTaskRunner } from './task-runner';
 import { getRuntimeEnv } from './runtime-service';
 import { addHostsEntry, removeHostsEntry } from './hosts-manager';
+import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 
 export type SiteCreationDependencies = {
   readonly benches: {
@@ -64,8 +65,8 @@ export const orchestrateSiteCreation = async (
         context.startStep('new-site', `Running bench new-site ${input.name}`);
         
         // We assume the service name is 'backend' in frappe_docker
-        const dbPassword = '123';
-        const adminPassword = 'admin';
+        const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
+        const adminPassword = DATABASE_CREDENTIALS.ADMIN_PASSWORD;
         
         const runtimeEnv = await getRuntimeEnv();
         const args = [
@@ -153,7 +154,7 @@ export const orchestrateSiteDeletion = async (
         const runtimeCmd = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
         const runtimeEnv = await getRuntimeEnv();
-        const dbPassword = '123';
+        const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
 
         const args = [
           '-p', projectName,
@@ -219,4 +220,65 @@ export const orchestrateSiteDeletion = async (
   });
 
   return true;
+};
+
+export const orchestrateSiteStatusUpdate = (
+  dependencies: {
+    sites: {
+      update: (id: string, input: { status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Site | null>;
+    };
+  },
+  site: Site,
+  targetStatus: 'running' | 'stopped'
+): void => {
+  const taskRunner = getTaskRunner();
+
+  taskRunner.enqueue({
+    name: targetStatus === 'running' ? `Start Site: ${site.name}` : `Stop Site: ${site.name}`,
+    resource: { type: 'site', id: site.id },
+    run: async (context) => {
+      try {
+        context.startStep('orchestration', targetStatus === 'running' ? 'Starting site' : 'Stopping site');
+        
+        // Execute docker-compose commands to actually start/stop the site
+        const runtimeCmd = getBinaryPath('docker-compose');
+        const projectName = `frappe-cafe-${site.benchId.slice(0, 8)}`;
+        const runtimeEnv = await getRuntimeEnv();
+        
+        // For starting site: ensure site is added to common_site_config.json
+        // For stopping site: remove site from common_site_config.json
+        // This is handled through bench commands
+        const siteCommand = targetStatus === 'running' ? 'enable-site' : 'disable-site';
+        const args = [
+          '-p', projectName,
+          'exec',
+          '-T',
+          DOCKER_SERVICES.BACKEND,
+          'bench',
+          siteCommand,
+          site.name,
+        ];
+        
+        const { code, stderr } = await execPromise(
+          runtimeCmd,
+          args,
+          '',
+          (out) => context.log('info', out),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.DEFAULT
+        );
+        
+        if (code !== 0) {
+          throw new Error(`Failed to ${siteCommand} site: ${stderr}`);
+        }
+        
+        context.completeStep('orchestration', targetStatus === 'running' ? 'Site started' : 'Site stopped');
+        await dependencies.sites.update(site.id, { status: targetStatus });
+      } catch (error) {
+        context.log('error', `Failed to update site status: ${error instanceof Error ? error.message : String(error)}`);
+        await dependencies.sites.update(site.id, { status: 'failure' });
+        throw error;
+      }
+    }
+  });
 };

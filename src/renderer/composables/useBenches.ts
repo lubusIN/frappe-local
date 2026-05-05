@@ -64,7 +64,13 @@ export const useBenches = () => {
       }
 
       benches.value = benches.value.map((bench) => (bench.id === id ? updated : bench));
-      successMessage.value = `Updated bench ${updated.name}.`;
+      if (input.status === 'running') {
+        successMessage.value = `Start requested for ${updated.name}.`;
+      } else if (input.status === 'stopped') {
+        successMessage.value = `Stop requested for ${updated.name}.`;
+      } else {
+        successMessage.value = `Updated bench ${updated.name}.`;
+      }
     } catch (err) {
       error.value = String(err);
     } finally {

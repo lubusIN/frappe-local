@@ -53,7 +53,7 @@ const formattedStatus = computed(() => {
   if (!props.task) return '';
   
   if (props.task.status === 'running' || props.task.status === 'queued') {
-    const name = props.task.taskName.toLowerCase();
+    const name = String(props.task.taskName ?? '').toLowerCase();
     if (name.includes('create bench') || name.includes('create site')) return 'Creating';
     if (name.includes('stop site') || name.includes('stop bench')) return 'Stopping';
     if (name.includes('start site') || name.includes('start bench')) return 'Starting';
@@ -61,13 +61,15 @@ const formattedStatus = computed(() => {
     if (name.includes('delete site') || name.includes('delete bench')) return 'Deleting';
     if (name.includes('clean bench')) return 'Cleaning';
     
-    return props.task.stepName ? props.task.stepName.replace(/\.\.\./g, '') : 'Processing';
+    return typeof props.task.stepName === 'string' && props.task.stepName.length > 0
+      ? props.task.stepName.replace(/\.\.\./g, '')
+      : 'Processing';
   }
 
   if (props.task.status === 'success') return 'Success';
   if (props.task.status === 'failure') return 'Failed';
   
-  return props.task.status;
+  return typeof props.task.status === 'string' && props.task.status.length > 0 ? props.task.status : 'Unknown';
 });
 
 const formatTime = (ts: string) => {

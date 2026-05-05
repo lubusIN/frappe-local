@@ -3,6 +3,7 @@
     v-model="isShowing"
     :options="{
       title: 'Settings',
+      description: 'Manage application preferences and storage paths.',
       size: 'xl',
     }"
   >

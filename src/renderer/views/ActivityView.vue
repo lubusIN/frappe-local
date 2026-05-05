@@ -45,7 +45,7 @@
             size="md"
             variant="subtle"
           >
-            {{ row.status }}
+            {{ formatStatus(row.status) }}
           </Badge>
         </template>
         <template v-else-if="column.key === 'resource'">
@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
-import { Badge, ListView, LoadingIndicator, Select, Switch } from 'frappe-ui';
+import { Badge, ListView, LoadingIndicator, Switch } from 'frappe-ui';
 import type { RouteLocationRaw } from 'vue-router';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import { useProgressCenter } from '../composables/useProgressCenter';
@@ -114,11 +114,19 @@ const recentOnlyModel = computed({
 
 const statusOptions = [
   { label: 'All statuses', value: 'all' },
-  { label: 'Queued', value: 'queued' },
+  { label: 'In Progress', value: 'queued' },
   { label: 'Running', value: 'running' },
   { label: 'Success', value: 'success' },
   { label: 'Failure', value: 'failure' },
 ];
+
+const formatStatus = (status: string): string => {
+  if (status === 'queued') return 'In Progress';
+  if (status === 'running') return 'Running';
+  if (status === 'success') return 'Success';
+  if (status === 'failure') return 'Failed';
+  return status;
+};
 
 const resourceOptions = [
   { label: 'All resources', value: 'all' },

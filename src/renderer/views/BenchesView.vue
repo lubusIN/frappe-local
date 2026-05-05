@@ -45,7 +45,7 @@
           <div class="flex items-center">
             <Badge
               :variant="'subtle'"
-              :theme="getStatusTheme(row.status)"
+              :theme="getStatusTheme(row)"
               class="cursor-pointer"
               @click.stop="onStatusClick(row.id, 'bench')"
             >
@@ -59,7 +59,7 @@
           <div class="flex justify-end" @click.stop>
             <Dropdown :options="getBenchActions(row)">
               <template #default>
-                <Button variant="subtle" icon="more-horizontal" />
+                <Button variant="subtle" :icon="IconMoreHorizontal" />
               </template>
             </Dropdown>
           </div>
@@ -91,7 +91,7 @@
       @confirm="onConfirmDelete"
     />
 
-    <Dialog v-model="showCreateBenchModal" :options="{ title: 'New bench', description: 'Create a new bench to manage sites and applications.', size: '3xl' }">
+    <Dialog v-model="showCreateBenchModal" :options="{ title: 'New bench', size: '3xl' }">
       <template #body-content>
         <div class="bench-dialog-form">
           <div class="bench-dialog-form__grid">
@@ -205,6 +205,8 @@ import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
 import IconTerminal from '~icons/lucide/terminal';
+import IconRotateCw from '~icons/lucide/rotate-cw';
+import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
@@ -267,6 +269,7 @@ const onManageBench = (id: string) => {
   router.push({ name: 'sites', query: { benchId: id } });
 };
 
+
 const formatPath = (path: string) => {
   if (!path) return '';
   const home = '/Users/lubus';
@@ -284,7 +287,43 @@ const benchColumns = reactive([
   { label: '', key: 'actions', width: 0.5 },
 ]);
 
-const getStatusTheme = (status: string) => {
+const pendingBenchActions = ref<Record<string, 'starting' | 'restarting' | 'stopping'>>({});
+
+const getPendingBenchAction = (benchId: string) => pendingBenchActions.value[benchId];
+
+const setPendingBenchAction = (benchId: string, action: 'starting' | 'restarting' | 'stopping') => {
+  pendingBenchActions.value = {
+    ...pendingBenchActions.value,
+    [benchId]: action,
+  };
+};
+
+const clearPendingBenchAction = (benchId: string) => {
+  if (!pendingBenchActions.value[benchId]) {
+    return;
+  }
+
+  const next = { ...pendingBenchActions.value };
+  delete next[benchId];
+  pendingBenchActions.value = next;
+};
+
+watch(
+  benches,
+  (nextBenches) => {
+    for (const bench of nextBenches) {
+      if (bench.status !== 'queued') {
+        clearPendingBenchAction(bench.id);
+      }
+    }
+  },
+  { deep: true }
+);
+
+const getStatusTheme = (row: any) => {
+  if (getPendingBenchAction(row.id)) return 'blue';
+  if (isResourceBusy(row.id, 'bench')) return 'blue';
+  const status = row.status;
   if (status === 'running') return 'green';
   if (status === 'stopped') return 'gray';
   if (status === 'queued') return 'blue';
@@ -299,7 +338,7 @@ const benchListOptions = {
 };
 
 const getBenchActions = (bench: any) => {
-  const isBusy = isResourceBusy(bench.id, 'bench');
+  const isBusy = isResourceBusy(bench.id, 'bench') || Boolean(getPendingBenchAction(bench.id));
   
   const actions = [
     {
@@ -315,15 +354,15 @@ const getBenchActions = (bench: any) => {
     },
     {
       label: bench.status === 'running' ? 'Restart' : 'Start',
-      icon: IconPlay,
-      disabled: updating.value || isBusy,
-      onClick: () => onSetBenchStatus(bench.id, 'running'),
+      icon: bench.status === 'running' ? IconRotateCw : IconPlay,
+      disabled: updating.value || isBusy || bench.status === 'queued',
+      onClick: () => onSetBenchStatus(bench.id, 'running', bench.status),
     },
     {
       label: 'Stop',
       icon: IconSquare,
-      disabled: updating.value || bench.status === 'stopped' || isBusy,
-      onClick: () => onSetBenchStatus(bench.id, 'stopped'),
+      disabled: updating.value || bench.status === 'stopped' || bench.status === 'queued' || isBusy,
+      onClick: () => onStopBench(bench.id),
     },
     {
       label: 'Open Folder',
@@ -358,35 +397,45 @@ const selectedTask = computed(() => {
 });
 
 const formatStatusLabel = (row: any) => {
+  const pendingAction = getPendingBenchAction(row.id);
+  if (pendingAction === 'starting') return 'Starting';
+  if (pendingAction === 'restarting') return 'Restarting';
+  if (pendingAction === 'stopping') return 'Stopping';
+
   const task = (tasks.value || []).find(
     (t) => t.resourceId === row.id && t.resource === 'bench' && (t.status === 'running' || t.status === 'queued')
   );
 
   if (task) {
-    const name = task.taskName.toLowerCase();
+    const name = String(task.taskName ?? '').toLowerCase();
     if (name.includes('create bench')) return 'Creating';
     if (name.includes('restart bench')) return 'Restarting';
     if (name.includes('start bench')) return 'Starting';
     if (name.includes('stop bench')) return 'Stopping';
     if (name.includes('delete bench')) return 'Deleting';
     if (name.includes('clean bench')) return 'Cleaning';
-    return task.stepName ? task.stepName.replace(/\.\.\./g, '') : 'Processing';
+    return typeof task.stepName === 'string' && task.stepName.length > 0
+      ? task.stepName.replace(/\.\.\./g, '')
+      : 'Processing';
   }
 
   if (row.status === 'running') return 'Running';
   if (row.status === 'stopped') return 'Stopped';
-  if (row.status === 'queued') return 'Queued';
+  if (row.status === 'queued') return 'In Progress';
   if (row.status === 'failure') return 'Failed';
-  return row.status;
+  return typeof row.status === 'string' && row.status.length > 0 ? row.status : 'Unknown';
 };
 
 const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
-  const task = (tasks.value || []).find(t => t.resourceId === id && t.resource === resource);
-  return task && (task.status === 'running' || task.status === 'queued');
+  return (tasks.value || []).some(
+    (t) => t.resourceId === id && t.resource === resource && (t.status === 'running' || t.status === 'queued')
+  );
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
-  const task = tasks.value.find(t => t.resourceId === resourceId && t.resource === resource);
+  const task = tasks.value.find(
+    (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
+  );
   
   if (task) {
     selectedTaskId.value = task.taskId;
@@ -474,10 +523,28 @@ const onCreateBench = async () => {
   showCreateBenchModal.value = false;
 };
 
-const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
-  const label = status === 'running' ? 'Starting' : 'Stopping';
-  toast.success(`${label} bench stack...`);
-  await update(id, { status });
+const onStopBench = async (id: string) => {
+  await onSetBenchStatus(id, 'stopped');
+};
+
+const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', currentStatus?: string) => {
+  if (status === 'running') {
+    if (currentStatus === 'running') {
+      toast.success('Restarting bench...');
+    } else {
+      toast.success('Starting bench...');
+    }
+    setPendingBenchAction(id, currentStatus === 'running' ? 'restarting' : 'starting');
+  } else {
+    toast.success('Stopping bench...');
+    setPendingBenchAction(id, 'stopping');
+  }
+
+  try {
+    await update(id, { status });
+  } catch {
+    clearPendingBenchAction(id);
+  }
 };
 
 const deleteConfirmOpen = ref(false);
@@ -560,8 +627,6 @@ const onOpenBenchFolder = async (id: string) => {
   justify-content: center;
   padding: 48px;
   background: white;
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
   text-align: center;
 }
 

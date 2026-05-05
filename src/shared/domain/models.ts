@@ -73,19 +73,25 @@ export const SettingsSchema = z.object({
 
 export const CreateBenchInputSchema = BenchSchema.omit({
   id: true,
+  status: true,
   timestamps: true,
 });
 
-export const UpdateBenchInputSchema = CreateBenchInputSchema.partial();
+export const UpdateBenchInputSchema = CreateBenchInputSchema.partial().extend({
+  status: EntityStatusSchema.optional(),
+});
 
 export const CreateSiteInputSchema = SiteSchema.omit({
   id: true,
+  status: true,
   timestamps: true,
 }).extend({
   force: z.boolean().optional(),
 });
 
-export const UpdateSiteInputSchema = CreateSiteInputSchema.partial();
+export const UpdateSiteInputSchema = CreateSiteInputSchema.partial().extend({
+  status: EntityStatusSchema.optional(),
+});
 
 
 

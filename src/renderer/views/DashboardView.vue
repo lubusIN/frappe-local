@@ -81,7 +81,7 @@ onMounted(() => {
 });
 
 const showGettingStarted = computed(() =>
-  setupSummary.benches === 0 || setupSummary.sites === 0
+  setupSummary.benches === 0
 );
 
 const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {

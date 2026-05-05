@@ -18,7 +18,7 @@
     />
 
     <!-- Creation Dialog -->
-    <Dialog v-model="showCreateSiteModal" :options="{ title: 'New site', description: 'Create a new Frappe site in an existing bench.', size: '3xl' }">
+    <Dialog v-model="showCreateSiteModal" :options="{ title: 'New site', size: '3xl' }">
       <template #body-content>
         <div class="site-wizard-dialog">
           <div class="wizard-header">
@@ -113,7 +113,7 @@
         <option value="">All statuses</option>
         <option value="running">Running</option>
         <option value="stopped">Stopped</option>
-        <option value="queued">Queued</option>
+        <option value="queued">In Progress</option>
         <option value="success">Success</option>
         <option value="failure">Failure</option>
       </select>
@@ -143,8 +143,8 @@
         <template v-else-if="column.key === 'status'">
           <div class="flex items-center">
             <Badge
-              variant="subtle"
-              :theme="getStatusTheme(row.status)"
+              :variant="'subtle'"
+              :theme="getStatusTheme(row)"
               class="cursor-pointer"
               @click.stop="onStatusClick(row.id, 'site')"
             >
@@ -196,6 +196,7 @@ import IconSquare from '~icons/lucide/square';
 import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
+import IconRotateCw from '~icons/lucide/rotate-cw';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
@@ -244,34 +245,75 @@ const selectedTask = computed(() => {
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
+const pendingSiteActions = ref<Record<string, 'starting' | 'restarting' | 'stopping'>>({});
+
+const getPendingSiteAction = (siteId: string) => pendingSiteActions.value[siteId];
+
+const setPendingSiteAction = (siteId: string, action: 'starting' | 'restarting' | 'stopping') => {
+  pendingSiteActions.value = {
+    ...pendingSiteActions.value,
+    [siteId]: action,
+  };
+};
+
+const clearPendingSiteAction = (siteId: string) => {
+  if (!pendingSiteActions.value[siteId]) {
+    return;
+  }
+
+  const next = { ...pendingSiteActions.value };
+  delete next[siteId];
+  pendingSiteActions.value = next;
+};
+
+watch(
+  sites,
+  (nextSites) => {
+    for (const site of nextSites) {
+      if (site.status !== 'queued') {
+        clearPendingSiteAction(site.id);
+      }
+    }
+  },
+  { deep: true }
+);
+
 const formatStatusLabel = (row: any) => {
+  const pendingAction = getPendingSiteAction(row.id);
+  if (pendingAction === 'starting') return 'Starting';
+  if (pendingAction === 'restarting') return 'Restarting';
+  if (pendingAction === 'stopping') return 'Stopping';
+
   const task = (tasks.value || []).find(
     (t) => t.resourceId === row.id && t.resource === 'site' && (t.status === 'running' || t.status === 'queued')
   );
 
   if (task) {
-    const name = task.taskName.toLowerCase();
+    const name = String(task.taskName ?? '').toLowerCase();
     if (name.includes('create site')) return 'Creating';
     if (name.includes('stop site')) return 'Stopping';
     if (name.includes('start site')) return 'Starting';
     if (name.includes('delete site')) return 'Deleting';
-    return task.stepName || 'Processing';
+    return typeof task.stepName === 'string' && task.stepName.length > 0 ? task.stepName : 'Processing';
   }
 
   if (row.status === 'running') return 'Running';
   if (row.status === 'stopped') return 'Stopped';
-  if (row.status === 'queued') return 'Queued';
+  if (row.status === 'queued') return 'In Progress';
   if (row.status === 'failure') return 'Failed';
-  return row.status;
+  return typeof row.status === 'string' && row.status.length > 0 ? row.status : 'Unknown';
 };
 
 const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
-  const task = (tasks.value || []).find(t => t.resourceId === id && t.resource === resource);
-  return task && (task.status === 'running' || task.status === 'queued');
+  return (tasks.value || []).some(
+    (t) => t.resourceId === id && t.resource === resource && (t.status === 'running' || t.status === 'queued')
+  );
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
-  const task = tasks.value.find(t => t.resourceId === resourceId && t.resource === resource);
+  const task = tasks.value.find(
+    (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
+  );
   if (task) {
     selectedTaskId.value = task.taskId;
     return;
@@ -282,7 +324,10 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
   }
 };
 
-const getStatusTheme = (status: string) => {
+const getStatusTheme = (row: any) => {
+  if (getPendingSiteAction(row.id)) return 'blue';
+  if (isResourceBusy(row.id, 'site')) return 'blue';
+  const status = row.status;
   if (status === 'running') return 'green';
   if (status === 'stopped') return 'gray';
   if (status === 'queued') return 'blue';
@@ -322,20 +367,20 @@ const getSiteActions = (site: any) => {
     });
   }
 
-  if (site.status !== 'running') {
-    actions.push({
-      label: 'Start',
-      icon: IconPlay,
-      disabled: updating.value || !canStartSite(site.id),
-      onClick: () => onSetSiteStatus(site.id, 'running'),
-    });
-  }
+  const isBusy = isResourceBusy(site.id, 'site') || Boolean(getPendingSiteAction(site.id));
+
+  actions.push({
+    label: site.status === 'running' ? 'Restart' : 'Start',
+    icon: site.status === 'running' ? IconRotateCw : IconPlay,
+    disabled: updating.value || isBusy || !canStartSite(site.id),
+    onClick: () => onSetSiteStatus(site.id, 'running', site.status),
+  });
 
   actions.push({
     label: 'Stop',
     icon: IconSquare,
-    disabled: updating.value || !canStopSite(site.id),
-    onClick: () => onSetSiteStatus(site.id, 'stopped'),
+    disabled: updating.value || site.status === 'stopped' || isBusy || !canStopSite(site.id),
+    onClick: () => onSetSiteStatus(site.id, 'stopped', site.status),
   });
 
   actions.push({
@@ -440,8 +485,25 @@ const onCreateSite = async () => {
   await loadBenchOptions();
 };
 
-const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
-  await update(id, { status });
+const onSetSiteStatus = async (id: string, status: 'running' | 'stopped', currentStatus?: string) => {
+  if (status === 'running') {
+    if (currentStatus === 'running') {
+      toast.success('Restarting site...');
+      setPendingSiteAction(id, 'restarting');
+    } else {
+      toast.success('Starting site...');
+      setPendingSiteAction(id, 'starting');
+    }
+  } else {
+    toast.success('Stopping site...');
+    setPendingSiteAction(id, 'stopping');
+  }
+
+  try {
+    await update(id, { status });
+  } catch {
+    clearPendingSiteAction(id);
+  }
 };
 
 const canStartSite = (siteId: string): boolean => {

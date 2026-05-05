@@ -49,7 +49,7 @@ import {
 } from '../shared/domain/site-lifecycle';
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
-import { orchestrateSiteCreation, orchestrateSiteDeletion } from './site-orchestration';
+import { orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
 import { orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
 
 type IpcMainLike = {
@@ -88,6 +88,9 @@ const resolveBundledPodmanMachineImagePath = (): string | null => {
 };
 
 const resolveUserPath = (untrimmedPath: string): string => {
+  if (typeof untrimmedPath !== 'string') {
+    return '';
+  }
   const trimmedPath = untrimmedPath.trim();
   if (trimmedPath.startsWith('~')) {
     return path.join(os.homedir(), trimmedPath.slice(1));
@@ -320,31 +323,42 @@ export const registerIpcHandlers = (
 
     const benches = await repositories.benches.findAll();
     const existing = benches.find(b => b.id === id);
+    if (!existing) {
+      return null;
+    }
 
     const { status: targetStatus, ...otherUpdates } = payload;
     let updated = await repositories.benches.update(id, otherUpdates);
+    if (!updated) {
+      return null;
+    }
 
-    if (updated) {
-      operations.trackBenchOperation?.(updated.id, 'update');
+    operations.trackBenchOperation?.(updated.id, 'update');
 
-      if (targetStatus && (targetStatus !== existing?.status || targetStatus === 'running')) {
-        if (targetStatus === 'running' || targetStatus === 'stopped') {
-          // Set to queued in DB immediately so UI shows pending state
-          updated = (await repositories.benches.update(id, { status: 'queued' })) ?? updated;
-          
-          if (targetStatus === 'running') {
-            const isRestart = existing?.status === 'running';
-            orchestrateBenchStart(updated, repositories.benches, isRestart);
-          } else {
-            orchestrateBenchStop(updated, repositories.benches);
-          }
-        } else {
-          // Normal status update without orchestration
-          updated = (await repositories.benches.update(id, { status: targetStatus })) ?? updated;
+    if (targetStatus && (targetStatus !== existing.status || targetStatus === 'running')) {
+      if (targetStatus === 'running' || targetStatus === 'stopped') {
+        // Do not allow conflicting lifecycle requests while transition is already queued.
+        if (existing.status === 'queued') {
+          mainLogger.info(`Ignoring bench status change while queued. benchId=${id} target=${targetStatus}`);
+          return toBenchListItem(updated);
         }
+
+        // Set to queued in DB immediately so UI shows pending state.
+        updated = (await repositories.benches.update(id, { status: 'queued' })) ?? updated;
+
+        if (targetStatus === 'running') {
+          const isRestart = existing.status === 'running';
+          orchestrateBenchStart(updated, repositories.benches, isRestart);
+        } else {
+          orchestrateBenchStop(updated, repositories.benches);
+        }
+      } else {
+        // Normal status update without orchestration.
+        updated = (await repositories.benches.update(id, { status: targetStatus })) ?? updated;
       }
     }
-    return updated ? toBenchListItem(updated) : null;
+
+    return toBenchListItem(updated);
   });
 
   ipcMainLike.handle(ipcChannels.benchesDelete, async (_event: unknown, id: unknown) => {
@@ -362,7 +376,7 @@ export const registerIpcHandlers = (
       resource: { type: 'bench', id: bench.id },
       run: async (context: any) => {
         try {
-          await orchestrateBenchDeletion(bench, repositories.benches, repositories.sites, context);
+          await orchestrateBenchDeletion(bench, repositories.benches, repositories.sites);
         } catch (error) {
           mainLogger.error('Failed to delete bench:', error);
           throw error;
@@ -431,7 +445,7 @@ export const registerIpcHandlers = (
       resource: { type: 'bench', id: bench.id },
       run: async (context: any) => {
         try {
-          await orchestrateBenchCleaning(bench, repositories.benches, context);
+          await orchestrateBenchCleaning(bench, repositories.sites);
         } catch (error) {
           mainLogger.error('Failed to clean bench:', error);
           throw error;
@@ -462,10 +476,7 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.sitesCreate, async (_event: unknown, input: unknown) => {
-    const payload = CreateSiteInputSchema.parse({
-      ...(input as SiteCreateInput),
-      status: 'stopped',
-    });
+    const payload = CreateSiteInputSchema.parse(input as SiteCreateInput);
 
     const created = await orchestrateSiteCreation(repositories, payload);
     operations.trackSiteOperation?.(created.id, 'create');
@@ -507,13 +518,14 @@ export const registerIpcHandlers = (
     if (updated) {
       operations.trackSiteOperation?.(updated.id, 'update');
 
-      if (targetStatus && targetStatus !== existing?.status) {
-        // For now, we just update the status in the DB as frappe_docker
-        // manages site availability via the shared backend container.
-        updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
-      } else {
-        // Normal status update without orchestration
-        updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
+      if (targetStatus && (targetStatus !== existing?.status || targetStatus === 'running')) {
+        if (targetStatus === 'running' || targetStatus === 'stopped') {
+          // Set to queued in DB immediately so UI shows pending state
+          updated = (await repositories.sites.update(id, { status: 'queued' })) ?? updated;
+          orchestrateSiteStatusUpdate(repositories, updated!, targetStatus);
+        } else {
+          updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
+        }
       }
     }
     return updated ? toSiteListItem(updated) : null;

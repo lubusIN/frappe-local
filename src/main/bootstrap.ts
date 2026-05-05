@@ -154,7 +154,7 @@ export const runApplicationBootstrap = async (
       trackSiteOperation: (siteId, operation) => {
         siteAnalytics.track(siteId, operation);
       },
-    }, undefined, undefined, context.appVersion, context.runtimePaths);
+    }, undefined, context.appVersion, context.runtimePaths);
     
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');

@@ -60,7 +60,13 @@ export const useSites = () => {
       }
 
       sites.value = sites.value.map((site) => (site.id === id ? updated : site));
-      successMessage.value = `Updated site ${updated.name}.`;
+      if (input.status === 'running') {
+        successMessage.value = `Start requested for ${updated.name}.`;
+      } else if (input.status === 'stopped') {
+        successMessage.value = `Stop requested for ${updated.name}.`;
+      } else {
+        successMessage.value = `Updated site ${updated.name}.`;
+      }
     } catch (err) {
       error.value = String(err);
     } finally {
