@@ -29,9 +29,6 @@ export const ipcChannels = {
   sitesOpenExternal: 'sites:open-external',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
-  exportSitePackage: 'export:site-package',
-  importValidatePackage: 'import:validate-package',
-  importExecutePackage: 'import:execute-package',
 
 
   taskRunnerSubscribe: 'task-runner:subscribe',
@@ -160,65 +157,6 @@ export type SettingsItem = {
   readonly sidebarCompact: boolean;
 };
 
-export type ImportValidationIssue = {
-  readonly severity: 'error' | 'warning';
-  readonly code: string;
-  readonly message: string;
-};
-
-export type ImportPackageSummary = {
-  readonly packageVersion: number;
-  readonly exportedAt: string;
-  readonly siteName: string;
-  readonly benchName: string;
-
-  readonly benchFrappeVersion: string;
-  readonly requiredAppIds: string[];
-};
-
-export type ImportValidateInput = {
-  readonly artifactDirectory: string;
-  readonly benchId?: string | null;
-};
-
-export type ImportValidationResponse = {
-  readonly canImport: boolean;
-  readonly summary: ImportPackageSummary;
-  readonly issues: ImportValidationIssue[];
-};
-
-export type ExportSitePackageInput = {
-  readonly siteId: string;
-  readonly outputDirectory: string;
-};
-
-export type ExportSitePackageResponse = {
-  readonly artifactDirectory: string;
-  readonly manifestPath: string;
-  readonly payloadPath: string;
-};
-
-export type ImportConflictPolicy = 'block' | 'rename';
-
-export type ImportExecuteInput = {
-  readonly artifactDirectory: string;
-  readonly benchId: string;
-  readonly conflictPolicy: ImportConflictPolicy;
-};
-
-export type ImportExecutionStep = {
-  readonly name: string;
-  readonly status: 'success' | 'warning' | 'failed';
-  readonly message: string;
-};
-
-export type ImportExecutionResponse = {
-  readonly success: boolean;
-  readonly createdSiteId: string | null;
-  readonly siteName: string;
-  readonly conflictPolicyApplied: ImportConflictPolicy;
-  readonly steps: ImportExecutionStep[];
-};
 
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
@@ -248,9 +186,6 @@ export type RendererBridge = {
   readonly openSiteExternal: (id: string) => Promise<boolean>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
-  readonly exportSitePackage: (input: ExportSitePackageInput) => Promise<ExportSitePackageResponse>;
-  readonly validateImportPackage: (input: ImportValidateInput) => Promise<ImportValidationResponse>;
-  readonly executeImportPackage: (input: ImportExecuteInput) => Promise<ImportExecutionResponse>;
 
   readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;

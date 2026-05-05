@@ -38,12 +38,6 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
   },
 
   {
-    path: '/import-export',
-    name: 'importExport',
-    title: 'Import / Export',
-    description: 'Validate export packages, map them to benches, and preview import conflicts safely.',
-  },
-  {
     path: '/diagnostics',
     name: 'diagnostics',
     title: 'Diagnostics',
@@ -74,11 +68,6 @@ export const navigationItems: NavigationItem[] = [
     path: '/sites',
   },
 
-  {
-    label: 'Import / Export',
-    description: 'Validate packages, preview mappings, and prepare safe transfers.',
-    path: '/import-export',
-  },
   {
     label: 'Activity',
     description: 'Recent tasks and long-running operations.',

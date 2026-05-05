@@ -3,12 +3,6 @@ import type {
   BenchCreateInput,
   BenchListItem,
   BenchUpdateInput,
-  ImportExecuteInput,
-  ImportExecutionResponse,
-  ImportValidationResponse,
-
-  ExportSitePackageInput,
-  ExportSitePackageResponse,
   CatalogAppItem,
   LifecycleLogItem,
   SettingsItem,
@@ -57,9 +51,6 @@ import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
 import { orchestrateSiteCreation, orchestrateSiteDeletion } from './site-orchestration';
 import { orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
-import { parseImportPackage, validateImportCompatibility } from './import-package-validator';
-import { executeImportPackage } from './import-execution';
-import { exportSitePackage } from './export-package-writer';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: any[]) => any) => void;
@@ -626,30 +617,6 @@ export const registerIpcHandlers = (
     return operations.openExternal(url);
   });
 
-  ipcMainLike.handle(ipcChannels.exportSitePackage, async (_event: unknown, input: unknown): Promise<ExportSitePackageResponse> => {
-    return exportSitePackage(repositories as any, input as any);
-  });
-
-  ipcMainLike.handle(ipcChannels.importValidatePackage, async (_event: unknown, input: unknown): Promise<ImportValidationResponse> => {
-    const result: any = await parseImportPackage(input as any);
-    const compatibility = await validateImportCompatibility(repositories as any, result);
-    return {
-       success: compatibility.success || false,
-       issues: compatibility.issues,
-       summary: {
-          packageVersion: result.manifest.version,
-          exportedAt: result.manifest.metadata.exportedAt,
-          siteName: result.manifest.site.name,
-          benchName: result.manifest.bench.name,
-          benchFrappeVersion: result.manifest.bench.frappeVersion,
-          requiredAppIds: result.manifest.apps.map((a: any) => a.name)
-       }
-    };
-  });
-
-  ipcMainLike.handle(ipcChannels.importExecutePackage, async (_event: unknown, input: unknown): Promise<ImportExecutionResponse> => {
-    return executeImportPackage(repositories as any, input as any);
-  });
 
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
     return runManualUpdateCheck();

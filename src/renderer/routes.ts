@@ -2,7 +2,6 @@ import type { RouteRecordRaw } from 'vue-router';
 import ActivityView from './views/ActivityView.vue';
 import BenchesView from './views/BenchesView.vue';
 import DashboardView from './views/DashboardView.vue';
-import ImportExportView from './views/ImportExportView.vue';
 import { appRouteDefinitions, navigationItems } from './navigation';
 import SitesView from './views/SitesView.vue';
 const componentMap = {
@@ -11,7 +10,6 @@ const componentMap = {
   benches: BenchesView,
   sites: SitesView,
 
-  importExport: ImportExportView,
   diagnostics: () => import('./views/DiagnosticsView.vue'),
   settings: () => import('./views/SettingsView.vue'),
 } as const;

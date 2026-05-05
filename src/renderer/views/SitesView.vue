@@ -222,7 +222,6 @@ import IconSquare from '~icons/lucide/square';
 import IconFileText from '~icons/lucide/file-text';
 import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
-import IconDownload from '~icons/lucide/download';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import type { LifecycleLogItem } from '../../shared/ipc';
 import AppPicker from '../components/AppPicker.vue';
@@ -383,12 +382,6 @@ const getSiteActions = (site: any) => {
     onClick: () => onOpenSiteFolder(site.id),
   });
 
-  actions.push({
-    label: 'Export',
-    icon: IconDownload,
-    disabled: exporting.value,
-    onClick: () => onExportSite(site.id, site.name),
-  });
 
   actions.push({
     label: 'Delete',
@@ -401,7 +394,6 @@ const getSiteActions = (site: any) => {
   return actions;
 };
 
-const exporting = ref(false);
 
 const createForm = reactive({
   name: '',
@@ -593,32 +585,6 @@ const onOpenSiteFolder = async (id: string) => {
   await openFolder(id);
 };
 
-const onExportSite = async (id: string, name: string) => {
-  try {
-    exporting.value = true;
-
-    
-    // Prompt user for output directory
-    const outputDir = window.prompt(`Enter output directory path for exporting "${name}":`);
-    if (!outputDir || !outputDir.trim()) {
-      return;
-    }
-    
-    const result = await ipc.exportSitePackage({
-      siteId: id,
-      outputDirectory: outputDir.trim(),
-    });
-    
-    // TODO: Show success message with artifact directory path
-    // successMessage.value = `Site exported successfully to ${result.artifactDirectory}`;
-    console.log('Export result:', result);
-  } catch (err) {
-    console.error('Export failed:', err);
-    // TODO: Set error message
-  } finally {
-    exporting.value = false;
-  }
-};
 
 onMounted(() => {
   void loadBenchOptions();

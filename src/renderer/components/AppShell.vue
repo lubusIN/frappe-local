@@ -92,9 +92,7 @@ import IconHome from '~icons/lucide/home';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
 
-import IconTerminal from '~icons/lucide/terminal';
 import IconActivity from '~icons/lucide/activity';
-import IconArrowRightLeft from '~icons/lucide/arrow-right-left';
 import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
 import CafeLogo from './CafeLogo.vue';
@@ -117,8 +115,6 @@ const iconComponentMap: Record<string, any> = {
   '/benches': IconPackage,
   '/sites': IconGlobe,
 
-  '/console': IconTerminal,
-  '/import-export': IconArrowRightLeft,
   '/diagnostics': IconZap,
 };
 
