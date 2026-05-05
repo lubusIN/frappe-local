@@ -15,10 +15,6 @@ import type {
   SiteCreateInput,
   SiteListItem,
   SiteUpdateInput,
-  TerminalErrorEvent,
-  TerminalSessionInspection,
-  TerminalOutputEvent,
-  TerminalStateChangeEvent,
   UpdateCheckResult,
   UpdateStrategyStatus,
 } from '../shared/ipc';
@@ -27,9 +23,7 @@ import { runDiagnostics, getLastDiagnosticsReport } from './diagnostics-service'
 import { ensureRuntimeRunning } from './runtime-service';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
 import { ipcChannels } from '../shared/ipc';
-import type { TerminalCreateResponse } from '../shared/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
-import { getTerminalService } from './terminal-service';
 import { getTaskRunner } from './task-runner';
 import { execPromise } from './utils/exec';
 import { getBinaryPath } from './utils/binaries';
@@ -71,17 +65,6 @@ type IpcMainLike = {
   handle: (channel: string, listener: (...args: any[]) => any) => void;
 };
 
-type TerminalServiceLike = {
-  onOutput: (listener: (event: TerminalOutputEvent) => void) => () => void;
-  onError: (listener: (event: TerminalErrorEvent) => void) => () => void;
-  onStateChange: (listener: (event: TerminalStateChangeEvent) => void) => () => void;
-  createSession: (request: any) => any;
-  listSessions: () => any[];
-  write: (id: string, data: string) => void;
-  closeSession: (id: string) => void;
-  clear: (id: string) => void;
-  resize: (id: string, cols: number, rows: number) => void;
-};
 
 type TaskRunnerLike = {
   onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
@@ -233,7 +216,6 @@ export const registerIpcHandlers = (
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
   },
-  terminalService: TerminalServiceLike = getTerminalService(),
   taskRunner: TaskRunnerLike = getTaskRunner(),
 
   appVersion: string = '0.1.0',
@@ -279,30 +261,6 @@ export const registerIpcHandlers = (
     });
   });
 
-  // Event Forwarding for TerminalService
-  terminalService.onOutput((event) => {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) {
-        win.webContents.send(ipcChannels.terminalOutputEvent, event);
-      }
-    });
-  });
-
-  terminalService.onError((event) => {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) {
-        win.webContents.send(ipcChannels.terminalErrorEvent, event);
-      }
-    });
-  });
-
-  terminalService.onStateChange((event) => {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) {
-        win.webContents.send(ipcChannels.terminalStateChangeEvent, event);
-      }
-    });
-  });
 
   ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
     return runDiagnostics({
@@ -653,88 +611,6 @@ export const registerIpcHandlers = (
     return toSettingsItem(updated);
   });
 
-  ipcMainLike.handle(ipcChannels.terminalCreate, async (_event: unknown, benchId: unknown, siteId: unknown) => {
-    if (typeof benchId !== 'string') {
-      return { success: false, error: 'Bench ID is required for terminal creation.' };
-    }
-
-    const bench = await repositories.benches.findById(benchId);
-    if (!bench) {
-      return { success: false, error: `Bench with ID ${benchId} not found.` };
-    }
-
-    const workspacePath = bench.path;
-    return terminalService.createSession({
-      benchId: benchId,
-      siteId: typeof siteId === 'string' ? siteId : null,
-      workspacePath,
-    });
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalWrite, async (_event: unknown, id: unknown, data: unknown) => {
-    if (typeof id !== 'string' || typeof data !== 'string') {
-      return false;
-    }
-    terminalService.write(id, data);
-    return true;
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalClose, async (_event: unknown, id: unknown) => {
-    if (typeof id !== 'string') {
-      return false;
-    }
-    terminalService.closeSession(id);
-    return true;
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalClear, async (_event: unknown, id: unknown) => {
-    if (typeof id !== 'string') {
-      return false;
-    }
-    terminalService.clear(id);
-    return true;
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalResize, async (_event: unknown, id: unknown, cols: unknown, rows: unknown) => {
-    if (typeof id !== 'string' || typeof cols !== 'number' || typeof rows !== 'number') {
-      return false;
-    }
-    terminalService.resize(id, cols as number, rows as number);
-    return true;
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalInspect, async (_event: unknown, sessionId: unknown): Promise<any> => {
-    const sessions = terminalService.listSessions();
-    if (typeof sessionId === 'string') {
-        return sessions.find(s => s.id === sessionId) || null;
-    }
-    return sessions;
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalOpenFolder, async (_event: unknown, benchId: unknown, siteId: unknown) => {
-    if (typeof benchId !== 'string') return false;
-    const bench = await repositories.benches.findById(benchId);
-    if (!bench) return false;
-    
-    // TODO: if siteId is provided, should we open site folder?
-    return operations.openPath(bench.path);
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalOpenEditor, async (_event: unknown, benchId: unknown, siteId: unknown) => {
-    if (typeof benchId !== 'string') return false;
-    const bench = await repositories.benches.findById(benchId);
-    if (!bench) return false;
-    
-    return operations.openInEditor(bench.path);
-  });
-
-  ipcMainLike.handle(ipcChannels.terminalOpenDevcontainer, async (_event: unknown, benchId: unknown) => {
-    if (typeof benchId !== 'string') return false;
-    const bench = await repositories.benches.findById(benchId);
-    if (!bench) return false;
-    
-    return operations.openInEditor(bench.path);
-  });
 
   ipcMainLike.handle(ipcChannels.utilsPathExists, async (_event: unknown, targetPath: unknown) => {
     if (typeof targetPath !== 'string') {

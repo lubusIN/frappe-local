@@ -34,18 +34,6 @@ export const ipcChannels = {
   importExecutePackage: 'import:execute-package',
 
 
-  terminalCreate: 'terminal:create',
-  terminalWrite: 'terminal:write',
-  terminalClose: 'terminal:close',
-  terminalClear: 'terminal:clear',
-  terminalResize: 'terminal:resize',
-  terminalInspect: 'terminal:inspect',
-  terminalOpenFolder: 'terminal:open-folder',
-  terminalOpenEditor: 'terminal:open-editor',
-  terminalOpenDevcontainer: 'terminal:open-devcontainer',
-  terminalOutputEvent: 'terminal:output-event',
-  terminalErrorEvent: 'terminal:error-event',
-  terminalStateChangeEvent: 'terminal:state-change-event',
   taskRunnerSubscribe: 'task-runner:subscribe',
   taskRunnerUnsubscribe: 'task-runner:unsubscribe',
   taskRunnerProgressEvent: 'task-runner:progress-event',
@@ -232,49 +220,6 @@ export type ImportExecutionResponse = {
   readonly steps: ImportExecutionStep[];
 };
 
-
-
-export type TerminalCreateResponse = {
-  readonly sessionId: string;
-  readonly state: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
-  readonly workingDirectory: string;
-};
-
-export type TerminalDimensions = {
-  readonly rows: number;
-  readonly cols: number;
-};
-
-export type TerminalSessionInspection = {
-  readonly sessionId: string;
-  readonly state: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
-  readonly workingDirectory: string;
-  readonly contextBenchId: string;
-  readonly contextSiteId: string | null;
-  readonly createdAt: string;
-  readonly lastActivityAt: string;
-};
-
-export type TerminalOutputEvent = {
-  readonly sessionId: string;
-  readonly output: string;
-  readonly timestamp: string;
-};
-
-export type TerminalErrorEvent = {
-  readonly sessionId: string;
-  readonly code: string;
-  readonly message: string;
-  readonly timestamp: string;
-};
-
-export type TerminalStateChangeEvent = {
-  readonly sessionId: string;
-  readonly previousState: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
-  readonly newState: 'idle' | 'connecting' | 'ready' | 'closed' | 'error';
-  readonly timestamp: string;
-};
-
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
   readonly getUpdateStatus: () => Promise<UpdateStrategyStatus>;
@@ -307,18 +252,6 @@ export type RendererBridge = {
   readonly validateImportPackage: (input: ImportValidateInput) => Promise<ImportValidationResponse>;
   readonly executeImportPackage: (input: ImportExecuteInput) => Promise<ImportExecutionResponse>;
 
-  readonly terminalCreate: (benchId: string, siteId?: string | null) => Promise<TerminalCreateResponse>;
-  readonly terminalWrite: (sessionId: string, data: string) => Promise<boolean>;
-  readonly terminalClose: (sessionId: string, force?: boolean) => Promise<boolean>;
-  readonly terminalClear: (sessionId: string) => Promise<boolean>;
-  readonly terminalResize: (sessionId: string, dimensions: TerminalDimensions) => Promise<boolean>;
-  readonly terminalInspect: (sessionId: string) => Promise<TerminalSessionInspection | null>;
-  readonly terminalOpenFolder: (benchId: string, siteId?: string | null) => Promise<boolean>;
-  readonly terminalOpenEditor: (benchId: string, siteId?: string | null) => Promise<boolean>;
-  readonly terminalOpenDevcontainer: (benchId: string) => Promise<boolean>;
-  readonly onTerminalOutput: (listener: (event: TerminalOutputEvent) => void) => () => void;
-  readonly onTerminalError: (listener: (event: TerminalErrorEvent) => void) => () => void;
-  readonly onTerminalStateChange: (listener: (event: TerminalStateChangeEvent) => void) => () => void;
   readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;

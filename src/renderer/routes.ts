@@ -1,20 +1,16 @@
 import type { RouteRecordRaw } from 'vue-router';
 import ActivityView from './views/ActivityView.vue';
 import BenchesView from './views/BenchesView.vue';
-import ConsoleView from './views/ConsoleView.vue';
 import DashboardView from './views/DashboardView.vue';
 import ImportExportView from './views/ImportExportView.vue';
 import { appRouteDefinitions, navigationItems } from './navigation';
 import SitesView from './views/SitesView.vue';
-
-
 const componentMap = {
   activity: ActivityView,
   dashboard: DashboardView,
   benches: BenchesView,
   sites: SitesView,
 
-  console: ConsoleView,
   importExport: ImportExportView,
   diagnostics: () => import('./views/DiagnosticsView.vue'),
   settings: () => import('./views/SettingsView.vue'),

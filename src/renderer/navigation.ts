@@ -38,12 +38,6 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
   },
 
   {
-    path: '/console',
-    name: 'console',
-    title: 'Console',
-    description: 'Reserve an intentional home for embedded terminal sessions and tool integration.',
-  },
-  {
     path: '/import-export',
     name: 'importExport',
     title: 'Import / Export',
@@ -80,11 +74,6 @@ export const navigationItems: NavigationItem[] = [
     path: '/sites',
   },
 
-  {
-    label: 'Console',
-    description: 'Launch scoped commands once terminal support lands.',
-    path: '/console',
-  },
   {
     label: 'Import / Export',
     description: 'Validate packages, preview mappings, and prepare safe transfers.',
