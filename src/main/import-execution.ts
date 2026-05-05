@@ -3,7 +3,6 @@ import path from 'node:path';
 import type {
   AppCatalogItem,
   Bench,
-  Group,
   Settings,
   Site,
 } from '../shared/domain/models';
@@ -24,21 +23,11 @@ type ImportExecutionDependencies = {
     create: (input: {
       name: string;
       benchId: string;
-      groupId: string | null;
       apps: string[];
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;
     }) => Promise<Site>;
     delete: (id: string) => Promise<boolean>;
-  };
-  readonly groups: {
-    findAll: () => Promise<Group[]>;
-    update: (id: string, input: {
-      name?: string;
-      description?: string;
-      tags?: string[];
-      siteIds?: string[];
-    }) => Promise<Group | null>;
   };
   readonly settings: {
     get: () => Promise<Settings | null>;
@@ -119,11 +108,10 @@ export const executeImportPackage = async (
     message: `Target bench resolved: ${targetBench.name}.`,
   });
 
-  const [settings, appCatalog, allSites, allGroups] = await Promise.all([
+  const [settings, appCatalog, allSites] = await Promise.all([
     dependencies.settings.get(),
     dependencies.appCatalog.findAll(),
     dependencies.sites.findAll(),
-    dependencies.groups.findAll(),
   ]);
 
   const compatibility = validateImportCompatibility(parsedPackage, {
@@ -204,35 +192,17 @@ export const executeImportPackage = async (
     });
   }
 
-  const sourceGroup = parsedPackage.payload.data.group;
-  const matchingGroup = sourceGroup
-    ? allGroups.find((group) => group.name.toLowerCase() === sourceGroup.name.toLowerCase()) ?? null
-    : null;
-
   const logDirectory = settings?.storagePath ?? path.join(process.cwd(), 'var');
   let createdSite: Site | null = null;
-  let groupLinked = false;
 
   try {
     createdSite = await dependencies.sites.create({
       name: importedSiteName,
       benchId: targetBench.id,
-      groupId: matchingGroup?.id ?? null,
       apps: [...parsedPackage.payload.data.site.apps],
       status: 'stopped',
       path: path.join(targetBench.path, 'sites', importedSiteName),
     });
-
-    if (matchingGroup && !matchingGroup.siteIds.includes(createdSite.id)) {
-      const updatedGroup = await dependencies.groups.update(matchingGroup.id, {
-        siteIds: [...matchingGroup.siteIds, createdSite.id],
-      });
-
-      if (!updatedGroup) {
-        throw new Error('Unable to assign imported site to the matching group.');
-      }
-      groupLinked = true;
-    }
 
     steps.push({
       name: 'create-site-record',
@@ -271,21 +241,6 @@ export const executeImportPackage = async (
       status: 'failed',
       message: errorMessage,
     });
-
-    if (groupLinked && matchingGroup && createdSite) {
-      const createdSiteId = createdSite.id;
-      const revertedGroup = await dependencies.groups.update(matchingGroup.id, {
-        siteIds: matchingGroup.siteIds.filter((id) => id !== createdSiteId),
-      });
-
-      steps.push({
-        name: 'rollback-group-assignment',
-        status: revertedGroup ? 'success' : 'warning',
-        message: revertedGroup
-          ? `Removed ${createdSite.id} from group ${matchingGroup.name} during rollback.`
-          : `Group rollback for ${matchingGroup.name} was already reconciled or unavailable.`,
-      });
-    }
 
     if (createdSite) {
       const deletedSite = await dependencies.sites.delete(createdSite.id);

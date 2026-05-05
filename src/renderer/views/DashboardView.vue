@@ -2,7 +2,7 @@
   <div class="dashboard">
     <FirstRunGuide
       v-if="showGettingStarted"
-      title="Set up your local workspace"
+      title="Set up your local environment"
       body="A fresh install has no benches or sites yet. Start with one bench, then create a site once the runtime is healthy."
       :links="gettingStartedLinks"
     />

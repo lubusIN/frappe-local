@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { AppCatalogItem, Bench, Group, Settings, Site } from '../shared/domain/models';
+import type { AppCatalogItem, Bench, Settings, Site } from '../shared/domain/models';
 import {
   createSha256,
   EXPORT_PACKAGE_VERSION,
@@ -16,9 +16,6 @@ export type ExportPackageWriterDependencies = {
   };
   readonly sites: {
     findById: (id: string) => Promise<Site | null>;
-  };
-  readonly groups: {
-    findAll: () => Promise<Group[]>;
   };
   readonly settings: {
     get: () => Promise<Settings | null>;
@@ -72,13 +69,11 @@ export const exportSitePackage = async (
     throw new Error('Cannot export site: parent bench was not found.');
   }
 
-  const [groups, settings, appCatalog] = await Promise.all([
-    dependencies.groups.findAll(),
+  const [settings, appCatalog] = await Promise.all([
     dependencies.settings.get(),
     dependencies.appCatalog.findAll(),
   ]);
 
-  const group = site.groupId ? groups.find((entry) => entry.id === site.groupId) ?? null : null;
   const requiredApps = buildRequiredApps(appCatalog, bench, site);
   const exportedAt = new Date().toISOString();
 
@@ -88,7 +83,6 @@ export const exportSitePackage = async (
     data: {
       site,
       bench,
-      group,
       settings,
       requiredApps,
     },
@@ -106,7 +100,6 @@ export const exportSitePackage = async (
     exportedAt,
     site,
     bench,
-    group,
     settings,
     requiredApps,
     payload: {

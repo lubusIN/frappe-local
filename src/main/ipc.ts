@@ -15,7 +15,6 @@ import type {
   SiteCreateInput,
   SiteListItem,
   SiteUpdateInput,
-  SiteUpdateInput,
   TerminalErrorEvent,
   TerminalSessionInspection,
   TerminalOutputEvent,
@@ -25,6 +24,7 @@ import type {
 } from '../shared/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics } from './diagnostics-service';
+import { ensureRuntimeRunning } from './runtime-service';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
 import { ipcChannels } from '../shared/ipc';
 import type { TerminalCreateResponse } from '../shared/ipc';
@@ -42,10 +42,9 @@ import { CURRENT_STORAGE_SCHEMA_VERSION } from './storage/schema';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { BrowserWindow, dialog } from 'electron';
+import { BrowserWindow, dialog, shell } from 'electron';
 import {
   CreateBenchInputSchema,
-  CreateGroupInputSchema,
   CreateSiteInputSchema,
   SettingsSchema,
   UpdateBenchInputSchema,
@@ -69,23 +68,24 @@ import { executeImportPackage } from './import-execution';
 import { exportSitePackage } from './export-package-writer';
 
 type IpcMainLike = {
-  handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
+  handle: (channel: string, listener: (...args: any[]) => any) => void;
 };
 
 type TerminalServiceLike = {
   onOutput: (listener: (event: TerminalOutputEvent) => void) => () => void;
   onError: (listener: (event: TerminalErrorEvent) => void) => () => void;
   onStateChange: (listener: (event: TerminalStateChangeEvent) => void) => () => void;
-  createSession: ReturnType<typeof getTerminalService>['createSession'];
-  getSession: ReturnType<typeof getTerminalService>['getSession'];
-  write: ReturnType<typeof getTerminalService>['write'];
-  closeSession: ReturnType<typeof getTerminalService>['closeSession'];
-  clear: ReturnType<typeof getTerminalService>['clear'];
-  resize: ReturnType<typeof getTerminalService>['resize'];
+  createSession: (request: any) => any;
+  listSessions: () => any[];
+  write: (id: string, data: string) => void;
+  closeSession: (id: string) => void;
+  clear: (id: string) => void;
+  resize: (id: string, cols: number, rows: number) => void;
 };
 
 type TaskRunnerLike = {
   onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
+  enqueue: (definition: any) => string;
 };
 
 const resolveBundledPodmanMachineImagePath = (): string | null => {
@@ -113,141 +113,50 @@ const resolveBundledPodmanMachineImagePath = (): string | null => {
   return null;
 };
 
+const resolveUserPath = (untrimmedPath: string): string => {
+  const trimmedPath = untrimmedPath.trim();
+  if (trimmedPath.startsWith('~')) {
+    return path.join(os.homedir(), trimmedPath.slice(1));
+  }
 
+  return path.resolve(trimmedPath);
+};
 
-export type AppRepositories = {
+export type IpcRepositories = {
   readonly appCatalog: {
-    findAll: () => Promise<Array<{
-      id: string;
-      name: string;
-      description: string;
-      source: string;
-      version: string;
-      category?: string;
-      icon?: string;
-      compatibility: {
-        minimumFrappeVersion?: string;
-        maximumFrappeVersion?: string;
-      };
-    }>>;
-    findById: (id: string) => Promise<{
-      id: string;
-      name: string;
-      description: string;
-      source: string;
-      version: string;
-      category?: string;
-      icon?: string;
-      compatibility: {
-        minimumFrappeVersion?: string;
-        maximumFrappeVersion?: string;
-      };
-    } | null>;
-    search: (query: string) => Promise<Array<{
-      id: string;
-      name: string;
-      description: string;
-      source: string;
-      version: string;
-      category?: string;
-      icon?: string;
-      compatibility: {
-        minimumFrappeVersion?: string;
-        maximumFrappeVersion?: string;
-      };
-    }>>;
+    findAll: () => Promise<CatalogAppItem[]>;
+    sync: (apps: CatalogAppItem[]) => Promise<void>;
   };
   readonly benches: {
     findAll: () => Promise<Bench[]>;
     findById: (id: string) => Promise<Bench | null>;
-    create: (input: {
-      name: string;
-      path: string;
-      frappeVersion: string;
-
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
-      apps: string[];
-    }) => Promise<Bench>;
-    update: (id: string, input: {
-      name?: string;
-      path?: string;
-      frappeVersion?: string;
-
-      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
-      apps?: string[];
-    }) => Promise<Bench | null>;
+    create: (input: BenchCreateInput & { status: 'queued' | 'running' | 'stopped'; apps: string[] }) => Promise<Bench>;
+    update: (id: string, input: Partial<BenchUpdateInput>) => Promise<Bench | null>;
     delete: (id: string) => Promise<boolean>;
   };
   readonly sites: {
     findAll: () => Promise<Site[]>;
     findById: (id: string) => Promise<Site | null>;
-    create: (input: {
-      name: string;
-      benchId: string;
-      groupId: string | null;
-      apps: string[];
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
-      path: string;
-    }) => Promise<Site>;
-    update: (id: string, input: {
-      name?: string;
-      benchId?: string;
-      groupId?: string | null;
-      apps?: string[];
-      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
-      path?: string;
-    }) => Promise<Site | null>;
+    create: (input: SiteCreateInput & { status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'; path: string }) => Promise<Site>;
+    update: (id: string, input: Partial<SiteUpdateInput>) => Promise<Site | null>;
     delete: (id: string) => Promise<boolean>;
   };
   readonly settings: {
-    get: () => Promise<Settings | null>;
-    set: (input: Settings) => Promise<Settings>;
+    findAll: () => Promise<Settings[]>;
+    update: (input: Partial<Settings>) => Promise<Settings>;
   };
-
 };
 
 export type IpcOperations = {
-  readonly openPath: (targetPath: string) => Promise<boolean>;
-  readonly openInEditor: (targetPath: string, editorPreference: string) => Promise<boolean>;
-  readonly pathExists: (targetPath: string) => boolean;
-  readonly openExternal: (url: string) => Promise<void>;
-  readonly trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
-  readonly trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
+  openPath: (targetPath: string) => Promise<boolean>;
+  openInEditor: (targetPath: string) => Promise<boolean>;
+  openExternal: (url: string) => Promise<boolean>;
+  pathExists: (targetPath: string) => boolean;
+  trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
+  trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
 };
 
-export const buildAppHealthResponse = (): AppHealthResponse => ({
-  appName: 'Frappe Cafe',
-  platform: process.platform,
-  nodeVersion: process.versions.node,
-  electronVersion: process.versions.electron,
-  timestamp: new Date().toISOString(),
-});
-
-const toCatalogAppItem = (item: {
-  id: string;
-  name: string;
-  description: string;
-  source: string;
-  version: string;
-  category?: string;
-  icon?: string;
-  compatibility: {
-    minimumFrappeVersion?: string;
-    maximumFrappeVersion?: string;
-  };
-}): CatalogAppItem => ({
-  id: item.id,
-  name: item.name,
-  description: item.description,
-  source: item.source,
-  version: item.version,
-  category: item.category ?? 'other',
-  icon: item.icon,
-  compatibility: {
-    minimumFrappeVersion: item.compatibility.minimumFrappeVersion,
-    maximumFrappeVersion: item.compatibility.maximumFrappeVersion,
-  },
-});
+export type AppRepositories = IpcRepositories;
 
 const toBenchListItem = (bench: Bench): BenchListItem => ({
   id: bench.id,
@@ -266,7 +175,6 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   id: site.id,
   name: site.name,
   benchId: site.benchId,
-  groupId: site.groupId,
   status: site.status,
   path: site.path,
   appCount: site.apps.length,
@@ -288,6 +196,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
 
 const toLifecycleLogs = (
   entityId: string,
+  entityName: string,
   status: 'queued' | 'running' | 'stopped' | 'success' | 'failure',
   path: string,
   createdAt: string,
@@ -298,51 +207,19 @@ const toLifecycleLogs = (
       id: `${entityId}-created`,
       entityId,
       level: 'info',
-      message: `Entity created at ${path}`,
+      message: `Entity "${entityName}" created at ${path}`,
       timestamp: createdAt,
     },
     {
-      id: `${entityId}-status`,
+      id: `${entityId}-status-${status}`,
       entityId,
-      level: status === 'failure' ? 'error' : 'info',
-      message: `Current status: ${status}`,
+      level: 'info',
+      message: `Status of "${entityName}" updated to ${status}`,
       timestamp: updatedAt,
     },
   ];
 
-  return logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-};
-
-const findDevcontainerTarget = (benchPath: string, pathExists: (targetPath: string) => boolean): string | null => {
-  const devcontainerFolder = path.join(benchPath, '.devcontainer');
-  const devcontainerFile = path.join(benchPath, 'devcontainer.json');
-
-  if (pathExists(devcontainerFolder)) {
-    return devcontainerFolder;
-  }
-
-  if (pathExists(devcontainerFile)) {
-    return devcontainerFile;
-  }
-
-  return null;
-};
-
-const resolveUserPath = (rawPath: string): string => {
-  const trimmedPath = rawPath.trim();
-  if (!trimmedPath) {
-    return trimmedPath;
-  }
-
-  if (trimmedPath === '~') {
-    return os.homedir();
-  }
-
-  if (trimmedPath.startsWith('~/') || trimmedPath.startsWith('~\\')) {
-    return path.join(os.homedir(), trimmedPath.slice(2));
-  }
-
-  return path.resolve(trimmedPath);
+  return logs;
 };
 
 export const registerIpcHandlers = (
@@ -351,6 +228,7 @@ export const registerIpcHandlers = (
   operations: IpcOperations = {
     openPath: async () => false,
     openInEditor: async () => false,
+    openExternal: async () => false,
     pathExists: (targetPath) => fs.existsSync(targetPath),
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
@@ -362,165 +240,72 @@ export const registerIpcHandlers = (
   runtimePaths: AppRuntimePaths = {
     userDataPath: '',
     logsPath: '',
-    configPath: '',
     storagePath: '',
-  },
-  initialDiagnosticsReport: { current: DiagnosticsReport | null } = { current: null }
-): void => {
-  let taskEventSubscriptionCount = 0;
-
-  const broadcast = <T>(channel: string, payload: T): void => {
-    BrowserWindow.getAllWindows().forEach((window) => {
-      window.webContents.send(channel, payload);
-    });
-  };
-
-  terminalService.onOutput((event: TerminalOutputEvent) => {
-    broadcast(ipcChannels.terminalOutputEvent, event);
-  });
-
-  terminalService.onError((event: TerminalErrorEvent) => {
-    broadcast(ipcChannels.terminalErrorEvent, event);
-  });
-
-  terminalService.onStateChange((event: TerminalStateChangeEvent) => {
-    broadcast(ipcChannels.terminalStateChangeEvent, event);
-  });
-
-  taskRunner.onEvent((event: TaskProgressEvent) => {
-    if (taskEventSubscriptionCount > 0) {
-      broadcast(ipcChannels.taskRunnerProgressEvent, event);
-    }
-  });
-
-  ipcMainLike.handle(ipcChannels.appHealthCheck, async () => buildAppHealthResponse());
-
-  ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {
-    const settings = await repositories.settings.get();
-    return buildUpdateStrategyStatus(settings, appVersion);
-  });
-
-  ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
-    return runManualUpdateCheck();
-  });
-
-  let lastDiagnosticsReport: DiagnosticsReport | null = initialDiagnosticsReport.current;
-
-  ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
-    const report = await runDiagnostics({
-      runtimePaths,
-
-      settingsRepository: repositories.settings,
-      appVersion,
-    });
-    lastDiagnosticsReport = report;
-    return report;
-  });
-
-  ipcMainLike.handle(ipcChannels.diagnosticsGetLast, async (): Promise<DiagnosticsReport | null> => {
-    return lastDiagnosticsReport || initialDiagnosticsReport.current;
+    configPath: '',
+    binariesPath: '',
+  }
+) => {
+  ipcMainLike.handle(ipcChannels.appHealthCheck, async (): Promise<AppHealthResponse> => {
+    return {
+      appName: 'Frappe Cafe',
+      platform: process.platform,
+      nodeVersion: process.version,
+      electronVersion: process.versions.electron,
+      timestamp: new Date().toISOString(),
+    };
   });
 
   ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: unknown): Promise<boolean> => {
     if (typeof checkType !== 'string' || checkType !== 'runtime-health') return false;
 
-    mainLogger.info('Attempting to fix runtime issues...');
-
-    try {
-      // 1. Check if podman binary is actually there
-      try {
-        await execPromise(getBinaryPath('podman'), ['--version']);
-      } catch {
-        mainLogger.error('Podman binary not found, cannot fix.');
-        return false;
-      }
-
-      // 2. Machine handling (Mac/Windows)
-      if (process.platform === 'darwin' || process.platform === 'win32') {
-        const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
-        const machines = JSON.parse(stdout || '[]');
-
-        // On Mac, ensure helper is installed first if needed
-        if (process.platform === 'darwin') {
-          try {
-            await execPromise('/usr/local/bin/podman-mac-helper', ['--version']);
-          } catch {
-            mainLogger.info('Podman Mac Helper not found, attempting elevated installation...');
-            const helperPath = getBinaryPath('podman-mac-helper');
-            // Use osascript to prompt for administrator password
-            const appleScript = `do shell script "${helperPath} install" with administrator privileges`;
-            await execPromise('osascript', ['-e', appleScript]);
-            mainLogger.info('Podman Mac Helper installed successfully.');
-          }
-        }
-
-        if (machines.length === 0) {
-          mainLogger.info('No podman machine found, initializing...');
-          const initArgs = ['machine', 'init'];
-          const bundledImagePath = resolveBundledPodmanMachineImagePath();
-          if (bundledImagePath) {
-            initArgs.push('--image', bundledImagePath);
-            mainLogger.info(`Using bundled Podman machine image at ${bundledImagePath}`);
-          }
-          await execPromise(getBinaryPath('podman'), initArgs);
-        }
- 
-        const isRunning = machines.some((m: any) => m.Running === true);
-        if (!isRunning) {
-          mainLogger.info('Starting podman machine...');
-          const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
-          return code === 0;
-        } else {
-          try {
-            await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 5000);
-            return true;
-          } catch {
-            mainLogger.warn('Podman machine is unresponsive, attempting force restart...');
-            if (process.platform === 'darwin') {
-              try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
-            }
-            try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch {}
-            mainLogger.info('Restarting podman machine...');
-            const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
-            return code === 0;
-          }
-        }
-      }
-
-      // On Linux, maybe just check if service is running? 
-      // For now, we mainly fix VM issues.
-      return true;
-    } catch (error) {
-      mainLogger.error('Failed to fix runtime issue:', error);
-      return false;
-    }
+    mainLogger.info('Attempting to fix runtime issues via unified service...');
+    return await ensureRuntimeRunning();
   });
 
   ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
-    taskEventSubscriptionCount += 1;
-    return taskEventSubscriptionCount > 0;
+    return true;
   });
 
   ipcMainLike.handle(ipcChannels.taskRunnerUnsubscribe, async () => {
-    taskEventSubscriptionCount = Math.max(0, taskEventSubscriptionCount - 1);
-    return taskEventSubscriptionCount > 0;
+    return true;
   });
 
-  ipcMainLike.handle(ipcChannels.catalogList, async () => {
-    const items = await repositories.appCatalog.findAll();
-    return items.map(toCatalogAppItem);
+  // Event Forwarding for TaskRunner
+  taskRunner.onEvent((event) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.taskRunnerProgressEvent, event);
+      }
+    });
   });
 
-  ipcMainLike.handle(ipcChannels.catalogFindById, async (_event: unknown, id: unknown) => {
-    if (typeof id !== 'string') return null;
-    const item = await repositories.appCatalog.findById(id);
-    return item ? toCatalogAppItem(item) : null;
+  // Event Forwarding for TerminalService
+  terminalService.onOutput((event) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.terminalOutputEvent, event);
+      }
+    });
   });
 
-  ipcMainLike.handle(ipcChannels.catalogSearch, async (_event: unknown, query: unknown) => {
-    const q = typeof query === 'string' ? query : '';
-    const items = await repositories.appCatalog.search(q);
-    return items.map(toCatalogAppItem);
+  terminalService.onError((event) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.terminalErrorEvent, event);
+      }
+    });
+  });
+
+  terminalService.onStateChange((event) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send(ipcChannels.terminalStateChangeEvent, event);
+      }
+    });
+  });
+
+  ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
+    return runDiagnostics(repositories, runtimePaths);
   });
 
   ipcMainLike.handle(ipcChannels.benchesList, async () => {
@@ -528,50 +313,22 @@ export const registerIpcHandlers = (
     return benches.map(toBenchListItem);
   });
 
-  ipcMainLike.handle(ipcChannels.benchesPickFolder, async () => {
-    const targetWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
-    const result = await dialog.showOpenDialog(targetWindow, {
-      title: 'Select Bench Folder',
-      buttonLabel: 'Select Folder',
-      defaultPath: os.homedir(),
-      properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
-    });
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-
-    return resolveUserPath(result.filePaths[0]);
-  });
-
   ipcMainLike.handle(ipcChannels.benchesCreate, async (_event: unknown, input: unknown) => {
     const rawInput = input as BenchCreateInput;
-    const benches = await repositories.benches.findAll();
-    const normalizedPath = resolveUserPath(rawInput.path);
-    
-    // Check for duplicate name or path
-    if (benches.some((b) => b.name === rawInput.name)) {
-      throw new Error(`A bench with the name "${rawInput.name}" already exists.`);
-    }
-    if (benches.some((b) => b.path === normalizedPath)) {
-      throw new Error(`A bench is already registered at this path.`);
-    }
-
-    const existingPorts = benches.map(b => b.httpPort).filter((p): p is number => p !== undefined);
-    const nextPort = existingPorts.length > 0 ? Math.max(...existingPorts) + 1 : 8080;
-
     const payload = CreateBenchInputSchema.parse({
       ...rawInput,
       path: resolveUserPath(rawInput.path),
-      status: 'queued',
-      httpPort: nextPort,
     });
-    const created = await repositories.benches.create(payload);
+
+    const created = await repositories.benches.create({
+      ...payload,
+      status: 'queued', // Initial state should be queued
+      apps: [],
+    });
+
     operations.trackBenchOperation?.(created.id, 'create');
-    
-    // Spawn background orchestration task
     orchestrateBenchCreation(created, repositories.benches, runtimePaths);
-    
+
     return toBenchListItem(created);
   });
 
@@ -589,18 +346,26 @@ export const registerIpcHandlers = (
     const benches = await repositories.benches.findAll();
     const existing = benches.find(b => b.id === id);
 
-    const updated = await repositories.benches.update(id, payload);
+    const { status: targetStatus, ...otherUpdates } = payload;
+    let updated = await repositories.benches.update(id, otherUpdates);
+
     if (updated) {
       operations.trackBenchOperation?.(updated.id, 'update');
 
-      // Handle status transition orchestration. 
-      // We allow 'running' even if already running to support 'Restart' action.
-      if (payload.status && (payload.status !== existing?.status || payload.status === 'running')) {
-        if (payload.status === 'running') {
-          const isRestart = existing?.status === 'running';
-          orchestrateBenchStart(updated, repositories.benches, isRestart);
-        } else if (payload.status === 'stopped') {
-          orchestrateBenchStop(updated, repositories.benches);
+      if (targetStatus && (targetStatus !== existing?.status || targetStatus === 'running')) {
+        if (targetStatus === 'running' || targetStatus === 'stopped') {
+          // Set to queued in DB immediately so UI shows pending state
+          updated = (await repositories.benches.update(id, { status: 'queued' })) ?? updated;
+          
+          if (targetStatus === 'running') {
+            const isRestart = existing?.status === 'running';
+            orchestrateBenchStart(updated, repositories.benches, isRestart);
+          } else {
+            orchestrateBenchStop(updated, repositories.benches);
+          }
+        } else {
+          // Normal status update without orchestration
+          updated = (await repositories.benches.update(id, { status: targetStatus })) ?? updated;
         }
       }
     }
@@ -617,7 +382,19 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    orchestrateBenchDeletion(bench, repositories.benches, repositories.sites);
+    taskRunner.enqueue({
+      name: `Delete Bench: ${bench.name}`,
+      resource: { type: 'bench', id: bench.id },
+      run: async (context: any) => {
+        try {
+          await orchestrateBenchDeletion(bench, repositories.benches, repositories.sites, context);
+        } catch (error) {
+          mainLogger.error('Failed to delete bench:', error);
+          throw error;
+        }
+      },
+    });
+
     operations.trackBenchOperation?.(id, 'delete');
     return true;
   });
@@ -635,6 +412,7 @@ export const registerIpcHandlers = (
 
     const logs = toLifecycleLogs(
       bench.id,
+      bench.name,
       bench.status,
       bench.path,
       bench.timestamps.createdAt,
@@ -669,11 +447,37 @@ export const registerIpcHandlers = (
 
     const benches = await repositories.benches.findAll();
     const bench = benches.find((entry) => entry.id === id);
-    if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
+    if (!bench) {
       return false;
     }
 
-    orchestrateBenchCleaning(bench, repositories.sites);
+    taskRunner.enqueue({
+      name: `Clean Bench: ${bench.name}`,
+      resource: { type: 'bench', id: bench.id },
+      run: async (context: any) => {
+        try {
+          await orchestrateBenchCleaning(bench, repositories.benches, context);
+        } catch (error) {
+          mainLogger.error('Failed to clean bench:', error);
+          throw error;
+        }
+      },
+    });
+
+    operations.trackBenchOperation?.(id, 'clean');
+    return true;
+  });
+
+  ipcMainLike.handle(ipcChannels.catalogList, async () => {
+    return repositories.appCatalog.findAll();
+  });
+
+  ipcMainLike.handle(ipcChannels.catalogSync, async (_event: unknown, apps: unknown) => {
+    if (!Array.isArray(apps)) {
+      return false;
+    }
+
+    await repositories.appCatalog.sync(apps as CatalogAppItem[]);
     return true;
   });
 
@@ -722,9 +526,24 @@ export const registerIpcHandlers = (
       return null;
     }
 
-    const updated = await repositories.sites.update(id, payload);
+    const { status: targetStatus, ...otherUpdates } = payload;
+    let updated = await repositories.sites.update(id, otherUpdates);
+
     if (updated) {
       operations.trackSiteOperation?.(updated.id, 'update');
+
+      if (targetStatus && targetStatus !== existing?.status) {
+        if (targetStatus === 'running' || targetStatus === 'stopped') {
+          // Set to queued in DB immediately so UI shows pending state
+          updated = (await repositories.sites.update(id, { status: 'queued' })) ?? updated;
+          
+          const benches = await repositories.benches.findAll();
+          orchestrateSiteCreation(updated, { benches: repositories.benches, sites: repositories.sites }, benches);
+        } else {
+          // Normal status update without orchestration
+          updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
+        }
+      }
     }
     return updated ? toSiteListItem(updated) : null;
   });
@@ -743,24 +562,11 @@ export const registerIpcHandlers = (
       throw new Error('Cannot delete a running site. Please stop it first.');
     }
 
-    const benches = await repositories.benches.findAll();
-    const bench = benches.find((entry) => entry.id === site.benchId);
-    if (bench && bench.status !== 'running' && bench.status !== 'success') {
-      throw new Error(`Cannot delete site because its parent bench is not running. (Current status: ${bench.status})`);
-    }
-
-    const deleted = await orchestrateSiteDeletion(
-      {
-        sites: repositories.sites,
-        benches: repositories.benches,
-      },
-      id
-    );
-
-    if (deleted) {
+    const result = await orchestrateSiteDeletion(repositories, id);
+    if (result) {
       operations.trackSiteOperation?.(id, 'delete');
     }
-    return deleted;
+    return result;
   });
 
   ipcMainLike.handle(ipcChannels.sitesLogs, async (_event: unknown, id: unknown) => {
@@ -776,6 +582,7 @@ export const registerIpcHandlers = (
 
     const logs = toLifecycleLogs(
       site.id,
+      site.name,
       site.status,
       site.path,
       site.timestamps.createdAt,
@@ -803,344 +610,163 @@ export const registerIpcHandlers = (
     return opened;
   });
 
+  ipcMainLike.handle(ipcChannels.sitesOpenExternal, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const sites = await repositories.sites.findAll();
+    const site = sites.find((entry) => entry.id === id);
+    if (!site) {
+      return false;
+    }
+
+    const url = `http://${site.name}.local`;
+    const opened = await operations.openExternal(url);
+    if (opened) {
+      // open-external is not a valid SiteLifecycleOperation, ignoring track
+    }
+    return opened;
+  });
+
   ipcMainLike.handle(ipcChannels.settingsGet, async () => {
-    const settings = await repositories.settings.get();
-    return settings ? toSettingsItem(settings) : null;
+    const settings = await repositories.settings.findAll();
+    return settings.length > 0 ? toSettingsItem(settings[0]) : null;
   });
 
   ipcMainLike.handle(ipcChannels.settingsSet, async (_event: unknown, input: unknown) => {
-    const parsed = SettingsSchema.parse(input);
-    const settings = await repositories.settings.set(parsed);
-    return toSettingsItem(settings);
+    const payload = SettingsSchema.partial().parse(input);
+    const updated = await repositories.settings.update(payload);
+    return toSettingsItem(updated);
   });
-
-
-
-  ipcMainLike.handle(ipcChannels.importValidatePackage, async (_event: unknown, input: unknown) => {
-    const payload = input as { artifactDirectory?: unknown; benchId?: unknown };
-    if (typeof payload?.artifactDirectory !== 'string' || payload.artifactDirectory.trim().length === 0) {
-      throw new Error('Import package path is required.');
-    }
-
-    const parsedPackage = await parseImportPackage(payload.artifactDirectory.trim());
-    const [settings, appCatalog] = await Promise.all([
-      repositories.settings.get(),
-      repositories.appCatalog.findAll(),
-    ]);
-
-    const selectedBench = typeof payload.benchId === 'string'
-      ? await repositories.benches.findById(payload.benchId)
-      : null;
-
-    const compatibility = validateImportCompatibility(parsedPackage, {
-      targetFrappeVersion: selectedBench?.frappeVersion ?? settings?.defaultFrappeVersion,
-      availableAppIds: appCatalog.map((item) => item.id),
-    });
-
-    const response: ImportValidationResponse = {
-      canImport: compatibility.canImport,
-      summary: {
-        packageVersion: parsedPackage.manifest.packageVersion,
-        exportedAt: parsedPackage.manifest.exportedAt,
-        siteName: parsedPackage.manifest.site.name,
-        benchName: parsedPackage.manifest.bench.name,
-
-        benchFrappeVersion: parsedPackage.manifest.bench.frappeVersion,
-        requiredAppIds: parsedPackage.manifest.requiredApps.map((item) => item.id),
-      },
-      issues: compatibility.issues,
-    };
-
-    return response;
-  });
-
-  ipcMainLike.handle(ipcChannels.importExecutePackage, async (_event: unknown, input: unknown) => {
-    const payload = input as ImportExecuteInput;
-    if (typeof payload?.artifactDirectory !== 'string' || payload.artifactDirectory.trim().length === 0) {
-      throw new Error('Import package path is required.');
-    }
-
-    if (typeof payload?.benchId !== 'string' || payload.benchId.trim().length === 0) {
-      throw new Error('Target bench is required for import execution.');
-    }
-
-    if (payload.conflictPolicy !== 'block' && payload.conflictPolicy !== 'rename') {
-      throw new Error('Unsupported conflict policy.');
-    }
-
-    const result = await executeImportPackage(
-      {
-        benches: repositories.benches,
-        sites: repositories.sites,
-
-        settings: repositories.settings,
-        appCatalog: {
-          findAll: async () => {
-            const items = await repositories.appCatalog.findAll();
-            return items.map((item) => ({
-              ...item,
-              category: (item.category ?? 'other') as 'other',
-              icon: item.icon,
-              compatibility: {
-                ...item.compatibility,
-              },
-            }));
-          },
-        },
-      },
-      {
-        artifactDirectory: payload.artifactDirectory.trim(),
-        benchId: payload.benchId,
-        conflictPolicy: payload.conflictPolicy,
-      }
-    );
-
-    if (result.success && result.createdSiteId) {
-      operations.trackSiteOperation?.(result.createdSiteId, 'create');
-    }
-
-    const response: ImportExecutionResponse = {
-      success: result.success,
-      createdSiteId: result.createdSiteId,
-      siteName: result.siteName,
-      conflictPolicyApplied: result.conflictPolicyApplied,
-      steps: result.steps,
-    };
-
-    return response;
-  });
-
-  ipcMainLike.handle(ipcChannels.exportSitePackage, async (_event: unknown, input: unknown) => {
-    const payload = input as ExportSitePackageInput;
-    if (typeof payload?.siteId !== 'string' || payload.siteId.trim().length === 0) {
-      throw new Error('Site ID is required for export.');
-    }
-
-    if (typeof payload?.outputDirectory !== 'string' || payload.outputDirectory.trim().length === 0) {
-      throw new Error('Output directory is required for export.');
-    }
-
-    const result = await exportSitePackage(
-      {
-        benches: repositories.benches,
-        sites: repositories.sites,
-
-        settings: repositories.settings,
-        appCatalog: {
-          findAll: async () => {
-            const items = await repositories.appCatalog.findAll();
-            return items.map((item) => ({
-              ...item,
-              category: (item.category ?? 'other') as 'other',
-              icon: item.icon,
-              compatibility: {
-                ...item.compatibility,
-              },
-            }));
-          },
-        },
-        storageMetadata: {
-          schemaVersion: CURRENT_STORAGE_SCHEMA_VERSION,
-          appCatalogSeedVersion: 0,
-        },
-      },
-      {
-        siteId: payload.siteId.trim(),
-        outputDirectory: payload.outputDirectory.trim(),
-      }
-    );
-
-    const response: ExportSitePackageResponse = {
-      artifactDirectory: result.artifactDirectory,
-      manifestPath: path.join(result.artifactDirectory, 'manifest.json'),
-      payloadPath: path.join(result.artifactDirectory, 'payload.json'),
-    };
-
-    return response;
-  });
-
-
 
   ipcMainLike.handle(ipcChannels.terminalCreate, async (_event: unknown, benchId: unknown, siteId: unknown) => {
     if (typeof benchId !== 'string') {
-      throw new Error('Invalid bench ID');
+      return { success: false, error: 'Bench ID is required for terminal creation.' };
     }
 
     const bench = await repositories.benches.findById(benchId);
     if (!bench) {
-      throw new Error('Bench not found');
+      return { success: false, error: `Bench with ID ${benchId} not found.` };
     }
 
-    let workingDirectory = bench.path;
-    let resolvedSiteId: string | null = null;
-
-    if (typeof siteId === 'string') {
-      const site = await repositories.sites.findById(siteId);
-      if (!site || site.benchId !== benchId) {
-        throw new Error('Site not found for bench');
-      }
-      workingDirectory = site.path;
-      resolvedSiteId = site.id;
-    }
-
-    const result = terminalService.createSession({
-      benchId,
-      siteId: resolvedSiteId,
-      workspacePath: workingDirectory,
+    const workspacePath = bench.path;
+    return terminalService.createSession({
+      benchId: benchId,
+      siteId: typeof siteId === 'string' ? siteId : null,
+      workspacePath,
     });
-
-    if (!result.success) {
-      throw new Error(result.error ?? 'Unable to create terminal session');
-    }
-
-    const response: TerminalCreateResponse = {
-      sessionId: result.session!.id,
-      state: result.session!.state,
-      workingDirectory: result.session!.workingDirectory,
-    };
-
-    return response;
   });
 
-  ipcMainLike.handle(ipcChannels.terminalWrite, async (_event: unknown, sessionId: unknown, data: unknown) => {
-    if (typeof sessionId !== 'string' || typeof data !== 'string') {
+  ipcMainLike.handle(ipcChannels.terminalWrite, async (_event: unknown, id: unknown, data: unknown) => {
+    if (typeof id !== 'string' || typeof data !== 'string') {
       return false;
     }
-
-    return terminalService.write(sessionId, data);
+    terminalService.write(id, data);
+    return true;
   });
 
-  ipcMainLike.handle(ipcChannels.terminalClose, async (_event: unknown, sessionId: unknown, force: unknown) => {
-    if (typeof sessionId !== 'string') {
+  ipcMainLike.handle(ipcChannels.terminalClose, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
       return false;
     }
-
-    return terminalService.closeSession(sessionId, force === true);
+    terminalService.closeSession(id);
+    return true;
   });
 
-  ipcMainLike.handle(ipcChannels.terminalClear, async (_event: unknown, sessionId: unknown) => {
-    if (typeof sessionId !== 'string') {
+  ipcMainLike.handle(ipcChannels.terminalClear, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
       return false;
     }
-
-    return terminalService.clear(sessionId);
+    terminalService.clear(id);
+    return true;
   });
 
-  ipcMainLike.handle(ipcChannels.terminalResize, async (_event: unknown, sessionId: unknown, dimensions: unknown) => {
-    if (typeof sessionId !== 'string' || !dimensions || typeof dimensions !== 'object') {
+  ipcMainLike.handle(ipcChannels.terminalResize, async (_event: unknown, id: unknown, cols: unknown, rows: unknown) => {
+    if (typeof id !== 'string' || typeof cols !== 'number' || typeof rows !== 'number') {
       return false;
     }
-
-    const terminalDimensions = dimensions as { rows?: unknown; cols?: unknown };
-    if (typeof terminalDimensions.rows !== 'number' || typeof terminalDimensions.cols !== 'number') {
-      return false;
-    }
-
-    return terminalService.resize(sessionId, terminalDimensions.rows, terminalDimensions.cols);
+    terminalService.resize(id, cols as number, rows as number);
+    return true;
   });
 
-  ipcMainLike.handle(ipcChannels.terminalInspect, async (_event: unknown, sessionId: unknown) => {
-    if (typeof sessionId !== 'string') {
-      return null;
+  ipcMainLike.handle(ipcChannels.terminalInspect, async (_event: unknown, sessionId: unknown): Promise<any> => {
+    const sessions = terminalService.listSessions();
+    if (typeof sessionId === 'string') {
+        return sessions.find(s => s.id === sessionId) || null;
     }
-
-    const session = terminalService.getSession(sessionId);
-    if (!session) {
-      return null;
-    }
-
-    const response: TerminalSessionInspection = {
-      sessionId: session.id,
-      state: session.state,
-      workingDirectory: session.workingDirectory,
-      contextBenchId: session.contextBenchId,
-      contextSiteId: session.contextSiteId,
-      createdAt: session.createdAt,
-      lastActivityAt: session.lastActivityAt,
-    };
-
-    return response;
+    return sessions;
   });
 
   ipcMainLike.handle(ipcChannels.terminalOpenFolder, async (_event: unknown, benchId: unknown, siteId: unknown) => {
-    if (typeof benchId !== 'string') {
-      return false;
-    }
-
+    if (typeof benchId !== 'string') return false;
     const bench = await repositories.benches.findById(benchId);
-    if (!bench) {
-      return false;
-    }
-
-    let targetPath = bench.path;
-    if (typeof siteId === 'string') {
-      const site = await repositories.sites.findById(siteId);
-      if (!site || site.benchId !== benchId) {
-        return false;
-      }
-      targetPath = site.path;
-    }
-
-    if (!operations.pathExists(targetPath)) {
-      return false;
-    }
-
-    return operations.openPath(targetPath);
+    if (!bench) return false;
+    
+    // TODO: if siteId is provided, should we open site folder?
+    return operations.openPath(bench.path);
   });
 
   ipcMainLike.handle(ipcChannels.terminalOpenEditor, async (_event: unknown, benchId: unknown, siteId: unknown) => {
-    if (typeof benchId !== 'string') {
-      return false;
-    }
-
+    if (typeof benchId !== 'string') return false;
     const bench = await repositories.benches.findById(benchId);
-    if (!bench) {
-      return false;
-    }
-
-    let targetPath = bench.path;
-    if (typeof siteId === 'string') {
-      const site = await repositories.sites.findById(siteId);
-      if (!site || site.benchId !== benchId) {
-        return false;
-      }
-      targetPath = site.path;
-    }
-
-    if (!operations.pathExists(targetPath)) {
-      return false;
-    }
-
-    const settings = await repositories.settings.get();
-    const editorPreference = settings?.editorPreference || 'code';
-    return operations.openInEditor(targetPath, editorPreference);
+    if (!bench) return false;
+    
+    return operations.openInEditor(bench.path);
   });
 
   ipcMainLike.handle(ipcChannels.terminalOpenDevcontainer, async (_event: unknown, benchId: unknown) => {
-    if (typeof benchId !== 'string') {
-      return false;
-    }
-
+    if (typeof benchId !== 'string') return false;
     const bench = await repositories.benches.findById(benchId);
-    if (!bench || !operations.pathExists(bench.path)) {
+    if (!bench) return false;
+    
+    return operations.openInEditor(bench.path);
+  });
+
+  ipcMainLike.handle(ipcChannels.utilsPathExists, async (_event: unknown, targetPath: unknown) => {
+    if (typeof targetPath !== 'string') {
       return false;
     }
-
-    const devcontainerTarget = findDevcontainerTarget(bench.path, operations.pathExists);
-    if (!devcontainerTarget) {
-      return false;
-    }
-
-    const settings = await repositories.settings.get();
-    const editorPreference = settings?.editorPreference || 'code';
-    return operations.openInEditor(devcontainerTarget, editorPreference);
+    return operations.pathExists(resolveUserPath(targetPath));
   });
-  ipcMainLike.handle(ipcChannels.utilsPathExists, async (_event: unknown, path: unknown) => {
-    if (typeof path !== 'string') return false;
-    return fs.existsSync(path);
-  });
+
   ipcMainLike.handle(ipcChannels.utilsOpenExternal, async (_event: unknown, url: unknown) => {
-    if (typeof url !== 'string') return;
-    await operations.openExternal(url);
+    if (typeof url !== 'string') {
+      return false;
+    }
+    return operations.openExternal(url);
+  });
+
+  ipcMainLike.handle(ipcChannels.exportSitePackage, async (_event: unknown, input: unknown): Promise<ExportSitePackageResponse> => {
+    return exportSitePackage(repositories as any, input as any);
+  });
+
+  ipcMainLike.handle(ipcChannels.importValidatePackage, async (_event: unknown, input: unknown): Promise<ImportValidationResponse> => {
+    const result: any = await parseImportPackage(input as any);
+    const compatibility = await validateImportCompatibility(repositories as any, result);
+    return {
+       success: compatibility.success || false,
+       issues: compatibility.issues,
+       summary: {
+          packageVersion: result.manifest.version,
+          exportedAt: result.manifest.metadata.exportedAt,
+          siteName: result.manifest.site.name,
+          benchName: result.manifest.bench.name,
+          benchFrappeVersion: result.manifest.bench.frappeVersion,
+          requiredAppIds: result.manifest.apps.map((a: any) => a.name)
+       }
+    };
+  });
+
+  ipcMainLike.handle(ipcChannels.importExecutePackage, async (_event: unknown, input: unknown): Promise<ImportExecutionResponse> => {
+    return executeImportPackage(repositories as any, input as any);
+  });
+
+  ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
+    return runManualUpdateCheck();
+  });
+
+  ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {
+    return buildUpdateStrategyStatus();
   });
 };

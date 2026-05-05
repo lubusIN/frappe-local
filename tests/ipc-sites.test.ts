@@ -8,7 +8,6 @@ const sites: Site[] = [
     id: 'site-001',
     name: 'demo.localhost',
     benchId: 'bench-001',
-    groupId: null,
     apps: ['frappe', 'erpnext'],
     status: 'running',
     path: '/Users/dev/frappe-bench/sites/demo.localhost',
@@ -76,7 +75,6 @@ function makeStubSiteRepo(items: Site[] = sites) {
     create: async (input: {
       name: string;
       benchId: string;
-      groupId: string | null;
       apps: string[];
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;
@@ -95,7 +93,6 @@ function makeStubSiteRepo(items: Site[] = sites) {
     update: async (id: string, input: {
       name?: string;
       benchId?: string;
-      groupId?: string | null;
       apps?: string[];
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path?: string;
@@ -110,7 +107,6 @@ function makeStubSiteRepo(items: Site[] = sites) {
         ...existing,
         name: input.name ?? existing.name,
         benchId: input.benchId ?? existing.benchId,
-        groupId: input.groupId ?? existing.groupId,
         apps: input.apps ?? existing.apps,
         status: input.status ?? existing.status,
         path: input.path ?? existing.path,
@@ -144,18 +140,6 @@ function makeStubSettingsRepo() {
   };
 }
 
-function makeStubGroupRepo() {
-  return {
-    findAll: async () => [],
-    create: async (input: { name: string; description: string; tags: string[]; siteIds: string[] }) => ({
-      id: 'group-new',
-      ...input,
-    }),
-    update: async () => null,
-    delete: async () => false,
-  };
-}
-
 describe('sites IPC handlers', () => {
   it('sites:list returns mapped site list items', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -167,7 +151,6 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -182,7 +165,6 @@ describe('sites IPC handlers', () => {
         id: 'site-001',
         name: 'demo.localhost',
         benchId: 'bench-001',
-        groupId: null,
         status: 'running',
         path: '/Users/dev/frappe-bench/sites/demo.localhost',
         appCount: 2,
@@ -202,7 +184,6 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -222,7 +203,6 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       },
       { openPath: async () => false, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
     );
@@ -231,7 +211,6 @@ describe('sites IPC handlers', () => {
     const created = await createHandler?.(undefined, {
       name: 'new.localhost',
       benchId: 'bench-001',
-      groupId: null,
       path: '/Users/dev/frappe-bench/sites/new.localhost',
       apps: ['frappe'],
     });
@@ -239,7 +218,6 @@ describe('sites IPC handlers', () => {
     expect(created).toMatchObject({
       name: 'new.localhost',
       benchId: 'bench-001',
-      groupId: null,
       status: 'queued',
       path: '/Users/dev/frappe-bench/sites/new.localhost',
     });
@@ -256,7 +234,6 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -266,7 +243,6 @@ describe('sites IPC handlers', () => {
       createHandler?.(undefined, {
         name: 'bad.localhost',
         benchId: 'unknown-bench',
-        groupId: null,
         path: '/Users/dev/frappe-bench/sites/bad.localhost',
         apps: ['frappe'],
       })
@@ -288,7 +264,6 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -311,7 +286,6 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -336,7 +310,6 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -361,7 +334,6 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -381,7 +353,6 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -413,7 +384,6 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       },
       { openPath, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
     );

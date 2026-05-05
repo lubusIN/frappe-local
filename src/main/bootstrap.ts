@@ -135,9 +135,18 @@ export const runApplicationBootstrap = async (
         return result === '';
       },
       openExternal: async (url: string) => {
-        await shell.openExternal(url);
+        try {
+          await shell.openExternal(url);
+          return true;
+        } catch {
+          return false;
+        }
       },
-      openInEditor,
+      openInEditor: async (targetPath: string) => {
+        const settings = await repositories.settings.findAll();
+        const editorPreference = settings[0]?.editorPreference || 'code';
+        return openInEditor(targetPath, editorPreference);
+      },
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
       trackBenchOperation: (benchId, operation) => {
         benchAnalytics.track(benchId, operation);
@@ -145,7 +154,7 @@ export const runApplicationBootstrap = async (
       trackSiteOperation: (siteId, operation) => {
         siteAnalytics.track(siteId, operation);
       },
-    }, undefined, undefined, context.appVersion, context.runtimePaths, undefined);
+    }, undefined, undefined, context.appVersion, context.runtimePaths);
     
     await context.createMainWindow();
     bootstrapLogger.info('startup sequence completed');

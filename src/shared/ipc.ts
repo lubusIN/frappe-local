@@ -148,6 +148,7 @@ export type SiteCreateInput = {
 
   readonly path: string;
   readonly apps: string[];
+  readonly force?: boolean;
 };
 
 export type SiteUpdateInput = {

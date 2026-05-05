@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   AppSchema,
   BenchSchema,
-  GroupSchema,
   SettingsSchema,
   SiteSchema,
 } from './models';
@@ -25,7 +24,6 @@ export const ExportPackageManifestSchema = z.object({
   exportedAt: isoDateString,
   site: SiteSchema,
   bench: BenchSchema,
-  group: GroupSchema.nullable(),
   settings: SettingsSchema.nullable(),
   requiredApps: z.array(AppSchema),
   payload: ExportPackageReferenceSchema,
@@ -42,7 +40,6 @@ export const ExportPackagePayloadSchema = z.object({
   data: z.object({
     site: SiteSchema,
     bench: BenchSchema,
-    group: GroupSchema.nullable(),
     settings: SettingsSchema.nullable(),
     requiredApps: z.array(AppSchema),
   }),

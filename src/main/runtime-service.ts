@@ -59,18 +59,41 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
   return env;
 }
 
+// Mutex to ensure only one machine operation happens at a time
+let machineOperationLock = Promise.resolve();
+
 async function ensurePodmanRunning(): Promise<boolean> {
+  const previousLock = machineOperationLock;
+  let release: () => void;
+  machineOperationLock = new Promise((resolve) => {
+    release = resolve;
+  });
+
+  await previousLock;
+
   try {
+    logger.info('Acquired machine operation lock');
+    
     // 1. Check if podman binary is available
     await execPromise(getBinaryPath('podman'), ['--version']);
-  } catch {
-    logger.error('Podman binary not found');
-    return false;
-  }
 
-  // 2. On Mac/Windows, check machine status
-  if (process.platform === 'darwin' || process.platform === 'win32') {
-    try {
+    // 2. On Mac/Windows, check machine status
+    if (process.platform === 'darwin' || process.platform === 'win32') {
+      
+      // On Mac, ensure helper is installed first if needed
+      if (process.platform === 'darwin') {
+        try {
+          await execPromise('/usr/local/bin/podman-mac-helper', ['--version']);
+        } catch {
+          logger.info('Podman Mac Helper not found, attempting elevated installation...');
+          const helperPath = getBinaryPath('podman-mac-helper');
+          // Use osascript to prompt for administrator password
+          const appleScript = `do shell script "${helperPath} install" with administrator privileges`;
+          await execPromise('osascript', ['-e', appleScript]);
+          logger.info('Podman Mac Helper installed successfully.');
+        }
+      }
+
       const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
       const machines = JSON.parse(stdout || '[]');
       
@@ -79,48 +102,82 @@ async function ensurePodmanRunning(): Promise<boolean> {
         await execPromise(getBinaryPath('podman'), ['machine', 'init']);
       }
 
-      // Check if any machine is running
+      // Check machine status
       const { stdout: statusOutput } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
       const refreshedMachines = JSON.parse(statusOutput || '[]');
-      const running = refreshedMachines.some((m: any) => m.Running || m.LastUp); 
+      const machineState = (refreshedMachines[0]?.State || refreshedMachines[0]?.Status || 'unknown').toLowerCase();
       
-      // Wait, 'Running' is the key. Let's be precise.
-      const isActuallyRunning = refreshedMachines.some((m: any) => m.Running === true);
+      const isRunning = machineState === 'running';
+      const isStarting = machineState === 'starting';
 
-      if (!isActuallyRunning) {
-        logger.info('Starting podman machine...');
-        const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
-        if (code !== 0) {
-          logger.error('Failed to start podman machine');
-          return false;
-        }
-      } else {
-        // Machine is allegedly running. Do a health check.
-        try {
-          await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 5000);
-        } catch {
-          logger.warn('Podman is "running" but unresponsive. Auto-healing...');
-          if (process.platform === 'darwin') {
-            try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
+      if (isStarting) {
+        logger.info('Podman machine is currently starting, waiting for it to be ready...');
+        // Wait up to 30 seconds for it to transition to running
+        for (let i = 0; i < 30; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          const { stdout: pollOutput } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
+          const pollMachines = JSON.parse(pollOutput || '[]');
+          const pollState = (pollMachines[0]?.State || pollMachines[0]?.Status || '').toLowerCase();
+          if (pollState === 'running') {
+            logger.info('Podman machine is now running.');
+            return true;
           }
-          try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch {}
-          
-          logger.info('Restarting podman machine...');
-          const { code } = await execPromise(getBinaryPath('podman'), ['machine', 'start']);
-          if (code !== 0) {
-            logger.error('Failed to auto-heal podman machine');
+        }
+      }
+
+      if (!isRunning) {
+        logger.info(`Podman machine state is ${machineState}, starting...`);
+        try {
+          await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message.includes('proxy already running')) {
+            logger.warn('Podman proxy already running but machine state is not running. Cleaning up stale proxy...');
+            if (process.platform === 'darwin') {
+              try { await execPromise('pkill', ['-9', 'gvproxy']); } catch {}
+              try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
+            }
+            logger.info('Retrying podman machine start after stale proxy cleanup...');
+            await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+          } else {
+            logger.error(`Failed to start podman machine: ${message}`);
+            return false;
+          }
+        }
+      }
+
+      // Health check with increased timeout (15s)
+      try {
+        await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 15000);
+      } catch (err) {
+        logger.warn(`Podman health check failed (timeout or error): ${err}. Auto-healing...`);
+        if (process.platform === 'darwin') {
+          try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
+          try { await execPromise('pkill', ['-9', 'gvproxy']); } catch {}
+        }
+        try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch {}
+        
+        logger.info('Restarting podman machine after auto-heal...');
+        try {
+          await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+        } catch (startErr) {
+          const msg = startErr instanceof Error ? startErr.message : String(startErr);
+          if (msg.includes('proxy already running')) {
+            logger.info('Proxy already running after restart, assuming engine is coming up.');
+          } else {
+            logger.error(`Failed to auto-heal podman machine: ${msg}`);
             return false;
           }
         }
       }
       return true;
-    } catch (err) {
-      logger.error(`Failed to ensure podman machine: ${err}`);
-      return false;
     }
+    return true;
+  } catch (err) {
+    logger.error(`Failed to ensure podman runtime: ${err}`);
+    return false;
+  } finally {
+    logger.info('Releasing machine operation lock');
+    release!();
   }
-
-  return true;
 }
-
-

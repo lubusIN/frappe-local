@@ -52,7 +52,6 @@ function makeStubSiteRepo() {
     create: async (input: {
       name: string;
       benchId: string;
-      groupId: string | null;
       apps: string[];
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;
@@ -77,18 +76,6 @@ function makeStubSettingsRepo(initial: Settings | null = null) {
       current = input;
       return input;
     },
-  };
-}
-
-function makeStubGroupRepo() {
-  return {
-    findAll: async () => [],
-    create: async (input: { name: string; description: string; tags: string[]; siteIds: string[] }) => ({
-      id: 'group-new',
-      ...input,
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 
@@ -118,7 +105,6 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
-        groups: makeStubGroupRepo(),
       },
       undefined,
       makeStubTerminalService() as any
@@ -138,7 +124,6 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-        groups: makeStubGroupRepo(),
       },
       undefined,
       makeStubTerminalService() as any
@@ -162,7 +147,6 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
-        groups: makeStubGroupRepo(),
       },
       undefined,
       makeStubTerminalService() as any
@@ -187,7 +171,6 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
-        groups: makeStubGroupRepo(),
       },
       undefined,
       makeStubTerminalService() as any
@@ -210,7 +193,6 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-        groups: makeStubGroupRepo(),
       },
       undefined,
       makeStubTerminalService() as any,
@@ -236,7 +218,6 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-        groups: makeStubGroupRepo(),
       }
     );
 

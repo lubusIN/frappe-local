@@ -17,7 +17,6 @@ export type SiteCreationDependencies = {
     create: (input: {
       name: string;
       benchId: string;
-      groupId: string | null;
       apps: string[];
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;

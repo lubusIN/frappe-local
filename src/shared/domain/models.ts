@@ -81,6 +81,8 @@ export const UpdateBenchInputSchema = CreateBenchInputSchema.partial();
 export const CreateSiteInputSchema = SiteSchema.omit({
   id: true,
   timestamps: true,
+}).extend({
+  force: z.boolean().optional(),
 });
 
 export const UpdateSiteInputSchema = CreateSiteInputSchema.partial();
