@@ -86,34 +86,14 @@
       </div>
     </section>
 
-    <Dialog
-      v-model="showLogsDialog"
-      :options="{ title: 'Bench Logs', size: '3xl' }"
-    >
-      <template #body-content>
-        <div class="logs-panel-dialog">
-          <header class="logs-panel__header">
-            <input v-model="benchLogFilter" class="logs-panel__filter" type="text" placeholder="Filter logs…" />
-          </header>
-          <div class="logs-container">
-            <div v-if="!filteredBenchLogs.length" class="empty-logs">
-              No logs found matching your filter.
-            </div>
-            <ul v-else class="logs-list">
-              <li v-for="entry in filteredBenchLogs" :key="entry.id" class="logs-list__item" :class="`logs-list__item--${entry.level}`">
-                <div class="logs-list__message">{{ entry.message }}</div>
-                <div class="logs-list__meta">{{ entry.timestamp }}</div>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </template>
-      <template #actions>
-        <div class="dialog-actions">
-          <Button theme="gray" variant="solid" @click="showLogsDialog = false">Close</Button>
-        </div>
-      </template>
-    </Dialog>
+    <ConfirmationDialog
+      :open="cleanConfirmOpen"
+      title="Clean bench"
+      :message="`Are you sure you want to clean all sites from bench &quot;${pendingCleanBenchName}&quot;? This will drop all databases and delete all site files.`"
+      confirm-label="Clean bench"
+      @cancel="onCancelClean"
+      @confirm="onConfirmClean"
+    />
 
     <ConfirmationDialog
       :open="deleteConfirmOpen"
@@ -239,6 +219,7 @@ import IconSquare from '~icons/lucide/square';
 import IconFileText from '~icons/lucide/file-text';
 import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
+import IconBrushCleaning from '~icons/lucide/brush-cleaning';
 import IconTerminal from '~icons/lucide/terminal';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
@@ -333,12 +314,6 @@ const getBenchActions = (bench: any) => {
       onClick: () => onSetBenchStatus(bench.id, 'stopped'),
     },
     {
-      label: 'Logs',
-      icon: IconFileText,
-      disabled: loadingLogs.value,
-      onClick: () => onLoadBenchLogs(bench.id),
-    },
-    {
       label: 'Open Folder',
       icon: IconFolder,
       disabled: openingFolder.value,
@@ -346,13 +321,9 @@ const getBenchActions = (bench: any) => {
     },
     {
       label: 'Clean Bench',
-      icon: IconTrash,
+      icon: IconBrushCleaning,
       disabled: updating.value || (bench.status !== 'running' && bench.status !== 'success') || isBusy,
-      onClick: () => {
-        if (confirm(`Are you sure you want to clean all sites from bench "${bench.name}"? This will drop all databases and delete all site files.`)) {
-          void cleanSites(bench.id);
-        }
-      },
+      onClick: () => onCleanBench(bench.id, bench.name),
     },
     {
       label: 'Delete',
@@ -452,17 +423,6 @@ watchEffect(() => {
         showCreateBenchModal.value = true;
       },
     },
-    {
-      id: 'benches-refresh',
-      label: loading.value ? 'Refreshing' : 'Refresh',
-      variant: 'subtle',
-      disabled: loading.value,
-      loading: loading.value,
-      icon: IconRotateCcw,
-      onClick: () => {
-        void refresh();
-      },
-    },
   ]);
 });
 
@@ -510,21 +470,6 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
 };
 
-const activeBenchLogId = ref<string | null>(null);
-const benchLogs = ref<Array<{ id: string; level: string; message: string; timestamp: string }>>([]);
-const benchLogFilter = ref('');
-
-const filteredBenchLogs = computed(() => {
-  const query = benchLogFilter.value.trim().toLowerCase();
-  if (!query) {
-    return benchLogs.value;
-  }
-
-  return benchLogs.value.filter((entry) =>
-    `${entry.message} ${entry.level}`.toLowerCase().includes(query)
-  );
-});
-
 const deleteConfirmOpen = ref(false);
 const pendingDeleteBenchId = ref<string | null>(null);
 const pendingDeleteBenchName = ref('');
@@ -553,11 +498,32 @@ const onConfirmDelete = async (): Promise<void> => {
   onCancelDelete();
 };
 
-const onLoadBenchLogs = async (id: string) => {
-  benchLogs.value = await listLogs(id);
-  benchLogFilter.value = '';
-  activeBenchLogId.value = id;
-  showLogsDialog.value = true;
+const cleanConfirmOpen = ref(false);
+const pendingCleanBenchId = ref<string | null>(null);
+const pendingCleanBenchName = ref('');
+
+const onCleanBench = (id: string, name: string) => {
+  pendingCleanBenchId.value = id;
+  pendingCleanBenchName.value = name;
+  cleanConfirmOpen.value = true;
+};
+
+const onCancelClean = () => {
+  cleanConfirmOpen.value = false;
+  pendingCleanBenchId.value = null;
+  pendingCleanBenchName.value = '';
+};
+
+const onConfirmClean = async () => {
+  const id = pendingCleanBenchId.value;
+  if (!id) {
+    onCancelClean();
+    return;
+  }
+
+  cleanConfirmOpen.value = false;
+  await cleanSites(id);
+  onCancelClean();
 };
 
 const onOpenBenchFolder = async (id: string) => {

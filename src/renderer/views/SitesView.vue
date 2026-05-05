@@ -189,42 +189,6 @@
       </ListView>
     </div>
 
-    <Dialog
-      v-model="showLogsDialog"
-      :options="{ title: `Site Logs: ${activeSiteLogName}`, size: '3xl' }"
-    >
-      <template #body-content>
-        <div class="logs-panel-dialog">
-          <header class="logs-panel__header">
-            <div class="flex items-center gap-4 w-full">
-              <select v-model="siteLogLevel" class="logs-panel__level">
-                <option value="all">All levels</option>
-                <option value="info">Info</option>
-                <option value="error">Error</option>
-              </select>
-              <input v-model="siteLogFilter" class="logs-panel__filter" type="text" placeholder="Filter logs…" />
-            </div>
-          </header>
-          <div class="logs-container">
-            <div v-if="!filteredSiteLogs.length" class="empty-logs">
-              No logs found matching your filter.
-            </div>
-            <ul v-else class="logs-list">
-              <li v-for="entry in filteredSiteLogs" :key="entry.id" class="logs-list__item" :class="`logs-list__item--${entry.level}`">
-                <div class="logs-list__message">{{ entry.message }}</div>
-                <div class="logs-list__meta">{{ entry.level }} · {{ entry.timestamp }}</div>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </template>
-      <template #actions>
-        <div class="dialog-actions">
-          <Button theme="gray" variant="solid" @click="showLogsDialog = false">Close</Button>
-        </div>
-      </template>
-    </Dialog>
-
     <ConfirmationDialog
       :open="deleteConfirmOpen"
       title="Delete site"
@@ -411,12 +375,6 @@ const getSiteActions = (site: any) => {
     onClick: () => onSetSiteStatus(site.id, 'stopped'),
   });
 
-  actions.push({
-    label: 'Logs',
-    icon: IconFileText,
-    disabled: loadingLogs.value,
-    onClick: () => onLoadSiteLogs(site.id),
-  });
 
   actions.push({
     label: 'Open Folder',
@@ -576,14 +534,6 @@ const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
   await update(id, { status });
 };
 
-const activeSiteLogId = ref<string | null>(null);
-const siteLogs = ref<LifecycleLogItem[]>([]);
-const siteLogFilter = ref('');
-const siteLogLevel = ref<LogLevelFilter>('all');
-
-const filteredSiteLogs = computed(() => {
-  return filterSiteLogs(siteLogs.value, siteLogFilter.value, siteLogLevel.value);
-});
 
 const canStartSite = (siteId: string): boolean => {
   const site = sites.value.find((entry) => entry.id === siteId);
@@ -638,26 +588,6 @@ const onDeleteTypedValue = (value: string): void => {
   deleteTypedValue.value = value;
 };
 
-const showLogsDialog = ref(false);
-const activeSiteLogName = ref('');
-
-const onLoadSiteLogs = async (id: string) => {
-  const site = sites.value.find(s => s.id === id);
-  activeSiteLogName.value = site?.name || id;
-  siteLogs.value = await listLogs(id);
-  siteLogFilter.value = '';
-  siteLogLevel.value = 'all';
-  activeSiteLogId.value = id;
-  showLogsDialog.value = true;
-};
-
-const onCloseSiteLogs = () => {
-  showLogsDialog.value = false;
-  activeSiteLogId.value = null;
-  siteLogs.value = [];
-  siteLogFilter.value = '';
-  siteLogLevel.value = 'all';
-};
 
 const onOpenSiteFolder = async (id: string) => {
   await openFolder(id);
@@ -709,17 +639,6 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
       },
     });
   }
-
-  actions.push({
-    id: 'sites-refresh',
-    label: loading.value ? 'Refreshing…' : 'Refresh',
-    variant: 'subtle',
-    disabled: loading.value,
-    icon: IconRotateCcw,
-    onClick: () => {
-      void refresh();
-    },
-  });
 
   setPageHeaderActions(actions);
 }, { immediate: true });
