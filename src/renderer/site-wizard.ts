@@ -6,7 +6,7 @@ export type SiteWizardDraft = {
   readonly benchId: string;
   readonly name: string;
   readonly path: string;
-  readonly groupId: string;
+
   readonly appsText: string;
   readonly appsSelected?: string[];
   readonly force: boolean;
@@ -77,7 +77,7 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
       benchId: draft.benchId.trim(),
       name: draft.name.trim(),
       path: draft.path.trim(),
-      groupId: draft.groupId.trim() ? draft.groupId.trim() : null,
+
       apps: selectedApps.length > 0 ? selectedApps : parseAppsText(draft.appsText),
       force: draft.force,
     },

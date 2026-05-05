@@ -26,20 +26,14 @@ export const SiteSchema = z.object({
   id: nonEmptyString,
   name: nonEmptyString,
   benchId: nonEmptyString,
-  groupId: nonEmptyString.nullable(),
+
   apps: z.array(nonEmptyString),
   status: EntityStatusSchema,
   path: nonEmptyString,
   timestamps: TimestampsSchema,
 });
 
-export const GroupSchema = z.object({
-  id: nonEmptyString,
-  name: nonEmptyString,
-  description: z.string(),
-  tags: z.array(nonEmptyString),
-  siteIds: z.array(nonEmptyString),
-});
+
 
 export const AppCompatibilitySchema = z.object({
   minimumFrappeVersion: nonEmptyString.optional(),
@@ -91,17 +85,13 @@ export const CreateSiteInputSchema = SiteSchema.omit({
 
 export const UpdateSiteInputSchema = CreateSiteInputSchema.partial();
 
-export const CreateGroupInputSchema = GroupSchema.omit({
-  id: true,
-});
 
-export const UpdateGroupInputSchema = CreateGroupInputSchema.partial();
 
 export const UpdateSettingsInputSchema = SettingsSchema.partial();
 
 export type Bench = z.infer<typeof BenchSchema>;
 export type Site = z.infer<typeof SiteSchema>;
-export type Group = z.infer<typeof GroupSchema>;
+
 export type AppCatalogItem = z.infer<typeof AppSchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -109,8 +99,7 @@ export type CreateBenchInput = z.infer<typeof CreateBenchInputSchema>;
 export type UpdateBenchInput = z.infer<typeof UpdateBenchInputSchema>;
 export type CreateSiteInput = z.infer<typeof CreateSiteInputSchema>;
 export type UpdateSiteInput = z.infer<typeof UpdateSiteInputSchema>;
-export type CreateGroupInput = z.infer<typeof CreateGroupInputSchema>;
-export type UpdateGroupInput = z.infer<typeof UpdateGroupInputSchema>;
+
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
 
 export type BenchRecord = {

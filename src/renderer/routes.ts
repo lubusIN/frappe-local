@@ -6,14 +6,14 @@ import DashboardView from './views/DashboardView.vue';
 import ImportExportView from './views/ImportExportView.vue';
 import { appRouteDefinitions, navigationItems } from './navigation';
 import SitesView from './views/SitesView.vue';
-import WorkspacesView from './views/WorkspacesView.vue';
+
 
 const componentMap = {
   activity: ActivityView,
   dashboard: DashboardView,
   benches: BenchesView,
   sites: SitesView,
-  workspaces: WorkspacesView,
+
   console: ConsoleView,
   importExport: ImportExportView,
   diagnostics: () => import('./views/DiagnosticsView.vue'),

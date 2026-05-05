@@ -68,9 +68,7 @@ export const upsertProgressTask = (
   tasks: ProgressTaskSummary[],
   event: TaskProgressEvent
 ): ProgressTaskSummary[] => {
-  const payloadResourceType = event.resource?.type;
-  const payloadResource =
-    payloadResourceType && payloadResourceType !== 'workspace' ? payloadResourceType : undefined;
+  const payloadResource = event.resource?.type;
 
   const existing = tasks.find((item) => item.taskId === event.taskId);
   const newLogEntry = {

@@ -31,10 +31,7 @@ export const ipcChannels = {
   importValidatePackage: 'import:validate-package',
   importExecutePackage: 'import:execute-package',
 
-  workspacesList: 'workspaces:list',
-  workspacesCreate: 'workspaces:create',
-  workspacesUpdate: 'workspaces:update',
-  workspacesDelete: 'workspaces:delete',
+
   terminalCreate: 'terminal:create',
   terminalWrite: 'terminal:write',
   terminalClose: 'terminal:close',
@@ -137,7 +134,7 @@ export type SiteListItem = {
   readonly id: string;
   readonly name: string;
   readonly benchId: string;
-  readonly groupId: string | null;
+
   readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly path: string;
   readonly appCount: number;
@@ -148,7 +145,7 @@ export type SiteListItem = {
 export type SiteCreateInput = {
   readonly name: string;
   readonly benchId: string;
-  readonly groupId: string | null;
+
   readonly path: string;
   readonly apps: string[];
 };
@@ -156,7 +153,7 @@ export type SiteCreateInput = {
 export type SiteUpdateInput = {
   readonly name?: string;
   readonly benchId?: string;
-  readonly groupId?: string | null;
+
   readonly path?: string;
   readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly apps?: string[];
@@ -232,25 +229,7 @@ export type ImportExecutionResponse = {
   readonly steps: ImportExecutionStep[];
 };
 
-export type WorkspaceListItem = {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly tags: string[];
-  readonly siteCount: number;
-};
 
-export type WorkspaceCreateInput = {
-  readonly name: string;
-  readonly description: string;
-  readonly tags: string[];
-};
-
-export type WorkspaceUpdateInput = {
-  readonly name?: string;
-  readonly description?: string;
-  readonly tags?: string[];
-};
 
 export type TerminalCreateResponse = {
   readonly sessionId: string;
@@ -322,10 +301,7 @@ export type RendererBridge = {
   readonly exportSitePackage: (input: ExportSitePackageInput) => Promise<ExportSitePackageResponse>;
   readonly validateImportPackage: (input: ImportValidateInput) => Promise<ImportValidationResponse>;
   readonly executeImportPackage: (input: ImportExecuteInput) => Promise<ImportExecutionResponse>;
-  readonly listWorkspaces: () => Promise<WorkspaceListItem[]>;
-  readonly createWorkspace: (input: WorkspaceCreateInput) => Promise<WorkspaceListItem>;
-  readonly updateWorkspace: (id: string, input: WorkspaceUpdateInput) => Promise<WorkspaceListItem | null>;
-  readonly deleteWorkspace: (id: string) => Promise<boolean>;
+
   readonly terminalCreate: (benchId: string, siteId?: string | null) => Promise<TerminalCreateResponse>;
   readonly terminalWrite: (sessionId: string, data: string) => Promise<boolean>;
   readonly terminalClose: (sessionId: string, force?: boolean) => Promise<boolean>;

@@ -3,7 +3,7 @@
     <FirstRunGuide
       v-if="showGettingStarted"
       title="Set up your local workspace"
-      body="A fresh install has no benches, sites, or workspaces yet. Start with one bench, then create a site and group it once the runtime is healthy."
+      body="A fresh install has no benches or sites yet. Start with one bench, then create a site once the runtime is healthy."
       :links="gettingStartedLinks"
     />
 
@@ -61,23 +61,22 @@ import { useSettingsDialog } from '../composables/useSettingsDialog';
 
 const ipc = useIpc();
 const { open: openSettings } = useSettingsDialog();
-const setupSummary = reactive({ benches: 0, sites: 0, workspaces: 0 });
+const setupSummary = reactive({ benches: 0, sites: 0 });
 
 const refreshSetupSummary = async (): Promise<void> => {
   try {
-    const [benches, sites, workspaces] = await Promise.all([
+    const [benches, sites] = await Promise.all([
       ipc.listBenches(),
       ipc.listSites(),
-      ipc.listWorkspaces(),
     ]);
 
     setupSummary.benches = benches.length;
     setupSummary.sites = sites.length;
-    setupSummary.workspaces = workspaces.length;
+
   } catch {
     setupSummary.benches = 0;
     setupSummary.sites = 0;
-    setupSummary.workspaces = 0;
+
   }
 };
 
@@ -86,7 +85,7 @@ onMounted(() => {
 });
 
 const showGettingStarted = computed(() =>
-  setupSummary.benches === 0 || setupSummary.sites === 0 || setupSummary.workspaces === 0
+  setupSummary.benches === 0 || setupSummary.sites === 0
 );
 
 const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
@@ -100,9 +99,7 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
     links.push({ label: 'Create a site', to: '/sites' });
   }
 
-  if (setupSummary.sites > 0 && setupSummary.workspaces === 0) {
-    links.push({ label: 'Create a workspace', to: '/workspaces' });
-  }
+
 
   links.push({ label: 'Check settings', onClick: openSettings });
 

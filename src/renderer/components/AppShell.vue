@@ -87,7 +87,7 @@ import { Sidebar, SidebarItem } from 'frappe-ui';
 import IconHome from '~icons/lucide/home';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
-import IconLayoutGrid from '~icons/lucide/layout-grid';
+
 import IconTerminal from '~icons/lucide/terminal';
 import IconActivity from '~icons/lucide/activity';
 import IconArrowRightLeft from '~icons/lucide/arrow-right-left';
@@ -112,7 +112,7 @@ const iconComponentMap: Record<string, any> = {
   '/activity': IconActivity,
   '/benches': IconPackage,
   '/sites': IconGlobe,
-  '/workspaces': IconLayoutGrid,
+
   '/console': IconTerminal,
   '/import-export': IconArrowRightLeft,
   '/diagnostics': IconZap,

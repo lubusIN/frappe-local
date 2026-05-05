@@ -32,10 +32,7 @@ const rendererBridge: RendererBridge = {
 	exportSitePackage: async (input) => ipcRenderer.invoke(ipcChannels.exportSitePackage, input),
 	validateImportPackage: async (input) => ipcRenderer.invoke(ipcChannels.importValidatePackage, input),
 	executeImportPackage: async (input) => ipcRenderer.invoke(ipcChannels.importExecutePackage, input),
-	listWorkspaces: async () => ipcRenderer.invoke(ipcChannels.workspacesList),
-	createWorkspace: async (input) => ipcRenderer.invoke(ipcChannels.workspacesCreate, input),
-	updateWorkspace: async (id, input) => ipcRenderer.invoke(ipcChannels.workspacesUpdate, id, input),
-	deleteWorkspace: async (id) => ipcRenderer.invoke(ipcChannels.workspacesDelete, id),
+
 	terminalCreate: async (benchId, siteId = null) =>
 		ipcRenderer.invoke(ipcChannels.terminalCreate, benchId, siteId),
 	terminalWrite: async (sessionId, data) => ipcRenderer.invoke(ipcChannels.terminalWrite, sessionId, data),

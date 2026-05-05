@@ -448,7 +448,7 @@ const exporting = ref(false);
 const createForm = reactive({
   name: '',
   benchId: '',
-  groupId: '',
+
   path: '',
   appsText: '',
   appsSelected: [] as string[],
@@ -563,7 +563,7 @@ const onCreateSite = async () => {
   showCreateSiteModal.value = false;
   createForm.name = '';
   createForm.benchId = '';
-  createForm.groupId = '';
+
   createForm.path = '';
   createForm.appsText = '';
   createForm.appsSelected = [];

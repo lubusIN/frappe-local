@@ -1,4 +1,4 @@
-import type { AppCatalogItem, BenchRecord, Group, Settings, Site } from '../../shared/domain/models';
+import type { AppCatalogItem, BenchRecord, Settings, Site } from '../../shared/domain/models';
 
 export const CURRENT_STORAGE_SCHEMA_VERSION = 2;
 
@@ -16,7 +16,7 @@ export type StorageSnapshot = {
   readonly metadata: StorageMetadata;
   readonly benches: BenchRecord[];
   readonly sites: Site[];
-  readonly groups: Group[];
+
   readonly settings: Settings | null;
   readonly appCatalog: AppCatalogItem[];
 };
@@ -37,7 +37,7 @@ export const createDefaultStorageSnapshot = (
     },
     benches: [],
     sites: [],
-    groups: [],
+
     settings: null,
     appCatalog: appCatalogSeed,
   };

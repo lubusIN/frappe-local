@@ -13,7 +13,7 @@ import { JsonStorageAdapter } from './storage/adapter';
 import { initializeStorage } from './storage/bootstrap';
 import { AppCatalogRepository } from './storage/repositories/app-catalog-repository';
 import { BenchRepository } from './storage/repositories/bench-repository';
-import { GroupRepository } from './storage/repositories/group-repository';
+
 import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
 import { InMemoryBenchAnalytics } from './bench-analytics';
@@ -121,7 +121,7 @@ export const runApplicationBootstrap = async (
       benches: new BenchRepository(adapter),
       sites: new SiteRepository(adapter),
       settings: new SettingsRepository(adapter),
-      groups: new GroupRepository(adapter),
+
     };
 
 

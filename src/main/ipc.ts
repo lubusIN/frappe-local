@@ -15,12 +15,10 @@ import type {
   SiteCreateInput,
   SiteListItem,
   SiteUpdateInput,
-  WorkspaceCreateInput,
-  WorkspaceListItem,
+  SiteUpdateInput,
   TerminalErrorEvent,
   TerminalSessionInspection,
   TerminalOutputEvent,
-  WorkspaceUpdateInput,
   TerminalStateChangeEvent,
   UpdateCheckResult,
   UpdateStrategyStatus,
@@ -51,10 +49,9 @@ import {
   CreateSiteInputSchema,
   SettingsSchema,
   UpdateBenchInputSchema,
-  UpdateGroupInputSchema,
+
   UpdateSiteInputSchema,
   type Bench,
-  type Group,
   type Settings,
   type Site,
 } from '../shared/domain/models';
@@ -206,22 +203,7 @@ export type AppRepositories = {
     get: () => Promise<Settings | null>;
     set: (input: Settings) => Promise<Settings>;
   };
-  readonly groups: {
-    findAll: () => Promise<Group[]>;
-    create: (input: {
-      name: string;
-      description: string;
-      tags: string[];
-      siteIds: string[];
-    }) => Promise<Group>;
-    update: (id: string, input: {
-      name?: string;
-      description?: string;
-      tags?: string[];
-      siteIds?: string[];
-    }) => Promise<Group | null>;
-    delete: (id: string) => Promise<boolean>;
-  };
+
 };
 
 export type IpcOperations = {
@@ -302,13 +284,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   sidebarCompact: settings.sidebarCompact,
 });
 
-const toWorkspaceListItem = (group: Group): WorkspaceListItem => ({
-  id: group.id,
-  name: group.name,
-  description: group.description,
-  tags: group.tags,
-  siteCount: group.siteIds.length,
-});
+
 
 const toLifecycleLogs = (
   entityId: string,
@@ -896,7 +872,7 @@ export const registerIpcHandlers = (
       {
         benches: repositories.benches,
         sites: repositories.sites,
-        groups: repositories.groups,
+
         settings: repositories.settings,
         appCatalog: {
           findAll: async () => {
@@ -948,7 +924,7 @@ export const registerIpcHandlers = (
       {
         benches: repositories.benches,
         sites: repositories.sites,
-        groups: repositories.groups,
+
         settings: repositories.settings,
         appCatalog: {
           findAll: async () => {
@@ -983,37 +959,7 @@ export const registerIpcHandlers = (
     return response;
   });
 
-  ipcMainLike.handle(ipcChannels.workspacesList, async () => {
-    const groups = await repositories.groups.findAll();
-    return groups.map(toWorkspaceListItem);
-  });
 
-  ipcMainLike.handle(ipcChannels.workspacesCreate, async (_event: unknown, input: unknown) => {
-    const payload = CreateGroupInputSchema.parse({
-      ...(input as WorkspaceCreateInput),
-      siteIds: [],
-    });
-    const created = await repositories.groups.create(payload);
-    return toWorkspaceListItem(created);
-  });
-
-  ipcMainLike.handle(ipcChannels.workspacesUpdate, async (_event: unknown, id: unknown, input: unknown) => {
-    if (typeof id !== 'string') {
-      return null;
-    }
-
-    const payload = UpdateGroupInputSchema.parse(input as WorkspaceUpdateInput);
-    const updated = await repositories.groups.update(id, payload);
-    return updated ? toWorkspaceListItem(updated) : null;
-  });
-
-  ipcMainLike.handle(ipcChannels.workspacesDelete, async (_event: unknown, id: unknown) => {
-    if (typeof id !== 'string') {
-      return false;
-    }
-
-    return repositories.groups.delete(id);
-  });
 
   ipcMainLike.handle(ipcChannels.terminalCreate, async (_event: unknown, benchId: unknown, siteId: unknown) => {
     if (typeof benchId !== 'string') {

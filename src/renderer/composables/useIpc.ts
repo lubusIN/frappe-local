@@ -35,10 +35,7 @@ const unavailableBridge: RendererBridge = {
   exportSitePackage: () => rejectUnavailable(),
   validateImportPackage: () => rejectUnavailable(),
   executeImportPackage: () => rejectUnavailable(),
-  listWorkspaces: () => rejectUnavailable(),
-  createWorkspace: () => rejectUnavailable(),
-  updateWorkspace: () => rejectUnavailable(),
-  deleteWorkspace: () => rejectUnavailable(),
+
   terminalCreate: () => rejectUnavailable(),
   terminalWrite: () => rejectUnavailable(),
   terminalClose: () => rejectUnavailable(),

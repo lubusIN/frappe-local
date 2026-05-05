@@ -36,12 +36,7 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     title: 'Sites',
     description: 'Prepare the management surface for site creation, assignment, and health visibility.',
   },
-  {
-    path: '/workspaces',
-    name: 'workspaces',
-    title: 'Workspaces',
-    description: 'Group sites by project and keep the navigation model ready for scale.',
-  },
+
   {
     path: '/console',
     name: 'console',
@@ -84,11 +79,7 @@ export const navigationItems: NavigationItem[] = [
     description: 'View and control the sites attached to each bench.',
     path: '/sites',
   },
-  {
-    label: 'Workspaces',
-    description: 'Organize projects by client, project, or custom tags.',
-    path: '/workspaces',
-  },
+
   {
     label: 'Console',
     description: 'Launch scoped commands once terminal support lands.',
