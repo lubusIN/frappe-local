@@ -68,24 +68,7 @@ npm run precommit:check
 - `src/renderer` - Vue renderer app
 - `src/shared` - shared contracts/types between processes
 - `tests` - unit/integration tests
-- `docs/planning` - PRD and phase execution plans
-
-## Planning and Execution
-
-Execution references:
-- `docs/planning/EXECUTION_PLAN.md`
-- `docs/planning/EXECUTION_TRACKER.md`
-
-The implementation follows small, validated checkpoints with manual commit approval before each commit.
-
-## Release Documentation
-
-- docs/PACKAGING.md
-- docs/release/SETUP_GUIDE.md
-- docs/release/TROUBLESHOOTING.md
-- docs/release/RELEASE_NOTES_TEMPLATE.md
-- docs/release/CHANGELOG_PROCESS.md
-- docs/release/QA_CHECKLIST.md
-- docs/release/RC_VALIDATION_REPORT.md
-- docs/release/PHASE_11_CLOSURE_REPORT.md
-- docs/release/RC_PREPARATION_NOTES.md
+- `src/preload` - preload bridge
+- `src/renderer` - Vue renderer app
+- `src/shared` - shared contracts/types between processes
+- `tests` - unit/integration tests
