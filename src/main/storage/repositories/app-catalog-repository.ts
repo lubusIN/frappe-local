@@ -9,6 +9,16 @@ export class AppCatalogRepository {
     return [...snapshot.appCatalog];
   }
 
+  async sync(apps: AppCatalogItem[]): Promise<void> {
+    await this.adapter.transaction(async (snapshot) => ({
+      snapshot: {
+        ...snapshot,
+        appCatalog: [...apps],
+      },
+      result: undefined,
+    }));
+  }
+
   async findById(id: string): Promise<AppCatalogItem | null> {
     const snapshot = await this.adapter.readSnapshot();
     return snapshot.appCatalog.find((item) => item.id === id) ?? null;

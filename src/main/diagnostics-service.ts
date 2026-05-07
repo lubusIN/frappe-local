@@ -216,7 +216,18 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
           const machines = parsePodmanJson(stdout);
 
           if (Array.isArray(machines) && machines.length > 0) {
-            const activeMachine = machines.find((m: any) => m.CurrentlyRunning === true || m.Running === true || m.State === 'running');
+            type PodmanMachineStatus = {
+              CurrentlyRunning?: boolean;
+              Running?: boolean;
+              State?: string;
+              Name?: string;
+            };
+            const activeMachine = (machines as PodmanMachineStatus[]).find(
+              (machine) =>
+                machine.CurrentlyRunning === true ||
+                machine.Running === true ||
+                machine.State === 'running'
+            );
 
             if (activeMachine) {
               checks.push({
@@ -292,7 +303,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
           timestamp: new Date().toISOString(),
         });
       }
-    } catch (_podmanEngineErr) {
+    } catch {
       // Already handled by binary availability check
     }
 

@@ -1,57 +1,97 @@
 <template>
-  <section class="progress-center" aria-live="polite">
-    <div class="progress-filters">
-      <div class="filter-group">
-        <label class="filter-label">Status</label>
-        <select :value="statusFilter" class="filter-select" @change="onStatusChange">
-          <option value="all">All</option>
-          <option value="queued">Queued</option>
-          <option value="running">Running</option>
-          <option value="success">Success</option>
-          <option value="failure">Failure</option>
-        </select>
+  <section
+    class="grid gap-4"
+    aria-live="polite"
+  >
+    <div class="flex flex-wrap items-center gap-3 max-[760px]:flex-col max-[760px]:items-start">
+      <div class="flex items-center gap-2">
+        <label class="text-[13px] text-ink-gray-6">Status</label>
+        <Select
+          v-model="statusFilterModel"
+          class="min-w-[120px]"
+          :options="statusOptions"
+          variant="outline"
+        />
       </div>
-      <div class="filter-group">
-        <label class="filter-label">Resource</label>
-        <select :value="resourceFilter" class="filter-select" @change="onResourceChange">
-          <option value="all">All</option>
-          <option value="bench">Bench</option>
-          <option value="site">Site</option>
-          <option value="import">Import/Export</option>
-          <option value="runtime">Runtime</option>
-          <option value="system">System</option>
-        </select>
+      <div class="flex items-center gap-2">
+        <label class="text-[13px] text-ink-gray-6">Resource</label>
+        <Select
+          v-model="resourceFilterModel"
+          class="min-w-[120px]"
+          :options="resourceOptions"
+          variant="outline"
+        />
       </div>
-      <label class="recent-toggle">
-        <input type="checkbox" :checked="recentOnly" @change="onRecentToggle" />
-        <span>Recent 24h</span>
-      </label>
+      <Switch
+        v-model="recentOnlyModel"
+        class="text-[13px] text-ink-gray-6"
+        label="Recent 24h"
+      />
     </div>
 
-    <p v-if="loading" class="progress-empty">Subscribing to task stream…</p>
+    <p
+      v-if="loading"
+      class="m-0 rounded-lg border border-outline-gray-2 bg-surface-white p-6 text-center text-[13px] text-ink-gray-6"
+    >
+      Subscribing to task stream…
+    </p>
     <ErrorNotice
       v-else-if="errorNotice"
       :notice="errorNotice"
       tone="warning"
       @action="$emit('retrySubscription')"
     />
-    <p v-else-if="items.length === 0" class="progress-empty">No matching tasks yet.</p>
+    <p
+      v-else-if="items.length === 0"
+      class="m-0 rounded-lg border border-outline-gray-2 bg-surface-white p-6 text-center text-[13px] text-ink-gray-6"
+    >
+      No matching tasks yet.
+    </p>
 
-    <div v-else class="progress-list">
-      <div v-for="item in items" :key="item.taskId" class="progress-item">
-        <div class="progress-item__header">
-          <div class="progress-item__meta">
-            <span class="status-pill" :class="`status-pill--${item.status}`">{{ item.status }}</span>
-            <span class="resource-badge">{{ item.resource }}</span>
+    <div
+      v-else
+      class="grid gap-3"
+    >
+      <div
+        v-for="item in items"
+        :key="item.taskId"
+        class="flex flex-col overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white"
+      >
+        <div class="flex items-center justify-between border-b border-outline-gray-2 bg-surface-gray-2 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <Badge
+              variant="subtle"
+              :theme="statusTheme(item.status)"
+            >
+              {{ item.status }}
+            </Badge>
+            <Badge
+              variant="outline"
+              theme="gray"
+            >
+              {{ item.resource }}
+            </Badge>
           </div>
-          <time class="progress-item__time" :datetime="item.timestamp">{{ formatTime(item.timestamp) }}</time>
+          <time
+            class="text-xs text-ink-gray-5"
+            :datetime="item.timestamp"
+          >{{ formatTime(item.timestamp) }}</time>
         </div>
-        <div class="progress-item__body">
-          <p class="task-name">{{ item.taskName }}</p>
-          <p class="task-message">{{ item.message }}</p>
+        <div class="grid gap-1 px-4 py-4">
+          <p class="m-0 text-sm font-semibold text-ink-gray-9">
+            {{ item.taskName }}
+          </p>
+          <p class="m-0 text-[13px] leading-relaxed text-ink-gray-6">
+            {{ item.message }}
+          </p>
         </div>
-        <div class="progress-item__footer">
-          <RouterLink class="task-link" :to="taskRoute(item)">Open context &rarr;</RouterLink>
+        <div class="flex justify-end border-t border-outline-gray-2 px-4 py-2.5">
+          <RouterLink
+            class="text-xs font-medium text-ink-blue-3 no-underline hover:underline"
+            :to="taskRoute(item)"
+          >
+            Open context &rarr;
+          </RouterLink>
         </div>
       </div>
     </div>
@@ -59,8 +99,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
+import { Badge, Select, Switch } from 'frappe-ui';
 import type { RouteLocationRaw } from 'vue-router';
 import ErrorNotice from './ErrorNotice.vue';
 import { buildErrorRemediationNotice } from '../error-remediation';
@@ -82,24 +123,42 @@ const emit = defineEmits<{
   (event: 'retrySubscription'): void;
 }>();
 
-const onStatusChange = (event: Event): void => {
-  const value = (event.target as HTMLSelectElement).value as
-    | 'all'
-    | 'queued'
-    | 'running'
-    | 'success'
-    | 'failure';
-  emit('update:statusFilter', value);
-};
+const statusOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Queued', value: 'queued' },
+  { label: 'Running', value: 'running' },
+  { label: 'Success', value: 'success' },
+  { label: 'Failure', value: 'failure' },
+];
 
-const onResourceChange = (event: Event): void => {
-  const value = (event.target as HTMLSelectElement).value as 'all' | ProgressTaskResource;
-  emit('update:resourceFilter', value);
-};
+const resourceOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Bench', value: 'bench' },
+  { label: 'Site', value: 'site' },
+  { label: 'Runtime', value: 'runtime' },
+  { label: 'System', value: 'system' },
+];
 
-const onRecentToggle = (event: Event): void => {
-  const value = (event.target as HTMLInputElement).checked;
-  emit('update:recentOnly', value);
+const statusFilterModel = computed({
+  get: () => props.statusFilter,
+  set: (value: string) => emit('update:statusFilter', value as typeof props.statusFilter),
+});
+
+const resourceFilterModel = computed({
+  get: () => props.resourceFilter,
+  set: (value: string) => emit('update:resourceFilter', value as typeof props.resourceFilter),
+});
+
+const recentOnlyModel = computed({
+  get: () => props.recentOnly,
+  set: (value: boolean) => emit('update:recentOnly', value),
+});
+
+const statusTheme = (status: string) => {
+  if (status === 'running') return 'blue';
+  if (status === 'success') return 'green';
+  if (status === 'failure') return 'red';
+  return 'gray';
 };
 
 const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
@@ -115,10 +174,6 @@ const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
       : { path: '/sites' };
   }
 
-  if (item.resource === 'import') {
-    return { path: '/import-export' };
-  }
-
   if (item.resource === 'runtime') {
     return { path: '/dashboard', query: item.resourceId ? { runtime: item.resourceId } : {} };
   }
@@ -128,175 +183,7 @@ const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
 
 const formatTime = (value: string): string => new Date(value).toLocaleString();
 
-const { statusFilter, resourceFilter, recentOnly } = toRefs(props);
 const errorNotice = computed(() =>
   props.error ? buildErrorRemediationNotice('progress-center', props.error) : null
 );
 </script>
-
-<style scoped>
-.progress-center {
-  display: grid;
-  gap: 16px;
-}
-
-.progress-filters {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.filter-select {
-  min-width: 120px;
-  min-height: 32px;
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 13px;
-}
-
-.recent-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.progress-empty {
-  margin: 0;
-  padding: 24px;
-  text-align: center;
-  background: var(--surface-card);
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.progress-list {
-  display: grid;
-  gap: 12px;
-}
-
-.progress-item {
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--surface-card);
-  display: flex;
-  flex-direction: column;
-}
-
-.progress-item__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-light);
-  background: var(--surface-subtle);
-  border-radius: 8px 8px 0 0;
-}
-
-.progress-item__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.progress-item__time {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.status-pill {
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: capitalize;
-  background: var(--gray-light);
-  color: var(--gray-text);
-}
-
-.status-pill--running {
-  background: var(--blue-light);
-  color: var(--blue-text);
-}
-
-.status-pill--success {
-  background: var(--green-light);
-  color: var(--green-text);
-}
-
-.status-pill--failure {
-  background: var(--red-light);
-  color: var(--red-text);
-}
-
-.resource-badge {
-  font-size: 11px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 600;
-}
-
-.progress-item__body {
-  padding: 16px;
-  display: grid;
-  gap: 4px;
-}
-
-.task-name {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.task-message {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.progress-item__footer {
-  padding: 10px 16px;
-  border-top: 1px solid var(--border-light);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.task-link {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-link);
-  text-decoration: none;
-}
-
-.task-link:hover {
-  color: var(--text-link-hover);
-  text-decoration: underline;
-}
-
-@media (max-width: 760px) {
-  .progress-filters {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-</style>

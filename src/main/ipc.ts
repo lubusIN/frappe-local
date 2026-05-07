@@ -18,19 +18,16 @@ import { ensureRuntimeRunning } from './runtime-service';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
 import { ipcChannels } from '../shared/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
-import { getTaskRunner } from './task-runner';
-import { execPromise } from './utils/exec';
-import { getBinaryPath } from './utils/binaries';
+import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import { createMainLogger } from './logger';
 
 const mainLogger = createMainLogger('ipc');
 
 import type { AppRuntimePaths } from './config';
-import { CURRENT_STORAGE_SCHEMA_VERSION } from './storage/schema';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { BrowserWindow, dialog, shell } from 'electron';
+import { BrowserWindow, dialog } from 'electron';
 import {
   CreateBenchInputSchema,
   CreateSiteInputSchema,
@@ -43,7 +40,6 @@ import {
   type Site,
 } from '../shared/domain/models';
 import {
-  canAttachSiteToBench,
   canTransitionSiteStatus,
   isBenchReadyForSiteStatus,
 } from '../shared/domain/site-lifecycle';
@@ -53,38 +49,13 @@ import { orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatus
 import { orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
 
 type IpcMainLike = {
-  handle: (channel: string, listener: (...args: any[]) => any) => void;
+  handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
 };
 
 
 type TaskRunnerLike = {
-  onEvent: (listener: (event: TaskProgressEvent) => void) => () => void;
-  enqueue: (definition: any) => string;
-};
-
-const resolveBundledPodmanMachineImagePath = (): string | null => {
-  const executableName = process.platform === 'win32' ? 'podman.exe' : 'podman';
-  const pathEntries = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
-
-  for (const entry of pathEntries) {
-    const podmanPath = path.join(entry, executableName);
-    if (!fs.existsSync(podmanPath)) {
-      continue;
-    }
-
-    const imageCandidates = [
-      path.join(entry, 'podman-machine-image.raw'),
-      path.join(entry, 'podman-machine-image.qcow2'),
-      path.join(entry, 'podman-machine-image'),
-    ];
-
-    const found = imageCandidates.find((candidate) => fs.existsSync(candidate));
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
+  onEvent?: (listener: (event: TaskProgressEvent) => void) => () => void;
+  enqueue: (definition: { name: string; resource: { type: 'bench' | 'site' | 'runtime' | 'system'; id: string }; run: (context: TaskExecutionContext) => Promise<void> }) => string;
 };
 
 const resolveUserPath = (untrimmedPath: string): string => {
@@ -102,7 +73,9 @@ const resolveUserPath = (untrimmedPath: string): string => {
 export type IpcRepositories = {
   readonly appCatalog: {
     findAll: () => Promise<CatalogAppItem[]>;
-    sync: (apps: CatalogAppItem[]) => Promise<void>;
+    sync?: (apps: CatalogAppItem[]) => Promise<void>;
+    findById?: (id: string) => Promise<CatalogAppItem | null>;
+    search?: (query: string) => Promise<CatalogAppItem[]>;
   };
   readonly benches: {
     findAll: () => Promise<Bench[]>;
@@ -119,8 +92,10 @@ export type IpcRepositories = {
     delete: (id: string) => Promise<boolean>;
   };
   readonly settings: {
-    findAll: () => Promise<Settings[]>;
-    update: (input: Partial<Settings>) => Promise<Settings>;
+    findAll?: () => Promise<Settings[]>;
+    update?: (input: Partial<Settings>) => Promise<Settings>;
+    get?: () => Promise<Settings | null>;
+    set?: (input: Partial<Settings>) => Promise<Settings>;
   };
 };
 
@@ -162,7 +137,6 @@ const toSiteListItem = (site: Site): SiteListItem => ({
 const toSettingsItem = (settings: Settings): SettingsItem => ({
   defaultFrappeVersion: settings.defaultFrappeVersion,
   storagePath: settings.storagePath,
-  terminalPreference: settings.terminalPreference,
   editorPreference: settings.editorPreference,
   updateChannel: settings.updateChannel,
   autoUpdateEnabled: settings.autoUpdateEnabled,
@@ -199,6 +173,30 @@ const toLifecycleLogs = (
   return logs;
 };
 
+const getCurrentSettings = async (repository: AppRepositories['settings']): Promise<Settings | null> => {
+  if (repository.get) {
+    return repository.get();
+  }
+
+  const settings = await repository.findAll?.();
+  return settings?.[0] ?? null;
+};
+
+const updateSettings = async (
+  repository: AppRepositories['settings'],
+  input: Partial<Settings>
+): Promise<Settings> => {
+  if (repository.update) {
+    return repository.update(input);
+  }
+
+  if (repository.set) {
+    return repository.set(input);
+  }
+
+  throw new Error('Settings repository does not support updates.');
+};
+
 export const registerIpcHandlers = (
   ipcMainLike: IpcMainLike,
   repositories: AppRepositories,
@@ -218,7 +216,6 @@ export const registerIpcHandlers = (
     logsPath: '',
     storagePath: '',
     configPath: '',
-    binariesPath: '',
   }
 ) => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async (): Promise<AppHealthResponse> => {
@@ -247,8 +244,9 @@ export const registerIpcHandlers = (
   });
 
   // Event Forwarding for TaskRunner
-  taskRunner.onEvent((event) => {
-    BrowserWindow.getAllWindows().forEach((win) => {
+  taskRunner.onEvent?.((event) => {
+    const windows = BrowserWindow?.getAllWindows?.() ?? [];
+    windows.forEach((win) => {
       if (!win.isDestroyed()) {
         win.webContents.send(ipcChannels.taskRunnerProgressEvent, event);
       }
@@ -260,10 +258,7 @@ export const registerIpcHandlers = (
     return runDiagnostics({
       runtimePaths,
       settingsRepository: {
-        get: async () => {
-          const settings = await repositories.settings.findAll();
-          return settings[0] || null;
-        },
+        get: async () => getCurrentSettings(repositories.settings),
       },
       appVersion,
     });
@@ -301,7 +296,7 @@ export const registerIpcHandlers = (
     const created = await repositories.benches.create({
       ...payload,
       status: 'queued', // Initial state should be queued
-      apps: [],
+      apps: payload.apps,
     });
 
     operations.trackBenchOperation?.(created.id, 'create');
@@ -374,7 +369,7 @@ export const registerIpcHandlers = (
     taskRunner.enqueue({
       name: `Delete Bench: ${bench.name}`,
       resource: { type: 'bench', id: bench.id },
-      run: async (context: any) => {
+      run: async () => {
         try {
           await orchestrateBenchDeletion(bench, repositories.benches, repositories.sites);
         } catch (error) {
@@ -443,7 +438,7 @@ export const registerIpcHandlers = (
     taskRunner.enqueue({
       name: `Clean Bench: ${bench.name}`,
       resource: { type: 'bench', id: bench.id },
-      run: async (context: any) => {
+      run: async () => {
         try {
           await orchestrateBenchCleaning(bench, repositories.sites);
         } catch (error) {
@@ -453,7 +448,7 @@ export const registerIpcHandlers = (
       },
     });
 
-    operations.trackBenchOperation?.(id, 'clean');
+    operations.trackBenchOperation?.(id, 'update');
     return true;
   });
 
@@ -461,8 +456,43 @@ export const registerIpcHandlers = (
     return repositories.appCatalog.findAll();
   });
 
+  ipcMainLike.handle(ipcChannels.catalogFindById, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return null;
+    }
+
+    if (repositories.appCatalog.findById) {
+      return repositories.appCatalog.findById(id);
+    }
+
+    const apps = await repositories.appCatalog.findAll();
+    return apps.find((app) => app.id === id) ?? null;
+  });
+
+  ipcMainLike.handle(ipcChannels.catalogSearch, async (_event: unknown, query: unknown) => {
+    if (typeof query !== 'string') {
+      return [];
+    }
+
+    if (repositories.appCatalog.search) {
+      return repositories.appCatalog.search(query);
+    }
+
+    const normalized = query.trim().toLowerCase();
+    const apps = await repositories.appCatalog.findAll();
+    if (!normalized) {
+      return apps;
+    }
+
+    return apps.filter(
+      (app) =>
+        app.name.toLowerCase().includes(normalized) ||
+        app.description.toLowerCase().includes(normalized)
+    );
+  });
+
   ipcMainLike.handle(ipcChannels.catalogSync, async (_event: unknown, apps: unknown) => {
-    if (!Array.isArray(apps)) {
+    if (!Array.isArray(apps) || !repositories.appCatalog.sync) {
       return false;
     }
 
@@ -613,13 +643,13 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.settingsGet, async () => {
-    const settings = await repositories.settings.findAll();
-    return settings.length > 0 ? toSettingsItem(settings[0]) : null;
+    const settings = await getCurrentSettings(repositories.settings);
+    return settings ? toSettingsItem(settings) : null;
   });
 
   ipcMainLike.handle(ipcChannels.settingsSet, async (_event: unknown, input: unknown) => {
-    const payload = SettingsSchema.partial().parse(input);
-    const updated = await repositories.settings.update(payload);
+    const payload = SettingsSchema.partial().parse(input ?? {});
+    const updated = await updateSettings(repositories.settings, payload);
     return toSettingsItem(updated);
   });
 
@@ -644,6 +674,7 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {
-    return buildUpdateStrategyStatus();
+    const settings = await getCurrentSettings(repositories.settings);
+    return buildUpdateStrategyStatus(settings, appVersion);
   });
 };

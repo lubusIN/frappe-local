@@ -28,6 +28,7 @@ export class SiteRepository {
     const now = new Date().toISOString();
     const site: Site = {
       id: randomUUID(),
+      status: 'queued',
       ...input,
       timestamps: { createdAt: now, updatedAt: now },
     };

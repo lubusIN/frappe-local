@@ -22,8 +22,6 @@ import { getDefaultAppCatalogSeed } from './catalog-provider';
 import { runDiagnostics } from './diagnostics-service';
 import { getAppIconPath } from './app-icon';
 
-import { getTaskRunner } from './task-runner';
-
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
   readonly createMainWindow: () => Promise<void>;
@@ -78,7 +76,7 @@ const buildStartupErrorHtml = (appName: string): string => {
         <section class="card">
           <h1>${safeName} could not finish startup.</h1>
           <p>The application encountered an initialization error.</p>
-          <p>Check terminal logs for details and retry launch.</p>
+          <p>Check application logs for details and retry launch.</p>
           <p>If the issue persists, remove temporary build outputs and restart the app.</p>
         </section>
       </body>
@@ -116,13 +114,13 @@ export const runApplicationBootstrap = async (
       appCatalogSeedVersion: 5,
     });
 
-    const repositories: AppRepositories = {
+    const settingsRepository = new SettingsRepository(adapter);
+    const repositories = {
       appCatalog: new AppCatalogRepository(adapter),
       benches: new BenchRepository(adapter),
       sites: new SiteRepository(adapter),
-      settings: new SettingsRepository(adapter),
-
-    };
+      settings: settingsRepository,
+    } satisfies AppRepositories;
 
 
 
@@ -143,7 +141,7 @@ export const runApplicationBootstrap = async (
         }
       },
       openInEditor: async (targetPath: string) => {
-        const settings = await repositories.settings.findAll();
+        const settings = await settingsRepository.findAll();
         const editorPreference = settings[0]?.editorPreference || 'code';
         return openInEditor(targetPath, editorPreference);
       },
@@ -165,7 +163,7 @@ export const runApplicationBootstrap = async (
         runtimePaths: context.runtimePaths,
         settingsRepository: {
           get: async () => {
-            const settings = await repositories.settings.findAll();
+            const settings = await settingsRepository.findAll();
             return settings[0] || null;
           },
         },

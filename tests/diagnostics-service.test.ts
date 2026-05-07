@@ -15,12 +15,22 @@ vi.mock('../src/main/utils/exec', () => ({
   }),
 }));
 
+vi.mock('../src/main/utils/binaries', () => ({
+  getBinaryPath: vi.fn((name: string) => name),
+}));
+
+vi.mock('node:dns/promises', () => ({
+  default: {
+    lookup: vi.fn().mockResolvedValue({ address: '127.0.0.1', family: 4 }),
+  },
+  lookup: vi.fn().mockResolvedValue({ address: '127.0.0.1', family: 4 }),
+}));
+
 const createdPaths: string[] = [];
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
   storagePath: '/tmp/frappe-cafe',
-  terminalPreference: 'zsh',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
@@ -60,7 +70,7 @@ describe('diagnostics service', () => {
     expect(report.hasWarnings).toBe(false);
     expect(report.summary).toContain('All diagnostics passed');
     expect(report.checks.map((check) => check.type)).toEqual(
-      expect.arrayContaining(['path-writability', 'storage-access', 'runtime-preference'])
+      expect.arrayContaining(['path-writability', 'storage-access', 'runtime-health'])
     );
   });
 

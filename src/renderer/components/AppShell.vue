@@ -9,15 +9,15 @@
           class="flex items-center p-3 transition-all duration-300"
           :class="isCollapsed ? 'justify-center' : ''"
         >
-          <div class="w-8 h-8 rounded-md bg-[#171717] text-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+          <div class="w-8 h-8 rounded-md bg-surface-gray-7 text-ink-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
             <CafeLogo class="w-4 h-4" />
           </div>
           <div 
             v-if="!isCollapsed"
             class="ml-3 flex flex-col truncate transition-all duration-300"
           >
-            <span class="text-sm font-bold text-gray-900 leading-tight">Frappe Cafe</span>
-            <span class="text-xs text-gray-500 font-medium leading-tight mt-0.5">local dev</span>
+            <span class="text-sm font-bold text-ink-gray-9 leading-tight">Frappe Cafe</span>
+            <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">local dev</span>
           </div>
         </div>
       </template>
@@ -31,11 +31,16 @@
       </template>
     </Sidebar>
 
-    <div class="flex-1 flex flex-col min-w-0 bg-white">
-      <header class="flex items-center justify-between px-8 py-5 border-b border-gray-100 shrink-0">
-        <h1 class="text-lg text-gray-900 font-medium truncate">{{ currentTitle }}</h1>
+    <div class="flex-1 flex flex-col min-w-0 bg-surface-white">
+      <header class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0">
+        <h1 class="text-lg text-ink-gray-9 font-medium truncate">
+          {{ currentTitle }}
+        </h1>
         
-        <div v-if="headerActions.length > 0" class="flex items-center gap-3">
+        <div
+          v-if="headerActions.length > 0"
+          class="flex items-center gap-3"
+        >
           <Button
             v-for="action in headerActions"
             :key="action.id"
@@ -50,11 +55,16 @@
         </div>
       </header>
 
-      <div v-if="showIpcWarning" class="mx-6 mt-4 p-3 rounded-lg border border-red-100 bg-red-50/50 flex items-start gap-3 shrink-0">
-        <IconAlertTriangle class="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+      <div
+        v-if="showIpcWarning"
+        class="mx-6 mt-4 p-3 rounded-lg border border-outline-red-1 bg-surface-red-2/50 flex items-start gap-3 shrink-0"
+      >
+        <IconAlertTriangle class="w-4 h-4 text-ink-red-3 mt-0.5 shrink-0" />
         <div class="min-w-0">
-          <h3 class="text-xs font-bold text-red-700">Desktop services unavailable</h3>
-          <p class="text-xs text-red-600/80 leading-relaxed mt-0.5">
+          <h3 class="text-xs font-bold text-ink-red-4">
+            Desktop services unavailable
+          </h3>
+          <p class="text-xs text-ink-red-3/80 leading-relaxed mt-0.5">
             Preload bridge failed. Runtime actions will be unavailable until the connection is restored.
           </p>
         </div>
@@ -65,12 +75,15 @@
       </main>
     </div>
 
-    <SettingsDialog :open="isSettingsOpen" @close="closeSettings" />
+    <SettingsDialog
+      :open="isSettingsOpen"
+      @close="closeSettings"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, type Component } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import { Sidebar, SidebarItem, Button } from 'frappe-ui';
 import IconHome from '~icons/lucide/home';
@@ -79,8 +92,6 @@ import IconGlobe from '~icons/lucide/globe';
 import IconActivity from '~icons/lucide/activity';
 import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
-import IconChevronLeft from '~icons/lucide/chevron-left';
-import IconChevronRight from '~icons/lucide/chevron-right';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import CafeLogo from './CafeLogo.vue';
 import SettingsDialog from './SettingsDialog.vue';
@@ -91,11 +102,11 @@ import { navigationItems } from '../routes';
 
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
-const { actions: headerActions, clearActions } = usePageHeaderActions();
+const { actions: headerActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
 
-const iconComponentMap: Record<string, any> = {
+const iconComponentMap: Record<string, Component> = {
   '/': IconHome,
   '/activity': IconActivity,
   '/benches': IconPackage,
@@ -123,10 +134,8 @@ const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Cafe'));
 onMounted(async () => {
   try {
     await window.frappeCafe?.getSettings();
-  } catch {}
+  } catch {
+    // The inline warning already covers a missing preload bridge.
+  }
 });
 </script>
-
-<style scoped>
-/* No custom CSS required - relying on Tailwind and Frappe UI native layouts */
-</style>

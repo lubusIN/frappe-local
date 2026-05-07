@@ -7,7 +7,6 @@ const runningBench: Bench = {
   name: 'frappe-bench',
   path: '/Users/dev/frappe-bench',
   frappeVersion: '15.0.0',
-  runtime: 'podman',
   status: 'running',
   apps: ['frappe'],
   timestamps: {
@@ -56,7 +55,6 @@ describe('site orchestration', () => {
       {
         name: 'demo.localhost',
         benchId: 'bench-001',
-        groupId: null,
         path: '/Users/dev/frappe-bench/sites/demo.localhost',
         apps: ['frappe', 'erpnext'],
       }
@@ -85,7 +83,6 @@ describe('site orchestration', () => {
         {
           name: 'demo.localhost',
           benchId: 'missing-bench',
-          groupId: null,
           path: '/Users/dev/frappe-bench/sites/demo.localhost',
           apps: ['frappe'],
         }
@@ -114,7 +111,6 @@ describe('site orchestration', () => {
       {
         name: 'demo.localhost',
         benchId: 'bench-001',
-        groupId: null,
         path: '/Users/dev/frappe-bench/sites/demo.localhost',
         apps: ['frappe'],
       }

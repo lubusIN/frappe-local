@@ -25,7 +25,7 @@ describe('progress-center', () => {
   it('detects task resource from task name', () => {
     expect(detectProgressTaskResource('Create bench alpha')).toBe('bench');
     expect(detectProgressTaskResource('Start site demo')).toBe('site');
-    expect(detectProgressTaskResource('Import package artifact')).toBe('import');
+    expect(detectProgressTaskResource('Background package artifact')).toBe('system');
     expect(detectProgressTaskResource('Repair runtime dependencies')).toBe('runtime');
     expect(detectProgressTaskResource('Background refresh')).toBe('system');
   });
@@ -72,6 +72,7 @@ describe('progress-center', () => {
         status: 'running',
         type: 'task.started',
         message: 'Repairing runtime',
+        logs: [],
         stepName: null,
         timestamp: new Date('2026-04-19T08:45:00.000Z').toISOString(),
         resource: 'runtime',
@@ -83,6 +84,7 @@ describe('progress-center', () => {
         status: 'success',
         type: 'task.completed',
         message: 'Done',
+        logs: [],
         stepName: null,
         timestamp: new Date('2026-04-17T08:00:00.000Z').toISOString(),
         resource: 'site',

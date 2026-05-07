@@ -7,50 +7,85 @@
       :links="gettingStartedLinks"
     />
 
-    <section id="shortcuts" class="dashboard-section">
+    <section
+      id="shortcuts"
+      class="dashboard-section"
+    >
       <div class="shortcut-grid">
-        <RouterLink to="/benches" class="shortcut-card">
-          <div class="shortcut-card__icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 7v10h14V7" /><path d="M4 7h16" />
-            </svg>
-          </div>
-          <div>
-            <p class="shortcut-card__title">Manage Benches</p>
-            <p class="shortcut-card__desc">Create and control bench environments</p>
-          </div>
+        <RouterLink
+          to="/benches"
+          class="shortcut-link"
+        >
+          <Card class="shortcut-card">
+            <div class="shortcut-card__content">
+              <div class="shortcut-card__icon">
+                <IconPackage class="shortcut-card__svg" />
+              </div>
+              <div>
+                <p class="shortcut-card__title">
+                  Manage Benches
+                </p>
+                <p class="shortcut-card__desc">
+                  Create and control bench environments
+                </p>
+              </div>
+            </div>
+          </Card>
         </RouterLink>
-        <RouterLink to="/sites" class="shortcut-card">
-          <div class="shortcut-card__icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="11" r="7" /><path d="M5 11h14" />
-            </svg>
-          </div>
-          <div>
-            <p class="shortcut-card__title">Manage Sites</p>
-            <p class="shortcut-card__desc">View and control local sites</p>
-          </div>
+        <RouterLink
+          to="/sites"
+          class="shortcut-link"
+        >
+          <Card class="shortcut-card">
+            <div class="shortcut-card__content">
+              <div class="shortcut-card__icon">
+                <IconGlobe class="shortcut-card__svg" />
+              </div>
+              <div>
+                <p class="shortcut-card__title">
+                  Manage Sites
+                </p>
+                <p class="shortcut-card__desc">
+                  View and control local sites
+                </p>
+              </div>
+            </div>
+          </Card>
         </RouterLink>
-        <button type="button" class="shortcut-card" @click="openSettings">
-          <div class="shortcut-card__icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
-            </svg>
+        <Card
+          class="shortcut-card shortcut-card--interactive"
+          role="button"
+          tabindex="0"
+          @click="openSettings"
+          @keydown.enter="openSettings"
+          @keydown.space.prevent="openSettings"
+        >
+          <div class="shortcut-card__content">
+            <div class="shortcut-card__icon">
+              <IconSettings class="shortcut-card__svg" />
+            </div>
+            <div>
+              <p class="shortcut-card__title">
+                Configure Settings
+              </p>
+              <p class="shortcut-card__desc">
+                Configure global settings and defaults
+              </p>
+            </div>
           </div>
-          <div class="text-left">
-            <p class="shortcut-card__title">Configure Settings</p>
-            <p class="shortcut-card__desc">Configure global settings and defaults</p>
-          </div>
-        </button>
+        </Card>
       </div>
     </section>
-
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue';
+import { Card } from 'frappe-ui';
 import { RouterLink } from 'vue-router';
+import IconGlobe from '~icons/lucide/globe';
+import IconPackage from '~icons/lucide/package';
+import IconSettings from '~icons/lucide/settings';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSettingsDialog } from '../composables/useSettingsDialog';
@@ -142,24 +177,41 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
   gap: 12px;
 }
 
+.shortcut-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .shortcut-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
+  width: 100%;
+  height: 100%;
   border: 1px solid var(--border-light);
   border-radius: 8px;
   background: var(--surface-card);
-  text-decoration: none;
-  color: inherit;
-  width: 100%;
-  text-align: left;
+  box-shadow: none;
+  padding: 16px !important;
   transition: background-color 100ms ease, border-color 100ms ease;
 }
 
-.shortcut-card:hover {
+.shortcut-card__content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shortcut-card:hover,
+.shortcut-card--interactive:hover {
   background: var(--surface-hover);
   border-color: var(--border-default);
+}
+
+.shortcut-card--interactive {
+  cursor: pointer;
+}
+
+.shortcut-card--interactive:focus-visible {
+  outline: 2px solid var(--outline-gray-3);
+  outline-offset: 2px;
 }
 
 .shortcut-card__icon {
@@ -174,18 +226,33 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
   color: var(--text-secondary);
 }
 
+.shortcut-card__svg {
+  width: 20px;
+  height: 20px;
+}
+
 .shortcut-card__title {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.3;
   color: var(--text-primary);
 }
 
 .shortcut-card__desc {
   margin: 2px 0 0;
   font-size: 12px;
-  color: var(--text-secondary);
   line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.shortcut-card :deep(.flex.items-baseline.justify-between) {
+  display: none;
+}
+
+.shortcut-card :deep(.mt-4.flex-auto.overflow-auto) {
+  margin-top: 0;
+  overflow: visible;
 }
 
 /* ============================================================

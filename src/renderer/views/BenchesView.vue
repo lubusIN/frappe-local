@@ -25,20 +25,28 @@
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
-          <div class="py-3 cursor-pointer group" @click="onManageBench(row.id)">
-            <div class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ row.name }}</div>
-            <div class="text-xs text-gray-500 truncate" :title="row.path">
+          <div
+            class="py-3 cursor-pointer group"
+            @click="onManageBench(row.id)"
+          >
+            <div class="font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
+              {{ row.name }}
+            </div>
+            <div
+              class="text-xs truncate text-ink-gray-5"
+              :title="row.path"
+            >
               {{ formatPath(row.path) }}
             </div>
           </div>
         </template>
         
         <template v-else-if="column.key === 'frappeVersion'">
-          <span class="text-sm text-gray-600">{{ row.frappeVersion }}</span>
+          <span class="text-sm text-ink-gray-6">{{ row.frappeVersion }}</span>
         </template>
 
         <template v-else-if="column.key === 'appCount'">
-          <span class="text-sm text-gray-600">{{ row.appCount }}</span>
+          <span class="text-sm text-ink-gray-6">{{ row.appCount }}</span>
         </template>
 
         <template v-else-if="column.key === 'status'">
@@ -46,20 +54,30 @@
             <Badge
               :variant="'subtle'"
               :theme="getStatusTheme(row)"
-              class="cursor-pointer"
+              class="cursor-pointer status-badge"
               @click.stop="onStatusClick(row.id, 'bench')"
             >
               {{ formatStatusLabel(row) }}
-              <span v-if="isResourceBusy(row.id, 'bench')" class="ml-1 inline-block w-2 h-2 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+              <span
+                v-if="isResourceBusy(row.id, 'bench')"
+                class="status-badge__spinner"
+              />
             </Badge>
           </div>
         </template>
 
         <template v-else-if="column.key === 'actions'">
-          <div class="flex justify-end" @click.stop>
+          <div
+            class="flex justify-end"
+            @click.stop
+          >
             <Dropdown :options="getBenchActions(row)">
               <template #default>
-                <Button variant="subtle" :icon="IconMoreHorizontal" />
+                <Button
+                  size="md"
+                  variant="subtle"
+                  :icon="IconMoreHorizontal"
+                />
               </template>
             </Dropdown>
           </div>
@@ -67,10 +85,22 @@
       </template>
     </ListView>
 
-    <section v-if="!error && (!loading || benches.length > 0) && !benches.length" class="bench-empty-state">
-      <h2 class="bench-empty-state__title">No benches found</h2>
-      <p class="bench-empty-state__description">Create a new bench to get started.</p>
-      <Button variant="solid" @click="showCreateBenchModal = true">Create Bench</Button>
+    <section
+      v-if="!error && (!loading || benches.length > 0) && !benches.length"
+      class="bench-empty-state"
+    >
+      <h2 class="bench-empty-state__title">
+        No benches found
+      </h2>
+      <p class="bench-empty-state__description">
+        Create a new bench to get started.
+      </p>
+      <Button
+        variant="solid"
+        @click="showCreateBenchModal = true"
+      >
+        Create Bench
+      </Button>
     </section>
 
     <ConfirmationDialog
@@ -91,29 +121,59 @@
       @confirm="onConfirmDelete"
     />
 
-    <Dialog v-model="showCreateBenchModal" :options="{ title: 'New bench', size: '3xl' }">
+    <Dialog
+      v-model="showCreateBenchModal"
+      :options="{ title: 'New bench', size: '3xl' }"
+    >
       <template #body-content>
         <div class="bench-dialog-form">
           <div class="bench-dialog-form__grid">
             <div class="form-field">
               <FormLabel label="Name" />
-              <input v-model="createForm.name" type="text" required placeholder="my-bench" class="p-2 border rounded" />
+              <TextInput
+                v-model="createForm.name"
+                type="text"
+                required
+                placeholder="my-bench"
+                variant="outline"
+              />
             </div>
             <div class="form-field">
               <FormLabel label="Frappe Version" />
-              <FrappeVersionSelect v-model="createForm.frappeVersion" />
+              <FrappeVersionSelect
+                v-model="createForm.frappeVersion"
+                class="form-field__control"
+              />
             </div>
             <label class="form-field">
-              <span class="text-xs font-medium text-gray-600 mb-1">Path</span>
+              <FormLabel label="Path" />
               <div class="path-picker">
-                <input v-model="createForm.path" type="text" required placeholder="/path/to/bench" class="p-2 border rounded" />
-                <Button variant="subtle" type="button" @click="triggerFolderPicker">Browse</Button>
+                <div class="path-picker__input-wrap">
+                  <TextInput
+                    v-model="createForm.path"
+                    type="text"
+                    required
+                    placeholder="/path/to/bench"
+                    variant="outline"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  type="button"
+                  @click="triggerFolderPicker"
+                >Browse</Button>
               </div>
             </label>
             <label class="form-field">
-              <span class="text-xs font-medium text-gray-600 mb-1">Apps to include</span>
+              <FormLabel label="Apps to include" />
               <div class="flex">
-                <Button variant="subtle" type="button" @click="showAppPicker = true">
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  type="button"
+                  @click="showAppPicker = true"
+                >
                   {{ createForm.appsSelected.length ? `${createForm.appsSelected.length} Apps Selected` : 'Select Apps' }}
                 </Button>
               </div>
@@ -123,8 +183,20 @@
       </template>
       <template #actions>
         <div class="dialog-actions">
-          <Button variant="subtle" @click="showCreateBenchModal = false">Cancel</Button>
-          <Button variant="solid" :loading="creating" :disabled="loading" @click="onCreateBench">
+          <Button
+            size="md"
+            variant="subtle"
+            @click="showCreateBenchModal = false"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="md"
+            variant="solid"
+            :loading="creating"
+            :disabled="loading"
+            @click="onCreateBench"
+          >
             {{ creating ? 'Creating…' : 'Create' }}
           </Button>
         </div>
@@ -146,7 +218,13 @@
       </template>
       <template #actions>
         <div class="dialog-actions">
-          <Button variant="solid" @click="showAppPicker = false">Done</Button>
+          <Button
+            size="md"
+            variant="solid"
+            @click="showAppPicker = false"
+          >
+            Done
+          </Button>
         </div>
       </template>
     </Dialog>
@@ -163,21 +241,42 @@
     >
       <template #body-content>
         <div class="installed-apps-list">
-          <div v-if="!selectedBenchForApps?.apps?.length" class="text-center py-8 text-gray-500">
+          <div
+            v-if="!selectedBenchForApps?.apps?.length"
+            class="py-8 text-center text-ink-gray-5"
+          >
             No apps installed.
           </div>
-          <table v-else class="installed-apps-table">
+          <table
+            v-else
+            class="installed-apps-table"
+          >
             <tbody>
-              <tr v-for="appId in selectedBenchForApps.apps" :key="appId" class="border-b last:border-0">
-                <td class="py-3 px-2 w-10">
-                  <img v-if="getAppInfo(appId).icon" :src="getAppInfo(appId).icon" class="app-icon" />
-                  <div v-else class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center font-bold text-gray-500">
+              <tr
+                v-for="appId in selectedBenchForApps.apps"
+                :key="appId"
+                class="border-b last:border-0"
+              >
+                <td class="w-10 px-2 py-3">
+                  <img
+                    v-if="getAppInfo(appId).icon"
+                    :src="getAppInfo(appId).icon"
+                    class="app-icon"
+                  >
+                  <div
+                    v-else
+                    class="flex items-center justify-center w-8 h-8 font-bold rounded bg-surface-gray-3 text-ink-gray-5"
+                  >
                     {{ getAppInfo(appId).name.charAt(0).toUpperCase() }}
                   </div>
                 </td>
-                <td class="py-3 px-2">
-                  <div class="app-name">{{ getAppInfo(appId).name }}</div>
-                  <div class="app-desc text-gray-500 text-xs">{{ getAppInfo(appId).description }}</div>
+                <td class="px-2 py-3">
+                  <div class="app-name">
+                    {{ getAppInfo(appId).name }}
+                  </div>
+                  <div class="text-xs app-desc text-ink-gray-5">
+                    {{ getAppInfo(appId).description }}
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -186,7 +285,13 @@
       </template>
       <template #actions>
         <div class="dialog-actions">
-          <Button variant="solid" @click="showAppsDialog = false">Close</Button>
+          <Button
+            size="md"
+            variant="solid"
+            @click="showAppsDialog = false"
+          >
+            Close
+          </Button>
         </div>
       </template>
     </Dialog>
@@ -194,9 +299,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Dialog, Dropdown, ListView, Select, FormLabel, Badge, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, TextInput, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconPlay from '~icons/lucide/play';
@@ -204,9 +309,10 @@ import IconSquare from '~icons/lucide/square';
 import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
-import IconTerminal from '~icons/lucide/terminal';
+import IconActivity from '~icons/lucide/activity';
 import IconRotateCw from '~icons/lucide/rotate-cw';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+import IconPackage from '~icons/lucide/package';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
@@ -218,6 +324,7 @@ import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { useSettings } from '../composables/useSettings';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { useAppCatalog } from '../composables/useAppCatalog';
+import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
 
 const {
   benches,
@@ -252,15 +359,23 @@ watch(error, (err) => {
 
 const { state: catalogState } = useAppCatalog();
 const showAppsDialog = ref(false);
-const selectedBenchForApps = ref<any>(null);
+const selectedBenchForApps = ref<BenchListItem | null>(null);
 
-const onShowApps = (bench: any) => {
+const onShowApps = (bench: BenchListItem) => {
   selectedBenchForApps.value = bench;
   showAppsDialog.value = true;
 };
 
 const getAppInfo = (appId: string) => {
-  return catalogState.value.data?.find(a => a.id === appId) || { id: appId, name: appId, description: '' };
+  return catalogState.value.data?.find((app) => app.id === appId) ?? ({
+    id: appId,
+    name: appId,
+    description: '',
+    source: '',
+    version: '',
+    category: 'other',
+    compatibility: {},
+  } satisfies CatalogAppItem);
 };
 
 const router = useRouter();
@@ -272,11 +387,7 @@ const onManageBench = (id: string) => {
 
 const formatPath = (path: string) => {
   if (!path) return '';
-  const home = '/Users/lubus';
-  if (path.startsWith(home)) {
-    return path.replace(home, '~');
-  }
-  return path;
+  return path.replace(/^\/Users\/[^/]+/, '~');
 };
 
 const benchColumns = reactive([
@@ -320,7 +431,7 @@ watch(
   { deep: true }
 );
 
-const getStatusTheme = (row: any) => {
+const getStatusTheme = (row: BenchListItem) => {
   if (getPendingBenchAction(row.id)) return 'blue';
   if (isResourceBusy(row.id, 'bench')) return 'blue';
   const status = row.status;
@@ -337,10 +448,17 @@ const benchListOptions = {
   resizeColumn: true,
 };
 
-const getBenchActions = (bench: any) => {
+const getBenchActions = (bench: BenchListItem) => {
   const isBusy = isResourceBusy(bench.id, 'bench') || Boolean(getPendingBenchAction(bench.id));
-  
-  const actions = [
+
+  const actions: Array<{
+    label: string;
+    icon: Component;
+    disabled?: boolean;
+    theme?: 'gray' | 'red';
+    hidden?: boolean;
+    onClick: () => void | Promise<void>;
+  }> = [
     {
       label: 'Sites',
       icon: IconExternalLink,
@@ -348,7 +466,7 @@ const getBenchActions = (bench: any) => {
     },
     {
       label: 'View Progress',
-      icon: IconTerminal,
+      icon: IconActivity,
       onClick: () => onStatusClick(bench.id, 'bench'),
       hidden: !isBusy,
     },
@@ -365,6 +483,11 @@ const getBenchActions = (bench: any) => {
       onClick: () => onStopBench(bench.id),
     },
     {
+      label: 'Apps',
+      icon: IconPackage,
+      onClick: () => onShowApps(bench),
+    },
+    {
       label: 'Open Folder',
       icon: IconFolder,
       disabled: openingFolder.value,
@@ -379,7 +502,7 @@ const getBenchActions = (bench: any) => {
     {
       label: 'Delete',
       icon: IconTrash,
-      theme: 'red',
+      theme: 'red' as const,
       disabled: updating.value || deleting.value || bench.status === 'running' || isBusy,
       onClick: () => onDeleteBench(bench.id, bench.name),
     },
@@ -396,7 +519,7 @@ const selectedTask = computed(() => {
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
-const formatStatusLabel = (row: any) => {
+const formatStatusLabel = (row: BenchListItem) => {
   const pendingAction = getPendingBenchAction(row.id);
   if (pendingAction === 'starting') return 'Starting';
   if (pendingAction === 'restarting') return 'Restarting';
@@ -433,25 +556,20 @@ const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
-  const task = tasks.value.find(
+  const activeTask = tasks.value.find(
     (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
   );
-  
-  if (task) {
-    selectedTaskId.value = task.taskId;
+
+  if (activeTask) {
+    selectedTaskId.value = activeTask.taskId;
     return;
   }
 
-  const recentTask = tasks.value.find(t => t.resource === resource && t.status !== 'success');
-  if (recentTask) {
-    selectedTaskId.value = recentTask.taskId;
-    return;
-  }
+  const completedTask = tasks.value.find(
+    (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'success' || t.status === 'failure')
+  );
 
-  const anyTask = tasks.value.find(t => t.resource === resource);
-  if (anyTask) {
-    selectedTaskId.value = anyTask.taskId;
-  }
+  selectedTaskId.value = completedTask?.taskId ?? null;
 };
 
 const createForm = reactive({
@@ -660,19 +778,69 @@ const onOpenBenchFolder = async (id: string) => {
   gap: 6px;
 }
 
+.form-field__control {
+  width: 100%;
+}
+
 .path-picker {
   display: flex;
   gap: 8px;
 }
 
-.path-picker input {
+.path-picker__input-wrap {
   flex: 1;
+}
+
+/* Keep Select Apps modal capped to viewport while letting its list scroll internally. */
+:deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content) {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content > div:first-child) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content > div:last-child) {
+  flex-shrink: 0;
+}
+
+.app-picker-dialog__body {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-badge__spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .installed-apps-list {

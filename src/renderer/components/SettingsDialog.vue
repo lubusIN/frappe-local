@@ -8,7 +8,7 @@
     }"
   >
     <template #body-content>
-      <div class="settings-dialog-body">
+      <div class="py-1">
         <StatePanel
           v-if="error"
           kind="error"
@@ -25,12 +25,18 @@
         />
 
         <div v-else>
-          <div v-if="successMessage" class="alert alert--success mb-4">
-            <IconCheckCircle class="alert-icon" />
+          <div
+            v-if="successMessage"
+            class="mb-4 flex items-center gap-2 rounded-md border border-outline-green-2 bg-surface-green-2 px-3 py-2 text-[13px] text-ink-green-3"
+          >
+            <IconCheckCircle class="h-4 w-4" />
             {{ successMessage }}
           </div>
 
-          <form class="space-y-6" @submit.prevent="save">
+          <form
+            class="space-y-6"
+            @submit.prevent="save"
+          >
             <div class="grid grid-cols-2 gap-6">
               <div class="space-y-1.5">
                 <FormLabel label="Default Frappe Version" />
@@ -39,26 +45,48 @@
             </div>
 
             <div class="space-y-1.5">
-              <FormLabel label="Storage Path" required />
+              <FormLabel
+                label="Storage Path"
+                required
+              />
               <div class="flex gap-2">
-                <TextInput
-                  v-model="form.storagePath"
-                  class="flex-1"
-                  placeholder="/path/to/storage"
-                  required
-                />
-                <Button variant="subtle" @click="onPickStoragePath">Browse</Button>
+                <div class="flex-1">
+                  <TextInput
+                    v-model="form.storagePath"
+                    placeholder="/path/to/storage"
+                    required
+                  />
+                </div>
+                <Button
+                  size="md"
+                  variant="subtle"
+                  @click="onPickStoragePath"
+                >
+                  Browse
+                </Button>
               </div>
             </div>
-
           </form>
         </div>
       </div>
     </template>
     <template #actions>
       <div class="flex justify-end w-full gap-2">
-        <Button variant="subtle" @click="$emit('close')">Cancel</Button>
-        <Button variant="solid" :loading="saving" @click="onSave">Save settings</Button>
+        <Button
+          size="md"
+          variant="subtle"
+          @click="$emit('close')"
+        >
+          Cancel
+        </Button>
+        <Button
+          size="md"
+          variant="solid"
+          :loading="saving"
+          @click="onSave"
+        >
+          Save settings
+        </Button>
       </div>
     </template>
   </Dialog>
@@ -66,7 +94,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Dialog, Button, FormControl, Switch, FormLabel, TextInput } from 'frappe-ui';
+import { Dialog, Button, FormLabel, TextInput } from 'frappe-ui';
 import IconCheckCircle from '~icons/lucide/check-circle';
 import StatePanel from './StatePanel.vue';
 import FrappeVersionSelect from './FrappeVersionSelect.vue';
@@ -108,31 +136,3 @@ const onSave = async () => {
   }
 };
 </script>
-
-<style scoped>
-.settings-dialog-body {
-  padding: 4px 0;
-}
-
-
-.alert {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  margin-bottom: 16px;
-}
-
-.alert--success {
-  color: var(--green-text);
-  background: var(--green-light);
-  border: 1px solid var(--green-border);
-}
-
-.alert-icon {
-  width: 16px;
-  height: 16px;
-}
-</style>

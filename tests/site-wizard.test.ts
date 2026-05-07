@@ -28,7 +28,6 @@ describe('site wizard helpers', () => {
       benchId: '',
       name: 'Demo Local',
       path: '',
-      groupId: '',
       appsText: '',
     };
 
@@ -44,7 +43,6 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo.localhost',
       path: '/Users/dev/frappe-bench/sites/demo.localhost',
-      groupId: 'group-001',
       appsText: 'frappe, erpnext',
     };
 
@@ -55,8 +53,8 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo.localhost',
       path: '/Users/dev/frappe-bench/sites/demo.localhost',
-      groupId: 'group-001',
       apps: ['frappe', 'erpnext'],
+      force: false,
     });
   });
 
@@ -65,7 +63,6 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo.localhost',
       path: '/Users/dev/frappe-bench/sites/demo.localhost',
-      groupId: '',
       appsText: 'legacy-text-app',
       appsSelected: ['frappe', 'erpnext'],
     });

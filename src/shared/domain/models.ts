@@ -64,7 +64,6 @@ export const AppSchema = z.object({
 export const SettingsSchema = z.object({
   defaultFrappeVersion: nonEmptyString,
   storagePath: nonEmptyString,
-  terminalPreference: z.string(),
   editorPreference: z.string(),
   updateChannel: z.enum(['stable', 'beta']).default('stable'),
   autoUpdateEnabled: z.boolean(),
@@ -115,7 +114,6 @@ export type BenchRecord = {
   name: string;
   path: string;
   frappe_version: string;
-
   status: z.infer<typeof EntityStatusSchema>;
   apps: string[];
   created_at: string;
@@ -148,7 +146,6 @@ export const mapBenchDomainToRecord = (bench: Bench): BenchRecord => ({
   name: bench.name,
   path: bench.path,
   frappe_version: bench.frappeVersion,
-
   status: bench.status,
   apps: bench.apps,
   created_at: normalizeTimestamp(bench.timestamps.createdAt),

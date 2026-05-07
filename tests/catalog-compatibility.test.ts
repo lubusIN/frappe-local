@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateCatalogCompatibility } from '../src/renderer/catalog-compatibility';
+import type { CatalogAppItem } from '../src/shared/ipc';
 
-const app = {
+const app: CatalogAppItem = {
   id: 'erpnext',
   name: 'ERPNext',
   description: 'ERP app',
@@ -19,13 +20,13 @@ describe('catalog compatibility', () => {
 
 
   it('blocks older frappe versions', () => {
-    const result = evaluateCatalogCompatibility(app as any, { frappeVersion: '14.0.0' });
+    const result = evaluateCatalogCompatibility(app, { frappeVersion: '14.0.0' });
 
     expect(result.status).toBe('blocked');
   });
 
   it('warns when frappe version exceeds validated range', () => {
-    const result = evaluateCatalogCompatibility(app as any, { frappeVersion: '16.0.0' });
+    const result = evaluateCatalogCompatibility(app, { frappeVersion: '16.0.0' });
 
     expect(result.status).toBe('blocked');
     expect(result.isCompatible).toBe(false);

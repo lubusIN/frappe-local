@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useSettings } from '../composables/useSettings';
-import { Button, Switch } from 'frappe-ui';
+import { Button, FormControl, FormLabel, LoadingIndicator, Select, Switch } from 'frappe-ui';
 import IconCheckCircle from '~icons/lucide/check-circle';
+import { useSettings } from '../composables/useSettings';
 
 const { form, loading, saving, error, successMessage, save } = useSettings();
 
@@ -13,65 +13,83 @@ const editorOptions = [
   { label: 'Nano', value: 'nano' },
   { label: 'None', value: 'none' },
 ];
-
-const channelOptions = [
-  { label: 'Stable', value: 'stable' },
-  { label: 'Beta', value: 'beta' },
-];
 </script>
 
 <template>
   <div class="settings-view">
     <header class="settings-header">
-      <h1 class="settings-title">Settings</h1>
-      <p class="settings-description">Configure your development environment preferences.</p>
+      <h1 class="settings-title">
+        Settings
+      </h1>
+      <p class="settings-description">
+        Configure your development environment preferences.
+      </p>
     </header>
 
-    <div v-if="loading" class="settings-loading">
-      <span class="status-spinner status-spinner--large"></span>
+    <div
+      v-if="loading"
+      class="settings-loading"
+    >
+      <LoadingIndicator class="settings-loading__indicator" />
     </div>
 
-    <form v-else @submit.prevent="save" class="settings-form">
-      <div class="form-section">
-        <label class="form-field form-field--full">
-          <span class="form-label">Storage Path</span>
-          <input v-model="form.storagePath" type="text" placeholder="~/Library/Application Support/Frappe Cafe" class="form-input" />
-          <p class="form-help text-xs mt-1 opacity-60">Root directory where benches and site data will be stored.</p>
-        </label>
+    <form
+      v-else
+      class="settings-form"
+      @submit.prevent="save"
+    >
+      <FormControl
+        v-model="form.storagePath"
+        label="Storage Path"
+        description="Root directory where benches and site data will be stored."
+        placeholder="~/Library/Application Support/Frappe Cafe"
+        variant="outline"
+      />
 
-        <label class="form-field form-field--full">
-          <span class="form-label">Default Frappe Version</span>
-          <input v-model="form.defaultFrappeVersion" type="text" placeholder="version-15" class="form-input" />
-        </label>
+      <FormControl
+        v-model="form.defaultFrappeVersion"
+        label="Default Frappe Version"
+        placeholder="version-15"
+        variant="outline"
+      />
 
-        <div class="form-grid">
-          <label class="form-field">
-            <span class="form-label">Editor Preference</span>
-            <select v-model="form.editorPreference" class="form-select">
-              <option v-for="opt in editorOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </label>
-
-
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <span class="font-medium">Compact Sidebar</span>
-            <span class="text-sm opacity-60">Use icons only in the sidebar for more space.</span>
-          </div>
-          <Switch v-model="form.sidebarCompact" />
-        </div>
+      <div class="settings-field">
+        <FormLabel label="Editor Preference" />
+        <Select
+          v-model="form.editorPreference"
+          :options="editorOptions"
+          variant="outline"
+        />
       </div>
 
-      <div v-if="error" class="alert alert--error mt-4">
+      <div class="settings-switch-row">
+        <div>
+          <span class="settings-switch-row__label">Compact Sidebar</span>
+          <span class="settings-switch-row__description">Use icons only in the sidebar for more space.</span>
+        </div>
+        <Switch v-model="form.sidebarCompact" />
+      </div>
+
+      <div
+        v-if="error"
+        class="alert alert--error"
+      >
         {{ error }}
       </div>
-      <div v-if="successMessage" class="alert alert--success mt-4">
+      <div
+        v-if="successMessage"
+        class="alert alert--success"
+      >
         <IconCheckCircle class="alert-icon" />
         {{ successMessage }}
       </div>
 
-      <div class="flex justify-end pt-6">
-        <Button variant="solid" :loading="saving" type="submit">
+      <div class="settings-actions">
+        <Button
+          variant="solid"
+          :loading="saving"
+          type="submit"
+        >
           Save Settings
         </Button>
       </div>
@@ -91,13 +109,14 @@ const channelOptions = [
 }
 
 .settings-title {
+  margin: 0;
   font-size: 24px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .settings-description {
-  margin-top: 4px;
+  margin: 4px 0 0;
   color: var(--text-secondary);
 }
 
@@ -107,37 +126,46 @@ const channelOptions = [
   padding: 48px 0;
 }
 
-.settings-form {
-  display: grid;
-  gap: 24px;
-}
-
-.form-section {
-  display: grid;
-  gap: 16px;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.status-spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--border-neutral);
-  border-top-color: var(--text-primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.status-spinner--large {
+.settings-loading__indicator {
   width: 32px;
   height: 32px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.settings-form {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-field {
+  min-width: 0;
+}
+
+.settings-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-switch-row__label,
+.settings-switch-row__description {
+  display: block;
+}
+
+.settings-switch-row__label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.settings-switch-row__description {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
 }
 </style>

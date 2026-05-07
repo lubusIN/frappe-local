@@ -35,7 +35,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
   if (process.platform === 'darwin' || process.platform === 'win32') {
     try {
       // Try machine inspect first (most reliable for machine-based podman)
-      let { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
+      const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
       let socketPath = stdout.trim();
       
       // If that fails, try podman info (works if the machine is already the default context)
@@ -121,8 +121,8 @@ async function ensurePodmanRunning(): Promise<boolean> {
           if (message.includes('proxy already running')) {
             logger.warn('Podman proxy already running but machine state is not running. Cleaning up stale proxy...');
             if (process.platform === 'darwin') {
-              try { await execPromise('pkill', ['-9', 'gvproxy']); } catch {}
-              try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
+              try { await execPromise('pkill', ['-9', 'gvproxy']); } catch { logger.warn('No stale gvproxy process found.'); }
+              try { await execPromise('pkill', ['-9', 'vfkit']); } catch { logger.warn('No stale vfkit process found.'); }
             }
             logger.info('Retrying podman machine start after stale proxy cleanup...');
             await execPromise(getBinaryPath('podman'), ['machine', 'start']);
@@ -139,10 +139,10 @@ async function ensurePodmanRunning(): Promise<boolean> {
       } catch (err) {
         logger.warn(`Podman health check failed (timeout or error): ${err}. Auto-healing...`);
         if (process.platform === 'darwin') {
-          try { await execPromise('pkill', ['-9', 'vfkit']); } catch {}
-          try { await execPromise('pkill', ['-9', 'gvproxy']); } catch {}
+          try { await execPromise('pkill', ['-9', 'vfkit']); } catch { logger.warn('No stale vfkit process found.'); }
+          try { await execPromise('pkill', ['-9', 'gvproxy']); } catch { logger.warn('No stale gvproxy process found.'); }
         }
-        try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch {}
+        try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch { logger.warn('Podman machine stop failed during auto-heal.'); }
         
         logger.info('Restarting podman machine after auto-heal...');
         try {

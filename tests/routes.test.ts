@@ -7,11 +7,9 @@ describe('renderer routes', () => {
       'dashboard',
       'benches',
       'sites',
-      'workspaces',
-      'console',
-      'importExport',
-      'settings',
+      'activity',
       'diagnostics',
+      'settings',
     ]);
   });
 

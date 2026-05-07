@@ -27,9 +27,7 @@ function makeInMemoryAdapter(initial?: StorageSnapshot): StorageAdapter {
 const sampleInput: CreateSiteInput = {
   name: 'test.localhost',
   benchId: 'bench-001',
-  groupId: null,
   apps: ['frappe'],
-  status: 'stopped',
   path: '/home/user/frappe-bench/sites/test.localhost',
 };
 

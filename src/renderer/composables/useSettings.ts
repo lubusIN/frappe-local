@@ -5,7 +5,6 @@ import { useIpc } from './useIpc';
 const defaultSettings = (): SettingsItem => ({
   defaultFrappeVersion: '15.0.0',
   storagePath: '~/Library/Application Support/Frappe Cafe',
-  terminalPreference: 'zsh',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,

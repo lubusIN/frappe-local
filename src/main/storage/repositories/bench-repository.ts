@@ -26,6 +26,7 @@ export class BenchRepository {
     const now = new Date().toISOString();
     const bench: Bench = {
       id: randomUUID(),
+      status: 'queued',
       ...input,
       timestamps: { createdAt: now, updatedAt: now },
     };

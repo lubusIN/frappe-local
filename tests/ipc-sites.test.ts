@@ -33,7 +33,6 @@ function makeStubBenchRepo() {
       name: 'frappe-bench',
       path: '/Users/dev/frappe-bench',
       frappeVersion: '15.0.0',
-      runtime: 'podman' as const,
       status: 'running' as const,
       apps: ['frappe'],
       timestamps: {
@@ -50,7 +49,6 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({
@@ -133,9 +131,9 @@ function makeStubSettingsRepo() {
   let current: Settings | null = null;
   return {
     get: async () => current,
-    set: async (input: Settings) => {
-      current = input;
-      return input;
+    set: async (input: Partial<Settings>) => {
+      current = { ...current, ...input } as Settings;
+      return current;
     },
   };
 }
@@ -204,7 +202,7 @@ describe('sites IPC handlers', () => {
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
       },
-      { openPath: async () => false, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
+      { openPath: async () => false, openInEditor: async () => false, openExternal: async () => false, pathExists: () => true, trackSiteOperation }
     );
 
     const createHandler = handlers.get(ipcChannels.sitesCreate);
@@ -338,9 +336,10 @@ describe('sites IPC handlers', () => {
     );
 
     const deleteHandler = handlers.get(ipcChannels.sitesDelete);
-    const deleted = await deleteHandler?.(undefined, 'site-001');
 
-    expect(deleted).toBe(false);
+    await expect(deleteHandler?.(undefined, 'site-001')).rejects.toThrow(
+      'Cannot delete a running site. Please stop it first.'
+    );
   });
 
   it('sites:logs returns lifecycle entries for a site', async () => {
@@ -385,7 +384,7 @@ describe('sites IPC handlers', () => {
         ]),
         settings: makeStubSettingsRepo(),
       },
-      { openPath, openInEditor: async () => false, pathExists: () => true, trackSiteOperation }
+      { openPath, openInEditor: async () => false, openExternal: async () => false, pathExists: () => true, trackSiteOperation }
     );
 
     const openFolderHandler = handlers.get(ipcChannels.sitesOpenFolder);

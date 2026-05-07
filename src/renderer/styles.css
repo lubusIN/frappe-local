@@ -62,9 +62,6 @@ body {
   user-select: none;
 }
 
-input,
-textarea,
-select,
 pre,
 code,
 [role="alert"],
@@ -77,10 +74,7 @@ code,
   min-height: 100vh;
 }
 
-button,
-input,
-select,
-textarea {
+button {
   font: inherit;
 }
 
@@ -89,32 +83,9 @@ button {
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
-button:disabled,
-input:disabled,
-select:disabled,
-textarea:disabled {
+button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-input,
-select,
-textarea {
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  background: var(--surface-card);
-  color: var(--text-primary);
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 13px;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--text-primary);
-  box-shadow: 0 0 0 1px var(--text-primary);
 }
 
 button:focus-visible,

@@ -18,7 +18,7 @@ export const taskLogLevels = ['info', 'warning', 'error'] as const;
 export type TaskLogLevel = (typeof taskLogLevels)[number];
 
 export type TaskResourceContext = {
-  readonly type: 'bench' | 'site' | 'import' | 'runtime' | 'system';
+  readonly type: 'bench' | 'site' | 'runtime' | 'system';
   readonly id?: string | null;
 };
 

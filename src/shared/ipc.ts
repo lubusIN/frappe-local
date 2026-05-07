@@ -1,5 +1,6 @@
 import type { TaskProgressEvent } from './domain/task-runner';
 import type { DiagnosticsReport } from './domain/diagnostics';
+import type { AppCatalogItem } from './domain/models';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
@@ -29,7 +30,6 @@ export const ipcChannels = {
   sitesOpenExternal: 'sites:open-external',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
-
 
   taskRunnerSubscribe: 'task-runner:subscribe',
   taskRunnerUnsubscribe: 'task-runner:unsubscribe',
@@ -65,19 +65,7 @@ export type UpdateCheckResult = {
 export type DiagnosticsRunResponse = DiagnosticsReport;
 export type DiagnosticsGetLastResponse = DiagnosticsReport | null;
 
-export type CatalogAppItem = {
-  readonly id: string;
-  readonly name: string;
-  readonly description: string;
-  readonly source: string;
-  readonly version: string;
-  readonly category: string;
-  readonly icon?: string;
-  readonly compatibility: {
-    readonly minimumFrappeVersion?: string;
-    readonly maximumFrappeVersion?: string;
-  };
-};
+export type CatalogAppItem = AppCatalogItem;
 
 export type BenchListItem = {
   readonly id: string;
@@ -121,7 +109,6 @@ export type SiteListItem = {
   readonly id: string;
   readonly name: string;
   readonly benchId: string;
-
   readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly path: string;
   readonly appCount: number;
@@ -132,7 +119,6 @@ export type SiteListItem = {
 export type SiteCreateInput = {
   readonly name: string;
   readonly benchId: string;
-
   readonly path: string;
   readonly apps: string[];
   readonly force?: boolean;
@@ -141,7 +127,6 @@ export type SiteCreateInput = {
 export type SiteUpdateInput = {
   readonly name?: string;
   readonly benchId?: string;
-
   readonly path?: string;
   readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly apps?: string[];
@@ -150,7 +135,6 @@ export type SiteUpdateInput = {
 export type SettingsItem = {
   readonly defaultFrappeVersion: string;
   readonly storagePath: string;
-  readonly terminalPreference: string;
   readonly editorPreference: string;
   readonly updateChannel: 'stable' | 'beta';
   readonly autoUpdateEnabled: boolean;

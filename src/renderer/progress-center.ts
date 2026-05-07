@@ -1,7 +1,7 @@
 import type { RendererBridge } from '../shared/ipc';
 import type { TaskProgressEvent, TaskStatus } from '../shared/domain/task-runner';
 
-export type ProgressTaskResource = 'bench' | 'site' | 'import' | 'runtime' | 'system';
+export type ProgressTaskResource = 'bench' | 'site' | 'runtime' | 'system';
 
 export type ProgressTaskSummary = {
   readonly taskId: string;
@@ -51,10 +51,6 @@ export const detectProgressTaskResource = (taskName: string): ProgressTaskResour
 
   if (normalized.includes('site')) {
     return 'site';
-  }
-
-  if (normalized.includes('import') || normalized.includes('export')) {
-    return 'import';
   }
 
   if (normalized.includes('runtime') || normalized.includes('dependency')) {

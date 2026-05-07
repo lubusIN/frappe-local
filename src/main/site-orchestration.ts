@@ -245,18 +245,18 @@ export const orchestrateSiteStatusUpdate = (
         const projectName = `frappe-cafe-${site.benchId.slice(0, 8)}`;
         const runtimeEnv = await getRuntimeEnv();
         
-        // For starting site: ensure site is added to common_site_config.json
-        // For stopping site: remove site from common_site_config.json
-        // This is handled through bench commands
-        const siteCommand = targetStatus === 'running' ? 'enable-site' : 'disable-site';
+        // Control site availability via scheduler for the specific site.
+        // `enable-site` / `disable-site` do not exist on bench.
+        const siteCommand = targetStatus === 'running' ? 'enable-scheduler' : 'disable-scheduler';
         const args = [
           '-p', projectName,
           'exec',
           '-T',
           DOCKER_SERVICES.BACKEND,
           'bench',
-          siteCommand,
+          '--site',
           site.name,
+          siteCommand,
         ];
         
         const { code, stderr } = await execPromise(
@@ -269,7 +269,7 @@ export const orchestrateSiteStatusUpdate = (
         );
         
         if (code !== 0) {
-          throw new Error(`Failed to ${siteCommand} site: ${stderr}`);
+          throw new Error(`Failed to update scheduler for ${site.name}: ${stderr}`);
         }
         
         context.completeStep('orchestration', targetStatus === 'running' ? 'Site started' : 'Site stopped');

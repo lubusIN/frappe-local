@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
@@ -6,7 +6,6 @@ import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
   storagePath: '/Users/dev/.frappe-cafe',
-  terminalPreference: 'zsh',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
@@ -29,7 +28,6 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({
@@ -72,25 +70,10 @@ function makeStubSettingsRepo(initial: Settings | null = null) {
   let current = initial;
   return {
     get: async () => current,
-    set: async (input: Settings) => {
-      current = input;
-      return input;
+    set: async (input: Partial<Settings>) => {
+      current = { ...(current ?? seedSettings), ...input };
+      return current;
     },
-  };
-}
-
-function makeStubTerminalService() {
-  return {
-    onOutput: vi.fn(() => () => {}),
-    onError: vi.fn(() => () => {}),
-    onStateChange: vi.fn(() => () => {}),
-    createSession: vi.fn(),
-    getSession: vi.fn(),
-    write: vi.fn(),
-    clear: vi.fn(),
-    resize: vi.fn(),
-    closeSession: vi.fn(),
-    listSessions: vi.fn(() => []),
   };
 }
 
@@ -105,9 +88,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
-      },
-      undefined,
-      makeStubTerminalService() as any
+      }
     );
 
     const result = await handlers.get(ipcChannels.settingsGet)?.();
@@ -124,9 +105,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-      },
-      undefined,
-      makeStubTerminalService() as any
+      }
     );
 
     const result = await handlers.get(ipcChannels.settingsGet)?.();
@@ -147,9 +126,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
-      },
-      undefined,
-      makeStubTerminalService() as any
+      }
     );
 
     const saveHandler = handlers.get(ipcChannels.settingsSet);
@@ -171,9 +148,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
-      },
-      undefined,
-      makeStubTerminalService() as any
+      }
     );
 
     const saveHandler = handlers.get(ipcChannels.settingsSet);
@@ -195,7 +170,6 @@ describe('settings IPC handlers', () => {
         settings: makeStubSettingsRepo(seedSettings),
       },
       undefined,
-      makeStubTerminalService() as any,
       undefined,
       '0.1.0'
     );

@@ -35,4 +35,13 @@ export class SettingsRepository {
   async update(input: UpdateSettingsInput): Promise<Settings> {
     return this.set(input);
   }
+
+  async patch(input: UpdateSettingsInput): Promise<Settings | null> {
+    const existing = await this.get();
+    if (!existing) {
+      return null;
+    }
+
+    return this.set(input);
+  }
 }

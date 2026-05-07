@@ -50,8 +50,12 @@ const ensureBenchEnvConfigured = (benchPath: string, frappeVersion: string, http
 
 const copyRecursiveSync = (src: string, dest: string) => {
   const exists = fs.existsSync(src);
-  const stats = exists && fs.statSync(src);
-  const isDirectory = exists && stats.isDirectory();
+  if (!exists) {
+    return;
+  }
+
+  const stats = fs.statSync(src);
+  const isDirectory = stats.isDirectory();
   if (isDirectory) {
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
@@ -346,7 +350,7 @@ export const orchestrateBenchCleaning = (
         
         // 1. Get sites from DB
         let allSites = await sitesRepo.findAll();
-        let dbSites = allSites.filter(s => s.benchId === bench.id).map(s => s.name);
+        const dbSites = allSites.filter(s => s.benchId === bench.id).map(s => s.name);
         
         // 2. Get sites from Disk
         let diskSites: string[] = [];
@@ -436,7 +440,7 @@ export const orchestrateBenchCleaning = (
 
 export const orchestrateBenchDeletion = (
   bench: Bench,
-  benchesRepo: { update: (id: string, payload: any) => Promise<Bench | null>, delete: (id: string) => Promise<boolean> },
+  benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null>, delete: (id: string) => Promise<boolean> },
   sitesRepo: { findAll: () => Promise<Site[]>, delete: (id: string) => Promise<boolean> }
 ): void => {
   const taskRunner = getTaskRunner();
@@ -449,21 +453,61 @@ export const orchestrateBenchDeletion = (
         // Set status to queued so the UI knows to poll for updates
         await benchesRepo.update(bench.id, { status: 'queued' });
 
+        context.startStep('runtime', 'Checking podman status');
+        const runtimeReady = await ensureRuntimeRunning();
+        if (runtimeReady) {
+          context.completeStep('runtime', 'Podman is ready');
+        } else {
+          context.log('warning', 'Podman is not running and could not be started automatically. Continuing with local force deletion.');
+          context.completeStep('runtime', 'Podman unavailable; skipping container cleanup');
+        }
+
         context.startStep('deleting', 'Deleting...');
         const command = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
         const args = ['-p', projectName, 'down', '-v', '--remove-orphans'];
-        const runtimeEnv = await getRuntimeEnv();
-        
-        try {
-          const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
-          if (code !== 0) {
-            throw new Error(`Docker cleanup failed with code ${code}: ${stderr}`);
+
+        if (!runtimeReady) {
+          context.completeStep('deleting', 'Docker cleanup skipped (runtime unavailable)');
+        } else {
+          let runtimeEnv = await getRuntimeEnv();
+
+          try {
+            const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
+            if (code !== 0) {
+              throw new Error(`Docker cleanup failed with code ${code}: ${stderr}`);
+            }
+            context.completeStep('deleting', 'Docker cleanup finished');
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            const daemonUnavailable = message.includes('Cannot connect to the Docker daemon');
+
+            if (daemonUnavailable) {
+              context.log('warning', 'Docker daemon is unavailable. Attempting to start podman and retry cleanup once.');
+              const runtimeRecovered = await ensureRuntimeRunning();
+              if (runtimeRecovered) {
+                runtimeEnv = await getRuntimeEnv();
+                try {
+                  const retryResult = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
+                  if (retryResult.code === 0) {
+                    context.completeStep('deleting', 'Docker cleanup finished after runtime recovery');
+                  } else {
+                    context.log('warning', `Docker cleanup retry failed with code ${retryResult.code}: ${retryResult.stderr}`);
+                    context.completeStep('deleting', 'Docker cleanup skipped after retry failure');
+                  }
+                } catch (retryErr) {
+                  context.log('warning', `Docker cleanup retry failed: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`);
+                  context.completeStep('deleting', 'Docker cleanup skipped after retry failure');
+                }
+              } else {
+                context.log('warning', 'Podman could not be started for cleanup retry. Continuing with local force deletion.');
+                context.completeStep('deleting', 'Docker cleanup skipped (runtime unavailable)');
+              }
+            } else {
+              context.log('warning', `Docker cleanup skipped: ${message}`);
+              context.completeStep('deleting', 'Docker cleanup skipped');
+            }
           }
-          context.completeStep('deleting', 'Docker cleanup finished');
-        } catch (err) {
-          context.log('error', `Docker cleanup failed: ${err instanceof Error ? err.message : String(err)}`);
-          throw err;
         }
 
         context.startStep('db', 'Removing database records');

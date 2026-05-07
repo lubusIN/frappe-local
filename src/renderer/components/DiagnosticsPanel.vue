@@ -1,5 +1,5 @@
 <template>
-  <div class="diagnostics-panel flex flex-col h-full">
+  <div class="flex flex-col w-full h-full min-w-0">
     <StatePanel
       v-if="error"
       kind="error"
@@ -23,79 +23,109 @@
       body="Inspecting local dependencies."
     />
 
-    <template v-else-if="report">
-      <!-- Summary Alert -->
-      <div 
-        class="flex items-center gap-4 p-4 border rounded-lg bg-white shadow-sm mb-6"
-        :class="summaryStatusClasses.iconBg"
-      >
-        <div class="shrink-0 p-2 rounded-md bg-white shadow-sm">
-          <component :is="summaryIcon" class="w-4 h-4" :class="summaryStatusClasses.iconText" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-gray-900 break-words leading-tight">{{ summaryText }}</p>
-          <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-            v{{ report.appVersion }} <span class="mx-1 opacity-20">/</span> {{ report.completedAt }}
-          </p>
-        </div>
-      </div>
+    <div
+      v-else-if="report"
+      class="flex flex-col flex-1 min-h-0 gap-4"
+    >
+      <Alert
+        :title="summaryTitle"
+        :description="summaryDescription"
+        :dismissable="false"
+        :theme="summaryTheme"
+      />
 
-      <!-- Official ListView -->
       <ListView
         :columns="diagnosticsColumns"
-        :rows="report.checks"
-        row-key="title"
+        :rows="diagnosticsRows"
+        row-key="id"
         :options="diagnosticsListOptions"
-        class="flex-1 min-h-0"
+        class="flex-1 w-full min-w-0"
       >
-        <template #cell="{ column, row }">
-          <template v-if="column.key === 'check'">
-            <div class="py-3 pr-4 flex flex-col min-w-0">
-              <div class="text-sm font-bold text-gray-900 break-all leading-tight whitespace-normal">{{ row.title }}</div>
-              <div class="text-xs text-gray-500 mt-1 leading-relaxed break-all whitespace-normal">{{ row.description }}</div>
-              
-              <div v-if="row.remediation" class="mt-3 p-3 bg-red-50 text-red-700 border border-red-100 rounded text-xs leading-relaxed break-all whitespace-normal">
-                <span class="font-bold">Remediation:</span> {{ row.remediation }}
-                <div v-if="row.type === 'runtime-health' && row.status === 'failed'" class="mt-2">
-                  <Button
-                    variant="subtle"
-                    size="sm"
-                    theme="red"
-                    :loading="fixing"
-                    @click="$emit('fix', row.type)"
-                  >
-                    Fix
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </template>
-          
-          <template v-else-if="column.key === 'status'">
-            <div class="flex items-center h-full pt-3">
-              <Badge
-                :theme="getBadgeTheme(row.status)"
-                variant="subtle"
-                size="sm"
-                class="capitalize font-semibold"
+        <ListHeader>
+          <ListHeaderItem
+            v-for="column in diagnosticsColumns"
+            :key="column.key"
+            :item="column"
+          />
+        </ListHeader>
+
+        <ListRows>
+          <ListRow
+            v-for="row in diagnosticsRows"
+            :key="row.id"
+            v-slot="{ column, item }"
+            :row="row"
+          >
+            <template v-if="column.key === 'check'">
+              <ListRowItem
+                :item="item"
+                :align="column.align"
               >
-                {{ row.status }}
-              </Badge>
-            </div>
-          </template>
-        </template>
+                <template #default>
+                  <div class="min-w-0 py-4 pr-4">
+                    <div class="text-sm font-medium text-ink-gray-9">
+                      {{ item.title }}
+                    </div>
+                    <div class="mt-2 text-sm leading-6 text-ink-gray-6">
+                      {{ item.description }}
+                    </div>
+
+                    <div
+                      v-if="item.remediation"
+                      class="mt-2 text-sm leading-6 text-ink-gray-6"
+                    >
+                      <div class="break-words">
+                        <span class="font-medium text-ink-gray-9">Remediation:</span> {{ item.remediation }}
+                      </div>
+                      <div
+                        v-if="item.type === 'runtime-health' && item.status === 'failed'"
+                        class="mt-2"
+                      >
+                        <Button
+                          variant="subtle"
+                          size="sm"
+                          theme="red"
+                          :loading="fixing"
+                          @click="$emit('fix', item.type)"
+                        >
+                          Fix
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </ListRowItem>
+            </template>
+
+            <template v-else-if="column.key === 'status'">
+              <ListRowItem
+                :item="item"
+                :align="column.align"
+              >
+                <template #default>
+                  <div class="py-4">
+                    <Badge
+                      :theme="getBadgeTheme(item)"
+                      variant="subtle"
+                      size="md"
+                    >
+                      {{ formatStatus(item) }}
+                    </Badge>
+                  </div>
+                </template>
+              </ListRowItem>
+            </template>
+          </ListRow>
+        </ListRows>
       </ListView>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
-import { Badge, Button, ListView } from 'frappe-ui';
-import IconActivity from '~icons/lucide/activity';
-import IconShieldCheck from '~icons/lucide/shield-check';
-import IconShieldAlert from '~icons/lucide/shield-alert';
-import type { DiagnosticsReport } from '../../shared/domain/diagnostics';
+import { Alert, Badge, Button, ListHeader, ListHeaderItem, ListRow, ListRowItem, ListRows, ListView } from 'frappe-ui';
+import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '../../shared/domain/diagnostics';
 import StatePanel from './StatePanel.vue';
 
 const props = defineProps<{
@@ -110,37 +140,88 @@ defineEmits<{
   fix: [checkType: string];
 }>();
 
-const summaryText = computed(() => {
-  if (props.running) return 'Running diagnostics...';
-  if (!props.report) return 'No report recorded.';
-  return props.report.summary;
+const summaryTitle = computed(() => {
+  if (props.running) return 'Running diagnostics';
+  if (!props.report) return 'No diagnostics report';
+  if (props.report.hasCriticalIssues) return 'Critical issues found';
+  if (props.report.hasWarnings) return 'Warnings found';
+  return 'All checks passed';
 });
 
-const summaryIcon = computed(() => {
-  if (props.running) return IconActivity;
-  if (!props.report) return IconShieldCheck;
-  if (props.report.hasCriticalIssues) return IconShieldAlert;
-  if (props.report.hasWarnings) return IconShieldAlert;
-  return IconShieldCheck;
+const summaryDescription = computed(() => {
+  if (!props.report) return '';
+  return `Last checked ${formattedCompletedAt.value}`;
 });
 
-const summaryStatusClasses = computed(() => {
-  if (props.running) return { iconBg: 'bg-blue-50/50', iconText: 'text-blue-600' };
-  if (!props.report) return { iconBg: 'bg-gray-50/50', iconText: 'text-gray-600' };
-  if (props.report.hasCriticalIssues) return { iconBg: 'bg-red-50/50', iconText: 'text-red-600' };
-  if (props.report.hasWarnings) return { iconBg: 'bg-orange-50/50', iconText: 'text-orange-600' };
-  return { iconBg: 'bg-green-50/50', iconText: 'text-green-600' };
+const summaryTheme = computed<'blue' | 'red' | 'yellow' | 'green' | undefined>(() => {
+  if (props.running) return 'blue';
+  if (!props.report) return undefined;
+  if (props.report.hasCriticalIssues) return 'red';
+  if (props.report.hasWarnings) return 'yellow';
+  return 'green';
 });
+
+const formattedCompletedAt = computed(() => {
+  if (!props.report) return '';
+
+  return new Date(props.report.completedAt).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+});
+
+const statusPriority: Record<DiagnosticsCheckStatus, number> = {
+  failed: 0,
+  warning: 1,
+  skipped: 2,
+  passed: 3,
+};
+
+const typePriority: Record<DiagnosticsCheckResult['type'], number> = {
+  'runtime-health': 0,
+  'runtime-preference': 1,
+  'storage-access': 2,
+  'path-writability': 3,
+};
+
+const sortedChecks = computed(() => {
+  if (!props.report) return [];
+
+  return [...props.report.checks].sort((left, right) => {
+    const statusDifference = statusPriority[left.status] - statusPriority[right.status];
+    if (statusDifference !== 0) return statusDifference;
+
+    const typeDifference = typePriority[left.type] - typePriority[right.type];
+    if (typeDifference !== 0) return typeDifference;
+
+    return left.title.localeCompare(right.title);
+  });
+});
+
+const diagnosticsRows = computed(() =>
+  sortedChecks.value.map((check) => ({
+    id: `${check.type}-${check.title}`,
+    check,
+    status: check.status,
+  }))
+);
 
 const diagnosticsColumns = reactive([
-  { label: 'Check', key: 'check', width: 3 },
-  { label: 'Status', key: 'status', width: '120px' },
+  { label: 'Check', key: 'check', width: 'minmax(90%, 500px)' },
+  { label: 'Status', key: 'status'},
 ]);
 
 const diagnosticsListOptions = {
   selectable: false,
-  showTooltip: true,
-  resizeColumn: true,
+  showTooltip: false,
+  resizeColumn: false,
+  rowHeight: 'auto',
+};
+
+const formatStatus = (status: string) => {
+  if (status === 'ok') return 'Passed';
+  if (status === 'warn') return 'Warning';
+  return `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 };
 
 const getBadgeTheme = (status: string) => {
@@ -161,19 +242,3 @@ const getBadgeTheme = (status: string) => {
   }
 };
 </script>
-
-<style scoped>
-.diagnostics-panel {
-  width: 100%;
-}
-
-:deep(.frappe-list-row) {
-  height: auto !important;
-  min-height: 44px;
-}
-
-:deep(.frappe-list-cell) {
-  height: auto !important;
-  white-space: normal !important;
-}
-</style>

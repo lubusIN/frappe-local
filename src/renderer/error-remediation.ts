@@ -13,7 +13,7 @@ export type ErrorRemediationNotice = {
   readonly actions: ErrorRemediationAction[];
 };
 
-export type ErrorRemediationContext = 'runtime' | 'import-export' | 'progress-center' | 'app-health';
+export type ErrorRemediationContext = 'runtime' | 'progress-center' | 'app-health';
 
 const normalizeReason = (error: string): string => error.replace(/^Error:\s*/i, '').trim();
 
@@ -60,37 +60,6 @@ export const buildErrorRemediationNotice = (
       ],
       actions: [
         { id: 'retry', label: 'Re-check runtime' },
-        { id: 'settings', label: 'Open Settings', to: '/settings' },
-      ],
-    };
-  }
-
-  if (context === 'import-export') {
-    if (normalized.includes('artifact') || normalized.includes('directory')) {
-      return {
-        title: 'Package location needs attention',
-        reason,
-        steps: [
-          'Verify the artifact directory is an absolute path on this machine.',
-          'Refresh context if benches or sites changed while the wizard was open.',
-          'Validate the package again after correcting the path.',
-        ],
-        actions: [
-          { id: 'retry', label: 'Refresh context' },
-          { id: 'settings', label: 'Open Settings', to: '/settings' },
-        ],
-      };
-    }
-
-    return {
-      title: 'Import or export action failed',
-      reason,
-      steps: [
-        'Refresh the bench and site context before retrying the wizard step.',
-        'Review the validation or execution details in this screen for blockers.',
-      ],
-      actions: [
-        { id: 'retry', label: 'Refresh context' },
         { id: 'settings', label: 'Open Settings', to: '/settings' },
       ],
     };

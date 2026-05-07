@@ -24,10 +24,8 @@ export default defineConfig({
       'interactjs',
       'xmlhttprequest-ssl',
     ],
-    esbuildOptions: {
-      // Skip virtual icon modules during dep scan (handled by unplugin-icons)
-      external: ['~icons/*'],
-    },
+    // Keep frappe-ui out of dep prebundle so unplugin-icons can resolve its virtual ~icons imports.
+    exclude: ['frappe-ui'],
   },
   server: {
     host: '127.0.0.1',

@@ -7,6 +7,14 @@ const logger = createMainLogger('hosts-manager');
 const HOSTS_FILE = '/etc/hosts';
 const MARKER_PREFIX = '# frappe-cafe:';
 
+const HOSTS_PERMISSION_PROMPT_BASE =
+  'Frappe Cafe needs administrator permission to update /etc/hosts for local site routing.';
+
+const escapeAppleScriptString = (value: string): string => value.replace(/"/g, '\\"');
+
+const buildPrivilegedShellScript = (command: string, prompt: string): string =>
+  `do shell script "${escapeAppleScriptString(command)}" with administrator privileges with prompt "${escapeAppleScriptString(prompt)}"`;
+
 /**
  * Manages /etc/hosts entries for local site domains.
  *
@@ -33,8 +41,10 @@ export const addHostsEntry = async (siteName: string, benchId: string): Promise<
 
     if (process.platform === 'darwin') {
       // Use osascript for elevated append
-      const escapedLine = entryLine.replace(/"/g, '\\"');
-      const script = `do shell script "echo '${escapedLine}' >> ${HOSTS_FILE}" with administrator privileges`;
+      const script = buildPrivilegedShellScript(
+        `echo '${entryLine}' >> ${HOSTS_FILE}`,
+        `${HOSTS_PERMISSION_PROMPT_BASE} Action: Add host entry for ${siteName}.`
+      );
       const { code } = await execPromise('osascript', ['-e', script]);
       if (code !== 0) {
         logger.error(`Failed to add hosts entry for ${siteName}`);
@@ -89,7 +99,10 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
       const tempPath = `/tmp/frappe-cafe-hosts-${Date.now()}`;
       try {
         fs.writeFileSync(tempPath, newContent);
-        const script = `do shell script "cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'" with administrator privileges`;
+        const script = buildPrivilegedShellScript(
+          `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
+          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove host entry for ${siteName}.`
+        );
         const { code } = await execPromise('osascript', ['-e', script]);
         if (code !== 0) {
           logger.error(`Failed to remove hosts entry for ${siteName} (osascript failed)`);
@@ -138,7 +151,10 @@ export const removeAllHostsEntriesForBench = async (benchId: string): Promise<bo
       const tempPath = `/tmp/frappe-cafe-bench-hosts-${Date.now()}`;
       try {
         fs.writeFileSync(tempPath, newContent);
-        const script = `do shell script "cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'" with administrator privileges`;
+        const script = buildPrivilegedShellScript(
+          `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
+          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove hosts entries for bench ${benchId}.`
+        );
         const { code } = await execPromise('osascript', ['-e', script]);
         return code === 0;
       } catch (err) {

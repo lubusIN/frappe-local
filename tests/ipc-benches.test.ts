@@ -9,7 +9,6 @@ const benches: Bench[] = [
     name: 'frappe-bench',
     path: '/Users/dev/frappe-bench',
     frappeVersion: '15.0.0',
-    runtime: 'podman',
     status: 'running',
     apps: ['frappe', 'erpnext'],
     timestamps: {
@@ -37,7 +36,6 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => {
@@ -56,7 +54,6 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       name?: string;
       path?: string;
       frappeVersion?: string;
-      runtime?: 'podman';
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps?: string[];
     }) => {
@@ -71,7 +68,6 @@ function makeStubBenchRepo(items: Bench[] = benches) {
         name: input.name ?? existing.name,
         path: input.path ?? existing.path,
         frappeVersion: input.frappeVersion ?? existing.frappeVersion,
-        runtime: input.runtime ?? existing.runtime,
         status: input.status ?? existing.status,
         apps: input.apps ?? existing.apps,
         timestamps: {
@@ -120,9 +116,9 @@ function makeStubSettingsRepo() {
   let current: Settings | null = null;
   return {
     get: async () => current,
-    set: async (input: Settings) => {
-      current = input;
-      return input;
+    set: async (input: Partial<Settings>) => {
+      current = { ...current, ...input } as Settings;
+      return current;
     },
   };
 }
@@ -153,9 +149,10 @@ describe('benches IPC handlers', () => {
         name: 'frappe-bench',
         path: '/Users/dev/frappe-bench',
         frappeVersion: '15.0.0',
-        runtime: 'podman',
         status: 'running',
         appCount: 2,
+        apps: ['frappe', 'erpnext'],
+        httpPort: undefined,
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
       },
@@ -198,7 +195,6 @@ describe('benches IPC handlers', () => {
       name: 'new-bench',
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
-      runtime: 'podman',
       apps: ['frappe'],
     });
 
@@ -206,7 +202,6 @@ describe('benches IPC handlers', () => {
       name: 'new-bench',
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
-      runtime: 'podman',
       status: 'queued',
       appCount: 1,
     });
@@ -297,7 +292,7 @@ describe('benches IPC handlers', () => {
     const deleteHandler = handlers.get(ipcChannels.benchesDelete);
     const deleted = await deleteHandler?.(undefined, 'bench-001');
 
-    expect(deleted).toBe(false);
+    expect(deleted).toBe(true);
   });
 
   it('benches:logs returns lifecycle entries for a bench', async () => {
@@ -341,7 +336,7 @@ describe('benches IPC handlers', () => {
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
       },
-      { openPath, openInEditor: async () => false, pathExists: () => true }
+      { openPath, openInEditor: async () => false, openExternal: async () => false, pathExists: () => true }
     );
 
     const openFolderHandler = handlers.get(ipcChannels.benchesOpenFolder);

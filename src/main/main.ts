@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
@@ -16,7 +16,49 @@ const binPath = isDev
   : path.join(process.resourcesPath, 'bin');
 
 process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
+process.title = APP_DISPLAY_NAME;
 app.setName(APP_DISPLAY_NAME);
+
+const configureApplicationMenu = (): void => {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  const appIconPath = getAppIconPath();
+
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: APP_DISPLAY_NAME,
+      submenu: [
+        {
+          label: `About ${APP_DISPLAY_NAME}`,
+          click: async () => {
+            await dialog.showMessageBox({
+              type: 'info',
+              title: `About ${APP_DISPLAY_NAME}`,
+              message: APP_DISPLAY_NAME,
+              detail: `Version ${app.getVersion()}\nLocal Frappe experience center.`,
+              buttons: ['OK'],
+              ...(appIconPath ? { icon: appIconPath } : {}),
+            });
+          },
+        },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+};
 
 const createMainWindow = async (): Promise<void> => {
   mainLogger.info('creating main window');
@@ -61,6 +103,11 @@ const createMainWindow = async (): Promise<void> => {
 
 app.whenReady().then(async () => {
   const appIconPath = getAppIconPath();
+
+  process.title = APP_DISPLAY_NAME;
+  app.setName(APP_DISPLAY_NAME);
+
+  configureApplicationMenu();
 
   if (process.platform === 'darwin') {
     app.setAboutPanelOptions({

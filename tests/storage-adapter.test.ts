@@ -53,7 +53,6 @@ describe('json storage adapter', () => {
         name: 'Bench One',
         path: '/tmp/bench-1',
         frappe_version: 'version-15',
-        runtime: 'podman',
         status: 'queued',
         apps: ['frappe'],
         created_at: '2026-04-18T10:00:00.000Z',

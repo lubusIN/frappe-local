@@ -18,7 +18,6 @@ function makeStubBenchRepo() {
     name: 'bench',
     path: '/tmp/bench',
     frappeVersion: '15.0.0',
-    runtime: 'podman' as const,
     status: 'stopped' as const,
     apps: ['frappe'],
     timestamps: {
@@ -34,7 +33,6 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({
@@ -49,7 +47,6 @@ function makeStubBenchRepo() {
       name?: string;
       path?: string;
       frappeVersion?: string;
-      runtime?: 'podman';
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps?: string[];
     }) => {
@@ -69,7 +66,6 @@ function makeStubSiteRepo() {
     id: 'site-stub',
     name: 'site.localhost',
     benchId: 'bench-stub',
-    groupId: null as string | null,
     apps: ['frappe'],
     status: 'stopped' as const,
     path: '/tmp/site',
@@ -85,7 +81,6 @@ function makeStubSiteRepo() {
     create: async (input: {
       name: string;
       benchId: string;
-      groupId: string | null;
       apps: string[];
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;
@@ -100,7 +95,6 @@ function makeStubSiteRepo() {
     update: async (_id: string, input: {
       name?: string;
       benchId?: string;
-      groupId?: string | null;
       apps?: string[];
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path?: string;
@@ -120,22 +114,10 @@ function makeStubSettingsRepo() {
   let current: Settings | null = null;
   return {
     get: async () => current,
-    set: async (input: Settings) => {
-      current = input;
-      return input;
+    set: async (input: Partial<Settings>) => {
+      current = input as Settings;
+      return current;
     },
-  };
-}
-
-function makeStubGroupRepo() {
-  return {
-    findAll: async () => [],
-    create: async (input: { name: string; description: string; tags: string[]; siteIds: string[] }) => ({
-      id: 'group-new',
-      ...input,
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 
@@ -150,7 +132,6 @@ describe('ipc roundtrip', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       }
     );
 
@@ -161,7 +142,7 @@ describe('ipc roundtrip', () => {
     expect(response).toMatchObject({
       appName: 'Frappe Cafe',
       platform: process.platform,
-      nodeVersion: process.versions.node,
+      nodeVersion: process.version,
       electronVersion: process.versions.electron,
     });
   });

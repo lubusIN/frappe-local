@@ -18,36 +18,68 @@
     />
 
     <!-- Creation Dialog -->
-    <Dialog v-model="showCreateSiteModal" :options="{ title: 'New site', size: '3xl' }">
+    <Dialog
+      v-model="showCreateSiteModal"
+      :options="{ title: 'New site', size: '3xl' }"
+    >
       <template #body-content>
         <div class="site-wizard-dialog">
           <div class="wizard-header">
             <div class="wizard-steps">
-              <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }">1. Bench</span>
-              <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }">2. Configure</span>
-              <span class="wizard-step" :class="{ 'wizard-step--active': wizardStep === 3 }">3. Confirm</span>
+              <span
+                class="wizard-step"
+                :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }"
+              >1. Bench</span>
+              <span
+                class="wizard-step"
+                :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }"
+              >2. Configure</span>
+              <span
+                class="wizard-step"
+                :class="{ 'wizard-step--active': wizardStep === 3 }"
+              >3. Confirm</span>
             </div>
           </div>
 
-          <form class="form-body" @submit.prevent="onCreateSite">
-            <p v-if="wizardErrors.length > 0" class="text-red-500 text-sm mb-4">{{ wizardErrors.join(' ') }}</p>
+          <form
+            class="form-body"
+            @submit.prevent="onCreateSite"
+          >
+            <p
+              v-if="wizardErrors.length > 0"
+              class="mb-4 text-sm text-ink-red-3"
+            >
+              {{ wizardErrors.join(' ') }}
+            </p>
 
-            <div v-if="wizardStep === 1" class="form-grid">
+            <div
+              v-if="wizardStep === 1"
+              class="form-grid"
+            >
               <label class="form-field">
-                <span class="text-xs font-medium text-gray-600 mb-1">Select bench</span>
-                <select v-model="createForm.benchId" :disabled="benchLoading" class="p-2 border rounded">
-                  <option value="">Choose a bench…</option>
-                  <option v-for="bench in creatableBenches" :key="bench.id" :value="bench.id">
-                    {{ bench.name }} ({{ bench.status }})
-                  </option>
-                </select>
+                <span class="mb-1 text-xs font-medium text-ink-gray-6">Select bench</span>
+                <Select
+                  v-model="createBenchSelection"
+                  :disabled="benchLoading"
+                  :options="createBenchOptions"
+                  variant="outline"
+                />
               </label>
             </div>
 
-            <div v-if="wizardStep === 2" class="form-grid">
+            <div
+              v-if="wizardStep === 2"
+              class="form-grid"
+            >
               <label class="form-field">
-                <span class="text-xs font-medium text-gray-600 mb-1">Site name</span>
-                <input v-model="createForm.name" type="text" required placeholder="my-site.local" class="p-2 border rounded" />
+                <FormLabel label="Site name" />
+                <TextInput
+                  v-model="createForm.name"
+                  type="text"
+                  required
+                  placeholder="my-site.local"
+                  variant="outline"
+                />
               </label>
               <div class="flex items-center gap-2">
                 <Switch
@@ -56,29 +88,65 @@
                 />
               </div>
               <label class="form-field">
-                <span class="text-xs font-medium text-gray-600 mb-1">Apps</span>
+                <FormLabel label="Apps" />
                 <AppPicker
                   v-model="createForm.appsSelected"
+                  class="form-field__control"
                   :disabled="creating || loading"
                   :frappe-version="selectedBench?.frappeVersion"
                 />
               </label>
             </div>
 
-            <div v-if="wizardStep === 3" class="wizard-summary p-4 bg-gray-50 rounded">
-              <div class="flex justify-between mb-2"><span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong></div>
-              <div class="flex justify-between mb-2"><span>Site</span><strong>{{ createForm.name }}</strong></div>
-              <div class="flex justify-between mb-2" v-if="createForm.force"><span>Force</span><strong>Yes</strong></div>
-              <div class="flex justify-between"><span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong></div>
+            <div
+              v-if="wizardStep === 3"
+              class="p-4 rounded wizard-summary bg-surface-gray-2"
+            >
+              <div class="flex justify-between mb-2">
+                <span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>Site</span><strong>{{ createForm.name }}</strong>
+              </div>
+              <div
+                v-if="createForm.force"
+                class="flex justify-between mb-2"
+              >
+                <span>Force</span><strong>Yes</strong>
+              </div>
+              <div class="flex justify-between">
+                <span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong>
+              </div>
             </div>
           </form>
         </div>
       </template>
       <template #actions>
         <div class="dialog-actions">
-          <Button v-if="wizardStep > 1" variant="subtle" @click="onPreviousStep">Back</Button>
-          <Button v-if="wizardStep < 3" variant="solid" @click="onNextStep">Next</Button>
-          <Button v-if="wizardStep === 3" variant="solid" :loading="creating" :disabled="loading" @click="onCreateSite">
+          <Button
+            v-if="wizardStep > 1"
+            size="md"
+            variant="subtle"
+            @click="onPreviousStep"
+          >
+            Back
+          </Button>
+          <Button
+            v-if="wizardStep < 3"
+            size="md"
+            variant="solid"
+            @click="onNextStep"
+          >
+            Next
+          </Button>
+          <Button
+            v-if="wizardStep === 3"
+            size="md"
+            variant="solid"
+            :loading="creating"
+            :disabled="loading"
+            @click="onCreateSite"
+          >
             {{ creating ? 'Creating…' : 'Create site' }}
           </Button>
         </div>
@@ -92,32 +160,73 @@
       body="Fetching sites and active status metadata."
     />
 
-    <section v-if="!error && (!loading || sites.length > 0) && sites.length === 0" class="bench-empty-state">
-      <h2 class="bench-empty-state__title">No sites yet</h2>
-      <p class="bench-empty-state__description">Create your first site to manage runtime status, inspect logs, and access dashboards.</p>
-      <div v-if="creatableBenches.length > 0" class="mt-6">
-        <Button variant="solid" @click="showCreateSiteModal = true">Create site</Button>
+    <section
+      v-if="!error && (!loading || sites.length > 0) && sites.length === 0"
+      class="bench-empty-state"
+    >
+      <h2 class="bench-empty-state__title">
+        No sites yet
+      </h2>
+      <p class="bench-empty-state__description">
+        Create your first site to manage runtime status, inspect logs, and access dashboards.
+      </p>
+      <div
+        v-if="creatableBenches.length > 0"
+        class="mt-6"
+      >
+        <Button
+          variant="solid"
+          @click="showCreateSiteModal = true"
+        >
+          Create site
+        </Button>
       </div>
-      <div v-else class="mt-6">
-        <Button variant="subtle" @click="$router.push('/benches')">Go to Benches</Button>
+      <div
+        v-else
+        class="mt-6"
+      >
+        <Button
+          variant="subtle"
+          @click="$router.push('/benches')"
+        >
+          Go to Benches
+        </Button>
       </div>
     </section>
 
     <!-- Filters -->
-    <div v-if="!error && !loading && sites.length > 0" class="flex gap-4 mb-6">
-      <select v-model="siteFilters.benchId" class="p-2 border rounded text-sm bg-white">
-        <option value="">All benches</option>
-        <option v-for="bench in allBenches" :key="bench.id" :value="bench.id">{{ bench.name }}</option>
-      </select>
-      <select v-model="siteFilters.status" class="p-2 border rounded text-sm bg-white">
-        <option value="">All statuses</option>
-        <option value="running">Running</option>
-        <option value="stopped">Stopped</option>
-        <option value="queued">In Progress</option>
-        <option value="success">Success</option>
-        <option value="failure">Failure</option>
-      </select>
-      <input v-model="siteFilters.search" type="text" class="p-2 border rounded text-sm bg-white flex-1" placeholder="Search sites…" />
+    <div
+      v-if="!error && !loading && sites.length > 0"
+      class="site-filters"
+    >
+      <div class="site-filters__left">
+        <Select
+          v-model="benchFilterSelection"
+          class="site-filters__select"
+          :options="benchFilterOptions"
+          variant="outline"
+        />
+        <Select
+          v-model="statusFilterSelection"
+          class="site-filters__select"
+          :options="statusFilterOptions"
+          variant="outline"
+        />
+      </div>
+      <div class="site-filters__right">
+        <div class="site-filters__search">
+          <TextInput
+            v-model="siteFilters.search"
+            type="search"
+            placeholder="Search..."
+            variant="outline"
+          >
+            <template #prefix>
+              <IconSearch class="w-4" />
+            </template>
+          </TextInput>
+        </div>
+      </div>
     </div>
 
     <ListView
@@ -130,34 +239,46 @@
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
           <div class="py-3">
-            <div class="font-medium text-gray-900">{{ row.name }}</div>
+            <div class="font-medium text-ink-gray-9">
+              {{ row.name }}
+            </div>
           </div>
         </template>
         <template v-else-if="column.key === 'benchId'">
-          <span class="text-sm text-gray-600">{{ getBenchName(row.benchId) }}</span>
+          <span class="text-sm text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
         </template>
 
         <template v-else-if="column.key === 'appCount'">
-          <span class="text-sm text-gray-600">{{ row.appCount }}</span>
+          <span class="text-sm text-ink-gray-6">{{ row.appCount }}</span>
         </template>
         <template v-else-if="column.key === 'status'">
           <div class="flex items-center">
             <Badge
               :variant="'subtle'"
               :theme="getStatusTheme(row)"
-              class="cursor-pointer"
+              class="cursor-pointer status-badge"
               @click.stop="onStatusClick(row.id, 'site')"
             >
               {{ formatStatusLabel(row) }}
-              <span v-if="isResourceBusy(row.id, 'site')" class="ml-1 inline-block w-2 h-2 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+              <span
+                v-if="isResourceBusy(row.id, 'site')"
+                class="status-badge__spinner"
+              />
             </Badge>
           </div>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div class="flex justify-end" @click.stop>
+          <div
+            class="flex justify-end"
+            @click.stop
+          >
             <Dropdown :options="getSiteActions(row)">
               <template #default>
-                <Button variant="subtle" icon="more-horizontal" />
+                <Button
+                  size="md"
+                  variant="subtle"
+                  icon="more-horizontal"
+                />
               </template>
             </Dropdown>
           </div>
@@ -172,7 +293,7 @@
       confirm-label="Delete site"
       :confirmation-phrase="pendingDeleteSiteName || null"
       :typed-value="deleteTypedValue"
-      @update:typedValue="val => deleteTypedValue = val"
+      @update:typed-value="val => deleteTypedValue = val"
       @cancel="onCancelDeleteSite"
       @confirm="onConfirmDeleteSite"
     />
@@ -186,17 +307,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, ListView, Switch, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Select, Switch, TextInput, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconPlay from '~icons/lucide/play';
+import IconSearch from '~icons/lucide/search';
 import IconSquare from '~icons/lucide/square';
-import IconFolder from '~icons/lucide/folder';
 import IconTrash from '~icons/lucide/trash-2';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import IconRotateCw from '~icons/lucide/rotate-cw';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
@@ -214,6 +334,7 @@ import {
 } from '../site-wizard';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
+import type { BenchListItem, SiteListItem } from '../../shared/ipc';
 
 const ipc = useIpc();
 const route = useRoute();
@@ -245,11 +366,11 @@ const selectedTask = computed(() => {
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
-const pendingSiteActions = ref<Record<string, 'starting' | 'restarting' | 'stopping'>>({});
+const pendingSiteActions = ref<Record<string, 'starting' | 'stopping'>>({});
 
 const getPendingSiteAction = (siteId: string) => pendingSiteActions.value[siteId];
 
-const setPendingSiteAction = (siteId: string, action: 'starting' | 'restarting' | 'stopping') => {
+const setPendingSiteAction = (siteId: string, action: 'starting' | 'stopping') => {
   pendingSiteActions.value = {
     ...pendingSiteActions.value,
     [siteId]: action,
@@ -278,10 +399,12 @@ watch(
   { deep: true }
 );
 
-const formatStatusLabel = (row: any) => {
+const SELECT_NONE = '__none__';
+const SELECT_ALL = '__all__';
+
+const formatStatusLabel = (row: SiteListItem) => {
   const pendingAction = getPendingSiteAction(row.id);
   if (pendingAction === 'starting') return 'Starting';
-  if (pendingAction === 'restarting') return 'Restarting';
   if (pendingAction === 'stopping') return 'Stopping';
 
   const task = (tasks.value || []).find(
@@ -311,20 +434,23 @@ const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
-  const task = tasks.value.find(
+  const activeTask = tasks.value.find(
     (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
   );
-  if (task) {
-    selectedTaskId.value = task.taskId;
+
+  if (activeTask) {
+    selectedTaskId.value = activeTask.taskId;
     return;
   }
-  const anyTask = tasks.value.find(t => t.resource === resource);
-  if (anyTask) {
-    selectedTaskId.value = anyTask.taskId;
-  }
+
+  const completedTask = tasks.value.find(
+    (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'success' || t.status === 'failure')
+  );
+
+  selectedTaskId.value = completedTask?.taskId ?? null;
 };
 
-const getStatusTheme = (row: any) => {
+const getStatusTheme = (row: SiteListItem) => {
   if (getPendingSiteAction(row.id)) return 'blue';
   if (isResourceBusy(row.id, 'site')) return 'blue';
   const status = row.status;
@@ -354,8 +480,14 @@ const siteListOptions = computed(() => ({
   },
 }));
 
-const getSiteActions = (site: any) => {
-  const actions = [];
+const getSiteActions = (site: SiteListItem) => {
+  const actions: Array<{
+    label: string;
+    icon: Component;
+    disabled?: boolean;
+    theme?: 'gray' | 'red';
+    onClick: () => void | Promise<void>;
+  }> = [];
 
   if (site.status === 'running') {
     const bench = allBenches.value.find(b => b.id === site.benchId);
@@ -370,24 +502,24 @@ const getSiteActions = (site: any) => {
   const isBusy = isResourceBusy(site.id, 'site') || Boolean(getPendingSiteAction(site.id));
 
   actions.push({
-    label: site.status === 'running' ? 'Restart' : 'Start',
-    icon: site.status === 'running' ? IconRotateCw : IconPlay,
+    label: 'Start',
+    icon: IconPlay,
     disabled: updating.value || isBusy || !canStartSite(site.id),
-    onClick: () => onSetSiteStatus(site.id, 'running', site.status),
+    onClick: () => onSetSiteStatus(site.id, 'running'),
   });
 
   actions.push({
     label: 'Stop',
     icon: IconSquare,
     disabled: updating.value || site.status === 'stopped' || isBusy || !canStopSite(site.id),
-    onClick: () => onSetSiteStatus(site.id, 'stopped', site.status),
+    onClick: () => onSetSiteStatus(site.id, 'stopped'),
   });
 
   actions.push({
     label: 'Delete',
     icon: IconTrash,
-    theme: 'red',
-    disabled: updating.value || deleting.value || isResourceBusy(site.id, 'site'),
+    theme: 'red' as const,
+    disabled: updating.value || deleting.value || site.status === 'running' || isResourceBusy(site.id, 'site'),
     onClick: () => onDeleteSite(site.id, site.name),
   });
 
@@ -398,6 +530,7 @@ const createForm = reactive({
   name: '',
   benchId: '',
   path: '',
+  appsText: '',
   appsSelected: [] as string[],
   force: false,
 });
@@ -405,9 +538,22 @@ const createForm = reactive({
 const showCreateSiteModal = ref(false);
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<string[]>([]);
-const allBenches = ref<any[]>([]);
+const allBenches = ref<BenchListItem[]>([]);
 const benchLoading = ref(false);
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
+const createBenchSelection = computed({
+  get: () => createForm.benchId || SELECT_NONE,
+  set: (value: string) => {
+    createForm.benchId = value === SELECT_NONE ? '' : value;
+  },
+});
+const createBenchOptions = computed(() => [
+  { label: 'Choose a bench…', value: SELECT_NONE },
+  ...creatableBenches.value.map((bench) => ({
+    label: `${bench.name} (${bench.status})`,
+    value: bench.id,
+  })),
+]);
 
 const selectedBench = computed(() => allBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
 const selectedApps = computed(() => createForm.appsSelected);
@@ -416,10 +562,34 @@ const siteFilters = reactive({
   status: '',
   search: '',
 });
+const benchFilterSelection = computed({
+  get: () => siteFilters.benchId || SELECT_ALL,
+  set: (value: string) => {
+    siteFilters.benchId = value === SELECT_ALL ? '' : value;
+  },
+});
+const statusFilterSelection = computed({
+  get: () => siteFilters.status || SELECT_ALL,
+  set: (value: string) => {
+    siteFilters.status = value === SELECT_ALL ? '' : value;
+  },
+});
+const benchFilterOptions = computed(() => [
+  { label: 'All benches', value: SELECT_ALL },
+  ...allBenches.value.map((bench) => ({ label: bench.name, value: bench.id })),
+]);
+const statusFilterOptions = [
+  { label: 'All statuses', value: SELECT_ALL },
+  { label: 'Running', value: 'running' },
+  { label: 'Stopped', value: 'stopped' },
+  { label: 'In Progress', value: 'queued' },
+  { label: 'Success', value: 'success' },
+  { label: 'Failure', value: 'failure' },
+];
 const filteredSites = computed(() => filterSites(sites.value, siteFilters));
 const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Go to Benches', to: '/benches' },
-  { label: 'Review runtime health', to: '/settings' },
+  { label: 'Review runtime', to: '/diagnostics' },
 ]);
 
 const loadBenchOptions = async () => {
@@ -485,15 +655,10 @@ const onCreateSite = async () => {
   await loadBenchOptions();
 };
 
-const onSetSiteStatus = async (id: string, status: 'running' | 'stopped', currentStatus?: string) => {
+const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
   if (status === 'running') {
-    if (currentStatus === 'running') {
-      toast.success('Restarting site...');
-      setPendingSiteAction(id, 'restarting');
-    } else {
-      toast.success('Starting site...');
-      setPendingSiteAction(id, 'starting');
-    }
+    toast.success('Starting site...');
+    setPendingSiteAction(id, 'starting');
   } else {
     toast.success('Stopping site...');
     setPendingSiteAction(id, 'stopping');
@@ -555,7 +720,14 @@ onMounted(() => {
 });
 
 watch([() => loading.value, () => creatableBenches.value.length], () => {
-  const actions = [];
+  const actions: Array<{
+    id: string;
+    label: string;
+    variant?: 'primary' | 'subtle';
+    disabled?: boolean;
+    icon?: Component;
+    onClick: () => void;
+  }> = [];
   if (creatableBenches.value.length > 0) {
     actions.push({
       id: 'sites-create',
@@ -640,9 +812,83 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
   gap: 6px;
 }
 
+.site-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.site-filters__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.site-filters__select {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.site-filters__right {
+  margin-left: auto;
+  width: 200px;
+  max-width: 200px;
+  min-width: 200px;
+}
+
+.site-filters__search {
+  width: 100%;
+}
+
+.site-filters__search :deep(.relative) {
+  width: 100%;
+}
+
+@media (max-width: 980px) {
+  .site-filters {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .site-filters__left {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .site-filters__right {
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-badge__spinner {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

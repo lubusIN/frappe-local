@@ -1,14 +1,12 @@
 <template>
-  <div class="diagnostics-view">
-    <DiagnosticsPanel
-      :report="report"
-      :running="running"
-      :fixing="fixing"
-      :error="error"
-      @run="run"
-      @fix="fix"
-    />
-  </div>
+  <DiagnosticsPanel
+    :report="report"
+    :running="running"
+    :fixing="fixing"
+    :error="error"
+    @run="run"
+    @fix="fix"
+  />
 </template>
 
 <script setup lang="ts">
@@ -43,17 +41,3 @@ onBeforeUnmount(() => {
   clearActions();
 });
 </script>
-
-<style scoped>
-.diagnostics-view {
-  display: grid;
-  gap: 24px;
-}
-
-
-.diagnostics-container {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-</style>

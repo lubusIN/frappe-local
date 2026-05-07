@@ -6,6 +6,7 @@
     "jsx": "preserve"
   },
   "include": [
+    "src/renderer/**/*.d.ts",
     "src/renderer/**/*.ts",
     "src/renderer/**/*.vue",
     "src/shared/**/*.ts"

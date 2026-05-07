@@ -15,7 +15,6 @@ describe('domain schemas', () => {
       name: 'Frappe Bench',
       path: '/Users/example/frappe-bench',
       frappeVersion: 'version-15',
-      runtime: 'podman',
       status: 'running',
       apps: ['erpnext'],
       timestamps: {
@@ -25,7 +24,6 @@ describe('domain schemas', () => {
     });
 
     expect(parsedBench.name).toBe('Frappe Bench');
-    expect(parsedBench.runtime).toBe('podman');
   });
 
   it('rejects an invalid bench create payload', () => {
@@ -33,7 +31,6 @@ describe('domain schemas', () => {
       name: ' ',
       path: '/tmp/bench',
       frappeVersion: 'version-15',
-      runtime: 'podman',
       status: 'running',
       apps: [],
     });
@@ -49,7 +46,6 @@ describe('domain mappers', () => {
       name: 'My Bench',
       path: '/tmp/bench',
       frappe_version: 'version-15',
-      runtime: 'podman',
       status: 'stopped',
       apps: ['frappe'],
       created_at: '2026-04-18T10:00:00.000Z',
@@ -67,7 +63,6 @@ describe('domain mappers', () => {
       name: 'Second Bench',
       path: '/tmp/bench-2',
       frappeVersion: 'version-14',
-      runtime: 'podman',
       status: 'queued',
       apps: ['frappe', 'payments'],
       timestamps: {

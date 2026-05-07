@@ -53,10 +53,6 @@ describe('ipc contract', () => {
     expect(ipcChannels.settingsSet).toBe('settings:set');
   });
 
-  it('uses a stable channel name for workspaces listing', () => {
-    expect(ipcChannels.workspacesList).toBe('workspaces:list');
-  });
-
   it('uses stable task runner channel names', () => {
     expect(ipcChannels.taskRunnerSubscribe).toBe('task-runner:subscribe');
     expect(ipcChannels.taskRunnerUnsubscribe).toBe('task-runner:unsubscribe');

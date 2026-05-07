@@ -11,8 +11,8 @@ export type LegacyStorageSnapshotV1 = {
   readonly schemaVersion: 1;
   readonly metadata: LegacyStorageMetadataV1;
   readonly benches: BenchRecord[];
-  readonly sites: any[]; // Use any because Site model changed (groupId removed)
-  readonly groups: any[];
+  readonly sites: Array<Site & { groupId?: string }>;
+  readonly groups: unknown[];
   readonly settings: Settings | null;
   readonly appCatalog: AppCatalogItem[];
 };
@@ -48,7 +48,8 @@ export const storageMigrations: readonly StorageMigration[] = [
 
       // Clean up sites to remove groupId
       const migratedSites: Site[] = source.sites.map((site) => {
-        const { groupId: _, ...rest } = site;
+        const { groupId: _removedGroupId, ...rest } = site;
+        void _removedGroupId;
         return rest as Site;
       });
 
@@ -78,7 +79,7 @@ export const runStorageMigrations = (
       throw new Error(`No storage migration found from version ${currentSnapshot.schemaVersion} to ${targetVersion}.`);
     }
 
-    currentSnapshot = migration.migrate(currentSnapshot, context) as any;
+    currentSnapshot = migration.migrate(currentSnapshot, context);
   }
 
   return currentSnapshot as StorageSnapshot;

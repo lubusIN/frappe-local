@@ -12,16 +12,6 @@ describe('error-remediation', () => {
     expect(notice.actions.map((action) => action.id)).toEqual(['retry', 'settings']);
   });
 
-  it('maps import path issues to package location guidance', () => {
-    const notice = buildErrorRemediationNotice(
-      'import-export',
-      'Error: Artifact directory does not exist.'
-    );
-
-    expect(notice.title).toBe('Package location needs attention');
-    expect(notice.reason).toBe('Artifact directory does not exist.');
-  });
-
   it('maps progress-center failures to retry subscription guidance', () => {
     const notice = buildErrorRemediationNotice(
       'progress-center',

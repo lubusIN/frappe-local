@@ -21,7 +21,6 @@ function makeStubBenchRepo() {
       name: 'bench',
       path: '/tmp/bench',
       frappeVersion: '15.0.0',
-      runtime: 'podman' as const,
       status: 'stopped' as const,
       apps: [],
       timestamps: {
@@ -42,7 +41,6 @@ function makeStubSiteRepo() {
       id: 'site-stub',
       name: 'site.local',
       benchId: 'bench-stub',
-      groupId: null,
       apps: [],
       status: 'stopped' as const,
       path: '/tmp/site',
@@ -59,30 +57,7 @@ function makeStubSiteRepo() {
 function makeStubSettingsRepo() {
   return {
     get: async () => null,
-    set: async (input: Settings) => input,
-  };
-}
-
-function makeStubGroupRepo() {
-  return {
-    findAll: async () => [],
-    create: async () => ({ id: 'group-stub', name: 'workspace', description: '', tags: [], siteIds: [] }),
-    update: async () => null,
-    delete: async () => false,
-  };
-}
-
-function makeStubTerminalService() {
-  return {
-    onOutput: () => () => undefined,
-    onError: () => () => undefined,
-    onStateChange: () => () => undefined,
-    createSession: () => ({ success: false, error: 'unused' }),
-    getSession: () => null,
-    write: () => false,
-    closeSession: () => false,
-    clear: () => false,
-    resize: () => false,
+    set: async (input: Partial<Settings>) => input as Settings,
   };
 }
 
@@ -97,6 +72,7 @@ function makeStubTaskRunner() {
           listener = null;
         };
       },
+      enqueue: () => 'task-stub',
     },
     emit: (event: TaskProgressEvent) => {
       listener?.(event);
@@ -116,15 +92,13 @@ describe('task runner IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
-        groups: makeStubGroupRepo(),
       },
       undefined,
-      makeStubTerminalService(),
       taskRunner.runner
     );
 
     expect(await handlers.get(ipcChannels.taskRunnerSubscribe)?.()).toBe(true);
-    expect(await handlers.get(ipcChannels.taskRunnerUnsubscribe)?.()).toBe(false);
-    expect(await handlers.get(ipcChannels.taskRunnerUnsubscribe)?.()).toBe(false);
+    expect(await handlers.get(ipcChannels.taskRunnerUnsubscribe)?.()).toBe(true);
+    expect(await handlers.get(ipcChannels.taskRunnerUnsubscribe)?.()).toBe(true);
   });
 });

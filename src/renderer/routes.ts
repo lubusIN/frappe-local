@@ -5,11 +5,10 @@ import DashboardView from './views/DashboardView.vue';
 import { appRouteDefinitions, navigationItems } from './navigation';
 import SitesView from './views/SitesView.vue';
 const componentMap = {
-  activity: ActivityView,
   dashboard: DashboardView,
+  activity: ActivityView,
   benches: BenchesView,
   sites: SitesView,
-
   diagnostics: () => import('./views/DiagnosticsView.vue'),
   settings: () => import('./views/SettingsView.vue'),
 } as const;

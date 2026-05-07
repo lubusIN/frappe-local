@@ -44,7 +44,6 @@ function makeStubBenchRepo() {
       name: string;
       path: string;
       frappeVersion: string;
-      runtime: 'podman';
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => ({
@@ -67,7 +66,6 @@ function makeStubSiteRepo() {
     create: async (input: {
       name: string;
       benchId: string;
-      groupId: string | null;
       apps: string[];
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       path: string;
@@ -88,22 +86,10 @@ function makeStubSettingsRepo() {
   let current: Settings | null = null;
   return {
     get: async () => current,
-    set: async (input: Settings) => {
-      current = input;
-      return input;
+    set: async (input: Partial<Settings>) => {
+      current = input as Settings;
+      return current;
     },
-  };
-}
-
-function makeStubGroupRepo() {
-  return {
-    findAll: async () => [],
-    create: async (input: { name: string; description: string; tags: string[]; siteIds: string[] }) => ({
-      id: 'group-new',
-      ...input,
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 
@@ -116,7 +102,6 @@ function buildHandlers(items: AppCatalogItem[] = catalogItems) {
       benches: makeStubBenchRepo(),
       sites: makeStubSiteRepo(),
       settings: makeStubSettingsRepo(),
-      groups: makeStubGroupRepo(),
     }
   );
   return handlers;

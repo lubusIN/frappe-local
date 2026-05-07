@@ -1,21 +1,24 @@
 <template>
   <div class="activity-view">
-    <div class="flex gap-4 mb-6 items-center">
-      <select v-model="statusFilterModel" class="p-2 border rounded text-sm bg-white min-w-[140px]">
-        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
-      <select v-model="resourceFilterModel" class="p-2 border rounded text-sm bg-white min-w-[140px]">
-        <option v-for="opt in resourceOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
-      <div class="flex items-center ml-auto">
-        <Switch v-model="recentOnlyModel" size="sm" label="Recent 24h" />
-      </div>
+    <div class="mb-6 flex items-center gap-4 justify-start">
+      <Select
+        v-model="statusFilterModel"
+        class="!w-auto"
+        :options="statusOptions"
+        variant="outline"
+      />
+      <Select
+        v-model="resourceFilterModel"
+        class="!w-auto"
+        :options="resourceOptions"
+        variant="outline"
+      />
     </div>
 
     <!-- Loading state -->
     <div
       v-if="progressLoading"
-      class="flex items-center justify-center p-12 text-gray-500 text-sm"
+      class="flex items-center justify-center p-12 text-ink-gray-5 text-sm"
     >
       <LoadingIndicator class="mr-2 w-4 h-4" />
       <span>Subscribing to task stream…</span>
@@ -26,8 +29,8 @@
       v-else-if="errorNotice"
       :notice="errorNotice"
       tone="warning"
-      @action="retryProgressSubscription"
       class="mb-4"
+      @action="retryProgressSubscription"
     />
 
     <!-- ListView -->
@@ -59,13 +62,13 @@
           </Badge>
         </template>
         <template v-else-if="column.key === 'timestamp'">
-          <span class="text-xs text-gray-500 tabular-nums">{{ formatTime(row.timestamp) }}</span>
+          <span class="text-xs text-ink-gray-5 tabular-nums">{{ formatTime(row.timestamp) }}</span>
         </template>
         <template v-else-if="column.key === 'taskName'">
-          <span class="text-sm font-medium text-gray-900 truncate">{{ row.taskName }}</span>
+          <span class="text-sm font-medium text-ink-gray-9 truncate">{{ row.taskName }}</span>
         </template>
         <template v-else-if="column.key === 'message'">
-          <span class="text-sm text-gray-600 truncate">{{ row.message }}</span>
+          <span class="text-sm text-ink-gray-6 truncate">{{ row.message }}</span>
         </template>
       </template>
     </ListView>
@@ -74,12 +77,12 @@
 
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
-import { Badge, ListView, LoadingIndicator, Switch } from 'frappe-ui';
+import { Badge, ListView, LoadingIndicator, Select } from 'frappe-ui';
 import type { RouteLocationRaw } from 'vue-router';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { buildErrorRemediationNotice } from '../error-remediation';
-import type { ProgressTaskResource, ProgressTaskSummary } from '../progress-center';
+import type { ProgressTaskSummary } from '../progress-center';
 
 const {
   filteredTasks,
@@ -87,28 +90,20 @@ const {
   error: progressError,
   statusFilter,
   resourceFilter,
-  recentOnly,
   reconnect,
 } = useProgressCenter();
 
 const statusFilterModel = computed({
   get: () => statusFilter.value,
   set: (value: string) => {
-    statusFilter.value = value as 'all' | 'queued' | 'running' | 'success' | 'failure';
+    statusFilter.value = value as typeof statusFilter.value;
   },
 });
 
 const resourceFilterModel = computed({
   get: () => resourceFilter.value,
   set: (value: string) => {
-    resourceFilter.value = value as 'all' | ProgressTaskResource;
-  },
-});
-
-const recentOnlyModel = computed({
-  get: () => recentOnly.value,
-  set: (value: boolean) => {
-    recentOnly.value = value;
+    resourceFilter.value = value as typeof resourceFilter.value;
   },
 });
 
@@ -132,7 +127,6 @@ const resourceOptions = [
   { label: 'All resources', value: 'all' },
   { label: 'Bench', value: 'bench' },
   { label: 'Site', value: 'site' },
-  { label: 'Import / Export', value: 'import' },
   { label: 'Runtime', value: 'runtime' },
   { label: 'System', value: 'system' },
 ];
@@ -172,10 +166,6 @@ const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
     return item.resourceId
       ? { path: '/sites', query: { siteId: item.resourceId } }
       : { path: '/sites' };
-  }
-
-  if (item.resource === 'import') {
-    return { path: '/import-export' };
   }
 
   if (item.resource === 'runtime') {
