@@ -38,6 +38,18 @@ describe('site wizard helpers', () => {
     ]);
   });
 
+  it('treats apps and confirm steps as non-blocking validation steps', () => {
+    const draft = {
+      benchId: 'bench-001',
+      name: 'demo.localhost',
+      path: '/Users/dev/frappe-bench/sites/demo.localhost',
+      appsText: '',
+    };
+
+    expect(getSiteWizardStepErrors(3, draft)).toEqual([]);
+    expect(getSiteWizardStepErrors(4, draft)).toEqual([]);
+  });
+
   it('builds create payload when draft is valid', () => {
     const draft = {
       benchId: 'bench-001',

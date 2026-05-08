@@ -1,6 +1,6 @@
 import type { SiteCreateInput } from '../shared/ipc';
 
-export type SiteWizardStep = 1 | 2 | 3;
+export type SiteWizardStep = 1 | 2 | 3 | 4;
 
 export type SiteWizardDraft = {
   readonly benchId: string;

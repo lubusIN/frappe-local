@@ -21,24 +21,26 @@
     <Dialog
       v-model="showCreateSiteModal"
       :options="{ title: 'New site', size: '3xl' }"
+      @close="onCloseSiteWizard"
     >
       <template #body-content>
         <div class="site-wizard-dialog">
           <div class="wizard-header">
-            <div class="wizard-steps">
-              <span
-                class="wizard-step"
-                :class="{ 'wizard-step--active': wizardStep === 1, 'wizard-step--done': wizardStep > 1 }"
-              >1. Bench</span>
-              <span
-                class="wizard-step"
-                :class="{ 'wizard-step--active': wizardStep === 2, 'wizard-step--done': wizardStep > 2 }"
-              >2. Configure</span>
-              <span
-                class="wizard-step"
-                :class="{ 'wizard-step--active': wizardStep === 3 }"
-              >3. Confirm</span>
-            </div>
+            <span :class="['wizard-header__item', wizardStep === 1 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Bench
+            </span>
+            <IconChevronRight class="wizard-header__icon" />
+            <span :class="['wizard-header__item', wizardStep === 2 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Details
+            </span>
+            <IconChevronRight class="wizard-header__icon" />
+            <span :class="['wizard-header__item', wizardStep === 3 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Apps
+            </span>
+            <IconChevronRight class="wizard-header__icon" />
+            <span :class="['wizard-header__item', wizardStep === 4 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Confirm
+            </span>
           </div>
 
           <form
@@ -87,6 +89,12 @@
                   label="Force create"
                 />
               </div>
+            </div>
+
+            <div
+              v-if="wizardStep === 3"
+              class="form-grid"
+            >
               <label class="form-field">
                 <FormLabel label="Apps" />
                 <AppPicker
@@ -99,7 +107,7 @@
             </div>
 
             <div
-              v-if="wizardStep === 3"
+              v-if="wizardStep === 4"
               class="p-4 rounded wizard-summary bg-surface-gray-2"
             >
               <div class="flex justify-between mb-2">
@@ -132,7 +140,7 @@
             Back
           </Button>
           <Button
-            v-if="wizardStep < 3"
+            v-if="wizardStep < 4"
             size="md"
             variant="solid"
             @click="onNextStep"
@@ -140,7 +148,7 @@
             Next
           </Button>
           <Button
-            v-if="wizardStep === 3"
+            v-if="wizardStep === 4"
             size="md"
             variant="solid"
             :loading="creating"
@@ -312,6 +320,7 @@ import { useRoute } from 'vue-router';
 import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Select, Switch, TextInput, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
+import IconChevronRight from '~icons/lucide/chevron-right';
 import IconPlay from '~icons/lucide/play';
 import IconSearch from '~icons/lucide/search';
 import IconSquare from '~icons/lucide/square';
@@ -628,7 +637,7 @@ const onNextStep = async () => {
   }
   wizardErrors.value = errors;
   if (errors.length > 0) return;
-  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
+  if (wizardStep.value < 4) wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
 };
 
 const onPreviousStep = () => {
@@ -646,13 +655,20 @@ const onCreateSite = async () => {
   wizardErrors.value = result.errors;
   if (!result.payload) return;
   await create(result.payload);
+  onCloseSiteWizard();
+  await loadBenchOptions();
+};
+
+const onCloseSiteWizard = () => {
   showCreateSiteModal.value = false;
-  createForm.name = '';
-  createForm.benchId = '';
-  createForm.appsSelected = [];
   wizardStep.value = 1;
   wizardErrors.value = [];
-  await loadBenchOptions();
+  createForm.name = '';
+  createForm.benchId = '';
+  createForm.path = '';
+  createForm.appsText = '';
+  createForm.appsSelected = [];
+  createForm.force = false;
 };
 
 const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
@@ -780,25 +796,40 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
   gap: 16px;
 }
 
-.wizard-steps {
+.wizard-header {
   display: flex;
-  gap: 16px;
-  border-bottom: 1px solid var(--border-light);
-  padding-bottom: 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
 }
 
-.wizard-step {
-  font-size: 13px;
+.wizard-header__item {
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.wizard-header__item--active {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.wizard-header__item--inactive {
   color: var(--text-muted);
 }
 
-.wizard-step--active {
-  color: var(--primary);
-  font-weight: 600;
+.wizard-header__icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 
-.wizard-step--done {
-  color: var(--green-600);
+.form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .form-grid {
@@ -810,6 +841,20 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.wizard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wizard-summary > div {
+  font-size: 13px;
+}
+
+.wizard-summary strong {
+  font-weight: 600;
 }
 
 .site-filters {
