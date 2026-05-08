@@ -1,15 +1,19 @@
 <template>
-  <section class="flex h-full flex-col gap-1">
-    <header class="flex items-center gap-2.5">
+  <section class="flex flex-col h-full gap-1">
+    <header class="flex items-center gap-2.5 mb-3">
       <div class="min-w-[140px] flex-1">
-        <TextInput
+        <TextInput 
           v-model="query"
           type="search"
           placeholder="Search apps…"
           :disabled="disabled"
           variant="outline"
           @update:model-value="onSearch"
-        />
+        >
+          <template #prefix>
+            <IconSearch class="w-4 text-ink-gray-6" />
+          </template>
+        </TextInput>
       </div>
       <Select
         v-model="categoryFilter"
@@ -20,42 +24,32 @@
       />
     </header>
 
-    <Badge
-      v-if="frappeVersion"
-      variant="subtle"
-      theme="blue"
-      class="inline-flex w-fit items-center gap-1.5"
-    >
-      <IconInfo class="h-3 w-3" />
-      Showing apps compatible with <strong>{{ frappeVersionLabel }}</strong>
-    </Badge>
-
     <div
       v-if="state.error"
-      class="px-2 py-3 text-center text-xs text-ink-red-4"
+      class="px-2 py-3 text-xs text-center text-ink-red-4"
     >
       {{ state.error }}
     </div>
     <div
       v-else-if="state.loading"
-      class="px-2 py-3 text-center text-xs text-ink-gray-6"
+      class="px-2 py-3 text-xs text-center text-ink-gray-6"
     >
       Loading apps…
     </div>
     <div
       v-else-if="items.length === 0"
-      class="px-2 py-3 text-center text-xs text-ink-gray-6"
+      class="px-2 py-3 text-xs text-center text-ink-gray-6"
     >
       No matching apps.
     </div>
 
     <div
       v-else
-      class="mb-2 min-h-0 flex-1 overflow-hidden"
+      class="flex-1 min-h-0 mb-2 overflow-hidden"
     >
       <ListView
         ref="listViewRef"
-        class="flex h-full min-h-0 min-w-full flex-col"
+        class="h-[50vh]"
         :columns="appColumns"
         :rows="rows"
         row-key="name"
@@ -72,22 +66,22 @@
       >
         <template #default="{ selectable }">
           <ListHeader class="sticky top-0 z-[3]" />
-          <ListRows class="min-h-0 flex-1 overflow-y-auto pr-1" />
+          <ListRows class="flex-1 min-h-0 pr-1 overflow-y-auto" />
           <ListSelectBanner v-if="selectable" />
         </template>
 
         <template #cell="{ column, row }">
           <template v-if="column.key === 'icon'">
-            <div class="flex w-10 items-center justify-center">
+            <div class="flex items-center justify-start w-12">
               <img
                 v-if="row.icon && !imageErrors[row.appId]"
                 :src="row.icon"
-                class="h-6 w-6 rounded object-cover"
+                class="object-cover w-12 h-12 rounded-lg"
                 @error="imageErrors[row.appId] = true"
               >
               <div
                 v-else
-                class="flex h-6 w-6 items-center justify-center rounded bg-surface-gray-3 text-sm font-semibold text-ink-gray-5"
+                class="flex items-center justify-center w-6 h-6 text-sm font-semibold rounded bg-surface-gray-3 text-ink-gray-5"
               >
                 {{ row.appName.charAt(0).toUpperCase() }}
               </div>
@@ -98,10 +92,10 @@
               class="grid min-w-0 gap-1"
               :class="{ 'opacity-60': row.disabled }"
             >
-              <div class="flex min-w-0 items-center">
-                <span class="truncate text-sm font-semibold text-ink-gray-9">{{ row.appName }}</span>
+              <div class="flex items-center min-w-0">
+                <span class="text-sm font-semibold truncate text-ink-gray-9">{{ row.appName }}</span>
               </div>
-              <p class="m-0 truncate text-xs leading-snug text-ink-gray-6">
+              <p class="m-0 text-xs leading-snug text-wrap text-ink-gray-6">
                 {{ row.description }}
               </p>
               <div class="flex flex-wrap items-center gap-2.5">
@@ -127,8 +121,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { Badge, ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
-import IconInfo from '~icons/lucide/info';
+import IconSearch from '~icons/lucide/search';
+import { ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/ipc';
 import { useAppCatalog } from '../composables/useAppCatalog';
 import { normalizeSelection } from '../app-picker-state';
@@ -136,8 +130,8 @@ import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '..
 import { evaluateCatalogCompatibility } from '../catalog-compatibility';
 
 const appColumns = [
-  { key: 'icon', label: '', width: '40px' },
-  { key: 'name', label: 'Name', width: 'minmax(0, 1fr)' },
+  { key: 'icon', label: '', width: '46px' },
+  { key: 'name', label: 'Name', width: 'minmax(85%, 500px)' },
 ];
 
 const props = defineProps<{

@@ -124,80 +124,145 @@
     <Dialog
       v-model="showCreateBenchModal"
       :options="{ title: 'New bench', size: '3xl' }"
+      @close="onCloseBenchWizard"
     >
       <template #body-content>
-        <div class="bench-dialog-form">
-          <div class="bench-dialog-form__grid">
-            <div class="form-field">
-              <FormLabel label="Name" />
-              <TextInput
-                v-model="createForm.name"
-                type="text"
-                required
-                placeholder="my-bench"
-                variant="outline"
-              />
-            </div>
-            <div class="form-field">
-              <FormLabel label="Frappe Version" />
-              <FrappeVersionSelect
-                v-model="createForm.frappeVersion"
-                class="form-field__control"
-              />
-            </div>
-            <label class="form-field">
-              <FormLabel label="Path" />
-              <div class="path-picker">
-                <div class="path-picker__input-wrap">
-                  <TextInput
-                    v-model="createForm.path"
-                    type="text"
-                    required
-                    placeholder="/path/to/bench"
-                    variant="outline"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  type="button"
-                  @click="triggerFolderPicker"
-                >Browse</Button>
-              </div>
-            </label>
-            <label class="form-field">
-              <FormLabel label="Apps to include" />
-              <div class="flex">
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  type="button"
-                  @click="showAppPicker = true"
-                >
-                  {{ createForm.appsSelected.length ? `${createForm.appsSelected.length} Apps Selected` : 'Select Apps' }}
-                </Button>
-              </div>
-            </label>
+        <div class="bench-wizard-dialog">
+          <div class="wizard-header">
+            <span :class="['wizard-header__item', wizardStep === 1 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Details
+            </span>
+            <IconChevronRight class="wizard-header__icon" />
+            <span :class="['wizard-header__item', wizardStep === 2 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Apps
+            </span>
+            <IconChevronRight class="wizard-header__icon" />
+            <span :class="['wizard-header__item', wizardStep === 3 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+              Confirm
+            </span>
           </div>
+
+          <form
+            class="form-body"
+            @submit.prevent="onCreateBench"
+          >
+            <p
+              v-if="wizardErrors.length > 0"
+              class="mb-4 text-sm text-ink-red-3"
+            >
+              {{ wizardErrors.join(' ') }}
+            </p>
+
+            <!-- Step 1: Bench Details -->
+            <div
+              v-if="wizardStep === 1"
+              class="form-grid form-grid--bench-details"
+            >
+              <label class="form-field">
+                <FormLabel label="Name" />
+                <TextInput
+                  v-model="createForm.name"
+                  type="text"
+                  required
+                  placeholder="my-bench"
+                  variant="outline"
+                />
+              </label>
+
+              <label class="form-field">
+                <FormLabel label="Frappe Version" />
+                <FrappeVersionSelect
+                  v-model="createForm.frappeVersion"
+                  class="form-field__control"
+                />
+              </label>
+
+              <label class="form-field">
+                <FormLabel label="Path" />
+                <div class="path-picker">
+                  <div class="path-picker__input-wrap">
+                    <TextInput
+                      v-model="createForm.path"
+                      type="text"
+                      required
+                      placeholder="/path/to/bench"
+                      variant="outline"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    type="button"
+                    @click="triggerFolderPicker"
+                  >Browse</Button>
+                </div>
+              </label>
+            </div>
+
+            <!-- Step 2: App Selection -->
+            <div
+              v-if="wizardStep === 2"
+              class="form-grid"
+            >
+              <label class="form-field">
+                <AppPicker
+                  v-model="createForm.appsSelected"
+                  class="form-field__control"
+                  :disabled="creating || loading"
+                  :frappe-version="createForm.frappeVersion"
+                />
+              </label>
+            </div>
+
+            <!-- Step 3: Confirmation -->
+            <div
+              v-if="wizardStep === 3"
+              class="p-4 rounded wizard-summary bg-surface-gray-2"
+            >
+              <div class="flex justify-between mb-2">
+                <span>Name</span><strong>{{ createForm.name }}</strong>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>Frappe Version</span><strong>{{ createForm.frappeVersion }}</strong>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>Path</span><strong class="font-mono text-xs">{{ createForm.path }}</strong>
+              </div>
+              <div class="flex justify-between">
+                <span>Apps</span><strong>{{ createForm.appsSelected.length > 0 ? createForm.appsSelected.join(', ') : 'frappe' }}</strong>
+              </div>
+            </div>
+          </form>
         </div>
       </template>
+
       <template #actions>
         <div class="dialog-actions">
           <Button
+            v-if="wizardStep > 1"
             size="md"
             variant="subtle"
-            @click="showCreateBenchModal = false"
+            @click="onPreviousStep"
           >
-            Cancel
+            Back
           </Button>
           <Button
+            v-if="wizardStep < 3"
+            size="md"
+            variant="solid"
+            @click="onNextStep"
+          >
+            Next
+          </Button>
+          <Button
+            v-if="wizardStep === 3"
             size="md"
             variant="solid"
             :loading="creating"
             :disabled="loading"
             @click="onCreateBench"
           >
-            {{ creating ? 'Creating…' : 'Create' }}
+            {{ creating ? 'Creating…' : 'Create bench' }}
           </Button>
         </div>
       </template>
@@ -304,6 +369,7 @@ import { useRouter } from 'vue-router';
 import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, TextInput, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
+import IconChevronRight from '~icons/lucide/chevron-right';
 import IconPlay from '~icons/lucide/play';
 import IconSquare from '~icons/lucide/square';
 import IconFolder from '~icons/lucide/folder';
@@ -324,6 +390,7 @@ import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { useSettings } from '../composables/useSettings';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { useAppCatalog } from '../composables/useAppCatalog';
+import { getBenchWizardStepErrors, buildBenchCreatePayload, type BenchWizardStep } from '../bench-wizard';
 import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
 
 const {
@@ -582,6 +649,8 @@ const createForm = reactive({
 const { form: settingsForm } = useSettings();
 const showAppPicker = ref(false);
 const showCreateBenchModal = ref(false);
+const wizardStep = ref<BenchWizardStep>(1);
+const wizardErrors = ref<string[]>([]);
 const ipc = useIpc();
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
 
@@ -627,18 +696,41 @@ const triggerFolderPicker = async () => {
   }
 };
 
+const onNextStep = () => {
+  const errors = getBenchWizardStepErrors(wizardStep.value, createForm);
+  wizardErrors.value = errors;
+  if (errors.length > 0) return;
+  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
+};
+
+const onPreviousStep = () => {
+  wizardErrors.value = [];
+  if (wizardStep.value > 1) wizardStep.value = (wizardStep.value - 1) as BenchWizardStep;
+};
+
 const onCreateBench = async () => {
-  await create({
-    name: createForm.name,
-    path: createForm.path,
-    frappeVersion: createForm.frappeVersion,
-    apps: [...createForm.appsSelected],
-  });
+  const result = buildBenchCreatePayload(createForm);
+  wizardErrors.value = result.errors;
+  if (!result.payload) return;
+  
+  await create(result.payload);
 
   createForm.name = '';
   createForm.path = '';
   createForm.appsSelected = [];
   showCreateBenchModal.value = false;
+  wizardStep.value = 1;
+  wizardErrors.value = [];
+};
+
+const onCloseBenchWizard = () => {
+  showCreateBenchModal.value = false;
+  wizardStep.value = 1;
+  wizardErrors.value = [];
+  createForm.name = '';
+  createForm.path = '';
+  createForm.frappeVersion = 'version-16';
+  createForm.appsSelected = [];
 };
 
 const onStopBench = async (id: string) => {
@@ -761,15 +853,60 @@ const onOpenBenchFolder = async (id: string) => {
   color: var(--text-muted);
 }
 
-.bench-dialog-form {
+/* Wizard Styles */
+.bench-wizard-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wizard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 8px;
+}
+
+.wizard-header__item {
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.wizard-header__item--active {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.wizard-header__item--inactive {
+  color: var(--text-muted);
+}
+
+.wizard-header__icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
   display: grid;
   gap: 16px;
 }
 
-.bench-dialog-form__grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+.form-grid--bench-details {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+}
+
+.form-grid--bench-details > :last-child {
+  grid-column: 1 / -1;
 }
 
 .form-field {
@@ -785,10 +922,51 @@ const onOpenBenchFolder = async (id: string) => {
 .path-picker {
   display: flex;
   gap: 8px;
+  width: 100%;
 }
 
 .path-picker__input-wrap {
   flex: 1;
+  min-width: 0;
+}
+
+.path-picker :deep(button) {
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .form-grid--bench-details {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid--bench-details > :last-child {
+    grid-column: auto;
+  }
+}
+
+.wizard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wizard-summary > div {
+  font-size: 13px;
+}
+
+.wizard-summary strong {
+  font-weight: 600;
+}
+
+.font-mono {
+  font-family: 'Monaco', 'Menlo', monospace;
+  word-break: break-all;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 /* Keep Select Apps modal capped to viewport while letting its list scroll internally. */
@@ -814,12 +992,6 @@ const onOpenBenchFolder = async (id: string) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 
 .status-badge {
