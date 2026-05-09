@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen w-screen overflow-hidden">
+  <div class="flex w-screen h-screen overflow-hidden">
     <Sidebar
       v-model:collapsed="isCollapsed"
       :sections="sidebarSections"
@@ -9,14 +9,14 @@
           class="flex items-center p-3 transition-all duration-300"
           :class="isCollapsed ? 'justify-center' : ''"
         >
-          <div class="w-8 h-8 rounded-md bg-surface-gray-7 text-ink-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+          <div class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0">
             <CafeLogo class="w-4 h-4" />
           </div>
           <div 
             v-if="!isCollapsed"
-            class="ml-3 flex flex-col truncate transition-all duration-300"
+            class="flex flex-col ml-3 truncate transition-all duration-300"
           >
-            <span class="text-sm font-bold text-ink-gray-9 leading-tight">Frappe Cafe</span>
+            <span class="text-sm font-bold leading-tight text-ink-gray-9">Local Bench</span>
             <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">local dev</span>
           </div>
         </div>
@@ -31,9 +31,9 @@
       </template>
     </Sidebar>
 
-    <div class="flex-1 flex flex-col min-w-0 bg-surface-white">
+    <div class="flex flex-col flex-1 min-w-0 bg-surface-white">
       <header class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0">
-        <h1 class="text-lg text-ink-gray-9 font-medium truncate">
+        <h1 class="text-lg font-medium truncate text-ink-gray-9">
           {{ currentTitle }}
         </h1>
         
@@ -57,7 +57,7 @@
 
       <div
         v-if="showIpcWarning"
-        class="mx-6 mt-4 p-3 rounded-lg border border-outline-red-1 bg-surface-red-2/50 flex items-start gap-3 shrink-0"
+        class="flex items-start gap-3 p-3 mx-6 mt-4 border rounded-lg border-outline-red-1 bg-surface-red-2/50 shrink-0"
       >
         <IconAlertTriangle class="w-4 h-4 text-ink-red-3 mt-0.5 shrink-0" />
         <div class="min-w-0">
@@ -70,7 +70,7 @@
         </div>
       </div>
 
-      <main class="flex-1 overflow-y-auto p-8">
+      <main class="flex-1 p-8 overflow-y-auto">
         <RouterView />
       </main>
     </div>
@@ -129,11 +129,11 @@ const sidebarSections = computed(() => [
   },
 ]);
 
-const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Cafe'));
+const currentTitle = computed(() => String(route.meta.title ?? 'Local Bench'));
 
 onMounted(async () => {
   try {
-    await window.frappeCafe?.getSettings();
+    await window.localBench?.getSettings();
   } catch {
     // The inline warning already covers a missing preload bridge.
   }

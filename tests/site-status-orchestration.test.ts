@@ -114,7 +114,7 @@ describe('site status orchestration commands', () => {
     expect(timeout).toBe(OPERATION_TIMEOUTS.SITE_STATUS_UPDATE);
     expect(args).toEqual([
       '-p',
-      'frappe-cafe-4db335b2',
+      'local-bench-4db335b2',
       'exec',
       '-T',
       'backend',
@@ -147,7 +147,7 @@ describe('site status orchestration commands', () => {
     const [, args] = execPromiseMock.mock.calls[0] as [string, string[]];
     expect(args).toEqual([
       '-p',
-      'frappe-cafe-4db335b2',
+      'local-bench-4db335b2',
       'exec',
       '-T',
       'backend',

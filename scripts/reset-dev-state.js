@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import defaultCatalog from '../src/main/default-catalog.json' with { type: 'json' };
 
-const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Frappe Cafe');
+const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Local Bench');
 const storagePath = path.join(appSupportPath, 'storage');
 const configPath = path.join(appSupportPath, 'config');
 const storageFilePath = path.join(storagePath, 'storage.json');
@@ -78,7 +78,7 @@ for (const bench of benches) {
     continue;
   }
 
-  const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+  const projectName = `local-bench-${bench.id.slice(0, 8)}`;
   const benchPath = typeof bench.path === 'string' ? bench.path : repoRoot;
   runBestEffort(
     `docker compose down for ${projectName}`,
@@ -88,19 +88,19 @@ for (const bench of benches) {
   );
 }
 
-const containerIds = listPodmanNames(['ps', '-a', '--filter', 'name=frappe-cafe-', '--format', '{{.ID}}']);
+const containerIds = listPodmanNames(['ps', '-a', '--filter', 'name=local-bench-', '--format', '{{.ID}}']);
 if (containerIds.length > 0) {
-  runBestEffort('remove frappe-cafe containers', podmanBinary, ['rm', '-f', ...containerIds]);
+  runBestEffort('remove local-bench containers', podmanBinary, ['rm', '-f', ...containerIds]);
 }
 
-const volumeNames = listPodmanNames(['volume', 'ls', '--filter', 'name=frappe-cafe-', '--format', '{{.Name}}']);
+const volumeNames = listPodmanNames(['volume', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
 if (volumeNames.length > 0) {
-  runBestEffort('remove frappe-cafe volumes', podmanBinary, ['volume', 'rm', '-f', ...volumeNames]);
+  runBestEffort('remove local-bench volumes', podmanBinary, ['volume', 'rm', '-f', ...volumeNames]);
 }
 
-const networkNames = listPodmanNames(['network', 'ls', '--filter', 'name=frappe-cafe-', '--format', '{{.Name}}']);
+const networkNames = listPodmanNames(['network', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
 if (networkNames.length > 0) {
-  runBestEffort('remove frappe-cafe networks', podmanBinary, ['network', 'rm', ...networkNames]);
+  runBestEffort('remove local-bench networks', podmanBinary, ['network', 'rm', ...networkNames]);
 }
 
 const targets = [storagePath, configPath];

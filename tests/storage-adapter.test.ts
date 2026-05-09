@@ -9,7 +9,7 @@ import { createDefaultStorageSnapshot } from '../src/main/storage/schema';
 const temporaryDirectories: string[] = [];
 
 const createTemporaryStorageFilePath = async (): Promise<string> => {
-  const temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'frappe-cafe-storage-'));
+  const temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'local-bench-storage-'));
   temporaryDirectories.push(temporaryDirectory);
   return path.join(temporaryDirectory, 'storage.json');
 };

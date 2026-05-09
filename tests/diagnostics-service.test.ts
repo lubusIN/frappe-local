@@ -30,7 +30,7 @@ const createdPaths: string[] = [];
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  storagePath: '/tmp/frappe-cafe',
+  storagePath: '/tmp/local-bench',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
@@ -47,7 +47,7 @@ afterEach(async () => {
 
 describe('diagnostics service', () => {
   it('builds a report from writable paths and runtime health data', async () => {
-    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'frappe-cafe-diagnostics-'));
+    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'local-bench-diagnostics-'));
     const storagePath = path.join(userDataPath, 'storage');
     await fs.mkdir(storagePath, { recursive: true });
     createdPaths.push(userDataPath);
@@ -75,7 +75,7 @@ describe('diagnostics service', () => {
   });
 
   it('reports critical issues when runtime health cannot be collected', async () => {
-    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'frappe-cafe-diagnostics-'));
+    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'local-bench-diagnostics-'));
     createdPaths.push(userDataPath);
 
     const report = await runDiagnostics({

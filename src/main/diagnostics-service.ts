@@ -54,7 +54,7 @@ const checkPathWritability = async (targetPath: string): Promise<DiagnosticsChec
   const title = `Path Writability: ${targetPath}`;
 
   try {
-    const testFile = path.join(targetPath, `.frappe-cafe-write-test-${Date.now()}`);
+    const testFile = path.join(targetPath, `.local-bench-write-test-${Date.now()}`);
     await fs.writeFile(testFile, 'test', 'utf8');
     await fs.unlink(testFile);
 
@@ -62,7 +62,7 @@ const checkPathWritability = async (targetPath: string): Promise<DiagnosticsChec
       type: 'path-writability',
       status: 'passed',
       title,
-      description: `Successfully verified write access to ${targetPath}. Frappe Cafe needs this to store bench templates and site metadata.`,
+      description: `Successfully verified write access to ${targetPath}. Local Bench needs this to store bench templates and site metadata.`,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
@@ -98,7 +98,7 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
       type: 'storage-access',
       status: 'passed',
       title,
-      description: `Storage directory accessible. Frappe Cafe uses this to store bench templates and site metadata.`,
+      description: `Storage directory accessible. Local Bench uses this to store bench templates and site metadata.`,
       timestamp: new Date().toISOString(),
     };
   } catch {

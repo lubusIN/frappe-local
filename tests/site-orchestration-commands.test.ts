@@ -125,7 +125,7 @@ describe('site orchestration command execution', () => {
     expect(timeout).toBe(OPERATION_TIMEOUTS.SITE_CREATION);
     expect(args).toEqual([
       '-p',
-      'frappe-cafe-1adb2eed',
+      'local-bench-1adb2eed',
       'exec',
       '-T',
       'backend',

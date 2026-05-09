@@ -58,7 +58,7 @@ export const orchestrateSiteCreation = async (
     name: `Create Site: ${input.name}`,
     resource: { type: 'site', id: createdSite.id },
     run: async (context) => {
-      const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+      const projectName = `local-bench-${bench.id.slice(0, 8)}`;
 
       const cleanupFailedCreate = async () => {
         context.startStep('cleanup', 'Cleaning up partial site resources');
@@ -229,7 +229,7 @@ export const orchestrateSiteDeletion = async (
       try {
         context.startStep('drop-site', `Dropping site ${site.name}`);
         const runtimeCmd = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
         const runtimeEnv = await getRuntimeEnv();
         const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
 
@@ -339,7 +339,7 @@ export const orchestrateSiteStatusUpdate = (
         
         // Execute docker-compose commands to actually start/stop the site
         const runtimeCmd = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${site.benchId.slice(0, 8)}`;
+        const projectName = `local-bench-${site.benchId.slice(0, 8)}`;
         const runtimeEnv = await getRuntimeEnv();
         
         // Control site availability via scheduler for the specific site.

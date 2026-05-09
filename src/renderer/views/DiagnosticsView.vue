@@ -9,14 +9,14 @@
       @fix="fix"
     />
 
-    <section class="rounded-xl border border-red-200 bg-red-50/40 p-4">
+    <section class="p-4 border border-red-200 rounded-xl bg-red-50/40">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 class="text-sm font-semibold text-ink-red-4">
             Danger Zone
           </h3>
           <p class="mt-1 text-sm text-ink-gray-6">
-            Remove all local Frappe Cafe storage and teardown all frappe-cafe containers to start from a clean slate.
+            Remove all local Local Bench storage and teardown all local-bench containers to start from a clean slate.
           </p>
         </div>
         <Button
@@ -34,7 +34,7 @@
     <ConfirmationDialog
       :open="showNukeConfirm"
       title="Nuke Dev State"
-      message="This will permanently remove all local benches/sites data and tear down frappe-cafe containers. Type NUKE to continue."
+      message="This will permanently remove all local benches/sites data and tear down local-bench containers. Type NUKE to continue."
       confirm-label="Nuke"
       confirmation-phrase="NUKE"
       :typed-value="nukeTypedValue"

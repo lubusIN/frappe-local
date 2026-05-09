@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate Frappe Cafe build artifacts
+# Validate Local Bench build artifacts
 # Usage: ./scripts/validate-artifacts.sh
 
 set -e
@@ -59,11 +59,11 @@ while IFS= read -r ZIP_FILE; do
     echo "   ✅ Archive integrity: OK"
     
     # Check for expected app directory
-    if unzip -l "$ZIP_FILE" | grep -q "Frappe Cafe"; then
+    if unzip -l "$ZIP_FILE" | grep -q "Local Bench"; then
       echo "   ✅ App structure: OK"
       VALID_COUNT=$((VALID_COUNT + 1))
     else
-      echo "   ⚠️  App structure: Unexpected (no 'Frappe Cafe' directory)"
+      echo "   ⚠️  App structure: Unexpected (no 'Local Bench' directory)"
       INVALID_COUNT=$((INVALID_COUNT + 1))
     fi
   else

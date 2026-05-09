@@ -66,7 +66,7 @@ describe('bench start/restart orchestration', () => {
     vi.clearAllMocks();
     queuedRun = null;
 
-    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-cafe-bench-start-'));
+    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-bench-start-'));
     fs.mkdirSync(path.join(benchPath, 'overrides'), { recursive: true });
     fs.writeFileSync(path.join(benchPath, 'compose.yaml'), 'services: {}\n', 'utf8');
     fs.writeFileSync(path.join(benchPath, 'overrides', 'compose.mariadb.yaml'), 'services: {}\n', 'utf8');

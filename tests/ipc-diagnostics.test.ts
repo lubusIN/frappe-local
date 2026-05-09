@@ -26,7 +26,7 @@ vi.mock('../src/main/utils/exec', () => ({
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  storagePath: '/Users/dev/.frappe-cafe',
+  storagePath: '/Users/dev/.local-bench',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,
@@ -138,7 +138,7 @@ describe('diagnostics IPC handlers', () => {
 
   it('nukes development state and recreates fresh storage snapshot', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-cafe-nuke-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-nuke-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -183,7 +183,7 @@ describe('diagnostics IPC handlers', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('nuke performs compose and podman teardown for frappe-cafe resources', async () => {
+  it('nuke performs compose and podman teardown for local-bench resources', async () => {
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
 
@@ -203,13 +203,13 @@ describe('diagnostics IPC handlers', () => {
     execPromiseMock.mockImplementation(async (...allArgs: unknown[]) => {
       const args = (allArgs[1] as string[]) ?? [];
       const joined = args.join(' ');
-      if (joined.includes('ps -a') && joined.includes('name=frappe-cafe-')) {
+      if (joined.includes('ps -a') && joined.includes('name=local-bench-')) {
         return { code: 0, stdout: 'container-1\n', stderr: '' };
       }
-      if (joined.includes('volume ls') && joined.includes('name=frappe-cafe-')) {
+      if (joined.includes('volume ls') && joined.includes('name=local-bench-')) {
         return { code: 0, stdout: 'volume-1\n', stderr: '' };
       }
-      if (joined.includes('network ls') && joined.includes('name=frappe-cafe-')) {
+      if (joined.includes('network ls') && joined.includes('name=local-bench-')) {
         return { code: 0, stdout: 'network-1\n', stderr: '' };
       }
 
@@ -217,7 +217,7 @@ describe('diagnostics IPC handlers', () => {
     });
 
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-cafe-nuke-cleanup-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-nuke-cleanup-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -249,7 +249,7 @@ describe('diagnostics IPC handlers', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-cafe-1adb2eed', 'down', '-v', '--remove-orphans'],
+      ['-p', 'local-bench-1adb2eed', 'down', '-v', '--remove-orphans'],
       '/Users/dev/frappe-bench-2',
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -258,7 +258,7 @@ describe('diagnostics IPC handlers', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['ps', '-a', '--filter', 'name=frappe-cafe-', '--format', '{{.ID}}'],
+      ['ps', '-a', '--filter', 'name=local-bench-', '--format', '{{.ID}}'],
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

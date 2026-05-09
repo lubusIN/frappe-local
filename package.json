@@ -1,6 +1,6 @@
 {
-  "name": "frappe-cafe",
-  "productName": "Frappe Cafe",
+  "name": "local-bench",
+  "productName": "Local Bench",
   "version": "0.1.0",
   "type": "module",
   "description": "Desktop app for managing local Frappe benches and sites.",

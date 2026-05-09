@@ -5,7 +5,7 @@ import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
 import { createMainLogger } from './logger';
 import { getAppIconPath } from './app-icon';
 
-const APP_DISPLAY_NAME = 'Frappe Cafe';
+const APP_DISPLAY_NAME = 'Local Bench';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mainLogger = createMainLogger('main');

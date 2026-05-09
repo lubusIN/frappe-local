@@ -119,7 +119,7 @@ describe('bench delete orchestration cleanup', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-cafe-1adb2eed', 'down', '-v', '--remove-orphans'],
+      ['-p', 'local-bench-1adb2eed', 'down', '-v', '--remove-orphans'],
       '/Users/dev/frappe-bench-2',
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -128,7 +128,7 @@ describe('bench delete orchestration cleanup', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['ps', '-a', '--filter', 'label=com.docker.compose.project=frappe-cafe-1adb2eed', '--format', '{{.ID}}'],
+      ['ps', '-a', '--filter', 'label=com.docker.compose.project=local-bench-1adb2eed', '--format', '{{.ID}}'],
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

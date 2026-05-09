@@ -67,7 +67,7 @@ describe('ipc contract', () => {
 
   it('validates app health payload shape', () => {
     const validPayload = {
-      appName: 'Frappe Cafe',
+      appName: 'Local Bench',
       platform: 'darwin',
       nodeVersion: '24.14.0',
       electronVersion: '35.1.5',

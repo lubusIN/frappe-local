@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Frappe Cafe for macOS with optional code signing and notarization
+# Build Local Bench for macOS with optional code signing and notarization
 # Usage: ./scripts/build-mac.sh
 # Environment variables (optional):
 #   APPLE_ID - Apple ID email for notarization
@@ -8,7 +8,7 @@
 
 set -e
 
-echo "🍎 Building Frappe Cafe for macOS"
+echo "🍏 Building Local Bench for macOS"
 echo "===================================="
 echo ""
 

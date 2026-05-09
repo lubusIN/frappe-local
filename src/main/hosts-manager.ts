@@ -5,10 +5,10 @@ import { createMainLogger } from './logger';
 const logger = createMainLogger('hosts-manager');
 
 const HOSTS_FILE = '/etc/hosts';
-const MARKER_PREFIX = '# frappe-cafe:';
+const MARKER_PREFIX = '# local-bench:';
 
 const HOSTS_PERMISSION_PROMPT_BASE =
-  'Frappe Cafe needs administrator permission to update /etc/hosts for local site routing.';
+  'Local Bench needs administrator permission to update /etc/hosts for local site routing.';
 
 const escapeAppleScriptString = (value: string): string => value.replace(/"/g, '\\"');
 
@@ -21,7 +21,7 @@ const buildPrivilegedShellScript = (command: string, prompt: string): string =>
  * Each managed line is tagged with a trailing comment so we can
  * identify and clean up entries without touching user-managed lines.
  *
- * Format: `127.0.0.1  my-site.local  # frappe-cafe:<benchId>`
+ * Format: `127.0.0.1  my-site.local  # local-bench:<benchId>`
  */
 
 /**
@@ -96,7 +96,7 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
 
     if (process.platform === 'darwin') {
       // Create a temporary file with the new content and copy it over with privileges
-      const tempPath = `/tmp/frappe-cafe-hosts-${Date.now()}`;
+      const tempPath = `/tmp/local-bench-hosts-${Date.now()}`;
       try {
         fs.writeFileSync(tempPath, newContent);
         const script = buildPrivilegedShellScript(
@@ -133,7 +133,7 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
 };
 
 /**
- * Remove all hosts entries managed by Frappe Cafe for a specific bench.
+ * Remove all hosts entries managed by Local Bench for a specific bench.
  */
 export const removeAllHostsEntriesForBench = async (benchId: string, benchLabel?: string): Promise<boolean> => {
   try {
@@ -149,7 +149,7 @@ export const removeAllHostsEntriesForBench = async (benchId: string, benchLabel?
       const lines = content.split('\n');
       const filtered = lines.filter((line) => !line.includes(marker));
       const newContent = filtered.join('\n');
-      const tempPath = `/tmp/frappe-cafe-bench-hosts-${Date.now()}`;
+      const tempPath = `/tmp/local-bench-bench-hosts-${Date.now()}`;
       try {
         fs.writeFileSync(tempPath, newContent);
         const script = buildPrivilegedShellScript(

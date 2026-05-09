@@ -4,7 +4,7 @@ import { useIpc } from './useIpc';
 
 const defaultSettings = (): SettingsItem => ({
   defaultFrappeVersion: '15.0.0',
-  storagePath: '~/Library/Application Support/Frappe Cafe',
+  storagePath: '~/Library/Application Support/Local Bench',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,

@@ -159,7 +159,7 @@ export const orchestrateBenchCreation = (
               singleBranch: true,
               fastForwardOnly: true,
               onMessage: (msg) => context.log('info', msg, 'template'),
-              author: { name: 'Frappe Cafe', email: 'cafe@frappe.io' }
+              author: { name: 'Local Bench', email: 'cafe@frappe.io' }
             });
             context.log('info', 'Template updated successfully', 'template');
           } catch (pullError) {
@@ -189,7 +189,7 @@ export const orchestrateBenchCreation = (
         context.completeStep('env', `Environment configured (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
         const commonArgs = [
           '-p', projectName,
           '-f', 'compose.yaml',
@@ -245,7 +245,7 @@ export const orchestrateBenchCreation = (
             const runtimeEnv = await getRuntimeEnv();
             await execPromise(
               getBinaryPath('docker-compose'),
-              ['-p', `frappe-cafe-${bench.id.slice(0, 8)}`, 'down', '-v', '--remove-orphans'],
+              ['-p', `local-bench-${bench.id.slice(0, 8)}`, 'down', '-v', '--remove-orphans'],
               bench.path,
               (out) => context.log('info', out, 'cleanup'),
               runtimeEnv,
@@ -347,7 +347,7 @@ export const orchestrateBenchStart = (
         context.completeStep('env', `Environment configured (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
         const commonArgs = [
           '-p', projectName,
           '-f', 'compose.yaml',
@@ -463,7 +463,7 @@ export const orchestrateBenchStop = (
 
         context.startStep('stop', 'Stopping bench containers');
         const command = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
         const args = ['-p', projectName, 'stop', '--timeout', '20'];
         const runtimeEnv = await getRuntimeEnv();
 
@@ -562,7 +562,7 @@ export const orchestrateBenchCleaning = (
         const runtimeCmd = getBinaryPath('docker-compose');
         const runtimeEnv = await getRuntimeEnv();
         const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
 
         // Refresh sites list for cleanup operations
         allSites = await sitesRepo.findAll();
@@ -640,7 +640,7 @@ export const orchestrateBenchDeletion = (
 
         context.startStep('deleting', 'Deleting...');
         const command = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
         const args = ['-p', projectName, 'down', '-v', '--remove-orphans'];
 
         if (!runtimeReady) {

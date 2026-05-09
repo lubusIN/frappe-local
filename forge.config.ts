@@ -31,9 +31,9 @@ const macOSConfig = {
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: 'Frappe Cafe',
-    executableName: 'Frappe Cafe',
-    appBundleId: 'com.lubusin.frappe.cafe',
+    name: 'Local Bench',
+    executableName: 'Local Bench',
+    appBundleId: 'com.lubusin.local.bench',
     appCategoryType: 'public.app-category.developer-tools',
     asar: true,
     extraResource: ['./bin', './resources/icons/icon.png'],

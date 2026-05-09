@@ -44,7 +44,7 @@ const unavailableBridge: RendererBridge = {
 };
 
 export const isIpcBridgeAvailable = (): boolean => {
-  return Boolean((window as Window & { frappeCafe?: RendererBridge }).frappeCafe);
+  return Boolean((window as Window & { localBench?: RendererBridge }).localBench);
 };
 
 /**
@@ -52,6 +52,6 @@ export const isIpcBridgeAvailable = (): boolean => {
  * Falls back to a rejecting bridge so the UI can render an actionable error state.
  */
 export const useIpc = (): RendererBridge => {
-  const bridge = (window as Window & { frappeCafe?: RendererBridge }).frappeCafe;
+  const bridge = (window as Window & { localBench?: RendererBridge }).localBench;
   return bridge ?? unavailableBridge;
 };

@@ -7,6 +7,6 @@ declare module '*.vue' {
 
 declare global {
   interface Window {
-    readonly frappeCafe?: import('../shared/ipc').RendererBridge;
+    readonly localBench?: import('../shared/ipc').RendererBridge;
   }
 }

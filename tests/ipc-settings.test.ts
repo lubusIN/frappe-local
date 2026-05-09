@@ -5,7 +5,7 @@ import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  storagePath: '/Users/dev/.frappe-cafe',
+  storagePath: '/Users/dev/.local-bench',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,

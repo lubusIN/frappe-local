@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Build Frappe Cafe for Windows
+# Build Local Bench for Windows
 # Usage: ./scripts/build-windows.sh
 # Note: This script runs on Windows or in a Git Bash/WSL environment
 
 set -e
 
-echo "🪟 Building Frappe Cafe for Windows"
+echo "🪟 Building Local Bench for Windows"
 echo "======================================"
 echo ""
 
@@ -53,4 +53,4 @@ echo ""
 echo "Next steps:"
 echo "  1. Run: ./scripts/validate-artifacts.sh"
 echo "  2. Test by extracting: tar -xf out/<artifact>.zip"
-echo "  3. Run extracted exe: Frappe Cafe.exe"
+echo "  3. Run extracted exe: Local Bench.exe"

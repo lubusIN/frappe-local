@@ -15,7 +15,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
   // Create an isolated Docker config directory so docker-compose does NOT read
   // ~/.docker/config.json (which may have "currentContext": "desktop-linux"
   // that forces connection to Docker Desktop's socket instead of our Podman socket).
-  const isolatedConfigDir = path.join(os.tmpdir(), 'frappe-cafe-docker-config');
+  const isolatedConfigDir = path.join(os.tmpdir(), 'local-bench-docker-config');
   try {
     if (!fs.existsSync(isolatedConfigDir)) {
       fs.mkdirSync(isolatedConfigDir, { recursive: true });

@@ -266,7 +266,7 @@ export const registerIpcHandlers = (
 ) => {
   ipcMainLike.handle(ipcChannels.appHealthCheck, async (): Promise<AppHealthResponse> => {
     return {
-      appName: 'Frappe Cafe',
+      appName: 'Local Bench',
       platform: process.platform,
       nodeVersion: process.version,
       electronVersion: process.versions.electron,
@@ -331,7 +331,7 @@ export const registerIpcHandlers = (
       const composeBinary = getBinaryPath('docker-compose');
 
       for (const bench of benches) {
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
         try {
           await execPromise(
             composeBinary,
@@ -360,30 +360,30 @@ export const registerIpcHandlers = (
         }
       };
 
-      const containerIds = await listNames(['ps', '-a', '--filter', 'name=frappe-cafe-', '--format', '{{.ID}}']);
+      const containerIds = await listNames(['ps', '-a', '--filter', 'name=local-bench-', '--format', '{{.ID}}']);
       if (containerIds.length > 0) {
         try {
           await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, undefined, runtimeEnv, 60000);
         } catch (error) {
-          mainLogger.warn(`Failed to remove frappe-cafe containers: ${error}`);
+          mainLogger.warn(`Failed to remove local-bench containers: ${error}`);
         }
       }
 
-      const volumeNames = await listNames(['volume', 'ls', '--filter', 'name=frappe-cafe-', '--format', '{{.Name}}']);
+      const volumeNames = await listNames(['volume', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
       if (volumeNames.length > 0) {
         try {
           await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, undefined, runtimeEnv, 60000);
         } catch (error) {
-          mainLogger.warn(`Failed to remove frappe-cafe volumes: ${error}`);
+          mainLogger.warn(`Failed to remove local-bench volumes: ${error}`);
         }
       }
 
-      const networkNames = await listNames(['network', 'ls', '--filter', 'name=frappe-cafe-', '--format', '{{.Name}}']);
+      const networkNames = await listNames(['network', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
       if (networkNames.length > 0) {
         try {
           await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, undefined, runtimeEnv, 60000);
         } catch (error) {
-          mainLogger.warn(`Failed to remove frappe-cafe networks: ${error}`);
+          mainLogger.warn(`Failed to remove local-bench networks: ${error}`);
         }
       }
     }

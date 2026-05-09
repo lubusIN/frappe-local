@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Build Frappe Cafe for Linux
+# Build Local Bench for Linux
 # Usage: ./scripts/build-linux.sh
 
 set -e
 
-echo "🐧 Building Frappe Cafe for Linux"
+echo "🐧 Building Local Bench for Linux"
 echo "====================================="
 echo ""
 
@@ -75,4 +75,4 @@ echo ""
 
 echo "Next steps:"
 echo "  1. Run: ./scripts/validate-artifacts.sh"
-echo "  2. Test by running: unzip -x out/<artifact>.zip && ./frappe-cafe/frappe-cafe"
+echo "  2. Test by running: unzip -x out/<artifact>.zip && ./local-bench/local-bench"

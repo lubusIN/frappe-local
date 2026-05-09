@@ -26,7 +26,7 @@ function makeInMemoryAdapter(initial?: StorageSnapshot): StorageAdapter {
 
 const fullSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
-  storagePath: '/home/user/.frappe-cafe',
+  storagePath: '/home/user/.local-bench',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,

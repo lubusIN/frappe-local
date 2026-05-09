@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🔨 Frappe Cafe Multi-Platform Build"
+echo "🔨 Local Bench Multi-Platform Build"
 echo "===================================="
 echo ""
 

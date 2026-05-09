@@ -1,6 +1,6 @@
-# Frappe Cafe
+# Local Bench
 
-Frappe Cafe is a desktop app for managing local Frappe development environments with a visual workflow.
+Local Bench is a desktop app for managing local Frappe development environments with a visual workflow.
 
 Current stack:
 - Electron + Electron Forge

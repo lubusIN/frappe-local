@@ -42,7 +42,7 @@ const editorOptions = [
         v-model="form.storagePath"
         label="Storage Path"
         description="Root directory where benches and site data will be stored."
-        placeholder="~/Library/Application Support/Frappe Cafe"
+        placeholder="~/Library/Application Support/Local Bench"
         variant="outline"
       />
 

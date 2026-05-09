@@ -4,30 +4,30 @@ import { buildStartupErrorHtml, createBootstrapContext } from '../src/main/boots
 describe('startup bootstrap', () => {
   it('creates a startup context with resolved runtime paths', () => {
     const context = createBootstrapContext(
-      'Frappe Cafe',
+      'Local Bench',
       '0.1.0',
       async () => undefined,
       {
         getPath: (name) => {
           if (name === 'userData') {
-            return '/tmp/frappe-cafe-user';
+            return '/tmp/local-bench-user';
           }
 
-          return '/tmp/frappe-cafe-logs';
+          return '/tmp/local-bench-logs';
         },
       }
     );
 
-    expect(context.runtimePaths.userDataPath).toBe('/tmp/frappe-cafe-user');
-    expect(context.runtimePaths.logsPath).toBe('/tmp/frappe-cafe-logs');
+    expect(context.runtimePaths.userDataPath).toBe('/tmp/local-bench-user');
+    expect(context.runtimePaths.logsPath).toBe('/tmp/local-bench-logs');
     expect(context.runtimePaths.configPath.endsWith('/config')).toBe(true);
     expect(context.runtimePaths.storagePath.endsWith('/storage')).toBe(true);
   });
 
   it('renders startup fallback html with app name', () => {
-    const html = buildStartupErrorHtml('Frappe Cafe');
+    const html = buildStartupErrorHtml('Local Bench');
 
-    expect(html).toContain('Frappe Cafe could not finish startup.');
+    expect(html).toContain('Local Bench could not finish startup.');
     expect(html).toContain('initialization error');
   });
 });

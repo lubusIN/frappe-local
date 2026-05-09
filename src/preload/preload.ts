@@ -45,4 +45,4 @@ const rendererBridge: RendererBridge = {
 	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
 };
 
-contextBridge.exposeInMainWorld('frappeCafe', rendererBridge);
+contextBridge.exposeInMainWorld('localBench', rendererBridge);
