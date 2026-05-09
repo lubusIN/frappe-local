@@ -10,6 +10,8 @@ import type { AppRuntimePaths } from './config';
 import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
 import { removeAllHostsEntriesForBench } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
+import { findNextAvailableTcpPort, isTcpPortFree } from './utils/ports';
+import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
 
 const ensureBenchEnvConfigured = (benchPath: string, frappeVersion: string, httpPort?: number) => {
   const exampleEnvPath = path.join(benchPath, 'example.env');
@@ -48,6 +50,36 @@ const ensureBenchEnvConfigured = (benchPath: string, frappeVersion: string, http
   fs.writeFileSync(targetEnvPath, envContent);
 };
 
+const DEFAULT_HTTP_PORT = 8080;
+
+const resolveBenchHttpPort = async (
+  bench: Bench,
+  benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
+  allowPortShift: boolean
+): Promise<Bench> => {
+  const preferredPort = bench.httpPort ?? DEFAULT_HTTP_PORT;
+
+  if (!allowPortShift) {
+    return { ...bench, httpPort: preferredPort };
+  }
+
+  const isPreferredPortFree = await isTcpPortFree(preferredPort);
+  if (isPreferredPortFree) {
+    if (bench.httpPort !== preferredPort) {
+      const updated = await benchesRepo.update(bench.id, { httpPort: preferredPort });
+      return updated ?? { ...bench, httpPort: preferredPort };
+    }
+    return { ...bench, httpPort: preferredPort };
+  }
+
+  const nextPort = await findNextAvailableTcpPort(preferredPort + 1);
+  context.log('warning', `HTTP port ${preferredPort} is busy. Reassigning ${bench.name} to ${nextPort}.`, 'env');
+
+  const updated = await benchesRepo.update(bench.id, { httpPort: nextPort });
+  return updated ?? { ...bench, httpPort: nextPort };
+};
+
 const copyRecursiveSync = (src: string, dest: string) => {
   const exists = fs.existsSync(src);
   if (!exists) {
@@ -73,7 +105,10 @@ const copyRecursiveSync = (src: string, dest: string) => {
 
 export const orchestrateBenchCreation = (
   bench: Bench,
-  benchesRepo: { update: (id: string, payload: { status: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Bench | null> },
+  benchesRepo: {
+    update: (id: string, payload: Partial<Bench>) => Promise<Bench | null>;
+    delete?: (id: string) => Promise<boolean>;
+  },
   runtimePaths: AppRuntimePaths
 ): void => {
   const taskRunner = getTaskRunner();
@@ -149,8 +184,9 @@ export const orchestrateBenchCreation = (
         context.completeStep('clone', 'Bench directory initialized');
 
         context.startStep('env', 'Setting up environment');
-        ensureBenchEnvConfigured(bench.path, bench.frappeVersion, bench.httpPort);
-        context.completeStep('env', 'Environment configured');
+        const benchWithPort = await resolveBenchHttpPort(bench, benchesRepo, context, true);
+        ensureBenchEnvConfigured(bench.path, bench.frappeVersion, benchWithPort.httpPort);
+        context.completeStep('env', `Environment configured (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
@@ -169,7 +205,7 @@ export const orchestrateBenchCreation = (
 
         context.startStep('start', 'Starting bench containers');
         const upArgs = [...commonArgs, 'up', '-d', '--remove-orphans'];
-        const { code, stderr } = await execPromise(
+        const { code, stderr, stdout } = await execPromise(
           command,
           upArgs,
           bench.path,
@@ -179,15 +215,58 @@ export const orchestrateBenchCreation = (
         );
 
         if (code !== 0) {
-          throw new Error(`Command failed with code ${code}: ${stderr}`);
+          const combinedOutput = `${stdout}\n${stderr}`;
+          const failure = code === 137 || isLikelyOutOfMemory(combinedOutput)
+            ? humanizeCreateFailure('bench', `code ${code}: ${combinedOutput}`)
+            : `Command failed with code ${code}: ${stderr}`;
+          throw new Error(failure);
         }
         
         context.completeStep('start', 'Containers started successfully');
 
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
-        await benchesRepo.update(bench.id, { status: 'failure' });
-        throw error;
+        const rawMessage = error instanceof Error ? error.message : String(error);
+        const message = humanizeCreateFailure('bench', rawMessage);
+        context.log('error', message, 'start');
+
+        if (isLikelyOutOfMemory(rawMessage)) {
+          context.log(
+            'warning',
+            'Detected probable out-of-memory condition. Increase Podman machine memory and retry.',
+            'start'
+          );
+        }
+
+        try {
+          context.startStep('cleanup', 'Cleaning up partial bench resources');
+          const runtimeReady = await ensureRuntimeRunning();
+          if (runtimeReady) {
+            const runtimeEnv = await getRuntimeEnv();
+            await execPromise(
+              getBinaryPath('docker-compose'),
+              ['-p', `frappe-cafe-${bench.id.slice(0, 8)}`, 'down', '-v', '--remove-orphans'],
+              bench.path,
+              (out) => context.log('info', out, 'cleanup'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.DOCKER_CLEANUP
+            );
+          } else {
+            context.log('warning', 'Runtime unavailable. Skipping container cleanup after failed create.', 'cleanup');
+          }
+          context.completeStep('cleanup', 'Partial resources cleaned up');
+        } catch (cleanupError) {
+          context.log('warning', `Cleanup after failed create did not complete: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
+        }
+
+        if (benchesRepo.delete) {
+          await benchesRepo.delete(bench.id);
+          context.log('warning', 'Removed failed bench record after create failure.', 'cleanup');
+        } else {
+          await benchesRepo.update(bench.id, { status: 'failure' });
+        }
+
+        throw new Error(message);
       }
     }
   });
@@ -195,10 +274,25 @@ export const orchestrateBenchCreation = (
 
 export const orchestrateBenchStart = (
   bench: Bench,
-  benchesRepo: { update: (id: string, payload: { status: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Bench | null> },
+  benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
   isRestart = false
 ): void => {
   const taskRunner = getTaskRunner();
+
+  const CORE_BENCH_SERVICES = ['db', 'backend', 'frontend'] as const;
+
+  const parseRunningServices = (stdout: string): Set<string> => {
+    return new Set(
+      stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+    );
+  };
+
+  const hasCoreBenchServicesRunning = (runningServices: Set<string>): boolean => {
+    return CORE_BENCH_SERVICES.every((service) => runningServices.has(service));
+  };
 
   taskRunner.enqueue({
     name: isRestart ? `Restart Bench ${bench.name}` : `Start Bench ${bench.name}`,
@@ -248,8 +342,9 @@ export const orchestrateBenchStart = (
         context.completeStep('runtime', 'Podman is ready');
 
         context.startStep('env', 'Configuring environment');
-        ensureBenchEnvConfigured(bench.path, bench.frappeVersion, bench.httpPort);
-        context.completeStep('env', 'Environment configured');
+        const benchWithPort = await resolveBenchHttpPort(bench, benchesRepo, context, !isRestart);
+        ensureBenchEnvConfigured(bench.path, bench.frappeVersion, benchWithPort.httpPort);
+        context.completeStep('env', `Environment configured (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
@@ -277,18 +372,60 @@ export const orchestrateBenchStart = (
         ];
         
         context.log('info', `Running: ${command} ${upArgs.join(' ')}`);
-        
-        const { code, stderr } = await execPromise(
-          command,
-          upArgs,
-          bench.path,
-          (out) => context.log('info', out, 'start'),
-          runtimeEnv,
-          300000
-        );
 
-        if (code !== 0) {
-          throw new Error(`Command failed with code ${code}: ${stderr}`);
+        let upResult: Awaited<ReturnType<typeof execPromise>> | null = null;
+        try {
+          upResult = await execPromise(
+            command,
+            upArgs,
+            bench.path,
+            (out) => context.log('info', out, 'start'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.SITE_CREATION
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!message.includes('Command timed out')) {
+            throw error;
+          }
+
+          context.log(
+            'warning',
+            `${isRestart ? 'Restart' : 'Start'} timed out while waiting for compose output. Verifying running services...`,
+            'start'
+          );
+
+          const psResult = await execPromise(
+            command,
+            [...commonArgs, 'ps', '--services', '--status', 'running'],
+            bench.path,
+            (out) => context.log('info', out, 'start'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.DEFAULT
+          );
+
+          const runningServices = parseRunningServices(psResult.stdout);
+          if (hasCoreBenchServicesRunning(runningServices)) {
+            context.log(
+              'warning',
+              'Compose timed out, but core services are running. Marking operation as successful.',
+              'start'
+            );
+            context.log(
+              'info',
+              `${isRestart ? 'Restart' : 'Start'} finalized from running service health check fallback.`,
+              'start'
+            );
+            upResult = { code: 0, stdout: psResult.stdout, stderr: psResult.stderr };
+          } else {
+            throw new Error(
+              `${isRestart ? 'Restart' : 'Start'} timed out and core services did not come up. Running services: ${Array.from(runningServices).join(', ') || 'none'}`
+            );
+          }
+        }
+
+        if (upResult.code !== 0) {
+          throw new Error(`Command failed with code ${upResult.code}: ${upResult.stderr}`);
         }
         
         context.completeStep('start', 'Containers are running');
@@ -304,9 +441,18 @@ export const orchestrateBenchStart = (
 
 export const orchestrateBenchStop = (
   bench: Bench,
-  benchesRepo: { update: (id: string, payload: { status: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Bench | null> }
+  benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> }
 ): void => {
   const taskRunner = getTaskRunner();
+
+  const isBenignStopState = (stdout: string, stderr: string): boolean => {
+    const combined = `${stdout}\n${stderr}`.toLowerCase();
+    return (
+      combined.includes('no containers to stop') ||
+      combined.includes('is not running') ||
+      combined.includes('no such container')
+    );
+  };
 
   taskRunner.enqueue({
     name: `Stop Bench ${bench.name}`,
@@ -318,12 +464,42 @@ export const orchestrateBenchStop = (
         context.startStep('stop', 'Stopping bench containers');
         const command = getBinaryPath('docker-compose');
         const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
-        const args = ['-p', projectName, 'stop'];
+        const args = ['-p', projectName, 'stop', '--timeout', '20'];
         const runtimeEnv = await getRuntimeEnv();
-        const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, 60000);
 
-        if (code !== 0) {
-          throw new Error(`Command failed: ${stderr}`);
+        let result: Awaited<ReturnType<typeof execPromise>> | null = null;
+        try {
+          result = await execPromise(
+            command,
+            args,
+            bench.path,
+            (out) => context.log('info', out, 'stop'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.BENCH_STOP
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!message.includes('Command timed out')) {
+            throw error;
+          }
+
+          context.log('warning', `Bench stop timed out once. Falling back to docker-compose down: ${bench.name}`, 'stop');
+          result = await execPromise(
+            command,
+            ['-p', projectName, 'down', '--remove-orphans', '--timeout', '20'],
+            bench.path,
+            (out) => context.log('info', out, 'stop'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.BENCH_STOP
+          );
+        }
+
+        if (result.code !== 0 && !isBenignStopState(result.stdout, result.stderr)) {
+          throw new Error(`Command failed: ${result.stderr}`);
+        }
+
+        if (result.code !== 0) {
+          context.log('warning', `Bench ${bench.name} was already stopped. Continuing.`, 'stop');
         }
         
         context.completeStep('stop', 'Containers stopped successfully');
@@ -471,12 +647,112 @@ export const orchestrateBenchDeletion = (
           context.completeStep('deleting', 'Docker cleanup skipped (runtime unavailable)');
         } else {
           let runtimeEnv = await getRuntimeEnv();
+          const podmanCommand = getBinaryPath('podman');
+          const listProjectResources = async (args: string[]): Promise<string[]> => {
+            try {
+              const { code, stdout } = await execPromise(
+                podmanCommand,
+                args,
+                undefined,
+                undefined,
+                runtimeEnv,
+                OPERATION_TIMEOUTS.DOCKER_CLEANUP
+              );
+              if (code !== 0) {
+                return [];
+              }
+
+              return stdout
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean);
+            } catch {
+              return [];
+            }
+          };
+
+          const cleanupProjectResources = async () => {
+            const projectLabel = `label=com.docker.compose.project=${projectName}`;
+
+            const containerIds = await listProjectResources([
+              'ps',
+              '-a',
+              '--filter',
+              projectLabel,
+              '--format',
+              '{{.ID}}',
+            ]);
+            if (containerIds.length > 0) {
+              try {
+                await execPromise(
+                  podmanCommand,
+                  ['rm', '-f', ...containerIds],
+                  undefined,
+                  undefined,
+                  runtimeEnv,
+                  OPERATION_TIMEOUTS.DOCKER_CLEANUP
+                );
+                context.log('info', `Removed ${containerIds.length} lingering containers for ${projectName}`, 'stop');
+              } catch (error) {
+                context.log('warning', `Failed to remove lingering containers for ${projectName}: ${error instanceof Error ? error.message : String(error)}`, 'stop');
+              }
+            }
+
+            const volumeNames = await listProjectResources([
+              'volume',
+              'ls',
+              '--filter',
+              projectLabel,
+              '--format',
+              '{{.Name}}',
+            ]);
+            if (volumeNames.length > 0) {
+              try {
+                await execPromise(
+                  podmanCommand,
+                  ['volume', 'rm', '-f', ...volumeNames],
+                  undefined,
+                  undefined,
+                  runtimeEnv,
+                  OPERATION_TIMEOUTS.DOCKER_CLEANUP
+                );
+                context.log('info', `Removed ${volumeNames.length} lingering volumes for ${projectName}`, 'stop');
+              } catch (error) {
+                context.log('warning', `Failed to remove lingering volumes for ${projectName}: ${error instanceof Error ? error.message : String(error)}`, 'stop');
+              }
+            }
+
+            const networkNames = await listProjectResources([
+              'network',
+              'ls',
+              '--filter',
+              projectLabel,
+              '--format',
+              '{{.Name}}',
+            ]);
+            if (networkNames.length > 0) {
+              try {
+                await execPromise(
+                  podmanCommand,
+                  ['network', 'rm', ...networkNames],
+                  undefined,
+                  undefined,
+                  runtimeEnv,
+                  OPERATION_TIMEOUTS.DOCKER_CLEANUP
+                );
+                context.log('info', `Removed ${networkNames.length} lingering networks for ${projectName}`, 'stop');
+              } catch (error) {
+                context.log('warning', `Failed to remove lingering networks for ${projectName}: ${error instanceof Error ? error.message : String(error)}`, 'stop');
+              }
+            }
+          };
 
           try {
             const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
             if (code !== 0) {
               throw new Error(`Docker cleanup failed with code ${code}: ${stderr}`);
             }
+            await cleanupProjectResources();
             context.completeStep('deleting', 'Docker cleanup finished');
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
@@ -490,6 +766,7 @@ export const orchestrateBenchDeletion = (
                 try {
                   const retryResult = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
                   if (retryResult.code === 0) {
+                    await cleanupProjectResources();
                     context.completeStep('deleting', 'Docker cleanup finished after runtime recovery');
                   } else {
                     context.log('warning', `Docker cleanup retry failed with code ${retryResult.code}: ${retryResult.stderr}`);
@@ -527,7 +804,7 @@ export const orchestrateBenchDeletion = (
         // Remove hosts entries for all sites in this bench
         context.startStep('hosts', 'Removing local domain mappings');
         try {
-          await removeAllHostsEntriesForBench(bench.id);
+          await removeAllHostsEntriesForBench(bench.id, bench.name);
           context.completeStep('hosts', 'Domain mappings removed');
         } catch (hostsErr) {
           context.log('warning', `Could not remove hosts entries: ${hostsErr instanceof Error ? hostsErr.message : String(hostsErr)}`);

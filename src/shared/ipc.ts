@@ -10,6 +10,7 @@ export const ipcChannels = {
   catalogSync: 'catalog:sync',
   diagnosticsRun: 'diagnostics:run',
   diagnosticsGetLast: 'diagnostics:get-last',
+  diagnosticsNukeDevState: 'diagnostics:nuke-dev-state',
   runtimeFix: 'runtime:fix',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
@@ -92,6 +93,7 @@ export type BenchCreateInput = {
   readonly name: string;
   readonly path: string;
   readonly frappeVersion: string;
+  readonly httpPort?: number;
 
   readonly apps: string[];
 };
@@ -100,6 +102,7 @@ export type BenchUpdateInput = {
   readonly name?: string;
   readonly path?: string;
   readonly frappeVersion?: string;
+  readonly httpPort?: number;
 
   readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly apps?: string[];
@@ -148,6 +151,7 @@ export type RendererBridge = {
   readonly checkForUpdates: () => Promise<UpdateCheckResult>;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
+  readonly nukeDevState: () => Promise<boolean>;
   readonly fixRuntime: (checkType: string) => Promise<boolean>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
   readonly syncCatalog: (apps: CatalogAppItem[]) => Promise<boolean>;

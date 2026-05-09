@@ -79,9 +79,13 @@
                   v-model="createForm.name"
                   type="text"
                   required
-                  placeholder="my-site.local"
+                  placeholder="my-site"
                   variant="outline"
-                />
+                >
+                  <template #suffix>
+                    <span class="text-p-sm text-ink-gray-6">.localhost</span>
+                  </template>
+                </TextInput>
               </label>
               <div class="flex items-center gap-2">
                 <Switch
@@ -114,7 +118,7 @@
                 <span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong>
               </div>
               <div class="flex justify-between mb-2">
-                <span>Site</span><strong>{{ createForm.name }}</strong>
+                <span>Site</span><strong>{{ toSiteDomain(createForm.name) }}</strong>
               </div>
               <div
                 v-if="createForm.force"
@@ -204,7 +208,7 @@
 
     <!-- Filters -->
     <div
-      v-if="!error && !loading && sites.length > 0"
+      v-if="!error && sites.length > 0"
       class="site-filters"
     >
       <div class="site-filters__left">
@@ -311,6 +315,26 @@
       :task="selectedTask"
       @close="selectedTaskId = null"
     />
+
+    <Dialog
+      v-model="showCreateFailureDialog"
+      :options="{ title: createFailureTitle, size: 'md' }"
+    >
+      <template #body-content>
+        <p class="text-sm text-ink-gray-7">{{ createFailureMessage }}</p>
+      </template>
+      <template #actions>
+        <div class="dialog-actions">
+          <Button
+            size="md"
+            variant="solid"
+            @click="showCreateFailureDialog = false"
+          >
+            OK
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </section>
 </template>
 
@@ -338,12 +362,14 @@ import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import {
   buildSiteCreatePayload,
   getSiteWizardStepErrors,
+  toSiteDomain,
   suggestSitePath,
   type SiteWizardStep,
 } from '../site-wizard';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
 import type { BenchListItem, SiteListItem } from '../../shared/ipc';
+import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
 const ipc = useIpc();
 const route = useRoute();
@@ -369,6 +395,10 @@ onBeforeUnmount(() => {
 
 const { tasks } = useProgressCenter();
 const selectedTaskId = ref<string | null>(null);
+const showCreateFailureDialog = ref(false);
+const createFailureTitle = ref('Site Creation Failed');
+const createFailureMessage = ref('Site creation failed. Check Progress for details.');
+const acknowledgedCreateFailures = ref(new Set<string>());
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
@@ -459,6 +489,26 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
   selectedTaskId.value = completedTask?.taskId ?? null;
 };
 
+watch(
+  tasks,
+  (items) => {
+    for (const task of items) {
+      if (
+        task.status === 'failure' &&
+        task.resource === 'site' &&
+        task.taskName.toLowerCase().includes('create site') &&
+        !acknowledgedCreateFailures.value.has(task.taskId)
+      ) {
+        acknowledgedCreateFailures.value.add(task.taskId);
+        createFailureTitle.value = 'Site Creation Failed';
+        createFailureMessage.value = humanizeCreateFailure('site', task.message);
+        showCreateFailureDialog.value = true;
+      }
+    }
+  },
+  { deep: true }
+);
+
 const getStatusTheme = (row: SiteListItem) => {
   if (getPendingSiteAction(row.id)) return 'blue';
   if (isResourceBusy(row.id, 'site')) return 'blue';
@@ -499,12 +549,12 @@ const getSiteActions = (site: SiteListItem) => {
   }> = [];
 
   if (site.status === 'running') {
-    const bench = allBenches.value.find(b => b.id === site.benchId);
-    const port = bench?.httpPort ?? 8080;
     actions.push({
       label: 'View',
       icon: IconExternalLink,
-      onClick: () => ipc.openExternal(`http://${site.name}:${port}`),
+      onClick: async () => {
+        await ipc.openSiteExternal(site.id);
+      },
     });
   }
 
@@ -624,9 +674,10 @@ watch(() => createForm.name, applyPathDefault);
 const onNextStep = async () => {
   const errors = getSiteWizardStepErrors(wizardStep.value, createForm);
   if (wizardStep.value === 2) {
-    const duplicateInDb = sites.value.find(s => s.name === createForm.name.trim());
+    const siteDomain = toSiteDomain(createForm.name);
+    const duplicateInDb = sites.value.find(s => s.name === siteDomain);
     if (duplicateInDb && !createForm.force) {
-      errors.push(`A site named "${createForm.name}" already exists in the database. Enable "Force create" to overwrite.`);
+      errors.push(`A site named "${siteDomain}" already exists in the database. Enable "Force create" to overwrite.`);
     }
     if (!createForm.force) {
       const exists = await ipc.pathExists(createForm.path);

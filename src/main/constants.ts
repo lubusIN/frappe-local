@@ -73,12 +73,22 @@ export const OPERATION_TIMEOUTS = {
   /**
    * Extended timeout for site creation
    */
-  SITE_CREATION: 60000,
+  SITE_CREATION: 300000,
+
+  /**
+   * Extended timeout for site start/stop scheduler operations
+   */
+  SITE_STATUS_UPDATE: 180000,
   
   /**
    * Extended timeout for bench cleanup
    */
   BENCH_CLEANUP: 120000,
+
+  /**
+   * Extended timeout for stopping bench containers
+   */
+  BENCH_STOP: 180000,
   
   /**
    * Timeout for docker down/cleanup

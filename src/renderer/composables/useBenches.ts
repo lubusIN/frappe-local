@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
 import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '../../shared/ipc';
 import { useIpc } from './useIpc';
+import { humanizeCreateFailure, stripIpcPrefix } from '../../shared/runtime-errors';
 
 export const useBenches = () => {
   const benches = ref<BenchListItem[]>([]);
@@ -43,7 +44,7 @@ export const useBenches = () => {
       benches.value = [created, ...benches.value];
       successMessage.value = `Created bench ${created.name}.`;
     } catch (err) {
-      error.value = String(err);
+      error.value = humanizeCreateFailure('bench', stripIpcPrefix(String(err)));
     } finally {
       creating.value = false;
     }
@@ -72,7 +73,7 @@ export const useBenches = () => {
         successMessage.value = `Updated bench ${updated.name}.`;
       }
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
     } finally {
       updating.value = false;
     }
@@ -91,7 +92,7 @@ export const useBenches = () => {
         successMessage.value = 'Bench deletion started.';
       }
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
     } finally {
       deleting.value = false;
     }
@@ -105,7 +106,7 @@ export const useBenches = () => {
       const ipc = useIpc();
       return await ipc.listBenchLogs(id);
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
       return [];
     } finally {
       loadingLogs.value = false;
@@ -126,7 +127,7 @@ export const useBenches = () => {
       }
       successMessage.value = 'Bench folder opened.';
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
     } finally {
       openingFolder.value = false;
     }
@@ -146,7 +147,7 @@ export const useBenches = () => {
       }
       successMessage.value = 'Bench cleaning task started.';
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
     } finally {
       updating.value = false;
     }

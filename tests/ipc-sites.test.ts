@@ -247,6 +247,37 @@ describe('sites IPC handlers', () => {
     ).rejects.toThrow('parent bench was not found');
   });
 
+  it('sites:create blocks duplicate canonical host across benches', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            name: 'frappevault.localhost',
+            benchId: 'bench-001',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.sitesCreate);
+
+    await expect(
+      createHandler?.(undefined, {
+        name: 'frappevault.local.local',
+        benchId: 'bench-001',
+        path: '/Users/dev/frappe-bench/sites/frappevault.local.local',
+        apps: ['frappe'],
+      })
+    ).rejects.toThrow('already exists');
+  });
+
   it('sites:update updates site status and returns list item shape', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
@@ -291,6 +322,38 @@ describe('sites IPC handlers', () => {
     const updated = await updateHandler?.(undefined, 'site-001', { status: 'success' });
 
     expect(updated).toBeNull();
+  });
+
+  it('sites:update blocks renaming to an existing canonical host', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            id: 'site-001',
+            name: 'frappevault.localhost',
+          },
+          {
+            ...sites[0]!,
+            id: 'site-002',
+            name: 'erp.localhost',
+            path: '/Users/dev/frappe-bench/sites/erp.localhost',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const updateHandler = handlers.get(ipcChannels.sitesUpdate);
+
+    await expect(
+      updateHandler?.(undefined, 'site-002', { name: 'frappevault.local.local' })
+    ).rejects.toThrow('already exists');
   });
 
   it('sites:delete deletes a stopped site', async () => {
@@ -393,5 +456,66 @@ describe('sites IPC handlers', () => {
     expect(opened).toBe(true);
     expect(openPath).toHaveBeenCalled();
     expect(trackSiteOperation).toHaveBeenCalledWith('site-001', 'open-folder');
+  });
+
+  it('sites:open-external routes through shared proxy port', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const openExternal = vi.fn(async () => true);
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      },
+      {
+        openPath: async () => false,
+        openInEditor: async () => false,
+        openExternal,
+        pathExists: () => true,
+        getSharedProxyPort: () => 18080,
+      }
+    );
+
+    const openSiteHandler = handlers.get(ipcChannels.sitesOpenExternal);
+    const opened = await openSiteHandler?.(undefined, 'site-001');
+
+    expect(opened).toBe(true);
+    expect(openExternal).toHaveBeenCalledWith('http://demo.localhost:18080');
+  });
+
+  it('sites:open-external normalizes .local host and falls back to bench port', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const openExternal = vi.fn(async () => true);
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            name: 'my-site.local.local',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+      },
+      {
+        openPath: async () => false,
+        openInEditor: async () => false,
+        openExternal,
+        pathExists: () => true,
+        getSharedProxyPort: () => null,
+      }
+    );
+
+    const openSiteHandler = handlers.get(ipcChannels.sitesOpenExternal);
+    const opened = await openSiteHandler?.(undefined, 'site-001');
+
+    expect(opened).toBe(true);
+    expect(openExternal).toHaveBeenCalledWith('http://my-site.localhost:8080');
   });
 });

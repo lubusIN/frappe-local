@@ -17,7 +17,11 @@ export type SiteWizardBuildResult = {
   readonly errors: string[];
 };
 
-const SITE_NAME_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
+const SITE_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+
+export const normalizeSiteSlug = (value: string): string => value.trim().toLowerCase();
+
+export const toSiteDomain = (slugOrName: string): string => `${normalizeSiteSlug(slugOrName)}.localhost`;
 
 export const parseAppsText = (appsText: string): string[] =>
   appsText
@@ -25,11 +29,11 @@ export const parseAppsText = (appsText: string): string[] =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-export const isValidSiteName = (siteName: string): boolean => SITE_NAME_PATTERN.test(siteName.trim());
+export const isValidSiteName = (siteName: string): boolean => SITE_SLUG_PATTERN.test(normalizeSiteSlug(siteName));
 
 export const suggestSitePath = (benchPath: string, siteName: string): string => {
   const base = benchPath.trim().replace(/\/$/, '');
-  const safeSiteName = siteName.trim();
+  const safeSiteName = toSiteDomain(siteName);
   return `${base}/sites/${safeSiteName}`;
 };
 
@@ -46,7 +50,7 @@ export const getSiteWizardStepErrors = (step: SiteWizardStep, draft: SiteWizardD
     if (!draft.name.trim()) {
       errors.push('Enter a site name.');
     } else if (!isValidSiteName(draft.name)) {
-      errors.push('Site name can include lowercase letters, numbers, dots, and hyphens only.');
+      errors.push('Site name must be a lowercase slug with letters, numbers, and hyphens only.');
     }
 
     if (!draft.path.trim()) {
@@ -71,12 +75,17 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
   }
 
   const selectedApps = (draft.appsSelected ?? []).map((item) => item.trim()).filter(Boolean);
+  const normalizedName = toSiteDomain(draft.name);
+  const trimmedPath = draft.path.trim();
+  const normalizedPath = trimmedPath.endsWith(`/${draft.name.trim()}`)
+    ? `${trimmedPath.slice(0, -draft.name.trim().length)}${normalizedName}`
+    : trimmedPath;
 
   return {
     payload: {
       benchId: draft.benchId.trim(),
-      name: draft.name.trim(),
-      path: draft.path.trim(),
+      name: normalizedName,
+      path: normalizedPath,
 
       apps: selectedApps.length > 0 ? selectedApps : parseAppsText(draft.appsText),
       force: draft.force ?? false,

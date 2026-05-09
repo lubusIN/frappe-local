@@ -18,9 +18,10 @@ import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
 import { InMemoryBenchAnalytics } from './bench-analytics';
 import { InMemorySiteAnalytics } from './site-analytics';
-import { getDefaultAppCatalogSeed } from './catalog-provider';
+import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
 import { runDiagnostics } from './diagnostics-service';
 import { getAppIconPath } from './app-icon';
+import { getSharedBenchProxyPort, initializeSharedBenchProxy } from './shared-proxy';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
@@ -111,7 +112,7 @@ export const runApplicationBootstrap = async (
     await adapter.connect();
     await initializeStorage(adapter, storageFilePath, {
       appCatalogSeed: getDefaultAppCatalogSeed(),
-      appCatalogSeedVersion: 5,
+      appCatalogSeedVersion: APP_CATALOG_SEED_VERSION,
     });
 
     const settingsRepository = new SettingsRepository(adapter);
@@ -121,6 +122,12 @@ export const runApplicationBootstrap = async (
       sites: new SiteRepository(adapter),
       settings: settingsRepository,
     } satisfies AppRepositories;
+
+    try {
+      await initializeSharedBenchProxy({ benches: repositories.benches, sites: repositories.sites });
+    } catch (error) {
+      bootstrapLogger.warn(`Shared proxy failed to start: ${error}`);
+    }
 
 
 
@@ -146,6 +153,7 @@ export const runApplicationBootstrap = async (
         return openInEditor(targetPath, editorPreference);
       },
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
+      getSharedProxyPort: () => getSharedBenchProxyPort(),
       trackBenchOperation: (benchId, operation) => {
         benchAnalytics.track(benchId, operation);
       },

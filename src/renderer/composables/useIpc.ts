@@ -13,6 +13,7 @@ const unavailableBridge: RendererBridge = {
   checkForUpdates: () => rejectUnavailable(),
   runDiagnostics: () => rejectUnavailable(),
   getLastDiagnosticsReport: () => rejectUnavailable(),
+  nukeDevState: () => rejectUnavailable(),
   fixRuntime: () => rejectUnavailable(),
   listCatalog: () => rejectUnavailable(),
   syncCatalog: () => rejectUnavailable(),

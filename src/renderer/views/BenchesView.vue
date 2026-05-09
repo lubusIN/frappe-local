@@ -301,6 +301,26 @@
     />
 
     <Dialog
+      v-model="showCreateFailureDialog"
+      :options="{ title: createFailureTitle, size: 'md' }"
+    >
+      <template #body-content>
+        <p class="text-sm text-ink-gray-7">{{ createFailureMessage }}</p>
+      </template>
+      <template #actions>
+        <div class="dialog-actions">
+          <Button
+            size="md"
+            variant="solid"
+            @click="showCreateFailureDialog = false"
+          >
+            OK
+          </Button>
+        </div>
+      </template>
+    </Dialog>
+
+    <Dialog
       v-model="showAppsDialog"
       :options="{ title: `Apps in ${selectedBenchForApps?.name || 'Bench'}`, size: 'lg' }"
     >
@@ -392,6 +412,7 @@ import { useProgressCenter } from '../composables/useProgressCenter';
 import { useAppCatalog } from '../composables/useAppCatalog';
 import { getBenchWizardStepErrors, buildBenchCreatePayload, type BenchWizardStep } from '../bench-wizard';
 import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
+import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
 const {
   benches,
@@ -580,6 +601,10 @@ const getBenchActions = (bench: BenchListItem) => {
 
 const { tasks } = useProgressCenter();
 const selectedTaskId = ref<string | null>(null);
+const showCreateFailureDialog = ref(false);
+const createFailureTitle = ref('Bench Creation Failed');
+const createFailureMessage = ref('Bench creation failed. Check Progress for details.');
+const acknowledgedCreateFailures = ref(new Set<string>());
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
@@ -638,6 +663,26 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
 
   selectedTaskId.value = completedTask?.taskId ?? null;
 };
+
+watch(
+  tasks,
+  (items) => {
+    for (const task of items) {
+      if (
+        task.status === 'failure' &&
+        task.resource === 'bench' &&
+        task.taskName.toLowerCase().includes('create bench') &&
+        !acknowledgedCreateFailures.value.has(task.taskId)
+      ) {
+        acknowledgedCreateFailures.value.add(task.taskId);
+        createFailureTitle.value = 'Bench Creation Failed';
+        createFailureMessage.value = humanizeCreateFailure('bench', task.message);
+        showCreateFailureDialog.value = true;
+      }
+    }
+  },
+  { deep: true }
+);
 
 const createForm = reactive({
   name: '',

@@ -46,6 +46,7 @@ describe('domain mappers', () => {
       name: 'My Bench',
       path: '/tmp/bench',
       frappe_version: 'version-15',
+      http_port: 8082,
       status: 'stopped',
       apps: ['frappe'],
       created_at: '2026-04-18T10:00:00.000Z',
@@ -54,6 +55,7 @@ describe('domain mappers', () => {
 
     expect(bench.id).toBe('bench-1');
     expect(bench.frappeVersion).toBe('version-15');
+    expect(bench.httpPort).toBe(8082);
     expect(bench.timestamps.updatedAt).toBe('2026-04-18T11:00:00.000Z');
   });
 
@@ -63,6 +65,7 @@ describe('domain mappers', () => {
       name: 'Second Bench',
       path: '/tmp/bench-2',
       frappeVersion: 'version-14',
+      httpPort: 8090,
       status: 'queued',
       apps: ['frappe', 'payments'],
       timestamps: {
@@ -73,6 +76,7 @@ describe('domain mappers', () => {
 
     expect(record.id).toBe('bench-2');
     expect(record.frappe_version).toBe('version-14');
+    expect(record.http_port).toBe(8090);
     expect(record.updated_at).toBe('2026-04-18T09:30:00.000Z');
   });
 

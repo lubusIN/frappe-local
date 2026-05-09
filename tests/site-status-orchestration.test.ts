@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Site } from '../src/shared/domain/models';
 import type { TaskExecutionContext } from '../src/main/task-runner';
+import { OPERATION_TIMEOUTS } from '../src/main/constants';
 import { orchestrateSiteStatusUpdate } from '../src/main/site-orchestration';
 
 const execPromiseMock = vi.fn();
@@ -41,6 +42,18 @@ describe('site status orchestration commands', () => {
   };
 
   const updateMock = vi.fn(async () => site);
+  const findBenchByIdMock = vi.fn(async () => ({
+    id: site.benchId,
+    name: 'bench-1',
+    path: '/Users/dev/frappe-bench',
+    frappeVersion: 'v15.0.0',
+    apps: ['frappe'],
+    status: 'running' as const,
+    timestamps: {
+      createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+    },
+  }));
 
   let queuedRun: ((context: TaskExecutionContext) => Promise<void>) | null = null;
 
@@ -70,6 +83,9 @@ describe('site status orchestration commands', () => {
   it('uses bench --site enable-scheduler when starting a site', async () => {
     orchestrateSiteStatusUpdate(
       {
+        benches: {
+          findById: findBenchByIdMock,
+        },
         sites: {
           update: updateMock,
         },
@@ -83,17 +99,19 @@ describe('site status orchestration commands', () => {
 
     expect(execPromiseMock).toHaveBeenCalledTimes(1);
 
-    const [command, args, cwd, _onOutput, env] = execPromiseMock.mock.calls[0] as [
+    const [command, args, cwd, _onOutput, env, timeout] = execPromiseMock.mock.calls[0] as [
       string,
       string[],
       string,
       unknown,
       NodeJS.ProcessEnv,
+      number,
     ];
 
     expect(command).toBe('/mock/docker-compose');
-    expect(cwd).toBe('');
+    expect(cwd).toBe('/Users/dev/frappe-bench');
     expect(env).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
+    expect(timeout).toBe(OPERATION_TIMEOUTS.SITE_STATUS_UPDATE);
     expect(args).toEqual([
       '-p',
       'frappe-cafe-4db335b2',
@@ -110,6 +128,9 @@ describe('site status orchestration commands', () => {
   it('uses bench --site disable-scheduler when stopping a site', async () => {
     orchestrateSiteStatusUpdate(
       {
+        benches: {
+          findById: findBenchByIdMock,
+        },
         sites: {
           update: updateMock,
         },
@@ -135,5 +156,59 @@ describe('site status orchestration commands', () => {
       'myfrappe.local',
       'disable-scheduler',
     ]);
+  });
+
+  it('retries timeout failures up to three total attempts', async () => {
+    execPromiseMock
+      .mockRejectedValueOnce(new Error('Command timed out after 180000ms: /mock/docker-compose ...'))
+      .mockRejectedValueOnce(new Error('Command timed out after 180000ms: /mock/docker-compose ...'))
+      .mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 });
+
+    orchestrateSiteStatusUpdate(
+      {
+        benches: {
+          findById: findBenchByIdMock,
+        },
+        sites: {
+          update: updateMock,
+        },
+      },
+      site,
+      'running'
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(execPromiseMock).toHaveBeenCalledTimes(3);
+    expect(context.log).toHaveBeenCalledWith('warning', expect.stringContaining('attempt 1/3'));
+    expect(context.log).toHaveBeenCalledWith('warning', expect.stringContaining('attempt 2/3'));
+  });
+
+  it('treats already-disabled scheduler output as success', async () => {
+    execPromiseMock.mockResolvedValueOnce({
+      stdout: '',
+      stderr: 'Scheduler is already disabled for site myfrappe.local',
+      code: 1,
+    });
+
+    orchestrateSiteStatusUpdate(
+      {
+        benches: {
+          findById: findBenchByIdMock,
+        },
+        sites: {
+          update: updateMock,
+        },
+      },
+      site,
+      'stopped'
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(updateMock).toHaveBeenCalledWith(site.id, { status: 'stopped' });
+    expect(context.log).toHaveBeenCalledWith('warning', expect.stringContaining('already in desired state'));
   });
 });

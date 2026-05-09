@@ -5,6 +5,7 @@ import {
   isValidSiteName,
   parseAppsText,
   suggestSitePath,
+  toSiteDomain,
 } from '../src/renderer/site-wizard';
 
 describe('site wizard helpers', () => {
@@ -13,14 +14,19 @@ describe('site wizard helpers', () => {
   });
 
   it('validates supported site name format', () => {
-    expect(isValidSiteName('demo.localhost')).toBe(true);
+    expect(isValidSiteName('demo-site')).toBe(true);
+    expect(isValidSiteName('demo.localhost')).toBe(false);
     expect(isValidSiteName('Demo Local')).toBe(false);
   });
 
   it('suggests bench-aware site path', () => {
-    expect(suggestSitePath('/Users/dev/frappe-bench/', 'demo.localhost')).toBe(
-      '/Users/dev/frappe-bench/sites/demo.localhost'
+    expect(suggestSitePath('/Users/dev/frappe-bench/', 'demo-site')).toBe(
+      '/Users/dev/frappe-bench/sites/demo-site.localhost'
     );
+  });
+
+  it('derives localhost domain from slug', () => {
+    expect(toSiteDomain('Demo-Site')).toBe('demo-site.localhost');
   });
 
   it('returns step errors for missing bench and invalid site fields', () => {
@@ -33,7 +39,7 @@ describe('site wizard helpers', () => {
 
     expect(getSiteWizardStepErrors(1, draft)).toEqual(['Select a bench to continue.']);
     expect(getSiteWizardStepErrors(2, draft)).toEqual([
-      'Site name can include lowercase letters, numbers, dots, and hyphens only.',
+      'Site name must be a lowercase slug with letters, numbers, and hyphens only.',
       'Enter a site path.',
     ]);
   });
@@ -41,7 +47,7 @@ describe('site wizard helpers', () => {
   it('treats apps and confirm steps as non-blocking validation steps', () => {
     const draft = {
       benchId: 'bench-001',
-      name: 'demo.localhost',
+      name: 'demo-site',
       path: '/Users/dev/frappe-bench/sites/demo.localhost',
       appsText: '',
     };
@@ -53,8 +59,8 @@ describe('site wizard helpers', () => {
   it('builds create payload when draft is valid', () => {
     const draft = {
       benchId: 'bench-001',
-      name: 'demo.localhost',
-      path: '/Users/dev/frappe-bench/sites/demo.localhost',
+      name: 'demo-site',
+      path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
       appsText: 'frappe, erpnext',
     };
 
@@ -63,9 +69,26 @@ describe('site wizard helpers', () => {
     expect(result.errors).toEqual([]);
     expect(result.payload).toEqual({
       benchId: 'bench-001',
-      name: 'demo.localhost',
-      path: '/Users/dev/frappe-bench/sites/demo.localhost',
+      name: 'demo-site.localhost',
+      path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
       apps: ['frappe', 'erpnext'],
+      force: false,
+    });
+  });
+
+  it('normalizes local domains to localhost and avoids duplicate local suffixes', () => {
+    const result = buildSiteCreatePayload({
+      benchId: 'bench-001',
+      name: 'my-site',
+      path: '/Users/dev/frappe-bench/sites/my-site',
+      appsText: 'frappe',
+    });
+
+    expect(result.payload).toEqual({
+      benchId: 'bench-001',
+      name: 'my-site.localhost',
+      path: '/Users/dev/frappe-bench/sites/my-site.localhost',
+      apps: ['frappe'],
       force: false,
     });
   });
@@ -73,8 +96,8 @@ describe('site wizard helpers', () => {
   it('prefers selected apps from picker when present', () => {
     const result = buildSiteCreatePayload({
       benchId: 'bench-001',
-      name: 'demo.localhost',
-      path: '/Users/dev/frappe-bench/sites/demo.localhost',
+      name: 'demo-site',
+      path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
       appsText: 'legacy-text-app',
       appsSelected: ['frappe', 'erpnext'],
     });

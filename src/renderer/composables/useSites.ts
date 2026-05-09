@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
 import type { LifecycleLogItem, SiteCreateInput, SiteListItem, SiteUpdateInput } from '../../shared/ipc';
 import { useIpc } from './useIpc';
+import { humanizeCreateFailure, stripIpcPrefix } from '../../shared/runtime-errors';
 
 export const useSites = () => {
   const sites = ref<SiteListItem[]>([]);
@@ -14,17 +15,29 @@ export const useSites = () => {
   const successMessage = ref<string | null>(null);
 
   const load = async () => {
-    loading.value = true;
-    error.value = null;
+    const isInitialLoad = sites.value.length === 0;
+    if (isInitialLoad) {
+      loading.value = true;
+      error.value = null;
+    }
 
     try {
       const ipc = useIpc();
       sites.value = await ipc.listSites();
+      if (!isInitialLoad) {
+        // Clear stale load errors after successful background refresh.
+        error.value = null;
+      }
     } catch (err) {
-      error.value = String(err);
-      sites.value = [];
+      // Keep current rows rendered during background refresh failures.
+      if (isInitialLoad) {
+        error.value = String(err);
+        sites.value = [];
+      }
     } finally {
-      loading.value = false;
+      if (isInitialLoad) {
+        loading.value = false;
+      }
     }
   };
 
@@ -39,7 +52,7 @@ export const useSites = () => {
       sites.value = [created, ...sites.value];
       successMessage.value = `Created site ${created.name}.`;
     } catch (err) {
-      error.value = String(err);
+      error.value = humanizeCreateFailure('site', stripIpcPrefix(String(err)));
     } finally {
       creating.value = false;
     }
@@ -68,7 +81,7 @@ export const useSites = () => {
         successMessage.value = `Updated site ${updated.name}.`;
       }
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
     } finally {
       updating.value = false;
     }
@@ -86,7 +99,7 @@ export const useSites = () => {
       successMessage.value = 'Site deletion started.';
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      error.value = message.replace(/^Error invoking remote method '[^']*': /, '');
+      error.value = stripIpcPrefix(message);
     } finally {
       deleting.value = false;
     }
@@ -100,7 +113,7 @@ export const useSites = () => {
       const ipc = useIpc();
       return await ipc.listSiteLogs(id);
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
       return [];
     } finally {
       loadingLogs.value = false;
@@ -121,7 +134,7 @@ export const useSites = () => {
       }
       successMessage.value = 'Site folder opened.';
     } catch (err) {
-      error.value = String(err);
+      error.value = stripIpcPrefix(String(err));
     } finally {
       openingFolder.value = false;
     }

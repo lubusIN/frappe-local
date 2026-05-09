@@ -9,6 +9,7 @@ const benches: Bench[] = [
     name: 'frappe-bench',
     path: '/Users/dev/frappe-bench',
     frappeVersion: '15.0.0',
+    httpPort: 8080,
     status: 'running',
     apps: ['frappe', 'erpnext'],
     timestamps: {
@@ -36,6 +37,7 @@ function makeStubBenchRepo(items: Bench[] = benches) {
       name: string;
       path: string;
       frappeVersion: string;
+      httpPort?: number;
       status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
       apps: string[];
     }) => {
@@ -152,7 +154,7 @@ describe('benches IPC handlers', () => {
         status: 'running',
         appCount: 2,
         apps: ['frappe', 'erpnext'],
-        httpPort: undefined,
+        httpPort: 8080,
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
       },
@@ -205,6 +207,74 @@ describe('benches IPC handlers', () => {
       status: 'queued',
       appCount: 1,
     });
+    expect((created as { httpPort?: number }).httpPort).toBeGreaterThanOrEqual(8080);
+  });
+
+  it('benches:create auto-increments HTTP port when default is already used', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            httpPort: 8080,
+          },
+        ]),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.benchesCreate);
+    const created = await createHandler?.(undefined, {
+      name: 'new-bench-2',
+      path: '/Users/dev/new-bench-2',
+      frappeVersion: '15.0.0',
+      apps: ['frappe'],
+    });
+
+    expect(created).toMatchObject({
+      name: 'new-bench-2',
+      status: 'queued',
+    });
+    expect((created as { httpPort?: number }).httpPort).toBeGreaterThanOrEqual(8081);
+  });
+
+  it('benches:create shifts explicit HTTP port when already used', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            httpPort: 8080,
+          },
+        ]),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.benchesCreate);
+    const created = await createHandler?.(undefined, {
+      name: 'new-bench-3',
+      path: '/Users/dev/new-bench-3',
+      frappeVersion: '15.0.0',
+      httpPort: 8080,
+      apps: ['frappe'],
+    });
+
+    expect(created).toMatchObject({
+      name: 'new-bench-3',
+      status: 'queued',
+    });
+    expect((created as { httpPort?: number }).httpPort).toBeGreaterThanOrEqual(8081);
   });
 
   it('benches:update updates bench status and returns list item shape', async () => {

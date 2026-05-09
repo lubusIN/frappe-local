@@ -14,12 +14,16 @@ import type {
 } from '../shared/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics, getLastDiagnosticsReport } from './diagnostics-service';
-import { ensureRuntimeRunning } from './runtime-service';
+import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
 import { ipcChannels } from '../shared/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import { createMainLogger } from './logger';
+import { findNextAvailableTcpPort } from './utils/ports';
+import { SHARED_PROXY_PORT_RANGE } from './shared-proxy';
+import { normalizeSiteHost } from '../shared/site-hostname';
+import { resolveBenchHttpPort } from './utils/bench-http-port';
 
 const mainLogger = createMainLogger('ipc');
 
@@ -43,6 +47,11 @@ import {
   canTransitionSiteStatus,
   isBenchReadyForSiteStatus,
 } from '../shared/domain/site-lifecycle';
+import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
+import { createDefaultStorageSnapshot } from './storage/schema';
+import { execPromise } from './utils/exec';
+import { getBinaryPath } from './utils/binaries';
+import { OPERATION_TIMEOUTS } from './constants';
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
 import { orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
@@ -68,6 +77,22 @@ const resolveUserPath = (untrimmedPath: string): string => {
   }
 
   return path.resolve(trimmedPath);
+};
+
+const DEFAULT_HTTP_PORT = 8080;
+
+const deriveUsedBenchPorts = (benches: Bench[]): Set<number> => {
+  const usedPorts = new Set(
+    benches
+      .map((bench) => bench.httpPort ?? DEFAULT_HTTP_PORT)
+      .filter((port) => Number.isInteger(port) && port >= 1024 && port <= 65535)
+  );
+
+  for (let port = SHARED_PROXY_PORT_RANGE.START; port <= SHARED_PROXY_PORT_RANGE.END; port += 1) {
+    usedPorts.add(port);
+  }
+
+  return usedPorts;
 };
 
 export type IpcRepositories = {
@@ -104,6 +129,7 @@ export type IpcOperations = {
   openInEditor: (targetPath: string) => Promise<boolean>;
   openExternal: (url: string) => Promise<boolean>;
   pathExists: (targetPath: string) => boolean;
+  getSharedProxyPort?: () => number | null;
   trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
   trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
 };
@@ -133,6 +159,25 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   createdAt: site.timestamps.createdAt,
   updatedAt: site.timestamps.updatedAt,
 });
+
+const hasDuplicateSiteHost = (
+  sites: Site[],
+  candidateName: string,
+  excludeSiteId?: string
+): boolean => {
+  const candidateHost = normalizeSiteHost(candidateName);
+  if (!candidateHost) {
+    return false;
+  }
+
+  return sites.some((site) => {
+    if (excludeSiteId && site.id === excludeSiteId) {
+      return false;
+    }
+
+    return normalizeSiteHost(site.name) === candidateHost;
+  });
+};
 
 const toSettingsItem = (settings: Settings): SettingsItem => ({
   defaultFrappeVersion: settings.defaultFrappeVersion,
@@ -205,6 +250,7 @@ export const registerIpcHandlers = (
     openInEditor: async () => false,
     openExternal: async () => false,
     pathExists: (targetPath) => fs.existsSync(targetPath),
+    getSharedProxyPort: () => null,
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
   },
@@ -268,6 +314,91 @@ export const registerIpcHandlers = (
     return getLastDiagnosticsReport();
   });
 
+  ipcMainLike.handle(ipcChannels.diagnosticsNukeDevState, async (): Promise<boolean> => {
+    const benches = await repositories.benches.findAll();
+
+    let runtimeEnv: NodeJS.ProcessEnv | undefined;
+    try {
+      const runtimeReady = await ensureRuntimeRunning();
+      if (runtimeReady) {
+        runtimeEnv = await getRuntimeEnv();
+      }
+    } catch (error) {
+      mainLogger.warn(`Runtime not available during nuke operation: ${error}`);
+    }
+
+    if (runtimeEnv) {
+      const composeBinary = getBinaryPath('docker-compose');
+
+      for (const bench of benches) {
+        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+        try {
+          await execPromise(
+            composeBinary,
+            ['-p', projectName, 'down', '-v', '--remove-orphans'],
+            bench.path,
+            undefined,
+            runtimeEnv,
+            OPERATION_TIMEOUTS.BENCH_STOP
+          );
+        } catch (error) {
+          mainLogger.warn(`Failed to clean compose project ${projectName}: ${error}`);
+        }
+      }
+
+      const podmanBinary = getBinaryPath('podman');
+      const listNames = async (args: string[]): Promise<string[]> => {
+        try {
+          const { stdout } = await execPromise(podmanBinary, args, undefined, undefined, runtimeEnv, 60000);
+          return stdout
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+        } catch (error) {
+          mainLogger.warn(`Failed to list podman resources for args [${args.join(' ')}]: ${error}`);
+          return [];
+        }
+      };
+
+      const containerIds = await listNames(['ps', '-a', '--filter', 'name=frappe-cafe-', '--format', '{{.ID}}']);
+      if (containerIds.length > 0) {
+        try {
+          await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, undefined, runtimeEnv, 60000);
+        } catch (error) {
+          mainLogger.warn(`Failed to remove frappe-cafe containers: ${error}`);
+        }
+      }
+
+      const volumeNames = await listNames(['volume', 'ls', '--filter', 'name=frappe-cafe-', '--format', '{{.Name}}']);
+      if (volumeNames.length > 0) {
+        try {
+          await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, undefined, runtimeEnv, 60000);
+        } catch (error) {
+          mainLogger.warn(`Failed to remove frappe-cafe volumes: ${error}`);
+        }
+      }
+
+      const networkNames = await listNames(['network', 'ls', '--filter', 'name=frappe-cafe-', '--format', '{{.Name}}']);
+      if (networkNames.length > 0) {
+        try {
+          await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, undefined, runtimeEnv, 60000);
+        } catch (error) {
+          mainLogger.warn(`Failed to remove frappe-cafe networks: ${error}`);
+        }
+      }
+    }
+
+    fs.rmSync(runtimePaths.storagePath, { recursive: true, force: true });
+    fs.rmSync(runtimePaths.configPath, { recursive: true, force: true });
+    fs.mkdirSync(runtimePaths.storagePath, { recursive: true });
+
+    const snapshot = createDefaultStorageSnapshot(getDefaultAppCatalogSeed(), APP_CATALOG_SEED_VERSION);
+    const storageFilePath = path.join(runtimePaths.storagePath, 'storage.json');
+    fs.writeFileSync(storageFilePath, JSON.stringify(snapshot, null, 2), 'utf8');
+
+    return true;
+  });
+
   ipcMainLike.handle(ipcChannels.benchesPickFolder, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],
@@ -293,10 +424,17 @@ export const registerIpcHandlers = (
       path: resolveUserPath(rawInput.path),
     });
 
+    const existingBenches = await repositories.benches.findAll();
+    const usedPorts = deriveUsedBenchPorts(existingBenches);
+    const requestedPort = payload.httpPort;
+    const startPort = requestedPort ?? DEFAULT_HTTP_PORT;
+    const httpPort = await findNextAvailableTcpPort(startPort, usedPorts);
+
     const created = await repositories.benches.create({
       ...payload,
       status: 'queued', // Initial state should be queued
       apps: payload.apps,
+      httpPort,
     });
 
     operations.trackBenchOperation?.(created.id, 'create');
@@ -507,6 +645,10 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.sitesCreate, async (_event: unknown, input: unknown) => {
     const payload = CreateSiteInputSchema.parse(input as SiteCreateInput);
+    const existingSites = await repositories.sites.findAll();
+    if (hasDuplicateSiteHost(existingSites, payload.name)) {
+      throw new Error(`A site host "${normalizeSiteHost(payload.name)}" already exists. Use a unique site name.`);
+    }
 
     const created = await orchestrateSiteCreation(repositories, payload);
     operations.trackSiteOperation?.(created.id, 'create');
@@ -526,6 +668,11 @@ export const registerIpcHandlers = (
       return null;
     }
 
+    const targetSiteName = payload.name ?? existing.name;
+    if (hasDuplicateSiteHost(sites, targetSiteName, existing.id)) {
+      throw new Error(`A site host "${normalizeSiteHost(targetSiteName)}" already exists. Use a unique site name.`);
+    }
+
     const targetSiteStatus = payload.status ?? existing.status;
     if (!canTransitionSiteStatus(existing.status, targetSiteStatus)) {
       return null;
@@ -538,11 +685,19 @@ export const registerIpcHandlers = (
       return null;
     }
 
+    const { status: targetStatus, ...otherUpdates } = payload;
     if (!isBenchReadyForSiteStatus(bench.status, targetSiteStatus)) {
       return null;
     }
 
-    const { status: targetStatus, ...otherUpdates } = payload;
+    if (
+      existing.status === 'queued' &&
+      targetStatus &&
+      (targetStatus === 'running' || targetStatus === 'stopped')
+    ) {
+      return toSiteListItem(existing);
+    }
+
     let updated = await repositories.sites.update(id, otherUpdates);
 
     if (updated) {
@@ -634,7 +789,16 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    const url = `http://${site.name}.local`;
+    const preferredHost = normalizeSiteHost(site.name);
+    const sharedProxyPort = operations.getSharedProxyPort?.() ?? null;
+    if (sharedProxyPort) {
+      return operations.openExternal(`http://${preferredHost}:${sharedProxyPort}`);
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === site.benchId);
+    const fallbackPort = bench ? resolveBenchHttpPort(bench, DEFAULT_HTTP_PORT) : DEFAULT_HTTP_PORT;
+    const url = `http://${preferredHost}:${fallbackPort}`;
     const opened = await operations.openExternal(url);
     if (opened) {
       // open-external is not a valid SiteLifecycleOperation, ignoring track

@@ -135,10 +135,11 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
 /**
  * Remove all hosts entries managed by Frappe Cafe for a specific bench.
  */
-export const removeAllHostsEntriesForBench = async (benchId: string): Promise<boolean> => {
+export const removeAllHostsEntriesForBench = async (benchId: string, benchLabel?: string): Promise<boolean> => {
   try {
     const content = fs.readFileSync(HOSTS_FILE, 'utf8');
     const marker = `${MARKER_PREFIX}${benchId}`;
+    const promptLabel = benchLabel?.trim() || benchId;
 
     if (!content.includes(marker)) {
       return true;
@@ -153,7 +154,7 @@ export const removeAllHostsEntriesForBench = async (benchId: string): Promise<bo
         fs.writeFileSync(tempPath, newContent);
         const script = buildPrivilegedShellScript(
           `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
-          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove hosts entries for bench ${benchId}.`
+          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove hosts entries for bench ${promptLabel}.`
         );
         const { code } = await execPromise('osascript', ['-e', script]);
         return code === 0;

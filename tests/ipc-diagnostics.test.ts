@@ -1,7 +1,28 @@
-import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
+
+const ensureRuntimeRunningMock = vi.fn(async () => false);
+const getRuntimeEnvMock = vi.fn(async () => ({}));
+const getBinaryPathMock = vi.fn((name: string) => `/mock/${name}`);
+const execPromiseMock = vi.fn(async (..._args: unknown[]) => ({ code: 0, stdout: '', stderr: '' }));
+
+vi.mock('../src/main/runtime-service', () => ({
+  ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
+  getRuntimeEnv: () => getRuntimeEnvMock(),
+}));
+
+vi.mock('../src/main/utils/binaries', () => ({
+  getBinaryPath: (name: string) => getBinaryPathMock(name),
+}));
+
+vi.mock('../src/main/utils/exec', () => ({
+  execPromise: (...args: unknown[]) => execPromiseMock(...args),
+}));
 
 const seedSettings: Settings = {
   defaultFrappeVersion: '15.0.0',
@@ -78,6 +99,14 @@ function makeStubSettingsRepo(initial: Settings | null = seedSettings) {
 }
 
 describe('diagnostics IPC handlers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ensureRuntimeRunningMock.mockResolvedValue(false);
+    getRuntimeEnvMock.mockResolvedValue({});
+    getBinaryPathMock.mockImplementation((name: string) => `/mock/${name}`);
+    execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+  });
+
   it('runs diagnostics on demand and caches the latest report', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
@@ -105,5 +134,164 @@ describe('diagnostics IPC handlers', () => {
 
     expect(report).toMatchObject({ appVersion: '0.1.0' });
     expect(cached).toEqual(report);
+  });
+
+  it('nukes development state and recreates fresh storage snapshot', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-cafe-nuke-test-'));
+    const storagePath = path.join(tempRoot, 'storage');
+    const configPath = path.join(tempRoot, 'config');
+    fs.mkdirSync(storagePath, { recursive: true });
+    fs.mkdirSync(configPath, { recursive: true });
+
+    fs.writeFileSync(path.join(storagePath, 'storage.json'), JSON.stringify({ invalid: true }), 'utf8');
+    fs.writeFileSync(path.join(configPath, 'state.json'), JSON.stringify({ invalid: true }), 'utf8');
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      },
+      undefined,
+      undefined,
+      '0.1.0',
+      {
+        userDataPath: tempRoot,
+        logsPath: path.join(tempRoot, 'logs'),
+        configPath,
+        storagePath,
+      }
+    );
+
+    const nukeResult = await handlers.get(ipcChannels.diagnosticsNukeDevState)?.();
+    expect(nukeResult).toBe(true);
+
+    const recreated = JSON.parse(fs.readFileSync(path.join(storagePath, 'storage.json'), 'utf8')) as {
+      benches: unknown[];
+      sites: unknown[];
+      appCatalog: unknown[];
+    };
+    expect(recreated.benches).toEqual([]);
+    expect(recreated.sites).toEqual([]);
+    expect(Array.isArray(recreated.appCatalog)).toBe(true);
+    expect(recreated.appCatalog.length).toBeGreaterThan(0);
+    expect(fs.existsSync(configPath)).toBe(false);
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  it('nuke performs compose and podman teardown for frappe-cafe resources', async () => {
+    ensureRuntimeRunningMock.mockResolvedValue(true);
+    getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
+
+    const bench = {
+      id: '1adb2eedabcdef',
+      name: 'demos',
+      path: '/Users/dev/frappe-bench-2',
+      frappeVersion: '15.0.0',
+      status: 'running' as const,
+      apps: ['frappe'],
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+
+    execPromiseMock.mockImplementation(async (...allArgs: unknown[]) => {
+      const args = (allArgs[1] as string[]) ?? [];
+      const joined = args.join(' ');
+      if (joined.includes('ps -a') && joined.includes('name=frappe-cafe-')) {
+        return { code: 0, stdout: 'container-1\n', stderr: '' };
+      }
+      if (joined.includes('volume ls') && joined.includes('name=frappe-cafe-')) {
+        return { code: 0, stdout: 'volume-1\n', stderr: '' };
+      }
+      if (joined.includes('network ls') && joined.includes('name=frappe-cafe-')) {
+        return { code: 0, stdout: 'network-1\n', stderr: '' };
+      }
+
+      return { code: 0, stdout: '', stderr: '' };
+    });
+
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-cafe-nuke-cleanup-test-'));
+    const storagePath = path.join(tempRoot, 'storage');
+    const configPath = path.join(tempRoot, 'config');
+    fs.mkdirSync(storagePath, { recursive: true });
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: {
+          ...makeStubBenchRepo(),
+          findAll: async () => [bench],
+        },
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      },
+      undefined,
+      undefined,
+      '0.1.0',
+      {
+        userDataPath: tempRoot,
+        logsPath: path.join(tempRoot, 'logs'),
+        configPath,
+        storagePath,
+      }
+    );
+
+    const nukeResult = await handlers.get(ipcChannels.diagnosticsNukeDevState)?.();
+    expect(nukeResult).toBe(true);
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      ['-p', 'frappe-cafe-1adb2eed', 'down', '-v', '--remove-orphans'],
+      '/Users/dev/frappe-bench-2',
+      undefined,
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.any(Number)
+    );
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/podman',
+      ['ps', '-a', '--filter', 'name=frappe-cafe-', '--format', '{{.ID}}'],
+      undefined,
+      undefined,
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.any(Number)
+    );
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/podman',
+      ['rm', '-f', 'container-1'],
+      undefined,
+      undefined,
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.any(Number)
+    );
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/podman',
+      ['volume', 'rm', '-f', 'volume-1'],
+      undefined,
+      undefined,
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.any(Number)
+    );
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/podman',
+      ['network', 'rm', 'network-1'],
+      undefined,
+      undefined,
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.any(Number)
+    );
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 });

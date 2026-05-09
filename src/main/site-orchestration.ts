@@ -9,6 +9,7 @@ import { getTaskRunner } from './task-runner';
 import { getRuntimeEnv } from './runtime-service';
 import { addHostsEntry, removeHostsEntry } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
+import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
 
 export type SiteCreationDependencies = {
   readonly benches: {
@@ -25,6 +26,7 @@ export type SiteCreationDependencies = {
     update: (id: string, input: {
       status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
     }) => Promise<Site | null>;
+    delete?: (id: string) => Promise<boolean>;
   };
 };
 
@@ -56,11 +58,63 @@ export const orchestrateSiteCreation = async (
     name: `Create Site: ${input.name}`,
     resource: { type: 'site', id: createdSite.id },
     run: async (context) => {
+      const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
+
+      const cleanupFailedCreate = async () => {
+        context.startStep('cleanup', 'Cleaning up partial site resources');
+        const runtimeCmd = getBinaryPath('docker-compose');
+        const runtimeEnv = await getRuntimeEnv();
+
+        try {
+          const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
+          const dropArgs = [
+            '-p', projectName,
+            'exec',
+            '-T',
+            'backend',
+            'bench',
+            'drop-site',
+            '--no-backup',
+            '--db-root-username', 'root',
+            '--db-root-password', dbPassword,
+            '--force',
+            input.name,
+          ];
+
+          await execPromise(
+            runtimeCmd,
+            dropArgs,
+            bench.path,
+            (out) => context.log('info', out, 'cleanup'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.BENCH_CLEANUP
+          );
+        } catch (cleanupError) {
+          context.log('warning', `Database cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
+        }
+
+        try {
+          const siteFolderPath = path.join(bench.path, 'sites', input.name);
+          if (fs.existsSync(siteFolderPath)) {
+            fs.rmSync(siteFolderPath, { recursive: true, force: true });
+          }
+        } catch (cleanupError) {
+          context.log('warning', `Filesystem cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
+        }
+
+        try {
+          await removeHostsEntry(input.name);
+        } catch (cleanupError) {
+          context.log('warning', `Hosts cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
+        }
+
+        context.completeStep('cleanup', 'Partial resources cleaned up');
+      };
+
       try {
         context.startStep('init', 'Preparing site environment');
         // In frappe_docker, we run commands via compose
         const runtimeCmd = getBinaryPath('docker-compose');
-        const projectName = `frappe-cafe-${bench.id.slice(0, 8)}`;
         
         context.startStep('new-site', `Running bench new-site ${input.name}`);
         
@@ -72,6 +126,7 @@ export const orchestrateSiteCreation = async (
         const args = [
           '-p', projectName,
           'exec',
+          '-T',
           'backend',
           'bench',
           'new-site',
@@ -87,16 +142,21 @@ export const orchestrateSiteCreation = async (
 
         context.log('info', `Running: ${runtimeCmd} ${args.join(' ')}`, 'new-site');
 
-        const { code, stderr } = await execPromise(
+        const { code, stderr, stdout } = await execPromise(
           runtimeCmd,
           args,
           bench.path,
           (out) => context.log('info', out, 'new-site'),
-          runtimeEnv
+          runtimeEnv,
+          OPERATION_TIMEOUTS.SITE_CREATION
         );
 
         if (code !== 0) {
-          throw new Error(`Command failed with code ${code}: ${stderr}`);
+          const combinedOutput = `${stdout}\n${stderr}`;
+          const failure = code === 137 || isLikelyOutOfMemory(combinedOutput)
+            ? humanizeCreateFailure('site', `code ${code}: ${combinedOutput}`)
+            : `Command failed with code ${code}: ${stderr}`;
+          throw new Error(failure);
         }
         
         context.completeStep('new-site', 'Site created successfully');
@@ -111,10 +171,27 @@ export const orchestrateSiteCreation = async (
 
         await dependencies.sites.update(createdSite.id, { status: 'running' });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const rawMessage = error instanceof Error ? error.message : String(error);
+        const message = humanizeCreateFailure('site', rawMessage);
         context.log('error', message, 'new-site');
-        await dependencies.sites.update(createdSite.id, { status: 'failure' });
-        throw error;
+
+        if (isLikelyOutOfMemory(rawMessage)) {
+          context.log(
+            'warning',
+            'Detected probable out-of-memory condition. Increase Podman machine memory and retry.',
+            'new-site'
+          );
+        }
+
+        await cleanupFailedCreate();
+
+        if (dependencies.sites.delete) {
+          await dependencies.sites.delete(createdSite.id);
+        } else {
+          await dependencies.sites.update(createdSite.id, { status: 'failure' });
+        }
+
+        throw new Error(message);
       }
     }
   });
@@ -159,6 +236,7 @@ export const orchestrateSiteDeletion = async (
         const args = [
           '-p', projectName,
           'exec',
+          '-T',
           'backend',
           'bench',
           'drop-site',
@@ -177,7 +255,8 @@ export const orchestrateSiteDeletion = async (
             args,
             bench.path,
             (out) => context.log('info', out, 'drop-site'),
-            runtimeEnv
+            runtimeEnv,
+            OPERATION_TIMEOUTS.BENCH_CLEANUP
           );
 
           if (code !== 0) {
@@ -222,8 +301,24 @@ export const orchestrateSiteDeletion = async (
   return true;
 };
 
+const isBenignSchedulerState = (
+  targetStatus: 'running' | 'stopped',
+  stdout: string,
+  stderr: string
+): boolean => {
+  const combined = `${stdout}\n${stderr}`.toLowerCase();
+  if (targetStatus === 'running') {
+    return combined.includes('scheduler') && combined.includes('already') && combined.includes('enable');
+  }
+
+  return combined.includes('scheduler') && combined.includes('already') && combined.includes('disable');
+};
+
 export const orchestrateSiteStatusUpdate = (
   dependencies: {
+    benches: {
+      findById: (id: string) => Promise<Bench | null>;
+    };
     sites: {
       update: (id: string, input: { status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Site | null>;
     };
@@ -239,6 +334,8 @@ export const orchestrateSiteStatusUpdate = (
     run: async (context) => {
       try {
         context.startStep('orchestration', targetStatus === 'running' ? 'Starting site' : 'Stopping site');
+        const bench = await dependencies.benches.findById(site.benchId);
+        const benchCwd = bench?.path ?? '';
         
         // Execute docker-compose commands to actually start/stop the site
         const runtimeCmd = getBinaryPath('docker-compose');
@@ -258,18 +355,51 @@ export const orchestrateSiteStatusUpdate = (
           site.name,
           siteCommand,
         ];
+
+        const runSchedulerCommand = async () => {
+          return execPromise(
+            runtimeCmd,
+            args,
+            benchCwd,
+            (out) => context.log('info', out),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
+          );
+        };
+
+        let result: Awaited<ReturnType<typeof runSchedulerCommand>> | null = null;
+        const maxTimeoutRetries = 2;
+        for (let attempt = 0; attempt <= maxTimeoutRetries; attempt += 1) {
+          context.throwIfCancelled();
+          try {
+            result = await runSchedulerCommand();
+            break;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const isTimeoutError = message.includes('Command timed out');
+            if (!isTimeoutError || attempt === maxTimeoutRetries) {
+              throw error;
+            }
+
+            context.log(
+              'warning',
+              `Scheduler command timed out (attempt ${attempt + 1}/${maxTimeoutRetries + 1}). Retrying: ${site.name}`
+            );
+          }
+        }
+
+        if (!result) {
+          throw new Error(`Failed to update scheduler for ${site.name}: no result returned`);
+        }
+
+        const { code, stderr } = result;
         
-        const { code, stderr } = await execPromise(
-          runtimeCmd,
-          args,
-          '',
-          (out) => context.log('info', out),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.DEFAULT
-        );
-        
-        if (code !== 0) {
+        if (code !== 0 && !isBenignSchedulerState(targetStatus, result.stdout, stderr)) {
           throw new Error(`Failed to update scheduler for ${site.name}: ${stderr}`);
+        }
+
+        if (code !== 0) {
+          context.log('warning', `Scheduler already in desired state for ${site.name}. Continuing.`);
         }
         
         context.completeStep('orchestration', targetStatus === 'running' ? 'Site started' : 'Site stopped');

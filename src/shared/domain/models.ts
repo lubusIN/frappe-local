@@ -114,6 +114,7 @@ export type BenchRecord = {
   name: string;
   path: string;
   frappe_version: string;
+  http_port?: number;
   status: z.infer<typeof EntityStatusSchema>;
   apps: string[];
   created_at: string;
@@ -133,6 +134,7 @@ export const mapBenchRecordToDomain = (record: BenchRecord): Bench =>
     name: record.name,
     path: record.path,
     frappeVersion: record.frappe_version,
+    httpPort: record.http_port,
     status: record.status,
     apps: record.apps,
     timestamps: {
@@ -146,6 +148,7 @@ export const mapBenchDomainToRecord = (bench: Bench): BenchRecord => ({
   name: bench.name,
   path: bench.path,
   frappe_version: bench.frappeVersion,
+  http_port: bench.httpPort,
   status: bench.status,
   apps: bench.apps,
   created_at: normalizeTimestamp(bench.timestamps.createdAt),
