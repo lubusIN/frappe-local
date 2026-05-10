@@ -9,14 +9,8 @@ Current stack:
 
 ## Status
 
-The project is under active incremental build-out using phase/checkpoint execution from the planning docs in `docs/planning`.
-
-Implemented so far:
-- Electron/Vite scaffold
-- Primary navigation shell and placeholder pages
-- Typed preload bridge + IPC smoke flow
-- Baseline quality automation (lint/typecheck/test/build)
-- Startup logging and runtime path stubs
+> [!CAUTION]
+> Project is currently experimental and under active development.
 
 ## Getting Started
 
@@ -51,7 +45,7 @@ Run combined precommit checks:
 npm run precommit:check
 ```
 
-UI consistency rule:
+### UI consistency rule: ###
 - Do not apply `class` or `style` directly on `TextInput` components.
 - Use Frappe UI props (`variant`, `size`, `disabled`) and wrapper containers for layout.
 - Do not use native `<input>`, `<textarea>`, or `<select>` in renderer Vue templates.

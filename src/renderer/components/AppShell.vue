@@ -10,14 +10,14 @@
           :class="isCollapsed ? 'justify-center' : ''"
         >
           <div class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0">
-            <CafeLogo class="w-4 h-4" />
+            <CafeLogo class="w-5 h-5 text-ink-white" />
           </div>
           <div 
             v-if="!isCollapsed"
             class="flex flex-col ml-3 truncate transition-all duration-300"
           >
             <span class="text-sm font-bold leading-tight text-ink-gray-9">Local Bench</span>
-            <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">local dev</span>
+            <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">frappe for humans</span>
           </div>
         </div>
       </template>
