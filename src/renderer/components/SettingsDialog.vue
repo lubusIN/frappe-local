@@ -25,14 +25,6 @@
         />
 
         <div v-else>
-          <div
-            v-if="successMessage"
-            class="mb-4 flex items-center gap-2 rounded-md border border-outline-green-2 bg-surface-green-2 px-3 py-2 text-[13px] text-ink-green-3"
-          >
-            <IconCheckCircle class="h-4 w-4" />
-            {{ successMessage }}
-          </div>
-
           <form
             class="space-y-6"
             @submit.prevent="save"
@@ -94,8 +86,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Dialog, Button, FormLabel, TextInput } from 'frappe-ui';
-import IconCheckCircle from '~icons/lucide/check-circle';
+import { Dialog, Button, FormLabel, TextInput, toast } from 'frappe-ui';
 import StatePanel from './StatePanel.vue';
 import FrappeVersionSelect from './FrappeVersionSelect.vue';
 import { useSettings } from '../composables/useSettings';
@@ -109,7 +100,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { form, loading, saving, error, successMessage, refresh, save } = useSettings();
+const { form, loading, saving, error, refresh, save } = useSettings();
 const ipc = useIpc();
 
 const isShowing = computed({
@@ -130,9 +121,7 @@ const onPickStoragePath = async () => {
 const onSave = async () => {
   await save();
   if (!error.value) {
-    setTimeout(() => {
-      successMessage.value = null;
-    }, 2000);
+    toast.success('Settings saved successfully.');
   }
 };
 </script>
