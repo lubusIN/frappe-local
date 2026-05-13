@@ -136,9 +136,9 @@ describe('diagnostics IPC handlers', () => {
     expect(cached).toEqual(report);
   });
 
-  it('nukes development state and recreates fresh storage snapshot', async () => {
+  it('resets development state and recreates fresh storage snapshot', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-nuke-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -166,8 +166,8 @@ describe('diagnostics IPC handlers', () => {
       }
     );
 
-    const nukeResult = await handlers.get(ipcChannels.diagnosticsNukeDevState)?.();
-    expect(nukeResult).toBe(true);
+    const resetResult = await handlers.get(ipcChannels.diagnosticsResetDevState)?.();
+    expect(resetResult).toBe(true);
 
     const recreated = JSON.parse(fs.readFileSync(path.join(storagePath, 'storage.json'), 'utf8')) as {
       benches: unknown[];
@@ -183,7 +183,7 @@ describe('diagnostics IPC handlers', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('nuke performs compose and podman teardown for local-bench resources', async () => {
+  it('reset performs compose and podman teardown for local-bench resources', async () => {
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
 
@@ -217,7 +217,7 @@ describe('diagnostics IPC handlers', () => {
     });
 
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-nuke-cleanup-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-cleanup-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -244,8 +244,8 @@ describe('diagnostics IPC handlers', () => {
       }
     );
 
-    const nukeResult = await handlers.get(ipcChannels.diagnosticsNukeDevState)?.();
-    expect(nukeResult).toBe(true);
+    const resetResult = await handlers.get(ipcChannels.diagnosticsResetDevState)?.();
+    expect(resetResult).toBe(true);
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',

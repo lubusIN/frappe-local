@@ -59,8 +59,8 @@ describe('ipc contract', () => {
     expect(ipcChannels.taskRunnerProgressEvent).toBe('task-runner:progress-event');
   });
 
-  it('uses a stable channel name for diagnostics nuke action', () => {
-    expect(ipcChannels.diagnosticsNukeDevState).toBe('diagnostics:nuke-dev-state');
+  it('uses a stable channel name for diagnostics reset action', () => {
+    expect(ipcChannels.diagnosticsResetDevState).toBe('diagnostics:reset-dev-state');
   });
 
 

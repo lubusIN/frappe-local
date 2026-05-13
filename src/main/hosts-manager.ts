@@ -198,7 +198,7 @@ export const removeAllHostsEntriesForBench = async (benchId: string, siteNames: 
 
 /**
  * Remove all hosts entries managed by Local Bench from /etc/hosts.
- * This is used by the Nuke feature to clean up dormant entries.
+ * This is used by the Reset feature to clean up dormant entries.
  */
 export const removeAllLocalBenchHostsEntries = async (): Promise<boolean> => {
   try {
@@ -217,7 +217,7 @@ export const removeAllLocalBenchHostsEntries = async (): Promise<boolean> => {
     }
 
     if (process.platform === 'darwin') {
-      const tempPath = `/tmp/local-bench-nuke-hosts-${Date.now()}`;
+      const tempPath = `/tmp/local-bench-reset-hosts-${Date.now()}`;
       try {
         fs.writeFileSync(tempPath, newContent);
         const script = buildPrivilegedShellScript(

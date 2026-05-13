@@ -22,25 +22,25 @@
         <Button
           theme="red"
           variant="solid"
-          :loading="nuking"
-          :disabled="running || fixing || nuking"
-          @click="onOpenNukeConfirm"
+          :loading="resetting"
+          :disabled="running || fixing || resetting"
+          @click="onOpenResetConfirm"
         >
-          Nuke Dev State
+          Reset
         </Button>
       </div>
     </section>
 
     <ConfirmationDialog
-      :open="showNukeConfirm"
-      title="Nuke Dev State"
-      message="This will permanently remove all local benches/sites data and tear down local-bench containers. Type NUKE to continue."
-      confirm-label="Nuke"
-      confirmation-phrase="NUKE"
-      :typed-value="nukeTypedValue"
-      @update:typed-value="onUpdateNukeTypedValue"
-      @cancel="onCancelNuke"
-      @confirm="onConfirmNuke"
+      :open="showResetConfirm"
+      title="Reset"
+      message="This will permanently remove all local benches/sites data and tear down local-bench containers. Type RESET to continue."
+      confirm-label="Reset"
+      confirmation-phrase="RESET"
+      :typed-value="ResetTypedValue"
+      @update:typed-value="onUpdateResetTypedValue"
+      @cancel="onCancelReset"
+      @confirm="onConfirmReset"
     />
   </div>
 </template>
@@ -54,34 +54,34 @@ import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import { useDiagnostics } from '../composables/useDiagnostics';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 
-const { report, running, fixing, nuking, error, run, fix, nuke } = useDiagnostics();
+const { report, running, fixing, resetting, error, run, fix, Reset } = useDiagnostics();
 const { setActions, clearActions } = usePageHeaderActions();
 
-const showNukeConfirm = ref(false);
-const nukeTypedValue = ref('');
+const showResetConfirm = ref(false);
+const ResetTypedValue = ref('');
 
-const onOpenNukeConfirm = (): void => {
-  showNukeConfirm.value = true;
-  nukeTypedValue.value = '';
+const onOpenResetConfirm = (): void => {
+  showResetConfirm.value = true;
+  ResetTypedValue.value = '';
 };
 
-const onCancelNuke = (): void => {
-  showNukeConfirm.value = false;
-  nukeTypedValue.value = '';
+const onCancelReset = (): void => {
+  showResetConfirm.value = false;
+  ResetTypedValue.value = '';
 };
 
-const onUpdateNukeTypedValue = (value: string): void => {
-  nukeTypedValue.value = value;
+const onUpdateResetTypedValue = (value: string): void => {
+  ResetTypedValue.value = value;
 };
 
-const onConfirmNuke = async (): Promise<void> => {
-  const ok = await nuke();
+const onConfirmReset = async (): Promise<void> => {
+  const ok = await Reset();
   if (!ok) {
     return;
   }
 
-  toast.success('Development state nuked. Reloading app...');
-  onCancelNuke();
+  toast.success('Development state reset. Reloading app...');
+  onCancelReset();
   window.location.reload();
 };
 

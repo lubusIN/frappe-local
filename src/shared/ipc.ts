@@ -10,7 +10,7 @@ export const ipcChannels = {
   catalogSync: 'catalog:sync',
   diagnosticsRun: 'diagnostics:run',
   diagnosticsGetLast: 'diagnostics:get-last',
-  diagnosticsNukeDevState: 'diagnostics:nuke-dev-state',
+  diagnosticsResetDevState: 'diagnostics:reset-dev-state',
   runtimeFix: 'runtime:fix',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
@@ -151,7 +151,7 @@ export type RendererBridge = {
   readonly checkForUpdates: () => Promise<UpdateCheckResult>;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
-  readonly nukeDevState: () => Promise<boolean>;
+  readonly resetDevState: () => Promise<boolean>;
   readonly fixRuntime: (checkType: string) => Promise<boolean>;
   readonly listCatalog: () => Promise<CatalogAppItem[]>;
   readonly syncCatalog: (apps: CatalogAppItem[]) => Promise<boolean>;

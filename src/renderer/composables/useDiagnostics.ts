@@ -6,7 +6,7 @@ export const useDiagnostics = () => {
   const report = ref<DiagnosticsReport | null>(null);
   const running = ref(false);
   const fixing = ref(false);
-  const nuking = ref(false);
+  const resetting = ref(false);
   const error = ref<string | null>(null);
 
   const run = async () => {
@@ -42,25 +42,25 @@ export const useDiagnostics = () => {
     }
   };
 
-  const nuke = async (): Promise<boolean> => {
-    nuking.value = true;
+  const Reset = async (): Promise<boolean> => {
+    resetting.value = true;
     error.value = null;
-
+    
     try {
       const ipc = useIpc();
-      const ok = await ipc.nukeDevState();
+      const ok = await ipc.resetDevState();
       if (!ok) {
-        error.value = 'Failed to nuke development state. Please try again.';
+        error.value = 'Failed to reset development state. Please try again.';
         return false;
       }
-
+      
       report.value = null;
       return true;
     } catch (err) {
       error.value = String(err);
       return false;
     } finally {
-      nuking.value = false;
+      resetting.value = false;
     }
   };
 
@@ -77,10 +77,10 @@ export const useDiagnostics = () => {
     report,
     running,
     fixing,
-    nuking,
+    resetting,
     error,
     run,
     fix,
-    nuke,
+    Reset,
   };
 };

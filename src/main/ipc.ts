@@ -315,7 +315,7 @@ export const registerIpcHandlers = (
     return getLastDiagnosticsReport();
   });
 
-  ipcMainLike.handle(ipcChannels.diagnosticsNukeDevState, async (): Promise<boolean> => {
+  ipcMainLike.handle(ipcChannels.diagnosticsResetDevState, async (): Promise<boolean> => {
     const benches = await repositories.benches.findAll();
     const sites = await repositories.sites.findAll();
 
@@ -325,7 +325,7 @@ export const registerIpcHandlers = (
       try {
         await removeAllHostsEntriesForBench(bench.id, siteNames, bench.name);
       } catch (err) {
-        mainLogger.warn(`Failed to remove host entries for bench ${bench.id} during nuke: ${err}`);
+        mainLogger.warn(`Failed to remove host entries for bench ${bench.id} during reset: ${err}`);
       }
     }
 
@@ -333,7 +333,7 @@ export const registerIpcHandlers = (
     try {
       await removeAllLocalBenchHostsEntries();
     } catch (err) {
-      mainLogger.warn(`Failed to sweep dormant host entries during nuke: ${err}`);
+      mainLogger.warn(`Failed to sweep dormant host entries during reset: ${err}`);
     }
 
     let runtimeEnv: NodeJS.ProcessEnv | undefined;
@@ -343,7 +343,7 @@ export const registerIpcHandlers = (
         runtimeEnv = await getRuntimeEnv();
       }
     } catch (error) {
-      mainLogger.warn(`Runtime not available during nuke operation: ${error}`);
+      mainLogger.warn(`Runtime not available during reset operation: ${error}`);
     }
 
     if (runtimeEnv) {
