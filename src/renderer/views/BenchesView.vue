@@ -758,6 +758,7 @@ const onCreateBench = async () => {
   wizardErrors.value = result.errors;
   if (!result.payload) return;
   
+  toast.success(`Creating bench ${result.payload.name}...`);
   await create(result.payload);
 
   createForm.name = '';
@@ -783,15 +784,18 @@ const onStopBench = async (id: string) => {
 };
 
 const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', currentStatus?: string) => {
+  const bench = benches.value.find(b => b.id === id);
+  const name = bench ? bench.name : '';
+  
   if (status === 'running') {
     if (currentStatus === 'running') {
-      toast.success('Restarting bench...');
+      toast.success(`Restarting bench ${name}...`);
     } else {
-      toast.success('Starting bench...');
+      toast.success(`Starting bench ${name}...`);
     }
     setPendingBenchAction(id, currentStatus === 'running' ? 'restarting' : 'starting');
   } else {
-    toast.success('Stopping bench...');
+    toast.success(`Stopping bench ${name}...`);
     setPendingBenchAction(id, 'stopping');
   }
 
@@ -820,12 +824,14 @@ const onCancelDelete = (): void => {
 
 const onConfirmDelete = async (): Promise<void> => {
   const id = pendingDeleteBenchId.value;
+  const name = pendingDeleteBenchName.value;
   if (!id) {
     onCancelDelete();
     return;
   }
 
   deleteConfirmOpen.value = false;
+  toast.success(`Deleting bench ${name}...`);
   await remove(id);
   onCancelDelete();
 };

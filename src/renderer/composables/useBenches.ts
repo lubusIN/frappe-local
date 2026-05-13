@@ -13,6 +13,8 @@ export const useBenches = () => {
   const openingFolder = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
+  const deletingIds = ref<Map<string, string>>(new Map());
+
 
   const load = async (silent = false) => {
     if (!silent) {
@@ -22,7 +24,31 @@ export const useBenches = () => {
 
     try {
       const ipc = useIpc();
-      benches.value = await ipc.listBenches();
+      const newList = await ipc.listBenches();
+
+      // Check for completed deletions
+      for (const [id, name] of deletingIds.value.entries()) {
+        if (!newList.some((b) => b.id === id)) {
+          successMessage.value = `Bench ${name} deleted.`;
+          deletingIds.value.delete(id);
+        }
+      }
+
+      // Check for completed background tasks (queued -> running/stopped)
+      if (benches.value.length > 0) {
+        for (const newBench of newList) {
+          const oldBench = benches.value.find((b) => b.id === newBench.id);
+          if (oldBench && oldBench.status === 'queued' && newBench.status !== 'queued') {
+            if (newBench.status === 'running') {
+              successMessage.value = `Bench ${newBench.name} is running.`;
+            } else if (newBench.status === 'stopped') {
+              successMessage.value = `Bench ${newBench.name} is stopped.`;
+            }
+          }
+        }
+      }
+
+      benches.value = newList;
     } catch (err) {
       error.value = String(err);
       benches.value = [];
@@ -42,7 +68,7 @@ export const useBenches = () => {
       const ipc = useIpc();
       const created = await ipc.createBench(input);
       benches.value = [created, ...benches.value];
-      successMessage.value = `Created bench ${created.name}.`;
+      // Toast will be shown when status changes from queued to running
     } catch (err) {
       error.value = humanizeCreateFailure('bench', stripIpcPrefix(String(err)));
     } finally {
@@ -65,11 +91,7 @@ export const useBenches = () => {
       }
 
       benches.value = benches.value.map((bench) => (bench.id === id ? updated : bench));
-      if (input.status === 'running') {
-        successMessage.value = `Start requested for ${updated.name}.`;
-      } else if (input.status === 'stopped') {
-        successMessage.value = `Stop requested for ${updated.name}.`;
-      } else {
+      if (input.status !== 'running' && input.status !== 'stopped') {
         successMessage.value = `Updated bench ${updated.name}.`;
       }
     } catch (err) {
@@ -86,12 +108,19 @@ export const useBenches = () => {
 
     try {
       const ipc = useIpc();
+      const bench = benches.value.find((b) => b.id === id);
+      if (bench) {
+        deletingIds.value.set(id, bench.name);
+      }
+
       const deleted = await ipc.deleteBench(id);
       if (deleted) {
-        await load();
-        successMessage.value = 'Bench deletion started.';
+        await load(true);
+      } else {
+        deletingIds.value.delete(id);
       }
     } catch (err) {
+      deletingIds.value.delete(id);
       error.value = stripIpcPrefix(String(err));
     } finally {
       deleting.value = false;
@@ -125,7 +154,8 @@ export const useBenches = () => {
         error.value = 'Unable to open bench folder. Verify the path exists.';
         return;
       }
-      successMessage.value = 'Bench folder opened.';
+      const bench = benches.value.find((b) => b.id === id);
+      successMessage.value = bench ? `Bench ${bench.name} folder opened.` : 'Bench folder opened.';
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
     } finally {
@@ -145,7 +175,7 @@ export const useBenches = () => {
         error.value = 'Unable to clean bench. Verify the bench is running.';
         return;
       }
-      successMessage.value = 'Bench cleaning task started.';
+      // Toast will be shown when the background task completes and status updates
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
     } finally {
@@ -171,7 +201,8 @@ export const useBenches = () => {
 
   watchEffect(() => {
     const hasQueued = benches.value.some((b) => b.status === 'queued');
-    if (hasQueued) {
+    const hasDeleting = deletingIds.value.size > 0;
+    if (hasQueued || hasDeleting) {
       startPolling();
     } else {
       stopPolling();

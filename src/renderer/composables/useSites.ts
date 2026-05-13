@@ -13,6 +13,8 @@ export const useSites = () => {
   const openingFolder = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
+  const deletingIds = ref<Map<string, string>>(new Map());
+
 
   const load = async () => {
     const isInitialLoad = sites.value.length === 0;
@@ -23,7 +25,31 @@ export const useSites = () => {
 
     try {
       const ipc = useIpc();
-      sites.value = await ipc.listSites();
+      const newList = await ipc.listSites();
+
+      // Check for completed deletions
+      for (const [id, name] of deletingIds.value.entries()) {
+        if (!newList.some((s) => s.id === id)) {
+          successMessage.value = `Site ${name} deleted.`;
+          deletingIds.value.delete(id);
+        }
+      }
+
+      // Check for completed background tasks (queued -> running/stopped)
+      if (sites.value.length > 0) {
+        for (const newSite of newList) {
+          const oldSite = sites.value.find((s) => s.id === newSite.id);
+          if (oldSite && oldSite.status === 'queued' && newSite.status !== 'queued') {
+            if (newSite.status === 'running') {
+              successMessage.value = `Site ${newSite.name} is running.`;
+            } else if (newSite.status === 'stopped') {
+              successMessage.value = `Site ${newSite.name} is stopped.`;
+            }
+          }
+        }
+      }
+
+      sites.value = newList;
       if (!isInitialLoad) {
         // Clear stale load errors after successful background refresh.
         error.value = null;
@@ -50,7 +76,7 @@ export const useSites = () => {
       const ipc = useIpc();
       const created = await ipc.createSite(input);
       sites.value = [created, ...sites.value];
-      successMessage.value = `Created site ${created.name}.`;
+      // Toast will be shown when status changes from queued to running
     } catch (err) {
       error.value = humanizeCreateFailure('site', stripIpcPrefix(String(err)));
     } finally {
@@ -73,11 +99,7 @@ export const useSites = () => {
       }
 
       sites.value = sites.value.map((site) => (site.id === id ? updated : site));
-      if (input.status === 'running') {
-        successMessage.value = `Start requested for ${updated.name}.`;
-      } else if (input.status === 'stopped') {
-        successMessage.value = `Stop requested for ${updated.name}.`;
-      } else {
+      if (input.status !== 'running' && input.status !== 'stopped') {
         successMessage.value = `Updated site ${updated.name}.`;
       }
     } catch (err) {
@@ -94,10 +116,15 @@ export const useSites = () => {
 
     try {
       const ipc = useIpc();
+      const site = sites.value.find((s) => s.id === id);
+      if (site) {
+        deletingIds.value.set(id, site.name);
+      }
+
       await ipc.deleteSite(id);
       await load();
-      successMessage.value = 'Site deletion started.';
     } catch (err) {
+      deletingIds.value.delete(id);
       const message = err instanceof Error ? err.message : String(err);
       error.value = stripIpcPrefix(message);
     } finally {
@@ -132,7 +159,8 @@ export const useSites = () => {
         error.value = 'Unable to open site folder. Verify the path exists.';
         return;
       }
-      successMessage.value = 'Site folder opened.';
+      const site = sites.value.find((s) => s.id === id);
+      successMessage.value = site ? `Site ${site.name} folder opened.` : 'Site folder opened.';
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
     } finally {
@@ -158,7 +186,8 @@ export const useSites = () => {
 
   watchEffect(() => {
     const hasQueued = sites.value.some((s) => s.status === 'queued');
-    if (hasQueued) {
+    const hasDeleting = deletingIds.value.size > 0;
+    if (hasQueued || hasDeleting) {
       startPolling();
     } else {
       stopPolling();

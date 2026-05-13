@@ -705,6 +705,7 @@ const onCreateSite = async () => {
   const result = buildSiteCreatePayload(createForm);
   wizardErrors.value = result.errors;
   if (!result.payload) return;
+  toast.success(`Creating site ${result.payload.name}...`);
   await create(result.payload);
   onCloseSiteWizard();
   await loadBenchOptions();
@@ -723,11 +724,14 @@ const onCloseSiteWizard = () => {
 };
 
 const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
+  const site = sites.value.find(s => s.id === id);
+  const name = site ? site.name : '';
+  
   if (status === 'running') {
-    toast.success('Starting site...');
+    toast.success(`Starting site ${name}...`);
     setPendingSiteAction(id, 'starting');
   } else {
-    toast.success('Stopping site...');
+    toast.success(`Stopping site ${name}...`);
     setPendingSiteAction(id, 'stopping');
   }
 
@@ -769,11 +773,13 @@ const onCancelDeleteSite = (): void => {
 
 const onConfirmDeleteSite = async (): Promise<void> => {
   const id = pendingDeleteSiteId.value;
+  const name = pendingDeleteSiteName.value;
   if (!id) {
     onCancelDeleteSite();
     return;
   }
   deleteConfirmOpen.value = false;
+  toast.success(`Deleting site ${name}...`);
   await remove(id);
   onCancelDeleteSite();
 };
