@@ -804,7 +804,8 @@ export const orchestrateBenchDeletion = (
         // Remove hosts entries for all sites in this bench
         context.startStep('hosts', 'Removing local domain mappings');
         try {
-          await removeAllHostsEntriesForBench(bench.id, bench.name);
+          const siteNames = attachedSites.map(s => s.name);
+          await removeAllHostsEntriesForBench(bench.id, siteNames, bench.name);
           context.completeStep('hosts', 'Domain mappings removed');
         } catch (hostsErr) {
           context.log('warning', `Could not remove hosts entries: ${hostsErr instanceof Error ? hostsErr.message : String(hostsErr)}`);

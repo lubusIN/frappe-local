@@ -24,6 +24,7 @@ import { findNextAvailableTcpPort } from './utils/ports';
 import { SHARED_PROXY_PORT_RANGE } from './shared-proxy';
 import { normalizeSiteHost } from '../shared/site-hostname';
 import { resolveBenchHttpPort } from './utils/bench-http-port';
+import { removeAllHostsEntriesForBench, removeAllLocalBenchHostsEntries } from './hosts-manager';
 
 const mainLogger = createMainLogger('ipc');
 
@@ -316,6 +317,24 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.diagnosticsNukeDevState, async (): Promise<boolean> => {
     const benches = await repositories.benches.findAll();
+    const sites = await repositories.sites.findAll();
+
+    for (const bench of benches) {
+      const benchSites = sites.filter(s => s.benchId === bench.id);
+      const siteNames = benchSites.map(s => s.name);
+      try {
+        await removeAllHostsEntriesForBench(bench.id, siteNames, bench.name);
+      } catch (err) {
+        mainLogger.warn(`Failed to remove host entries for bench ${bench.id} during nuke: ${err}`);
+      }
+    }
+
+    // After wiping known entries, also sweep any remaining dormant entries that match our marker
+    try {
+      await removeAllLocalBenchHostsEntries();
+    } catch (err) {
+      mainLogger.warn(`Failed to sweep dormant host entries during nuke: ${err}`);
+    }
 
     let runtimeEnv: NodeJS.ProcessEnv | undefined;
     try {

@@ -80,8 +80,11 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
     const lines = content.split('\n');
     const filtered = lines.filter(line => {
       const trimmed = line.trim();
-      // Remove lines matching our site that have our marker
-      if (trimmed.includes(siteName) && trimmed.includes(MARKER_PREFIX)) {
+      // Remove lines matching our site, even if missing marker (e.g. if added manually)
+      const isSiteLine = trimmed.startsWith('127.0.0.1') || trimmed.startsWith('::1');
+      const nameMatch = new RegExp(`(^|\\s)${siteName.replace(/\\./g, '\\\\.')}(\\s|$)`).test(trimmed);
+      
+      if (isSiteLine && nameMatch) {
         return false;
       }
       return true;
@@ -118,7 +121,7 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
       } catch {
         const escapedName = siteName.replace(/\./g, '\\.');
         const { code } = await execPromise('sudo', [
-          'sed', '-i', `/${escapedName}.*${MARKER_PREFIX}/d`, HOSTS_FILE,
+          'sed', '-i', `/[[:space:]]${escapedName}\\([[:space:]]\\|$\\)/d`, HOSTS_FILE,
         ]);
         if (code !== 0) return false;
       }
@@ -135,20 +138,30 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
 /**
  * Remove all hosts entries managed by Local Bench for a specific bench.
  */
-export const removeAllHostsEntriesForBench = async (benchId: string, benchLabel?: string): Promise<boolean> => {
+export const removeAllHostsEntriesForBench = async (benchId: string, siteNames: string[], benchLabel?: string): Promise<boolean> => {
   try {
     const content = fs.readFileSync(HOSTS_FILE, 'utf8');
     const marker = `${MARKER_PREFIX}${benchId}`;
     const promptLabel = benchLabel?.trim() || benchId;
 
-    if (!content.includes(marker)) {
+    const lines = content.split('\n');
+    const filtered = lines.filter((line) => {
+      const trimmed = line.trim();
+      if (trimmed.includes(marker)) return false;
+      
+      const isSiteLine = trimmed.startsWith('127.0.0.1') || trimmed.startsWith('::1');
+      if (isSiteLine && siteNames.some(siteName => new RegExp(`(^|\\s)${siteName.replace(/\\./g, '\\\\.')}(\\s|$)`).test(trimmed))) {
+        return false;
+      }
+      return true;
+    });
+
+    const newContent = filtered.join('\n');
+    if (newContent === content) {
       return true;
     }
 
     if (process.platform === 'darwin') {
-      const lines = content.split('\n');
-      const filtered = lines.filter((line) => !line.includes(marker));
-      const newContent = filtered.join('\n');
       const tempPath = `/tmp/local-bench-bench-hosts-${Date.now()}`;
       try {
         fs.writeFileSync(tempPath, newContent);
@@ -163,14 +176,15 @@ export const removeAllHostsEntriesForBench = async (benchId: string, benchLabel?
         return false;
       }
     } else {
-      const lines = content.split('\n');
-      const filtered = lines.filter(line => !line.includes(marker));
       try {
-        fs.writeFileSync(HOSTS_FILE, filtered.join('\n'));
+        fs.writeFileSync(HOSTS_FILE, newContent);
       } catch {
-        const { code } = await execPromise('sudo', [
-          'sed', '-i', `/${marker.replace(/[#:]/g, '\\$&')}/d`, HOSTS_FILE,
-        ]);
+        let sedCmd = `sed -i '/${marker.replace(/[#:]/g, '\\\\$&')}/d' ${HOSTS_FILE}`;
+        for (const siteName of siteNames) {
+          const escapedName = siteName.replace(/\\./g, '\\\\.');
+          sedCmd += ` && sed -i '/[[:space:]]${escapedName}\\([[:space:]]\\|$\\)/d' ${HOSTS_FILE}`;
+        }
+        const { code } = await execPromise('sudo', ['sh', '-c', sedCmd]);
         return code === 0;
       }
     }
@@ -178,6 +192,58 @@ export const removeAllHostsEntriesForBench = async (benchId: string, benchLabel?
     return true;
   } catch (error) {
     logger.error(`Failed to remove hosts entries for bench ${benchId}:`, error);
+    return false;
+  }
+};
+
+/**
+ * Remove all hosts entries managed by Local Bench from /etc/hosts.
+ * This is used by the Nuke feature to clean up dormant entries.
+ */
+export const removeAllLocalBenchHostsEntries = async (): Promise<boolean> => {
+  try {
+    const content = fs.readFileSync(HOSTS_FILE, 'utf8');
+    
+    if (!content.includes(MARKER_PREFIX)) {
+      return true;
+    }
+
+    const lines = content.split('\n');
+    const filtered = lines.filter((line) => !line.includes(MARKER_PREFIX));
+    const newContent = filtered.join('\n');
+
+    if (newContent === content) {
+      return true;
+    }
+
+    if (process.platform === 'darwin') {
+      const tempPath = `/tmp/local-bench-nuke-hosts-${Date.now()}`;
+      try {
+        fs.writeFileSync(tempPath, newContent);
+        const script = buildPrivilegedShellScript(
+          `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
+          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove all dormant host entries.`
+        );
+        const { code } = await execPromise('osascript', ['-e', script]);
+        return code === 0;
+      } catch (err) {
+        logger.error(`Failed to remove all dormant hosts entries: ${err}`);
+        return false;
+      }
+    } else {
+      try {
+        fs.writeFileSync(HOSTS_FILE, newContent);
+      } catch {
+        const { code } = await execPromise('sudo', [
+          'sed', '-i', `/${MARKER_PREFIX.replace(/[#:]/g, '\\\\$&')}/d`, HOSTS_FILE,
+        ]);
+        return code === 0;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    logger.error(`Failed to remove all dormant hosts entries:`, error);
     return false;
   }
 };
