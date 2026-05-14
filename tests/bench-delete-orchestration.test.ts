@@ -78,6 +78,30 @@ describe('bench delete orchestration cleanup', () => {
           updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         },
       },
+      {
+        id: 'site-2',
+        name: 'erp.localhost',
+        benchId: bench.id,
+        path: '/Users/dev/frappe-bench-2/sites/erp.localhost',
+        apps: ['frappe'],
+        status: 'stopped' as const,
+        timestamps: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        },
+      },
+      {
+        id: 'site-3',
+        name: 'other-bench.localhost',
+        benchId: 'another-bench',
+        path: '/Users/dev/other-bench/sites/other-bench.localhost',
+        apps: ['frappe'],
+        status: 'stopped' as const,
+        timestamps: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        },
+      },
     ]),
     delete: vi.fn(async () => true),
   };
@@ -160,6 +184,13 @@ describe('bench delete orchestration cleanup', () => {
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.any(Number)
+    );
+
+    expect(removeAllHostsEntriesForBenchMock).toHaveBeenCalledTimes(1);
+    expect(removeAllHostsEntriesForBenchMock).toHaveBeenCalledWith(
+      bench.id,
+      ['demo.localhost', 'erp.localhost'],
+      bench.name
     );
   });
 });

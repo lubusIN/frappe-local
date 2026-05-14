@@ -6,6 +6,8 @@ const logger = createMainLogger('hosts-manager');
 
 const HOSTS_FILE = '/etc/hosts';
 const MARKER_PREFIX = '# local-bench:';
+const LOCAL_BENCH_BLOCK_START = '#LOCAL-BENCH-START';
+const LOCAL_BENCH_BLOCK_END = '#LOCAL-BENCH-END';
 
 const HOSTS_PERMISSION_PROMPT_BASE =
   'Local Bench needs administrator permission to update /etc/hosts for local site routing.';
@@ -14,6 +16,85 @@ const escapeAppleScriptString = (value: string): string => value.replace(/"/g, '
 
 const buildPrivilegedShellScript = (command: string, prompt: string): string =>
   `do shell script "${escapeAppleScriptString(command)}" with administrator privileges with prompt "${escapeAppleScriptString(prompt)}"`;
+
+const quoteForShell = (value: string): string => `'${value.replace(/'/g, `'"'"'`)}'`;
+
+const isSystemResolvedLocalhostDomain = (siteName: string): boolean => {
+  const normalized = siteName.trim().toLowerCase();
+  return normalized === 'localhost' || normalized.endsWith('.localhost');
+};
+
+const findLocalBenchBlockBounds = (lines: string[]): { start: number; end: number } | null => {
+  const start = lines.indexOf(LOCAL_BENCH_BLOCK_START);
+  const end = lines.indexOf(LOCAL_BENCH_BLOCK_END);
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
+  return { start, end };
+};
+
+const ensureLocalBenchBlock = (content: string): { lines: string[]; start: number; end: number } => {
+  const lines = content.split('\n');
+  const bounds = findLocalBenchBlockBounds(lines);
+  if (bounds) {
+    return { lines, start: bounds.start, end: bounds.end };
+  }
+
+  const workingLines = [...lines];
+
+  // Remove trailing empty lines so we can append a cleanly separated block.
+  while (workingLines.length > 0 && workingLines[workingLines.length - 1] === '') {
+    workingLines.pop();
+  }
+
+  if (workingLines.length > 0) {
+    workingLines.push('');
+  }
+
+  const start = workingLines.length;
+  workingLines.push(LOCAL_BENCH_BLOCK_START);
+  const end = workingLines.length;
+  workingLines.push(LOCAL_BENCH_BLOCK_END);
+
+  return { lines: workingLines, start, end };
+};
+
+const writeHostsContent = async (newContent: string, promptAction: string): Promise<boolean> => {
+  if (process.platform === 'darwin') {
+    const tempPath = `/tmp/local-bench-hosts-${Date.now()}`;
+    try {
+      fs.writeFileSync(tempPath, newContent, 'utf8');
+      const script = buildPrivilegedShellScript(
+        `cp ${quoteForShell(tempPath)} ${HOSTS_FILE} && rm ${quoteForShell(tempPath)}`,
+        `${HOSTS_PERMISSION_PROMPT_BASE} Action: ${promptAction}.`
+      );
+      const { code } = await execPromise('osascript', ['-e', script]);
+      if (code !== 0) {
+        logger.error(`Failed to update hosts file for action: ${promptAction}`);
+      }
+      return code === 0;
+    } catch (error) {
+      logger.error(`Failed to update hosts file for action ${promptAction}:`, error);
+      return false;
+    }
+  }
+
+  try {
+    fs.writeFileSync(HOSTS_FILE, newContent, 'utf8');
+    return true;
+  } catch {
+    const tempPath = `/tmp/local-bench-hosts-${Date.now()}`;
+    try {
+      fs.writeFileSync(tempPath, newContent, 'utf8');
+      const command = `cp ${quoteForShell(tempPath)} ${HOSTS_FILE} && rm ${quoteForShell(tempPath)}`;
+      const { code } = await execPromise('sudo', ['sh', '-c', command]);
+      return code === 0;
+    } catch (error) {
+      logger.error(`Failed to update hosts file for action ${promptAction}:`, error);
+      return false;
+    }
+  }
+};
 
 /**
  * Manages /etc/hosts entries for local site domains.
@@ -30,7 +111,11 @@ const buildPrivilegedShellScript = (command: string, prompt: string): string =>
  */
 export const addHostsEntry = async (siteName: string, benchId: string): Promise<boolean> => {
   try {
-    // Check if entry already exists
+    if (isSystemResolvedLocalhostDomain(siteName)) {
+      logger.info(`Skipping hosts entry for ${siteName}; .localhost is resolved by the system.`);
+      return true;
+    }
+
     const existing = fs.readFileSync(HOSTS_FILE, 'utf8');
     const entryLine = `127.0.0.1  ${siteName}  ${MARKER_PREFIX}${benchId}`;
 
@@ -39,25 +124,15 @@ export const addHostsEntry = async (siteName: string, benchId: string): Promise<
       return true;
     }
 
-    if (process.platform === 'darwin') {
-      // Use osascript for elevated append
-      const script = buildPrivilegedShellScript(
-        `echo '${entryLine}' >> ${HOSTS_FILE}`,
-        `${HOSTS_PERMISSION_PROMPT_BASE} Action: Add host entry for ${siteName}.`
-      );
-      const { code } = await execPromise('osascript', ['-e', script]);
-      if (code !== 0) {
-        logger.error(`Failed to add hosts entry for ${siteName}`);
-        return false;
-      }
-    } else {
-      // Linux: try direct write, fall back to sudo
-      try {
-        fs.appendFileSync(HOSTS_FILE, `\n${entryLine}\n`);
-      } catch {
-        const { code } = await execPromise('sudo', ['sh', '-c', `echo '${entryLine}' >> ${HOSTS_FILE}`]);
-        if (code !== 0) return false;
-      }
+    const block = ensureLocalBenchBlock(existing);
+    const updatedLines = [...block.lines];
+    updatedLines.splice(block.end, 0, entryLine);
+    const updatedContent = `${updatedLines.join('\n')}\n`;
+
+    const updated = await writeHostsContent(updatedContent, `Add host entry for ${siteName}`);
+    if (!updated) {
+      logger.error(`Failed to add hosts entry for ${siteName}`);
+      return false;
     }
 
     logger.info(`Added hosts entry: ${siteName} → 127.0.0.1`);
@@ -74,17 +149,31 @@ export const addHostsEntry = async (siteName: string, benchId: string): Promise<
  */
 export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
   try {
+    if (isSystemResolvedLocalhostDomain(siteName)) {
+      logger.info(`Skipping hosts removal for ${siteName}; .localhost is resolved by the system.`);
+      return true;
+    }
+
     const content = fs.readFileSync(HOSTS_FILE, 'utf8');
 
-    // Only remove lines that we manage (tagged with our marker) or exact match
     const lines = content.split('\n');
-    const filtered = lines.filter(line => {
+    const bounds = findLocalBenchBlockBounds(lines);
+    const filtered = lines.filter((line, index) => {
       const trimmed = line.trim();
-      // Remove lines matching our site, even if missing marker (e.g. if added manually)
+      if (trimmed === LOCAL_BENCH_BLOCK_START || trimmed === LOCAL_BENCH_BLOCK_END) {
+        return true;
+      }
+
+      const isInsideManagedBlock = bounds ? index > bounds.start && index < bounds.end : false;
       const isSiteLine = trimmed.startsWith('127.0.0.1') || trimmed.startsWith('::1');
       const nameMatch = new RegExp(`(^|\\s)${siteName.replace(/\\./g, '\\\\.')}(\\s|$)`).test(trimmed);
-      
-      if (isSiteLine && nameMatch) {
+
+      if (isInsideManagedBlock && isSiteLine && nameMatch) {
+        return false;
+      }
+
+      // Legacy cleanup for entries written before block markers existed.
+      if (!isInsideManagedBlock && isSiteLine && nameMatch && trimmed.includes(MARKER_PREFIX)) {
         return false;
       }
       return true;
@@ -97,34 +186,10 @@ export const removeHostsEntry = async (siteName: string): Promise<boolean> => {
       return true;
     }
 
-    if (process.platform === 'darwin') {
-      // Create a temporary file with the new content and copy it over with privileges
-      const tempPath = `/tmp/local-bench-hosts-${Date.now()}`;
-      try {
-        fs.writeFileSync(tempPath, newContent);
-        const script = buildPrivilegedShellScript(
-          `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
-          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove host entry for ${siteName}.`
-        );
-        const { code } = await execPromise('osascript', ['-e', script]);
-        if (code !== 0) {
-          logger.error(`Failed to remove hosts entry for ${siteName} (osascript failed)`);
-          return false;
-        }
-      } catch (err) {
-        logger.error(`Failed to write temp hosts file: ${err}`);
-        return false;
-      }
-    } else {
-      try {
-        fs.writeFileSync(HOSTS_FILE, newContent);
-      } catch {
-        const escapedName = siteName.replace(/\./g, '\\.');
-        const { code } = await execPromise('sudo', [
-          'sed', '-i', `/[[:space:]]${escapedName}\\([[:space:]]\\|$\\)/d`, HOSTS_FILE,
-        ]);
-        if (code !== 0) return false;
-      }
+    const updated = await writeHostsContent(newContent, `Remove host entry for ${siteName}`);
+    if (!updated) {
+      logger.error(`Failed to remove hosts entry for ${siteName}`);
+      return false;
     }
 
     logger.info(`Removed hosts entry for ${siteName}`);
@@ -142,15 +207,25 @@ export const removeAllHostsEntriesForBench = async (benchId: string, siteNames: 
   try {
     const content = fs.readFileSync(HOSTS_FILE, 'utf8');
     const marker = `${MARKER_PREFIX}${benchId}`;
-    const promptLabel = benchLabel?.trim() || benchId;
+    const removableSiteNames = siteNames.filter((siteName) => !isSystemResolvedLocalhostDomain(siteName));
 
     const lines = content.split('\n');
+    const bounds = findLocalBenchBlockBounds(lines);
     const filtered = lines.filter((line) => {
       const trimmed = line.trim();
+      if (trimmed === LOCAL_BENCH_BLOCK_START || trimmed === LOCAL_BENCH_BLOCK_END) {
+        return true;
+      }
+
       if (trimmed.includes(marker)) return false;
       
       const isSiteLine = trimmed.startsWith('127.0.0.1') || trimmed.startsWith('::1');
-      if (isSiteLine && siteNames.some(siteName => new RegExp(`(^|\\s)${siteName.replace(/\\./g, '\\\\.')}(\\s|$)`).test(trimmed))) {
+      if (isSiteLine && removableSiteNames.some(siteName => new RegExp(`(^|\\s)${siteName.replace(/\\./g, '\\\\.')}(\\s|$)`).test(trimmed))) {
+        return false;
+      }
+
+      // Legacy cleanup for old marker-tagged entries outside the managed block.
+      if (!bounds && trimmed.includes(MARKER_PREFIX)) {
         return false;
       }
       return true;
@@ -161,35 +236,7 @@ export const removeAllHostsEntriesForBench = async (benchId: string, siteNames: 
       return true;
     }
 
-    if (process.platform === 'darwin') {
-      const tempPath = `/tmp/local-bench-bench-hosts-${Date.now()}`;
-      try {
-        fs.writeFileSync(tempPath, newContent);
-        const script = buildPrivilegedShellScript(
-          `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
-          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove hosts entries for bench ${promptLabel}.`
-        );
-        const { code } = await execPromise('osascript', ['-e', script]);
-        return code === 0;
-      } catch (err) {
-        logger.error(`Failed to remove bench hosts entries: ${err}`);
-        return false;
-      }
-    } else {
-      try {
-        fs.writeFileSync(HOSTS_FILE, newContent);
-      } catch {
-        let sedCmd = `sed -i '/${marker.replace(/[#:]/g, '\\\\$&')}/d' ${HOSTS_FILE}`;
-        for (const siteName of siteNames) {
-          const escapedName = siteName.replace(/\\./g, '\\\\.');
-          sedCmd += ` && sed -i '/[[:space:]]${escapedName}\\([[:space:]]\\|$\\)/d' ${HOSTS_FILE}`;
-        }
-        const { code } = await execPromise('sudo', ['sh', '-c', sedCmd]);
-        return code === 0;
-      }
-    }
-
-    return true;
+    return writeHostsContent(newContent, `Remove hosts entries for bench ${benchLabel?.trim() || benchId}`);
   } catch (error) {
     logger.error(`Failed to remove hosts entries for bench ${benchId}:`, error);
     return false;
@@ -203,45 +250,26 @@ export const removeAllHostsEntriesForBench = async (benchId: string, siteNames: 
 export const removeAllLocalBenchHostsEntries = async (): Promise<boolean> => {
   try {
     const content = fs.readFileSync(HOSTS_FILE, 'utf8');
-    
-    if (!content.includes(MARKER_PREFIX)) {
+
+    if (!content.includes(MARKER_PREFIX) && !content.includes(LOCAL_BENCH_BLOCK_START) && !content.includes(LOCAL_BENCH_BLOCK_END)) {
       return true;
     }
 
     const lines = content.split('\n');
-    const filtered = lines.filter((line) => !line.includes(MARKER_PREFIX));
+    const bounds = findLocalBenchBlockBounds(lines);
+    const filtered = lines.filter((line, index) => {
+      if (bounds && index >= bounds.start && index <= bounds.end) {
+        return false;
+      }
+      return !line.includes(MARKER_PREFIX);
+    });
     const newContent = filtered.join('\n');
 
     if (newContent === content) {
       return true;
     }
 
-    if (process.platform === 'darwin') {
-      const tempPath = `/tmp/local-bench-reset-hosts-${Date.now()}`;
-      try {
-        fs.writeFileSync(tempPath, newContent);
-        const script = buildPrivilegedShellScript(
-          `cp '${tempPath}' ${HOSTS_FILE} && rm '${tempPath}'`,
-          `${HOSTS_PERMISSION_PROMPT_BASE} Action: Remove all dormant host entries.`
-        );
-        const { code } = await execPromise('osascript', ['-e', script]);
-        return code === 0;
-      } catch (err) {
-        logger.error(`Failed to remove all dormant hosts entries: ${err}`);
-        return false;
-      }
-    } else {
-      try {
-        fs.writeFileSync(HOSTS_FILE, newContent);
-      } catch {
-        const { code } = await execPromise('sudo', [
-          'sed', '-i', `/${MARKER_PREFIX.replace(/[#:]/g, '\\\\$&')}/d`, HOSTS_FILE,
-        ]);
-        return code === 0;
-      }
-    }
-
-    return true;
+    return writeHostsContent(newContent, 'Remove all dormant host entries');
   } catch (error) {
     logger.error(`Failed to remove all dormant hosts entries:`, error);
     return false;

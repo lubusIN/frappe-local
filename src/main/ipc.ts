@@ -24,7 +24,7 @@ import { findNextAvailableTcpPort } from './utils/ports';
 import { SHARED_PROXY_PORT_RANGE } from './shared-proxy';
 import { normalizeSiteHost } from '../shared/site-hostname';
 import { resolveBenchHttpPort } from './utils/bench-http-port';
-import { removeAllHostsEntriesForBench, removeAllLocalBenchHostsEntries } from './hosts-manager';
+import { removeAllLocalBenchHostsEntries } from './hosts-manager';
 
 const mainLogger = createMainLogger('ipc');
 
@@ -162,6 +162,9 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   createdAt: site.timestamps.createdAt,
   updatedAt: site.timestamps.updatedAt,
 });
+
+const byCreatedAtDesc = <T extends { timestamps: { createdAt: string } }>(left: T, right: T): number =>
+  right.timestamps.createdAt.localeCompare(left.timestamps.createdAt);
 
 const hasDuplicateSiteHost = (
   sites: Site[],
@@ -321,23 +324,12 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.diagnosticsResetDevState, async (): Promise<boolean> => {
     const benches = await repositories.benches.findAll();
-    const sites = await repositories.sites.findAll();
 
-    for (const bench of benches) {
-      const benchSites = sites.filter(s => s.benchId === bench.id);
-      const siteNames = benchSites.map(s => s.name);
-      try {
-        await removeAllHostsEntriesForBench(bench.id, siteNames, bench.name);
-      } catch (err) {
-        mainLogger.warn(`Failed to remove host entries for bench ${bench.id} during reset: ${err}`);
-      }
-    }
-
-    // After wiping known entries, also sweep any remaining dormant entries that match our marker
+    // Reset performs one hosts cleanup pass so macOS prompts for permission only once.
     try {
       await removeAllLocalBenchHostsEntries();
     } catch (err) {
-      mainLogger.warn(`Failed to sweep dormant host entries during reset: ${err}`);
+      mainLogger.warn(`Failed to remove Local Bench hosts block during reset: ${err}`);
     }
 
     let runtimeEnv: NodeJS.ProcessEnv | undefined;
@@ -443,7 +435,7 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.benchesList, async () => {
     const benches = await repositories.benches.findAll();
-    return benches.map(toBenchListItem);
+    return [...benches].sort(byCreatedAtDesc).map(toBenchListItem);
   });
 
   ipcMainLike.handle(ipcChannels.benchesCreate, async (_event: unknown, input: unknown) => {
@@ -662,7 +654,7 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
     const sites = await repositories.sites.findAll();
-    return sites.map(toSiteListItem);
+    return [...sites].sort(byCreatedAtDesc).map(toSiteListItem);
   });
 
   ipcMainLike.handle(ipcChannels.sitesCreate, async (_event: unknown, input: unknown) => {

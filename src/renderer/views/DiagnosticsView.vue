@@ -75,13 +75,14 @@ const onUpdateResetTypedValue = (value: string): void => {
 };
 
 const onConfirmReset = async (): Promise<void> => {
+  onCancelReset();
+
   const ok = await Reset();
   if (!ok) {
     return;
   }
 
   toast.success('Development state reset. Reloading app...');
-  onCancelReset();
   window.location.reload();
 };
 

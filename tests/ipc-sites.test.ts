@@ -190,6 +190,43 @@ describe('sites IPC handlers', () => {
     expect(result).toEqual([]);
   });
 
+  it('sites:list sorts newest sites first by creation time', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            id: 'site-old',
+            name: 'old.localhost',
+            timestamps: {
+              createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-02-02T00:00:00.000Z').toISOString(),
+            },
+          },
+          {
+            ...sites[0]!,
+            id: 'site-new',
+            name: 'new.localhost',
+            timestamps: {
+              createdAt: new Date('2026-02-03T00:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-02-03T00:00:00.000Z').toISOString(),
+            },
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const result = await handlers.get(ipcChannels.sitesList)?.() as Array<{ id: string }>;
+
+    expect(result.map((site) => site.id)).toEqual(['site-new', 'site-old']);
+  });
+
   it('sites:create creates a stopped site and returns list item shape', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
     const trackSiteOperation = vi.fn();

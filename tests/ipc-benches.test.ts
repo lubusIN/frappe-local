@@ -179,6 +179,43 @@ describe('benches IPC handlers', () => {
     expect(result).toEqual([]);
   });
 
+  it('benches:list sorts newest benches first by creation time', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo([
+          {
+            ...benches[0]!,
+            id: 'bench-old',
+            name: 'bench-old',
+            timestamps: {
+              createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
+            },
+          },
+          {
+            ...benches[0]!,
+            id: 'bench-new',
+            name: 'bench-new',
+            timestamps: {
+              createdAt: new Date('2026-01-03T00:00:00.000Z').toISOString(),
+              updatedAt: new Date('2026-01-03T00:00:00.000Z').toISOString(),
+            },
+          },
+        ]),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const result = await handlers.get(ipcChannels.benchesList)?.() as Array<{ id: string }>;
+
+    expect(result.map((bench) => bench.id)).toEqual(['bench-new', 'bench-old']);
+  });
+
   it('benches:create creates a stopped bench and returns list item shape', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 

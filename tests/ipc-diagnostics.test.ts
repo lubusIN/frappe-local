@@ -10,6 +10,7 @@ const ensureRuntimeRunningMock = vi.fn(async () => false);
 const getRuntimeEnvMock = vi.fn(async () => ({}));
 const getBinaryPathMock = vi.fn((name: string) => `/mock/${name}`);
 const execPromiseMock = vi.fn(async (..._args: unknown[]) => ({ code: 0, stdout: '', stderr: '' }));
+const removeAllLocalBenchHostsEntriesMock = vi.fn(async () => true);
 
 vi.mock('../src/main/runtime-service', () => ({
   ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
@@ -22,6 +23,10 @@ vi.mock('../src/main/utils/binaries', () => ({
 
 vi.mock('../src/main/utils/exec', () => ({
   execPromise: (...args: unknown[]) => execPromiseMock(...args),
+}));
+
+vi.mock('../src/main/hosts-manager', () => ({
+  removeAllLocalBenchHostsEntries: (...args: unknown[]) => removeAllLocalBenchHostsEntriesMock(...args),
 }));
 
 const seedSettings: Settings = {
@@ -105,6 +110,7 @@ describe('diagnostics IPC handlers', () => {
     getRuntimeEnvMock.mockResolvedValue({});
     getBinaryPathMock.mockImplementation((name: string) => `/mock/${name}`);
     execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
+    removeAllLocalBenchHostsEntriesMock.mockResolvedValue(true);
   });
 
   it('runs diagnostics on demand and caches the latest report', async () => {
@@ -187,6 +193,7 @@ describe('diagnostics IPC handlers', () => {
     expect(recreated.appCatalog.length).toBeGreaterThan(0);
     expect(fs.existsSync(configPath)).toBe(false);
     expect(refreshFrontDoorHosts).toHaveBeenCalledTimes(1);
+    expect(removeAllLocalBenchHostsEntriesMock).toHaveBeenCalledTimes(1);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
@@ -299,6 +306,7 @@ describe('diagnostics IPC handlers', () => {
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.any(Number)
     );
+    expect(removeAllLocalBenchHostsEntriesMock).toHaveBeenCalledTimes(1);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
