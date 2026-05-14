@@ -2,53 +2,14 @@ import { execPromise } from './utils/exec';
 import { getBinaryPath } from './utils/binaries';
 import path from 'node:path';
 import fs from 'node:fs';
-import git from 'isomorphic-git';
-import http from 'isomorphic-git/http/node';
 import { getTaskRunner } from './task-runner';
 import type { Bench, Site } from '../shared/domain/models';
-import type { AppRuntimePaths } from './config';
 import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
 import { removeAllHostsEntriesForBench } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from './utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
-
-const ensureBenchEnvConfigured = (benchPath: string, frappeVersion: string, httpPort?: number) => {
-  const exampleEnvPath = path.join(benchPath, 'example.env');
-  const targetEnvPath = path.join(benchPath, '.env');
-
-  let envContent = '';
-  if (fs.existsSync(targetEnvPath)) {
-    envContent = fs.readFileSync(targetEnvPath, 'utf8');
-  } else if (fs.existsSync(exampleEnvPath)) {
-    envContent = fs.readFileSync(exampleEnvPath, 'utf8');
-  } else {
-    return; // No env to configure
-  }
-
-  const version = frappeVersion === 'develop' ? 'develop' : frappeVersion;
-
-  // Set versions
-  envContent = envContent.replace(/FRAPPE_VERSION=.*/g, `FRAPPE_VERSION=${version}`);
-  envContent = envContent.replace(/ERPNEXT_VERSION=.*/g, `ERPNEXT_VERSION=${version}`);
-
-  // Set default hosts for local setup
-  envContent = envContent.replace(/DB_HOST=.*/g, `DB_HOST=db`);
-  envContent = envContent.replace(/DB_PORT=.*/g, `DB_PORT=3306`);
-  envContent = envContent.replace(/REDIS_CACHE=.*/g, `REDIS_CACHE=redis-cache:6379`);
-  envContent = envContent.replace(/REDIS_QUEUE=.*/g, `REDIS_QUEUE=redis-queue:6379`);
-
-  // Set HTTP Port
-  if (httpPort) {
-    if (envContent.includes('HTTP_PUBLISH_PORT=')) {
-      envContent = envContent.replace(/HTTP_PUBLISH_PORT=.*/g, `HTTP_PUBLISH_PORT=${httpPort}`);
-    } else {
-      envContent += `\nHTTP_PUBLISH_PORT=${httpPort}\n`;
-    }
-  }
-
-  fs.writeFileSync(targetEnvPath, envContent);
-};
+import { ensureBenchComposeWritten, getBenchComposePath } from './utils/bench-compose';
 
 const DEFAULT_HTTP_PORT = 8080;
 
@@ -80,27 +41,57 @@ const resolveBenchHttpPort = async (
   return updated ?? { ...bench, httpPort: nextPort };
 };
 
-const copyRecursiveSync = (src: string, dest: string) => {
-  const exists = fs.existsSync(src);
-  if (!exists) {
-    return;
-  }
 
-  const stats = fs.statSync(src);
-  const isDirectory = stats.isDirectory();
-  if (isDirectory) {
-    if (!fs.existsSync(dest)) {
-      fs.mkdirSync(dest, { recursive: true });
+const waitForBackend = async (
+  command: string,
+  commonArgs: string[],
+  benchPath: string,
+  runtimeEnv: Record<string, string>,
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void; startStep: (id: string, name: string) => void; completeStep: (id: string, name: string) => void }
+): Promise<void> => {
+  context.startStep('wait', 'Waiting for backend to become healthy (copying assets/apps)');
+  let backendReady = false;
+  const maxRetries = 60; // 5 minutes (5s intervals)
+  for (let i = 0; i < maxRetries; i++) {
+    // Check service health status via docker-compose ps
+    const { stdout } = await execPromise(
+      command,
+      [...commonArgs, 'ps', 'backend', '--format', '{{.Health}}'],
+      benchPath,
+      undefined,
+      runtimeEnv,
+      5000
+    ).catch(() => ({ stdout: '' })); // Fallback if format is not supported
+    
+    if (stdout.trim().toLowerCase().includes('healthy')) {
+      backendReady = true;
+      break;
     }
-    fs.readdirSync(src).forEach((childItemName) => {
-      if (childItemName === '.git') return; // Skip .git folder
-      copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
-    });
-  } else {
-    fs.copyFileSync(src, dest);
-  }
-};
 
+    // Fallback for older compose/podman: check if service is running and files exist
+    const { code: checkCode } = await execPromise(
+      command,
+      [...commonArgs, 'exec', '-T', 'backend', 'ls', 'sites/apps.txt'],
+      benchPath,
+      undefined,
+      runtimeEnv,
+      2000
+    ).catch(() => ({ code: 1 }));
+
+    if (checkCode === 0) {
+      backendReady = true;
+      break;
+    }
+    
+    // Small delay before next check
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+
+  if (!backendReady) {
+    throw new Error('Backend failed to initialize within the expected time. The asset/app copy might still be running or failed.');
+  }
+  context.completeStep('wait', 'Backend is ready');
+};
 
 
 export const orchestrateBenchCreation = (
@@ -108,8 +99,7 @@ export const orchestrateBenchCreation = (
   benchesRepo: {
     update: (id: string, payload: Partial<Bench>) => Promise<Bench | null>;
     delete?: (id: string) => Promise<boolean>;
-  },
-  runtimePaths: AppRuntimePaths
+  }
 ): void => {
   const taskRunner = getTaskRunner();
 
@@ -127,76 +117,47 @@ export const orchestrateBenchCreation = (
         }
         context.completeStep('runtime', `Podman is ready`);
 
-        const templatesDir = path.join(runtimePaths.userDataPath, 'templates');
-        const frappeDockerTemplatePath = path.join(templatesDir, 'frappe_docker');
-
-        context.startStep('template', 'Preparing frappe_docker template');
-        
-        if (!fs.existsSync(templatesDir)) {
-          fs.mkdirSync(templatesDir, { recursive: true });
-        }
-
-        // Clone or update template
-        if (!fs.existsSync(frappeDockerTemplatePath) || fs.readdirSync(frappeDockerTemplatePath).length === 0) {
-          context.log('info', 'Cloning frappe_docker to local template cache...', 'template');
-          await git.clone({
-            fs,
-            http,
-            dir: frappeDockerTemplatePath,
-            url: 'https://github.com/frappe/frappe_docker.git',
-            singleBranch: true,
-            depth: 1,
-            onMessage: (msg) => context.log('info', msg, 'template')
-          });
-        } else {
-          context.log('info', 'Updating local frappe_docker template...', 'template');
-          try {
-            await git.pull({
-              fs,
-              http,
-              dir: frappeDockerTemplatePath,
-              url: 'https://github.com/frappe/frappe_docker.git',
-              singleBranch: true,
-              fastForwardOnly: true,
-              onMessage: (msg) => context.log('info', msg, 'template'),
-              author: { name: 'Local Bench', email: 'cafe@frappe.io' }
-            });
-            context.log('info', 'Template updated successfully', 'template');
-          } catch (pullError) {
-            context.log('warning', `Could not update template: ${pullError instanceof Error ? pullError.message : 'Network error'}. Using local version.`, 'template');
-          }
-        }
-        context.completeStep('template', 'Template ready');
-
-        context.startStep('clone', `Initializing bench at ${bench.path}`);
+        // Ensure bench directory exists
+        context.startStep('init', `Initializing bench directory at ${bench.path}`);
         if (!fs.existsSync(bench.path)) {
           fs.mkdirSync(bench.path, { recursive: true });
         }
+        // Create sites and apps directories so volume mounts are happy
+        const sitesDir = path.join(bench.path, 'sites');
+        const appsDir = path.join(bench.path, 'apps');
+        if (!fs.existsSync(sitesDir)) fs.mkdirSync(sitesDir, { recursive: true });
+        if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
 
-        const files = fs.readdirSync(bench.path);
-        if (files.length === 0) {
-          context.log('info', 'Copying files from template...', 'clone');
-          copyRecursiveSync(frappeDockerTemplatePath, bench.path);
-        } else {
-          context.log('info', 'Directory not empty, skipping initialization', 'clone');
+        // Initialize essential bench files if missing
+        const appsTxtPath = path.join(sitesDir, 'apps.txt');
+        if (!fs.existsSync(appsTxtPath)) {
+          fs.writeFileSync(appsTxtPath, 'frappe\n', 'utf8');
         }
 
-        context.completeStep('clone', 'Bench directory initialized');
+        const commonConfigPath = path.join(sitesDir, 'common_site_config.json');
+        if (!fs.existsSync(commonConfigPath)) {
+          const config = {
+            db_host: 'db',
+            db_port: '3306',
+            redis_cache: 'redis://redis:6379',
+            redis_queue: 'redis://redis:6379',
+            redis_socketio: 'redis://redis:6379',
+            socketio_port: 9000,
+          };
+          fs.writeFileSync(commonConfigPath, JSON.stringify(config, null, 1), 'utf8');
+        }
 
-        context.startStep('env', 'Setting up environment');
+        context.completeStep('init', 'Bench directory initialized');
+
+        context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveBenchHttpPort(bench, benchesRepo, context, true);
-        ensureBenchEnvConfigured(bench.path, bench.frappeVersion, benchWithPort.httpPort);
-        context.completeStep('env', `Environment configured (HTTP port ${benchWithPort.httpPort})`);
+        ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT);
+        context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
         const projectName = `local-bench-${bench.id.slice(0, 8)}`;
-        const commonArgs = [
-          '-p', projectName,
-          '-f', 'compose.yaml',
-          '-f', 'overrides/compose.mariadb.yaml',
-          '-f', 'overrides/compose.redis.yaml',
-          '-f', 'overrides/compose.noproxy.yaml'
-        ];
+        const composePath = getBenchComposePath(bench.path);
+        const commonArgs = ['-p', projectName, '-f', composePath];
         const runtimeEnv = await getRuntimeEnv();
 
         context.startStep('pull', 'Pulling images');
@@ -222,7 +183,9 @@ export const orchestrateBenchCreation = (
           throw new Error(failure);
         }
         
-        context.completeStep('start', 'Containers started successfully');
+        context.completeStep('start', 'Containers started');
+        
+        await waitForBackend(command, commonArgs, bench.path, runtimeEnv, context);
 
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
@@ -279,7 +242,7 @@ export const orchestrateBenchStart = (
 ): void => {
   const taskRunner = getTaskRunner();
 
-  const CORE_BENCH_SERVICES = ['db', 'backend', 'frontend'] as const;
+  const CORE_BENCH_SERVICES = ['db', 'backend'] as const;
 
   const parseRunningServices = (stdout: string): Set<string> => {
     return new Set(
@@ -310,26 +273,6 @@ export const orchestrateBenchStart = (
           throw new Error(`Bench directory does not exist at ${bench.path}. Please check the path or delete and recreate the bench.`);
         }
         
-        // Check for compose.yaml
-        const composeYamlPath = path.join(bench.path, 'compose.yaml');
-        if (!fs.existsSync(composeYamlPath)) {
-          throw new Error(`Docker compose configuration not found at ${composeYamlPath}. Bench may be incomplete or corrupted.`);
-        }
-        
-        // Check for required override files
-        const requiredOverrides = [
-          'overrides/compose.mariadb.yaml',
-          'overrides/compose.redis.yaml',
-          'overrides/compose.noproxy.yaml'
-        ];
-        
-        for (const override of requiredOverrides) {
-          const overridePath = path.join(bench.path, override);
-          if (!fs.existsSync(overridePath)) {
-            throw new Error(`Required override file not found at ${overridePath}. Bench may be incomplete.`);
-          }
-        }
-        
         context.completeStep('validation', 'Bench configuration valid');
         
         context.log('info', `Orchestrating ${isRestart ? 'restart' : 'start'} for bench ${bench.name} (${bench.id})`);
@@ -341,20 +284,15 @@ export const orchestrateBenchStart = (
         }
         context.completeStep('runtime', 'Podman is ready');
 
-        context.startStep('env', 'Configuring environment');
+        context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveBenchHttpPort(bench, benchesRepo, context, !isRestart);
-        ensureBenchEnvConfigured(bench.path, bench.frappeVersion, benchWithPort.httpPort);
-        context.completeStep('env', `Environment configured (HTTP port ${benchWithPort.httpPort})`);
+        ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT);
+        context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
         const projectName = `local-bench-${bench.id.slice(0, 8)}`;
-        const commonArgs = [
-          '-p', projectName,
-          '-f', 'compose.yaml',
-          '-f', 'overrides/compose.mariadb.yaml',
-          '-f', 'overrides/compose.redis.yaml',
-          '-f', 'overrides/compose.noproxy.yaml'
-        ];
+        const composePath = getBenchComposePath(bench.path);
+        const commonArgs = ['-p', projectName, '-f', composePath];
         const runtimeEnv = await getRuntimeEnv();
 
         if (!isRestart) {
@@ -429,6 +367,9 @@ export const orchestrateBenchStart = (
         }
         
         context.completeStep('start', 'Containers are running');
+
+        await waitForBackend(command, commonArgs, bench.path, runtimeEnv, context);
+
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
         context.log('error', error instanceof Error ? error.message : String(error));

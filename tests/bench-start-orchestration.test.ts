@@ -88,7 +88,8 @@ describe('bench start/restart orchestration', () => {
   it('falls back to service verification on compose timeout and marks restart successful', async () => {
     execPromiseMock
       .mockRejectedValueOnce(new Error('Command timed out after 300000ms: /mock/docker-compose ...'))
-      .mockResolvedValueOnce({ code: 0, stdout: 'db\nbackend\nfrontend\n', stderr: '' });
+      .mockResolvedValueOnce({ code: 0, stdout: 'db\nbackend\nfrontend\n', stderr: '' })
+      .mockResolvedValueOnce({ code: 0, stdout: 'healthy\n', stderr: '' });
 
     orchestrateBenchStart(
       bench,
@@ -119,6 +120,16 @@ describe('bench start/restart orchestration', () => {
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       OPERATION_TIMEOUTS.DEFAULT
+    );
+
+    expect(execPromiseMock).toHaveBeenNthCalledWith(
+      3,
+      '/mock/docker-compose',
+      expect.arrayContaining(['ps', 'backend', '--format', '{{.Health}}']),
+      benchPath,
+      undefined,
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      5000
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });

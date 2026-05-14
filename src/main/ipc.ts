@@ -457,7 +457,7 @@ export const registerIpcHandlers = (
     });
 
     operations.trackBenchOperation?.(created.id, 'create');
-    orchestrateBenchCreation(created, repositories.benches, runtimePaths);
+    orchestrateBenchCreation(created, repositories.benches);
 
     return toBenchListItem(created);
   });

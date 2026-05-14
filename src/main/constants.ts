@@ -4,8 +4,7 @@
 
 /**
  * Database credentials for bench operations
- * These are default credentials used in frappe_docker template
- * In production, these should be moved to environment variables
+ * These are the default credentials used in the generated docker-compose template.
  */
 export const DATABASE_CREDENTIALS = {
   /**
@@ -37,7 +36,7 @@ export const DATABASE_CREDENTIALS = {
 } as const;
 
 /**
- * Docker service names used in frappe_docker template
+ * Docker service names used in the generated bench docker-compose template.
  */
 export const DOCKER_SERVICES = {
   /**
@@ -51,14 +50,9 @@ export const DOCKER_SERVICES = {
   DATABASE: 'db',
   
   /**
-   * Redis cache service
+   * Redis service (handles both cache and queue)
    */
-  REDIS_CACHE: 'redis-cache',
-  
-  /**
-   * Redis queue service
-   */
-  REDIS_QUEUE: 'redis-queue',
+  REDIS_CACHE: 'redis',
 } as const;
 
 /**
