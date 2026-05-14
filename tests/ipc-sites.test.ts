@@ -475,7 +475,7 @@ describe('sites IPC handlers', () => {
         openInEditor: async () => false,
         openExternal,
         pathExists: () => true,
-        getSharedProxyPort: () => 18080,
+        isSharedProxyAvailable: () => true,
       }
     );
 
@@ -483,7 +483,7 @@ describe('sites IPC handlers', () => {
     const opened = await openSiteHandler?.(undefined, 'site-001');
 
     expect(opened).toBe(true);
-    expect(openExternal).toHaveBeenCalledWith('http://demo.localhost:18080');
+    expect(openExternal).toHaveBeenCalledWith('https://demo.localhost');
   });
 
   it('sites:open-external normalizes .local host and falls back to bench port', async () => {
@@ -517,5 +517,45 @@ describe('sites IPC handlers', () => {
 
     expect(opened).toBe(true);
     expect(openExternal).toHaveBeenCalledWith('http://my-site.localhost:8080');
+  });
+
+  it('refreshes front door hosts after site create and update', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const refreshFrontDoorHosts = vi.fn(async () => undefined);
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            status: 'stopped',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+      },
+      {
+        openPath: async () => false,
+        openInEditor: async () => false,
+        openExternal: async () => false,
+        pathExists: () => true,
+        refreshFrontDoorHosts,
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.sitesCreate);
+    await createHandler?.(undefined, {
+      name: 'newcert.localhost',
+      benchId: 'bench-001',
+      path: '/Users/dev/frappe-bench/sites/newcert.localhost',
+      apps: ['frappe'],
+    });
+
+    const updateHandler = handlers.get(ipcChannels.sitesUpdate);
+    await updateHandler?.(undefined, 'site-001', { name: 'renamed.localhost' });
+
+    expect(refreshFrontDoorHosts).toHaveBeenCalledTimes(2);
   });
 });

@@ -12,8 +12,60 @@ const logger = createMainLogger('shared-proxy');
 const DEFAULT_BENCH_HTTP_PORT = 8080;
 const SHARED_PROXY_PORT_START = 18080;
 const SHARED_PROXY_PORT_END = 18100;
+const UPSTREAM_READY_TIMEOUT_MS = 4000;
+const UPSTREAM_READY_RETRY_INTERVAL_MS = 200;
+
+const RETRYABLE_UPSTREAM_ERROR_CODES = new Set([
+  'ECONNREFUSED',
+  'EHOSTUNREACH',
+  'ETIMEDOUT',
+  'ECONNRESET',
+]);
 
 const normalizeHost = (host: string): string => host.trim().toLowerCase().replace(/\.$/, '');
+
+const wait = async (milliseconds: number): Promise<void> => {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+};
+
+const isRetryableUpstreamError = (error: unknown): error is NodeJS.ErrnoException => {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    RETRYABLE_UPSTREAM_ERROR_CODES.has(String((error as NodeJS.ErrnoException).code))
+  );
+};
+
+const waitForUpstreamPort = async (port: number, timeoutMilliseconds: number): Promise<void> => {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime <= timeoutMilliseconds) {
+    const isReachable = await new Promise<boolean>((resolve) => {
+      const socket = net.connect({ host: '127.0.0.1', port });
+
+      socket.once('connect', () => {
+        socket.destroy();
+        resolve(true);
+      });
+
+      socket.once('error', () => {
+        socket.destroy();
+        resolve(false);
+      });
+    });
+
+    if (isReachable) {
+      return;
+    }
+
+    await wait(UPSTREAM_READY_RETRY_INTERVAL_MS);
+  }
+
+  throw new Error(`Timeout waiting for upstream port ${port} to become reachable.`);
+};
 
 type SharedProxyRepositories = {
   readonly benches: {
@@ -87,35 +139,54 @@ export class SharedBenchProxy {
 
     this.repositories = repositories;
 
-    const desiredPort = await findNextAvailableTcpPort(this.portRangeStart);
+    let desiredPort = await findNextAvailableTcpPort(this.portRangeStart);
     if (desiredPort > this.portRangeEnd) {
       throw new Error(`No shared proxy port available in range ${this.portRangeStart}-${this.portRangeEnd}.`);
     }
 
-    this.server = http.createServer((request, response) => {
-      void this.handleRequest(request, response);
-    });
+    while (desiredPort <= this.portRangeEnd) {
+      this.server = http.createServer((request, response) => {
+        void this.handleRequest(request, response);
+      });
 
-    this.server.on('upgrade', (request, socket, head) => {
-      void this.handleUpgrade(request, socket, head);
-    });
+      this.server.on('upgrade', (request, socket, head) => {
+        void this.handleUpgrade(request, socket, head);
+      });
 
-    await new Promise<void>((resolve, reject) => {
-      if (!this.server) {
-        reject(new Error('Proxy server not initialized.'));
-        return;
+      const started = await new Promise<boolean>((resolve, reject) => {
+        if (!this.server) {
+          reject(new Error('Proxy server not initialized.'));
+          return;
+        }
+
+        const onError = (error: NodeJS.ErrnoException): void => {
+          if (error.code === 'EADDRINUSE') {
+            resolve(false);
+            return;
+          }
+
+          reject(error);
+        };
+
+        this.server.once('error', onError);
+        this.server.listen(desiredPort, '127.0.0.1', () => {
+          this.server?.off('error', onError);
+          resolve(true);
+        });
+      });
+
+      if (started) {
+        this.listeningPort = desiredPort;
+        logger.info(`Shared proxy listening on 127.0.0.1:${desiredPort}`);
+        return desiredPort;
       }
 
-      this.server.once('error', reject);
-      this.server.listen(desiredPort, '127.0.0.1', () => {
-        resolve();
-      });
-    });
+      this.server.removeAllListeners();
+      this.server = null;
+      desiredPort += 1;
+    }
 
-    this.listeningPort = desiredPort;
-    logger.info(`Shared proxy listening on 127.0.0.1:${desiredPort}`);
-
-    return desiredPort;
+    throw new Error(`No shared proxy port available in range ${this.portRangeStart}-${this.portRangeEnd}.`);
   }
 
   public getPort(): number | null {
@@ -191,6 +262,17 @@ export class SharedBenchProxy {
         return;
       }
 
+      try {
+        await waitForUpstreamPort(target.port, UPSTREAM_READY_TIMEOUT_MS);
+      } catch {
+        if (!response.headersSent) {
+          response.statusCode = 502;
+          response.setHeader('content-type', 'text/plain; charset=utf-8');
+        }
+        response.end(`Unable to reach bench frontend on port ${target.port}.`);
+        return;
+      }
+
       const upstreamRequest = http.request(
         {
           hostname: '127.0.0.1',
@@ -206,7 +288,11 @@ export class SharedBenchProxy {
       );
 
       upstreamRequest.on('error', (error) => {
-        logger.warn(`Proxy request failed for ${target.site.name} on port ${target.port}: ${error}`);
+        if (isRetryableUpstreamError(error)) {
+          logger.warn(`Proxy request failed for ${target.site.name} on port ${target.port}: ${error.code}`);
+        } else {
+          logger.warn(`Proxy request failed for ${target.site.name} on port ${target.port}: ${error}`);
+        }
         if (!response.headersSent) {
           response.statusCode = 502;
           response.setHeader('content-type', 'text/plain; charset=utf-8');
@@ -228,6 +314,13 @@ export class SharedBenchProxy {
       const target = await this.resolveTarget(request.headers.host);
       if (!target) {
         socket.end('HTTP/1.1 404 Not Found\r\n\r\n');
+        return;
+      }
+
+      try {
+        await waitForUpstreamPort(target.port, UPSTREAM_READY_TIMEOUT_MS);
+      } catch {
+        socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
         return;
       }
 

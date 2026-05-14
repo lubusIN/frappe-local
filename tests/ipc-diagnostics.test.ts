@@ -138,6 +138,7 @@ describe('diagnostics IPC handlers', () => {
 
   it('resets development state and recreates fresh storage snapshot', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const refreshFrontDoorHosts = vi.fn(async () => undefined);
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
@@ -155,7 +156,13 @@ describe('diagnostics IPC handlers', () => {
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
       },
-      undefined,
+      {
+        openPath: async () => false,
+        openInEditor: async () => false,
+        openExternal: async () => false,
+        pathExists: () => false,
+        refreshFrontDoorHosts,
+      },
       undefined,
       '0.1.0',
       {
@@ -179,6 +186,7 @@ describe('diagnostics IPC handlers', () => {
     expect(Array.isArray(recreated.appCatalog)).toBe(true);
     expect(recreated.appCatalog.length).toBeGreaterThan(0);
     expect(fs.existsSync(configPath)).toBe(false);
+    expect(refreshFrontDoorHosts).toHaveBeenCalledTimes(1);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });

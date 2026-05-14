@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
 import { createMainLogger } from './logger';
 import { getAppIconPath } from './app-icon';
+import { stopCaddyFrontDoor } from './caddy-front-door';
 
 const APP_DISPLAY_NAME = 'Local Bench';
 
@@ -135,6 +136,11 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     mainLogger.info('all windows closed, quitting application');
+    void stopCaddyFrontDoor();
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  void stopCaddyFrontDoor();
 });

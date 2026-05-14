@@ -150,4 +150,50 @@ describe('shared proxy routing', () => {
     expect(beta.body).toBe('bench-b-frontend');
   });
 
+  it('waits briefly for upstream startup before returning bad gateway', async () => {
+    const delayedUpstream = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('delayed-frontend');
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      delayedUpstream.once('error', reject);
+      delayedUpstream.listen(0, '127.0.0.1', () => resolve());
+    });
+
+    const address = delayedUpstream.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Failed to resolve delayed upstream listening address.');
+    }
+
+    const delayedPort = address.port;
+
+    await closeServer(delayedUpstream);
+
+    const benches: Bench[] = [makeBench('bench-delayed-001', 'bench-delayed', delayedPort)];
+    const sites: Site[] = [makeSite('site-delayed', 'bench-delayed-001', 'delayed.localhost')];
+
+    proxy = new SharedBenchProxy(38101, 38120);
+    const proxyPort = await proxy.start({
+      benches: {
+        findAll: async () => benches,
+      },
+      sites: {
+        findAll: async () => sites,
+      },
+    });
+
+    const startupTimer = setTimeout(() => {
+      delayedUpstream.listen(delayedPort, '127.0.0.1');
+    }, 250);
+
+    const delayedResponse = await requestProxy(proxyPort, 'delayed.localhost');
+    clearTimeout(startupTimer);
+
+    upstreamA = delayedUpstream;
+
+    expect(delayedResponse.status).toBe(200);
+    expect(delayedResponse.body).toBe('delayed-frontend');
+  });
+
 });

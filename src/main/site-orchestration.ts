@@ -209,7 +209,10 @@ export const orchestrateSiteDeletion = async (
       findById: (id: string) => Promise<Bench | null>;
     };
   },
-  siteId: string
+  siteId: string,
+  options?: {
+    onDeleted?: (site: Site) => Promise<void> | void;
+  }
 ): Promise<boolean> => {
   const site = await dependencies.sites.findById(siteId);
   if (!site) return false;
@@ -289,6 +292,13 @@ export const orchestrateSiteDeletion = async (
         }
 
         await dependencies.sites.delete(siteId);
+        if (options?.onDeleted) {
+          try {
+            await options.onDeleted(site);
+          } catch (error) {
+            context.log('warning', `Post-delete site cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         context.log('error', message, 'drop-site');

@@ -131,6 +131,8 @@ export type IpcOperations = {
   openExternal: (url: string) => Promise<boolean>;
   pathExists: (targetPath: string) => boolean;
   getSharedProxyPort?: () => number | null;
+  isSharedProxyAvailable?: () => boolean;
+  refreshFrontDoorHosts?: () => Promise<void>;
   trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
   trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
 };
@@ -252,6 +254,8 @@ export const registerIpcHandlers = (
     openExternal: async () => false,
     pathExists: (targetPath) => fs.existsSync(targetPath),
     getSharedProxyPort: () => null,
+    isSharedProxyAvailable: () => false,
+    refreshFrontDoorHosts: async () => undefined,
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
   },
@@ -415,6 +419,12 @@ export const registerIpcHandlers = (
     const storageFilePath = path.join(runtimePaths.storagePath, 'storage.json');
     fs.writeFileSync(storageFilePath, JSON.stringify(snapshot, null, 2), 'utf8');
 
+    try {
+      await operations.refreshFrontDoorHosts?.();
+    } catch (error) {
+      mainLogger.warn(`Failed to refresh front door hosts after reset: ${error}`);
+    }
+
     return true;
   });
 
@@ -523,16 +533,9 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    taskRunner.enqueue({
-      name: `Delete Bench: ${bench.name}`,
-      resource: { type: 'bench', id: bench.id },
-      run: async () => {
-        try {
-          await orchestrateBenchDeletion(bench, repositories.benches, repositories.sites);
-        } catch (error) {
-          mainLogger.error('Failed to delete bench:', error);
-          throw error;
-        }
+    orchestrateBenchDeletion(bench, repositories.benches, repositories.sites, {
+      onDeleted: async () => {
+        await operations.refreshFrontDoorHosts?.();
       },
     });
 
@@ -671,6 +674,7 @@ export const registerIpcHandlers = (
 
     const created = await orchestrateSiteCreation(repositories, payload);
     operations.trackSiteOperation?.(created.id, 'create');
+    await operations.refreshFrontDoorHosts?.();
     return toSiteListItem(created);
   });
 
@@ -721,6 +725,7 @@ export const registerIpcHandlers = (
 
     if (updated) {
       operations.trackSiteOperation?.(updated.id, 'update');
+      await operations.refreshFrontDoorHosts?.();
 
       if (targetStatus && (targetStatus !== existing?.status || targetStatus === 'running')) {
         if (targetStatus === 'running' || targetStatus === 'stopped') {
@@ -749,7 +754,11 @@ export const registerIpcHandlers = (
       throw new Error('Cannot delete a running site. Please stop it first.');
     }
 
-    const result = await orchestrateSiteDeletion(repositories, id);
+    const result = await orchestrateSiteDeletion(repositories, id, {
+      onDeleted: async () => {
+        await operations.refreshFrontDoorHosts?.();
+      },
+    });
     if (result) {
       operations.trackSiteOperation?.(id, 'delete');
     }
@@ -809,9 +818,9 @@ export const registerIpcHandlers = (
     }
 
     const preferredHost = normalizeSiteHost(site.name);
-    const sharedProxyPort = operations.getSharedProxyPort?.() ?? null;
-    if (sharedProxyPort) {
-      return operations.openExternal(`http://${preferredHost}:${sharedProxyPort}`);
+    const sharedProxyAvailable = operations.isSharedProxyAvailable?.() ?? false;
+    if (sharedProxyAvailable) {
+      return operations.openExternal(`https://${preferredHost}`);
     }
 
     const benches = await repositories.benches.findAll();

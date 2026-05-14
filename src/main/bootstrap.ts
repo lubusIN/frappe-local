@@ -22,6 +22,7 @@ import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-pr
 import { runDiagnostics } from './diagnostics-service';
 import { getAppIconPath } from './app-icon';
 import { getSharedBenchProxyPort, initializeSharedBenchProxy } from './shared-proxy';
+import { initializeCaddyFrontDoor, isCaddyFrontDoorRunning } from './caddy-front-door';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
@@ -123,8 +124,22 @@ export const runApplicationBootstrap = async (
       settings: settingsRepository,
     } satisfies AppRepositories;
 
+    const refreshCaddyFrontDoorHosts = async (): Promise<void> => {
+      const sharedProxyPort = getSharedBenchProxyPort();
+      if (sharedProxyPort === null) {
+        return;
+      }
+
+      const knownSiteHosts = (await repositories.sites.findAll()).map((site) => site.name);
+      const caddyReady = await initializeCaddyFrontDoor(sharedProxyPort, knownSiteHosts);
+      if (!caddyReady) {
+        bootstrapLogger.warn('Caddy front door is unavailable. Falling back to port-based site URLs.');
+      }
+    };
+
     try {
-      await initializeSharedBenchProxy({ benches: repositories.benches, sites: repositories.sites });
+      const sharedProxyPort = await initializeSharedBenchProxy({ benches: repositories.benches, sites: repositories.sites });
+      await refreshCaddyFrontDoorHosts();
     } catch (error) {
       bootstrapLogger.warn(`Shared proxy failed to start: ${error}`);
     }
@@ -154,6 +169,14 @@ export const runApplicationBootstrap = async (
       },
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
       getSharedProxyPort: () => getSharedBenchProxyPort(),
+      isSharedProxyAvailable: () => isCaddyFrontDoorRunning(),
+      refreshFrontDoorHosts: async () => {
+        try {
+          await refreshCaddyFrontDoorHosts();
+        } catch (error) {
+          bootstrapLogger.warn(`Failed to refresh Caddy front door hosts: ${error}`);
+        }
+      },
       trackBenchOperation: (benchId, operation) => {
         benchAnalytics.track(benchId, operation);
       },

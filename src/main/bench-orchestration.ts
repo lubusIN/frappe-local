@@ -558,7 +558,10 @@ export const orchestrateBenchCleaning = (
 export const orchestrateBenchDeletion = (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null>, delete: (id: string) => Promise<boolean> },
-  sitesRepo: { findAll: () => Promise<Site[]>, delete: (id: string) => Promise<boolean> }
+  sitesRepo: { findAll: () => Promise<Site[]>, delete: (id: string) => Promise<boolean> },
+  options?: {
+    onDeleted?: (bench: Bench) => Promise<void> | void;
+  }
 ): void => {
   const taskRunner = getTaskRunner();
 
@@ -762,6 +765,14 @@ export const orchestrateBenchDeletion = (
         } catch (fsErr) {
           context.log('warning', `Could not remove directory: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`);
           context.completeStep('fs', 'Bench directory removal skipped');
+        }
+
+        if (options?.onDeleted) {
+          try {
+            await options.onDeleted(bench);
+          } catch (error) {
+            context.log('warning', `Post-delete bench cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }
       } catch (error) {
         context.log('error', `Force deletion failed: ${error instanceof Error ? error.message : String(error)}`);

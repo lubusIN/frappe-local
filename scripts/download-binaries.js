@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const BIN_DIR = path.resolve(__dirname, '../bin');
 const DOCKER_COMPOSE_VERSION = 'v2.24.5';
 const PODMAN_VERSION = 'v5.8.2';
+const CADDY_VERSION = 'v2.8.4';
 const BUNDLED_MACHINE_IMAGE_BASENAME = 'podman-machine-image';
 
 // Arch mapping for GitHub releases
@@ -23,6 +24,12 @@ const getComposeArch = (arch) => {
 
 const getPodmanArch = (arch) => {
   if (arch === 'x64') return 'amd64';
+  return arch;
+};
+
+const getCaddyArch = (arch) => {
+  if (arch === 'x64') return 'amd64';
+  if (arch === 'arm64') return 'arm64';
   return arch;
 };
 
@@ -39,6 +46,12 @@ const PODMAN_URLS = {
   darwin: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-installer-macos-${arch === 'x64' ? 'amd64' : 'arm64'}.pkg`,
   linux: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-remote-static-linux_${getPodmanArch(arch)}.tar.gz`,
   win32: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-remote-release-windows_${getPodmanArch(arch)}.zip`,
+};
+
+const CADDY_URLS = {
+  darwin: `https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION.replace(/^v/, '')}_mac_${getCaddyArch(arch)}.tar.gz`,
+  linux: `https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION.replace(/^v/, '')}_linux_${getCaddyArch(arch)}.tar.gz`,
+  win32: `https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION.replace(/^v/, '')}_windows_${getPodmanArch(arch)}.zip`,
 };
 
 const quoteShell = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
@@ -271,6 +284,28 @@ async function main() {
       fs.rmSync(podmanArchiveTarget, { force: true });
       maybeBundleMachineImage();
     }
+
+    const caddyUrl = CADDY_URLS[platform];
+    const caddyExt = platform === 'win32' ? '.exe' : '';
+    const caddyArchiveName = platform === 'win32' ? 'caddy.zip' : 'caddy.tar.gz';
+    const caddyArchiveTarget = path.join(BIN_DIR, caddyArchiveName);
+    const caddyExtractDir = path.join(BIN_DIR, 'caddy-extract');
+    await downloadFile(caddyUrl, caddyArchiveTarget);
+
+    fs.rmSync(caddyExtractDir, { recursive: true, force: true });
+    fs.mkdirSync(caddyExtractDir, { recursive: true });
+    extractArchive(caddyArchiveTarget, caddyExtractDir);
+
+    const caddyExecutable = findBinary(caddyExtractDir, platform === 'win32' ? 'caddy.exe' : 'caddy');
+    const caddyDest = path.join(BIN_DIR, `caddy${caddyExt}`);
+    if (!caddyExecutable) {
+      throw new Error('Could not find extracted caddy binary');
+    }
+
+    copyFileWithMode(caddyExecutable, caddyDest);
+
+    fs.rmSync(caddyExtractDir, { recursive: true, force: true });
+    fs.rmSync(caddyArchiveTarget, { force: true });
 
     console.log('Successfully bundled podman and docker-compose!');
   } catch (error) {
