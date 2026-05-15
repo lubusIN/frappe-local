@@ -411,6 +411,7 @@ import { useSettings } from '../composables/useSettings';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { useAppCatalog } from '../composables/useAppCatalog';
 import { getBenchWizardStepErrors, buildBenchCreatePayload, type BenchWizardStep } from '../bench-wizard';
+import { toSelectorFrappeVersion } from '../frappe-version';
 import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
 import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
@@ -684,14 +685,15 @@ watch(
   { deep: true }
 );
 
+const { form: settingsForm } = useSettings();
+const getDefaultFrappeVersion = () => toSelectorFrappeVersion(settingsForm.value.defaultFrappeVersion);
+
 const createForm = reactive({
   name: '',
   path: '',
-  frappeVersion: 'version-16',
+  frappeVersion: getDefaultFrappeVersion(),
   appsSelected: [] as string[],
 });
-
-const { form: settingsForm } = useSettings();
 const showAppPicker = ref(false);
 const showCreateBenchModal = ref(false);
 const wizardStep = ref<BenchWizardStep>(1);
@@ -729,6 +731,18 @@ watch(() => [createForm.name, settingsForm.value.storagePath], ([newName, storag
   }
 });
 
+watch(
+  () => settingsForm.value.defaultFrappeVersion,
+  (nextValue, previousValue) => {
+    const nextDefault = toSelectorFrappeVersion(nextValue);
+    const previousDefault = toSelectorFrappeVersion(previousValue);
+
+    if (!createForm.frappeVersion || createForm.frappeVersion === previousDefault) {
+      createForm.frappeVersion = nextDefault;
+    }
+  }
+);
+
 const triggerFolderPicker = async () => {
   const selectedPath = await ipc.pickBenchFolder();
   if (selectedPath) {
@@ -763,6 +777,7 @@ const onCreateBench = async () => {
 
   createForm.name = '';
   createForm.path = '';
+  createForm.frappeVersion = getDefaultFrappeVersion();
   createForm.appsSelected = [];
   showCreateBenchModal.value = false;
   wizardStep.value = 1;
@@ -775,7 +790,7 @@ const onCloseBenchWizard = () => {
   wizardErrors.value = [];
   createForm.name = '';
   createForm.path = '';
-  createForm.frappeVersion = 'version-16';
+  createForm.frappeVersion = getDefaultFrappeVersion();
   createForm.appsSelected = [];
 };
 
@@ -953,11 +968,7 @@ const onOpenBenchFolder = async (id: string) => {
 }
 
 .form-grid--bench-details {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-}
-
-.form-grid--bench-details > :last-child {
-  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .form-field {
@@ -988,10 +999,6 @@ const onOpenBenchFolder = async (id: string) => {
 @media (max-width: 720px) {
   .form-grid--bench-details {
     grid-template-columns: 1fr;
-  }
-
-  .form-grid--bench-details > :last-child {
-    grid-column: auto;
   }
 }
 

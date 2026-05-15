@@ -29,8 +29,8 @@
             class="space-y-6"
             @submit.prevent="save"
           >
-            <div class="grid grid-cols-2 gap-6">
-              <div class="space-y-1.5">
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div class="space-y-1.5 md:col-span-2">
                 <FormLabel label="Default Frappe Version" />
                 <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
               </div>
