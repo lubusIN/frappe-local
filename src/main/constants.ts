@@ -70,6 +70,12 @@ export const OPERATION_TIMEOUTS = {
   SITE_CREATION: 300000,
 
   /**
+   * Global ceiling for any bench app installation/removal.
+   * Long enough for the slowest apps without allowing hour-long hangs.
+   */
+  APP_INSTALL: 1200000,
+
+  /**
    * Extended timeout for site start/stop scheduler operations
    */
   SITE_STATUS_UPDATE: 180000,

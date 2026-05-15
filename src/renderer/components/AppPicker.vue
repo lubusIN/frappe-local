@@ -124,6 +124,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import IconSearch from '~icons/lucide/search';
 import { ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/ipc';
+import { CORE_BENCH_APPS_SET } from '../../shared/bench-apps';
 import { useAppCatalog } from '../composables/useAppCatalog';
 import { normalizeSelection } from '../app-picker-state';
 import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '../catalog-query';
@@ -138,6 +139,8 @@ const props = defineProps<{
   modelValue: string[];
   disabled?: boolean;
   frappeVersion?: string;
+  disableCoreBenchApps?: boolean;
+  excludeAppIds?: readonly string[];
 }>();
 
 const emit = defineEmits<{
@@ -166,6 +169,8 @@ const categoryOptions = computed(() => [
   ...categories.value.map((category) => ({ label: category.label, value: category.id })),
 ]);
 
+const excludedAppIds = computed(() => new Set((props.excludeAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
+
 const items = computed(() =>
   filterAndSortCatalog(state.value.data ?? [], {
     query: query.value,
@@ -175,8 +180,11 @@ const items = computed(() =>
   })
 );
 
+const visibleItems = computed(() => items.value.filter((item) => !excludedAppIds.value.has(item.id)));
+
 const rows = computed(() =>
-  items.value.map((item) => {
+  visibleItems.value.map((item) => {
+    const isPreinstalledCoreApp = Boolean(props.disableCoreBenchApps && CORE_BENCH_APPS_SET.has(item.id));
     const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
       frappeVersion: props.frappeVersion,
     });
@@ -186,10 +194,12 @@ const rows = computed(() =>
       appId: item.id,
       appName: item.name,
       name: item.id,
-      disabled: props.disabled || !compatibility.isCompatible,
+      disabled: props.disabled || isPreinstalledCoreApp || !compatibility.isCompatible,
       compatibilityStatus: compatibility.status,
       supportText:
-        compatibility.status === 'ok'
+        isPreinstalledCoreApp
+          ? 'Preinstalled with bench'
+          : compatibility.status === 'ok'
           ? props.frappeVersion
             ? `Compatible with ${frappeVersionLabel.value}`
             : 'Supported'

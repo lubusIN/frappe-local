@@ -260,9 +260,6 @@
           <span class="text-sm text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
         </template>
 
-        <template v-else-if="column.key === 'appCount'">
-          <span class="text-sm text-ink-gray-6">{{ row.appCount }}</span>
-        </template>
         <template v-else-if="column.key === 'status'">
           <div class="flex items-center">
             <Badge
@@ -523,7 +520,6 @@ const getStatusTheme = (row: SiteListItem) => {
 const siteColumns = reactive([
   { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
   { key: 'benchId', label: 'Bench', width: '120px' },
-  { key: 'appCount', label: 'Apps', width: '80px' },
   { key: 'status', label: 'Status', width: '120px' },
   { key: 'actions', label: '', width: '60px' },
 ]);

@@ -1,4 +1,5 @@
 import type { BenchCreateInput } from '../shared/ipc';
+import { withCoreBenchApps } from '../shared/bench-apps';
 
 export type BenchWizardStep = 1 | 2 | 3;
 
@@ -57,7 +58,7 @@ export const buildBenchCreatePayload = (draft: BenchWizardDraft): BenchWizardBui
       name: draft.name.trim(),
       path: draft.path.trim(),
       frappeVersion: draft.frappeVersion.trim(),
-      apps: selectedApps.length > 0 ? selectedApps : ['frappe'],
+      apps: withCoreBenchApps(selectedApps),
     },
     errors: [],
   };

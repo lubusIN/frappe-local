@@ -9,7 +9,9 @@ import { removeAllHostsEntriesForBench } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from './utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
+import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
 import { ensureBenchComposeWritten, getBenchComposePath } from './utils/bench-compose';
+import type { AppCatalogItem } from '../shared/domain/models';
 
 const DEFAULT_HTTP_PORT = 8080;
 
@@ -46,7 +48,7 @@ const waitForBackend = async (
   command: string,
   commonArgs: string[],
   benchPath: string,
-  runtimeEnv: Record<string, string>,
+  runtimeEnv: NodeJS.ProcessEnv,
   context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void; startStep: (id: string, name: string) => void; completeStep: (id: string, name: string) => void }
 ): Promise<void> => {
   context.startStep('wait', 'Waiting for backend to become healthy (copying assets/apps)');
@@ -93,12 +95,128 @@ const waitForBackend = async (
   context.completeStep('wait', 'Backend is ready');
 };
 
+const resolveBenchBranch = (frappeVersion: string): string => {
+  const normalized = frappeVersion.trim().toLowerCase();
+
+  if (normalized === 'develop') {
+    return 'develop';
+  }
+
+  const branchStyle = normalized.match(/^version-(\d+)$/);
+  if (branchStyle) {
+    return `version-${branchStyle[1]}`;
+  }
+
+  const semverStyle = normalized.match(/^v?(\d+)(?:\.\d+){0,2}$/);
+  if (semverStyle) {
+    return `version-${semverStyle[1]}`;
+  }
+
+  return 'develop';
+};
+
+const resolveCatalogBranch = (catalogItem: AppCatalogItem | null, benchFrappeVersion: string): string | null => {
+  if (!catalogItem) {
+    return null;
+  }
+
+  const benchBranch = resolveBenchBranch(benchFrappeVersion);
+  const installBranches = catalogItem.installBranches;
+  const mappedBranch = installBranches?.[benchBranch] ?? installBranches?.[benchFrappeVersion.trim().toLowerCase()];
+  if (mappedBranch?.trim()) {
+    return mappedBranch.trim();
+  }
+
+  const installBranch = catalogItem.installBranch?.trim();
+  if (installBranch) {
+    return installBranch;
+  }
+
+  const version = catalogItem.version.trim().toLowerCase();
+  if (!version) {
+    return null;
+  }
+
+  if (version === 'develop') {
+    return 'develop';
+  }
+
+  const semverStyle = version.match(/^v?(\d+)(?:\.\d+){0,2}$/);
+  if (!semverStyle) {
+    return null;
+  }
+
+  return `version-${semverStyle[1]}`;
+};
+
+const cleanupBenchAppArtifacts = (
+  benchPath: string,
+  appIds: readonly string[],
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
+  stepId: string
+): void => {
+  if (appIds.length === 0) {
+    return;
+  }
+
+  const uniqueAppIds = [...new Set(appIds.map((app) => app.trim()).filter(Boolean))];
+  if (uniqueAppIds.length === 0) {
+    return;
+  }
+
+  const appsDir = path.join(benchPath, 'apps');
+  const appsTxtPath = path.join(benchPath, 'sites', 'apps.txt');
+
+  for (const app of uniqueAppIds) {
+    try {
+      fs.rmSync(path.join(appsDir, app), { recursive: true, force: true });
+    } catch (error) {
+      context.log('warning', `Failed to cleanup app directory for ${app}: ${error instanceof Error ? error.message : String(error)}`, stepId);
+    }
+  }
+
+  if (!fs.existsSync(appsTxtPath)) {
+    return;
+  }
+
+  try {
+    const existing = fs.readFileSync(appsTxtPath, 'utf8');
+    const filtered = existing
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !uniqueAppIds.includes(line));
+    const content = filtered.length > 0 ? `${filtered.join('\n')}\n` : '';
+    fs.writeFileSync(appsTxtPath, content, 'utf8');
+  } catch (error) {
+    context.log('warning', `Failed to cleanup apps.txt after install failure: ${error instanceof Error ? error.message : String(error)}`, stepId);
+  }
+};
+
+const normalizeBenchApps = (apps: readonly string[]): string[] => {
+  return Array.from(new Set(apps.map((app) => app.trim()).filter(Boolean)));
+};
+
+const getAppDelta = (previousApps: readonly string[], nextApps: readonly string[]) => {
+  const previous = normalizeBenchApps(previousApps);
+  const next = normalizeBenchApps(nextApps);
+
+  return {
+    previous,
+    next,
+    install: next.filter((app) => !CORE_BENCH_APPS_SET.has(app) && !previous.includes(app)),
+    remove: previous.filter((app) => !CORE_BENCH_APPS_SET.has(app) && !next.includes(app)),
+  };
+};
+
 
 export const orchestrateBenchCreation = (
   bench: Bench,
   benchesRepo: {
     update: (id: string, payload: Partial<Bench>) => Promise<Bench | null>;
     delete?: (id: string) => Promise<boolean>;
+  },
+  appCatalogRepo?: {
+    findById?: (id: string) => Promise<AppCatalogItem | null>;
   }
 ): void => {
   const taskRunner = getTaskRunner();
@@ -107,6 +225,7 @@ export const orchestrateBenchCreation = (
     name: `Create Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
+      let attemptedCreateAppInstalls: string[] = [];
       try {
         await benchesRepo.update(bench.id, { status: 'queued' });
 
@@ -187,6 +306,38 @@ export const orchestrateBenchCreation = (
         
         await waitForBackend(command, commonArgs, bench.path, runtimeEnv, context);
 
+        const appsToInstall = (bench.apps ?? [])
+          .map((app) => app.trim())
+          .filter(Boolean)
+          .filter((app) => !CORE_BENCH_APPS_SET.has(app));
+
+        const benchBranch = resolveBenchBranch(bench.frappeVersion);
+
+        if (appsToInstall.length > 0) {
+          context.startStep('apps', `Adding ${appsToInstall.length} app${appsToInstall.length === 1 ? '' : 's'} to bench`);
+          for (const app of appsToInstall) {
+            attemptedCreateAppInstalls = [...attemptedCreateAppInstalls, app];
+            const catalogItem = appCatalogRepo?.findById ? await appCatalogRepo.findById(app) : null;
+            const appSource = catalogItem?.source?.trim() || app;
+            const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
+
+            context.log('info', `Fetching app ${app} via bench get-app (${appBranch})`, 'apps');
+            const { code, stderr } = await execPromise(
+              command,
+              [...commonArgs, 'exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', appBranch, appSource],
+              bench.path,
+              (out) => context.log('info', out, 'apps'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.SITE_CREATION
+            );
+
+            if (code !== 0) {
+              throw new Error(`Failed to fetch app ${app}: ${stderr}`);
+            }
+          }
+          context.completeStep('apps', 'Selected apps added to bench');
+        }
+
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
         const rawMessage = error instanceof Error ? error.message : String(error);
@@ -203,6 +354,11 @@ export const orchestrateBenchCreation = (
 
         try {
           context.startStep('cleanup', 'Cleaning up partial bench resources');
+
+          if (attemptedCreateAppInstalls.length > 0) {
+            cleanupBenchAppArtifacts(bench.path, attemptedCreateAppInstalls, context, 'cleanup');
+          }
+
           const runtimeReady = await ensureRuntimeRunning();
           if (runtimeReady) {
             const runtimeEnv = await getRuntimeEnv();
@@ -230,6 +386,108 @@ export const orchestrateBenchCreation = (
         }
 
         throw new Error(message);
+      }
+    }
+  });
+};
+
+export const orchestrateBenchAppChanges = (
+  bench: Bench,
+  benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
+  appCatalogRepo: { findById?: (id: string) => Promise<AppCatalogItem | null> } | undefined,
+  previousApps: readonly string[],
+  nextApps: readonly string[]
+): void => {
+  const taskRunner = getTaskRunner();
+  const delta = getAppDelta(previousApps, nextApps);
+
+  if (delta.install.length === 0 && delta.remove.length === 0) {
+    return;
+  }
+
+  taskRunner.enqueue({
+    name: `Update Bench Apps ${bench.name}`,
+    resource: { type: 'bench', id: bench.id },
+    run: async (context) => {
+      let attemptedInstallAppIds: string[] = [];
+      try {
+        if (bench.status !== 'running') {
+          throw new Error(`Bench ${bench.name} must be running before installed apps can be changed.`);
+        }
+
+        const command = getBinaryPath('docker-compose');
+        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
+        const commonArgs = ['-p', projectName, '-f', getBenchComposePath(bench.path)];
+        const runtimeEnv = await getRuntimeEnv();
+
+        if (delta.install.length > 0) {
+          context.startStep('install-apps', `Installing ${delta.install.length} app${delta.install.length === 1 ? '' : 's'}`);
+
+          for (const app of delta.install) {
+            attemptedInstallAppIds = [...attemptedInstallAppIds, app];
+            const catalogItem = appCatalogRepo?.findById ? await appCatalogRepo.findById(app) : null;
+            const appSource = catalogItem?.source?.trim() || app;
+            const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? resolveBenchBranch(bench.frappeVersion);
+
+            context.log('info', `Fetching app ${app} via bench get-app (${appBranch})`, 'install-apps');
+            const { code, stderr } = await execPromise(
+              command,
+              [...commonArgs, 'exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', appBranch, appSource],
+              bench.path,
+              (out) => context.log('info', out, 'install-apps'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.APP_INSTALL
+            );
+
+            if (code !== 0) {
+              throw new Error(`Failed to fetch app ${app}: ${stderr}`);
+            }
+          }
+
+          context.completeStep('install-apps', 'Selected apps installed');
+        }
+
+        if (delta.remove.length > 0) {
+          context.startStep('remove-apps', `Removing ${delta.remove.length} app${delta.remove.length === 1 ? '' : 's'}`);
+
+          for (const app of delta.remove) {
+            context.log('info', `Removing app ${app} from bench`, 'remove-apps');
+            const { code, stderr } = await execPromise(
+              command,
+              [...commonArgs, 'exec', '-T', 'backend', 'bench', 'remove-app', app],
+              bench.path,
+              (out) => context.log('info', out, 'remove-apps'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.APP_INSTALL
+            );
+
+            if (code !== 0) {
+              throw new Error(`Failed to remove app ${app}: ${stderr}`);
+            }
+          }
+
+          context.completeStep('remove-apps', 'Selected apps removed');
+        }
+
+        const persistedBench = await benchesRepo.update(bench.id, { apps: delta.next });
+        if (!persistedBench) {
+          throw new Error(`Failed to persist updated apps for bench ${bench.name}.`);
+        }
+
+        context.completeStep('apps', 'Bench apps updated');
+      } catch (error) {
+        if (attemptedInstallAppIds.length > 0) {
+          try {
+            context.startStep('rollback-apps', 'Cleaning up partial app installation');
+            cleanupBenchAppArtifacts(bench.path, attemptedInstallAppIds, context, 'rollback-apps');
+            context.completeStep('rollback-apps', 'Partial app artifacts cleaned');
+          } catch (cleanupError) {
+            context.log('warning', `Rollback cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'rollback-apps');
+          }
+        }
+
+        context.log('error', error instanceof Error ? error.message : String(error), 'apps');
+        throw error;
       }
     }
   });

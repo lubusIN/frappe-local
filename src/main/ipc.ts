@@ -23,6 +23,7 @@ import { createMainLogger } from './logger';
 import { findNextAvailableTcpPort } from './utils/ports';
 import { SHARED_PROXY_PORT_RANGE } from './shared-proxy';
 import { normalizeSiteHost } from '../shared/site-hostname';
+import { withCoreBenchApps } from '../shared/bench-apps';
 import { resolveBenchHttpPort } from './utils/bench-http-port';
 import { removeAllLocalBenchHostsEntries } from './hosts-manager';
 
@@ -56,7 +57,7 @@ import { OPERATION_TIMEOUTS } from './constants';
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
 import { orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
-import { orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
+import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -444,6 +445,7 @@ export const registerIpcHandlers = (
       ...rawInput,
       path: resolveUserPath(rawInput.path),
     });
+    const normalizedApps = withCoreBenchApps(payload.apps);
 
     const existingBenches = await repositories.benches.findAll();
     const usedPorts = deriveUsedBenchPorts(existingBenches);
@@ -454,12 +456,12 @@ export const registerIpcHandlers = (
     const created = await repositories.benches.create({
       ...payload,
       status: 'queued', // Initial state should be queued
-      apps: payload.apps,
+      apps: normalizedApps,
       httpPort,
     });
 
     operations.trackBenchOperation?.(created.id, 'create');
-    orchestrateBenchCreation(created, repositories.benches);
+    orchestrateBenchCreation(created, repositories.benches, repositories.appCatalog);
 
     return toBenchListItem(created);
   });
@@ -481,8 +483,22 @@ export const registerIpcHandlers = (
       return null;
     }
 
-    const { status: targetStatus, ...otherUpdates } = payload;
-    let updated = await repositories.benches.update(id, otherUpdates);
+    const requestedApps = Array.isArray(payload.apps) ? payload.apps : undefined;
+    const appsChanged = Array.isArray(requestedApps) && requestedApps.join('\u0000') !== existing.apps.join('\u0000');
+    const deferAppsPersistence = appsChanged && existing.status === 'running' && !payload.status;
+
+    const { status: targetStatus, apps: _ignoredApps, ...otherUpdates } = payload;
+    const persistedUpdates = deferAppsPersistence
+      ? otherUpdates
+      : {
+          ...otherUpdates,
+          ...(Array.isArray(requestedApps) ? { apps: requestedApps } : {}),
+        };
+
+    let updated = Object.keys(persistedUpdates).length > 0
+      ? await repositories.benches.update(id, persistedUpdates)
+      : existing;
+
     if (!updated) {
       return null;
     }
@@ -510,6 +526,10 @@ export const registerIpcHandlers = (
         // Normal status update without orchestration.
         updated = (await repositories.benches.update(id, { status: targetStatus })) ?? updated;
       }
+    }
+
+    if (appsChanged && existing.status === 'running' && !targetStatus) {
+      orchestrateBenchAppChanges(updated, repositories.benches, repositories.appCatalog, existing.apps, requestedApps ?? []);
     }
 
     return toBenchListItem(updated);

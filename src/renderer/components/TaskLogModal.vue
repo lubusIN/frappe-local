@@ -122,7 +122,12 @@ const formattedStatus = computed(() => {
   }
 
   if (props.task.status === 'success') return 'Success';
-  if (props.task.status === 'failure') return 'Failed';
+  if (props.task.status === 'failure') {
+    const message = String(props.task.message ?? '').toLowerCase();
+    if (message.includes('cancelled')) return 'Cancelled';
+    if (message.includes('timed out')) return 'Timed out';
+    return 'Failed';
+  }
 
   return props.task.status || 'Unknown';
 });

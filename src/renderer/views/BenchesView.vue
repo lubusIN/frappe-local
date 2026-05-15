@@ -1,404 +1,496 @@
 <template>
-  <section class="benches-view">
-    <StatePanel
-      v-if="error && !benches.length"
-      kind="error"
-      title="Unable to load benches"
-      :body="error"
-      action-label="Retry"
-      @action="refresh"
-    />
+  <section class="flex flex-col gap-6">
+          <StatePanel
+            v-if="error && !benches.length"
+            kind="error"
+            title="Unable to load benches"
+            :body="error"
+            action-label="Retry"
+            @action="refresh"
+          />
 
-    <StatePanel
-      v-if="!error && loading && benches.length === 0"
-      kind="loading"
-      title="Loading benches"
-      body="Fetching the latest bench list and lifecycle state."
-    />
+          <StatePanel
+            v-if="!error && loading && benches.length === 0"
+            kind="loading"
+            title="Loading benches"
+            body="Fetching the latest bench list and lifecycle state."
+          />
 
-    <ListView
-      v-if="!error && (!loading || benches.length > 0) && benches.length"
-      :columns="benchColumns"
-      :rows="benches"
-      row-key="id"
-      :options="benchListOptions"
-    >
-      <template #cell="{ column, row }">
-        <template v-if="column.key === 'name'">
-          <div
-            class="py-3 cursor-pointer group"
-            @click="onManageBench(row.id)"
+          <ListView
+            v-if="!error && (!loading || benches.length > 0) && benches.length"
+            :columns="benchColumns"
+            :rows="benches"
+            row-key="id"
+            :options="benchListOptions"
           >
-            <div class="font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
-              {{ row.name }}
-            </div>
-            <div
-              class="text-xs truncate text-ink-gray-5"
-              :title="row.path"
-            >
-              {{ formatPath(row.path) }}
-            </div>
-          </div>
-        </template>
-        
-        <template v-else-if="column.key === 'frappeVersion'">
-          <span class="text-sm text-ink-gray-6">{{ row.frappeVersion }}</span>
-        </template>
+            <template #cell="{ column, row }">
+              <template v-if="column.key === 'name'">
+                <div
+                  class="py-3 cursor-pointer group"
+                  @click="onManageBench(row.id)"
+                >
+                  <div class="font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
+                    {{ row.name }}
+                  </div>
+                  <div
+                    class="text-xs truncate text-ink-gray-5"
+                    :title="row.path"
+                  >
+                    {{ formatPath(row.path) }}
+                  </div>
+                </div>
+              </template>
 
-        <template v-else-if="column.key === 'appCount'">
-          <span class="text-sm text-ink-gray-6">{{ row.appCount }}</span>
-        </template>
+              <template v-else-if="column.key === 'frappeVersion'">
+                <span class="text-sm text-ink-gray-6">{{ row.frappeVersion }}</span>
+              </template>
 
-        <template v-else-if="column.key === 'status'">
-          <div class="flex items-center">
-            <Badge
-              :variant="'subtle'"
-              :theme="getStatusTheme(row)"
-              class="cursor-pointer status-badge"
-              @click.stop="onStatusClick(row.id, 'bench')"
-            >
-              {{ formatStatusLabel(row) }}
-              <span
-                v-if="isResourceBusy(row.id, 'bench')"
-                class="status-badge__spinner"
-              />
-            </Badge>
-          </div>
-        </template>
+              <template v-else-if="column.key === 'appCount'">
+                <span class="text-sm text-ink-gray-6">{{ row.appCount }}</span>
+              </template>
 
-        <template v-else-if="column.key === 'actions'">
-          <div
-            class="flex justify-end"
-            @click.stop
+              <template v-else-if="column.key === 'status'">
+                <div class="flex items-center">
+                  <Badge
+                    :variant="'subtle'"
+                    :theme="getStatusTheme(row)"
+                    class="inline-flex cursor-pointer items-center gap-1.5"
+                    @click.stop="onStatusClick(row.id, 'bench')"
+                  >
+                    {{ formatStatusLabel(row) }}
+                    <span
+                      v-if="isResourceBusy(row.id, 'bench')"
+                      class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
+                    />
+                  </Badge>
+                </div>
+              </template>
+
+              <template v-else-if="column.key === 'actions'">
+                <div
+                  class="flex justify-end"
+                  @click.stop
+                >
+                  <Dropdown :options="getBenchActions(row)">
+                    <template #default>
+                      <Button
+                        size="md"
+                        variant="subtle"
+                        :icon="IconMoreHorizontal"
+                      />
+                    </template>
+                  </Dropdown>
+                </div>
+              </template>
+            </template>
+          </ListView>
+
+          <section
+            v-if="!error && (!loading || benches.length > 0) && !benches.length"
+            class="flex min-h-[300px] flex-col items-center justify-center bg-white px-12 text-center"
           >
-            <Dropdown :options="getBenchActions(row)">
-              <template #default>
+            <h2 class="m-0 text-lg font-semibold text-ink-gray-9">
+              No benches found
+            </h2>
+            <p class="mt-2 mb-6 text-sm text-ink-gray-6">
+              Create a new bench to get started.
+            </p>
+            <Button
+              variant="solid"
+              @click="showCreateBenchModal = true"
+            >
+              Create Bench
+            </Button>
+          </section>
+
+          <ConfirmationDialog
+            :open="cleanConfirmOpen"
+            title="Clean bench"
+            :message="`Are you sure you want to clean all sites from bench &quot;${pendingCleanBenchName}&quot;? This will drop all databases and remove all site data.`"
+            confirm-label="Clean bench"
+            @cancel="onCancelClean"
+            @confirm="onConfirmClean"
+          />
+
+          <ConfirmationDialog
+            :open="deleteConfirmOpen"
+            title="Delete bench"
+            :message="`Delete bench ${pendingDeleteBenchName}? This cannot be undone.`"
+            confirm-label="Delete bench"
+            @cancel="onCancelDelete"
+            @confirm="onConfirmDelete"
+          />
+
+          <Dialog
+            v-model="showCreateBenchModal"
+            :options="{ title: 'New bench', size: '3xl' }"
+            @close="onCloseBenchWizard"
+          >
+            <template #body-content>
+              <div class="flex flex-col gap-4">
+                <div class="flex items-center gap-2.5 px-0 py-1">
+                  <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 1 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
+                    Details
+                  </span>
+                  <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
+                  <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 2 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
+                    Apps
+                  </span>
+                  <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
+                  <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 3 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
+                    Confirm
+                  </span>
+                </div>
+
+                <form
+                  class="flex flex-col gap-4"
+                  @submit.prevent="onCreateBench"
+                >
+                  <p
+                    v-if="wizardErrors.length > 0"
+                    class="mb-4 text-sm text-ink-red-3"
+                  >
+                    {{ wizardErrors.join(' ') }}
+                  </p>
+
+                  <div
+                    v-if="wizardStep === 1"
+                    class="grid gap-4"
+                  >
+                    <label class="flex flex-col gap-1.5">
+                      <FormLabel label="Name" />
+                      <TextInput
+                        v-model="createForm.name"
+                        type="text"
+                        required
+                        placeholder="my-bench"
+                        variant="outline"
+                      />
+                    </label>
+
+                    <label class="flex flex-col gap-1.5">
+                      <FormLabel label="Frappe Version" />
+                      <FrappeVersionSelect
+                        v-model="createForm.frappeVersion"
+                        class="w-full"
+                      />
+                    </label>
+
+                    <label class="flex flex-col gap-1.5">
+                      <FormLabel label="Path" />
+                      <div class="flex w-full gap-2">
+                        <div class="flex-1 min-w-0">
+                          <TextInput
+                            v-model="createForm.path"
+                            type="text"
+                            required
+                            placeholder="/path/to/bench"
+                            variant="outline"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="subtle"
+                          type="button"
+                          @click="triggerFolderPicker"
+                        >
+                          Browse
+                        </Button>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div
+                    v-if="wizardStep === 2"
+                    class="grid gap-4"
+                  >
+                    <label class="flex flex-col gap-1.5">
+                      <AppPicker
+                        v-model="createForm.appsSelected"
+                        class="w-full"
+                        :disabled="creating || loading"
+                        :frappe-version="createForm.frappeVersion"
+                        :disable-core-bench-apps="true"
+                      />
+                    </label>
+                  </div>
+
+                  <div
+                    v-if="wizardStep === 3"
+                    class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2"
+                  >
+                    <div class="mb-2 flex justify-between text-[13px]">
+                      <span>Name</span><strong class="font-semibold">{{ createForm.name }}</strong>
+                    </div>
+                    <div class="mb-2 flex justify-between text-[13px]">
+                      <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
+                    </div>
+                    <div class="mb-2 flex justify-between text-[13px]">
+                      <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
+                    </div>
+                    <div class="flex justify-between text-[13px]">
+                      <span>Apps</span><strong class="font-semibold">{{ createForm.appsSelected.length > 0 ? `${CORE_BENCH_APPS_LABEL}, ${createForm.appsSelected.join(', ')}` : CORE_BENCH_APPS_LABEL }}</strong>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </template>
+
+            <template #actions>
+              <div class="flex justify-end gap-3">
                 <Button
+                  v-if="wizardStep > 1"
                   size="md"
                   variant="subtle"
-                  :icon="IconMoreHorizontal"
-                />
-              </template>
-            </Dropdown>
-          </div>
-        </template>
-      </template>
-    </ListView>
+                  @click="onPreviousStep"
+                >
+                  Back
+                </Button>
+                <Button
+                  v-if="wizardStep < 3"
+                  size="md"
+                  variant="solid"
+                  @click="onNextStep"
+                >
+                  Next
+                </Button>
+                <Button
+                  v-if="wizardStep === 3"
+                  size="md"
+                  variant="solid"
+                  :loading="creating"
+                  :disabled="loading"
+                  @click="onCreateBench"
+                >
+                  {{ creating ? 'Creating…' : 'Create bench' }}
+                </Button>
+              </div>
+            </template>
+          </Dialog>
 
-    <section
-      v-if="!error && (!loading || benches.length > 0) && !benches.length"
-      class="bench-empty-state"
-    >
-      <h2 class="bench-empty-state__title">
-        No benches found
-      </h2>
-      <p class="bench-empty-state__description">
-        Create a new bench to get started.
-      </p>
-      <Button
-        variant="solid"
-        @click="showCreateBenchModal = true"
-      >
-        Create Bench
-      </Button>
-    </section>
-
-    <ConfirmationDialog
-      :open="cleanConfirmOpen"
-      title="Clean bench"
-      :message="`Are you sure you want to clean all sites from bench &quot;${pendingCleanBenchName}&quot;? This will drop all databases and remove all site data.`"
-      confirm-label="Clean bench"
-      @cancel="onCancelClean"
-      @confirm="onConfirmClean"
-    />
-
-    <ConfirmationDialog
-      :open="deleteConfirmOpen"
-      title="Delete bench"
-      :message="`Delete bench ${pendingDeleteBenchName}? This cannot be undone.`"
-      confirm-label="Delete bench"
-      @cancel="onCancelDelete"
-      @confirm="onConfirmDelete"
-    />
-
-    <Dialog
-      v-model="showCreateBenchModal"
-      :options="{ title: 'New bench', size: '3xl' }"
-      @close="onCloseBenchWizard"
-    >
-      <template #body-content>
-        <div class="bench-wizard-dialog">
-          <div class="wizard-header">
-            <span :class="['wizard-header__item', wizardStep === 1 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
-              Details
-            </span>
-            <IconChevronRight class="wizard-header__icon" />
-            <span :class="['wizard-header__item', wizardStep === 2 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
-              Apps
-            </span>
-            <IconChevronRight class="wizard-header__icon" />
-            <span :class="['wizard-header__item', wizardStep === 3 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
-              Confirm
-            </span>
-          </div>
-
-          <form
-            class="form-body"
-            @submit.prevent="onCreateBench"
+          <Dialog
+            v-model="showAppPicker"
+            :options="{ title: 'Select Apps', size: '2xl' }"
           >
-            <p
-              v-if="wizardErrors.length > 0"
-              class="mb-4 text-sm text-ink-red-3"
-            >
-              {{ wizardErrors.join(' ') }}
-            </p>
-
-            <!-- Step 1: Bench Details -->
-            <div
-              v-if="wizardStep === 1"
-              class="form-grid form-grid--bench-details"
-            >
-              <label class="form-field">
-                <FormLabel label="Name" />
-                <TextInput
-                  v-model="createForm.name"
-                  type="text"
-                  required
-                  placeholder="my-bench"
-                  variant="outline"
-                />
-              </label>
-
-              <label class="form-field">
-                <FormLabel label="Frappe Version" />
-                <FrappeVersionSelect
-                  v-model="createForm.frappeVersion"
-                  class="form-field__control"
-                />
-              </label>
-
-              <label class="form-field">
-                <FormLabel label="Path" />
-                <div class="path-picker">
-                  <div class="path-picker__input-wrap">
-                    <TextInput
-                      v-model="createForm.path"
-                      type="text"
-                      required
-                      placeholder="/path/to/bench"
-                      variant="outline"
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    type="button"
-                    @click="triggerFolderPicker"
-                  >Browse</Button>
-                </div>
-              </label>
-            </div>
-
-            <!-- Step 2: App Selection -->
-            <div
-              v-if="wizardStep === 2"
-              class="form-grid"
-            >
-              <label class="form-field">
+            <template #body-content>
+              <div class="flex flex-col h-full min-h-0 overflow-hidden">
                 <AppPicker
                   v-model="createForm.appsSelected"
-                  class="form-field__control"
                   :disabled="creating || loading"
                   :frappe-version="createForm.frappeVersion"
+                  :disable-core-bench-apps="true"
                 />
-              </label>
-            </div>
+              </div>
+            </template>
+            <template #actions>
+              <div class="flex justify-end gap-3">
+                <Button
+                  size="md"
+                  variant="solid"
+                  @click="showAppPicker = false"
+                >
+                  Done
+                </Button>
+              </div>
+            </template>
+          </Dialog>
 
-            <!-- Step 3: Confirmation -->
-            <div
-              v-if="wizardStep === 3"
-              class="p-4 rounded wizard-summary bg-surface-gray-2"
-            >
-              <div class="flex justify-between mb-2">
-                <span>Name</span><strong>{{ createForm.name }}</strong>
-              </div>
-              <div class="flex justify-between mb-2">
-                <span>Frappe Version</span><strong>{{ createForm.frappeVersion }}</strong>
-              </div>
-              <div class="flex justify-between mb-2">
-                <span>Path</span><strong class="font-mono text-xs">{{ createForm.path }}</strong>
-              </div>
-              <div class="flex justify-between">
-                <span>Apps</span><strong>{{ createForm.appsSelected.length > 0 ? createForm.appsSelected.join(', ') : 'frappe' }}</strong>
-              </div>
-            </div>
-          </form>
-        </div>
-      </template>
-
-      <template #actions>
-        <div class="dialog-actions">
-          <Button
-            v-if="wizardStep > 1"
-            size="md"
-            variant="subtle"
-            @click="onPreviousStep"
-          >
-            Back
-          </Button>
-          <Button
-            v-if="wizardStep < 3"
-            size="md"
-            variant="solid"
-            @click="onNextStep"
-          >
-            Next
-          </Button>
-          <Button
-            v-if="wizardStep === 3"
-            size="md"
-            variant="solid"
-            :loading="creating"
-            :disabled="loading"
-            @click="onCreateBench"
-          >
-            {{ creating ? 'Creating…' : 'Create bench' }}
-          </Button>
-        </div>
-      </template>
-    </Dialog>
-
-    <Dialog
-      v-model="showAppPicker"
-      :options="{ title: 'Select Apps', size: '2xl' }"
-    >
-      <template #body-content>
-        <div class="app-picker-dialog__body">
-          <AppPicker
-            v-model="createForm.appsSelected"
-            :disabled="creating || loading"
-            :frappe-version="createForm.frappeVersion"
+          <TaskLogModal
+            v-if="selectedTask"
+            :task="selectedTask"
+            @close="selectedTaskId = null"
           />
-        </div>
-      </template>
-      <template #actions>
-        <div class="dialog-actions">
-          <Button
-            size="md"
-            variant="solid"
-            @click="showAppPicker = false"
-          >
-            Done
-          </Button>
-        </div>
-      </template>
-    </Dialog>
 
-    <TaskLogModal
-      v-if="selectedTask"
-      :task="selectedTask"
-      @close="selectedTaskId = null"
-    />
+          <Dialog
+            v-model="showCreateFailureDialog"
+            :options="{ title: createFailureTitle, size: 'md' }"
+          >
+            <template #body-content>
+              <p class="text-sm text-ink-gray-7">{{ createFailureMessage }}</p>
+            </template>
+            <template #actions>
+              <div class="flex justify-end gap-3">
+                <Button
+                  size="md"
+                  variant="solid"
+                  @click="showCreateFailureDialog = false"
+                >
+                  OK
+                </Button>
+              </div>
+            </template>
+          </Dialog>
 
-    <Dialog
-      v-model="showCreateFailureDialog"
-      :options="{ title: createFailureTitle, size: 'md' }"
-    >
-      <template #body-content>
-        <p class="text-sm text-ink-gray-7">{{ createFailureMessage }}</p>
-      </template>
-      <template #actions>
-        <div class="dialog-actions">
-          <Button
-            size="md"
-            variant="solid"
-            @click="showCreateFailureDialog = false"
+          <Dialog
+            v-model="showAppsDialog"
+            :options="{ title: `Manage Apps in ${selectedBenchForApps?.name || 'Bench'}`, size: '4xl' }"
+            @close="closeAppsDialog"
           >
-            OK
-          </Button>
-        </div>
-      </template>
-    </Dialog>
+            <template #body-content>
+              <div class="flex flex-col gap-4">
+                <Tabs
+                  v-model="selectedBenchAppsTabIndex"
+                  as="div"
+                  class="max-h-[65vh] min-h-0"
+                  :tabs="benchAppsTabs"
+                >
+                  <template #tab-panel="{ tab }">
+                    <div
+                      v-if="tab.label === 'Installed apps'"
+                      class="flex flex-col min-h-0 gap-3 pt-6"
+                    >
+                      <div
+                        v-if="installedAppRows.length === 0"
+                        class="py-8 text-center text-ink-gray-5"
+                      >
+                        No apps installed.
+                      </div>
 
-    <Dialog
-      v-model="showAppsDialog"
-      :options="{ title: `Apps in ${selectedBenchForApps?.name || 'Bench'}`, size: 'lg' }"
-    >
-      <template #body-content>
-        <div class="installed-apps-list">
-          <div
-            v-if="!selectedBenchForApps?.apps?.length"
-            class="py-8 text-center text-ink-gray-5"
-          >
-            No apps installed.
-          </div>
-          <table
-            v-else
-            class="installed-apps-table"
-          >
-            <tbody>
-              <tr
-                v-for="appId in selectedBenchForApps.apps"
-                :key="appId"
-                class="border-b last:border-0"
-              >
-                <td class="w-10 px-2 py-3">
-                  <img
-                    v-if="getAppInfo(appId).icon"
-                    :src="getAppInfo(appId).icon"
-                    class="app-icon"
-                  >
-                  <div
-                    v-else
-                    class="flex items-center justify-center w-8 h-8 font-bold rounded bg-surface-gray-3 text-ink-gray-5"
-                  >
-                    {{ getAppInfo(appId).name.charAt(0).toUpperCase() }}
-                  </div>
-                </td>
-                <td class="px-2 py-3">
-                  <div class="app-name">
-                    {{ getAppInfo(appId).name }}
-                  </div>
-                  <div class="text-xs app-desc text-ink-gray-5">
-                    {{ getAppInfo(appId).description }}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </template>
-      <template #actions>
-        <div class="dialog-actions">
-          <Button
-            size="md"
-            variant="solid"
-            @click="showAppsDialog = false"
-          >
-            Close
-          </Button>
-        </div>
-      </template>
-    </Dialog>
-  </section>
-</template>
+                      <ListView
+                        v-else
+                        :columns="installedAppColumns"
+                        :rows="installedAppRows"
+                        row-key="id"
+                        :options="installedAppsListOptions"
+                      >
+                        <template #cell="{ column, row }">
+                          <template v-if="column.key === 'app'">
+                            <div class="flex items-start min-w-0 gap-3 py-3">
+                              <img
+                                v-if="row.icon"
+                                :src="row.icon"
+                                class="rounded-md size-8"
+                              >
+                              <div
+                                v-else
+                                class="flex items-center justify-center font-bold rounded size-8 shrink-0 bg-surface-gray-3 text-ink-gray-5"
+                              >
+                                {{ row.appName.charAt(0).toUpperCase() }}
+                              </div>
+                              <div class="min-w-0">
+                                <div class="font-medium text-ink-gray-9">
+                                  {{ row.appName }}
+                                </div>
+                                <div class="text-xs text-ink-gray-5">
+                                  {{ row.description }}
+                                </div>
+                              </div>
+                            </div>
+                          </template>
 
-<script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
-import { useRouter } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, TextInput, toast } from 'frappe-ui';
-import IconPlus from '~icons/lucide/plus';
-import IconExternalLink from '~icons/lucide/external-link';
-import IconChevronRight from '~icons/lucide/chevron-right';
-import IconPlay from '~icons/lucide/play';
-import IconSquare from '~icons/lucide/square';
-import IconFolder from '~icons/lucide/folder';
-import IconTrash from '~icons/lucide/trash-2';
-import IconBrushCleaning from '~icons/lucide/brush-cleaning';
-import IconActivity from '~icons/lucide/activity';
-import IconRotateCw from '~icons/lucide/rotate-cw';
-import IconMoreHorizontal from '~icons/lucide/more-horizontal';
-import IconPackage from '~icons/lucide/package';
+                          <template v-else-if="column.key === 'version'">
+                            <div class="py-3 text-sm text-ink-gray-6">
+                              <Badge
+                                variant="subtle"
+                                :theme="row.isCore ? 'gray' : 'blue'"
+                              >
+                                {{ row.isCore ? 'Core app' : row.version }}
+                              </Badge>
+                            </div>
+                          </template>
+
+                          <template v-else-if="column.key === 'actions'">
+                            <div class="flex justify-end py-3">
+                              <Button
+                                v-if="row.removable"
+                                size="sm"
+                                variant="subtle"
+                                theme="red"
+                                :disabled="!canMutateApps || updating"
+                                :loading="updating && pendingRemoveBenchAppId === row.appId"
+                                @click.stop="onRequestRemoveBenchApp(row.appId)"
+                              >
+                                Remove
+                              </Button>
+                              <span
+                                v-else
+                                class="text-xs text-ink-gray-5"
+                              >
+                                Preinstalled
+                              </span>
+                            </div>
+                          </template>
+                        </template>
+                      </ListView>
+                    </div>
+
+                    <div
+                      v-else
+                      class="flex flex-col min-h-0 gap-3 pt-6"
+                    >
+                      <AppPicker
+                        v-model="appsToInstall"
+                        :disabled="!canMutateApps || updating"
+                        :frappe-version="selectedBenchForApps?.frappeVersion"
+                        :disable-core-bench-apps="true"
+                        :exclude-app-ids="selectedBenchForApps?.apps ?? []"
+                      />
+
+                      <p class="mt-2 text-xs text-ink-gray-5">
+                        Only apps that are not already installed are shown here.
+                      </p>
+                    </div>
+                  </template>
+                </Tabs>
+
+                <p
+                  v-if="selectedBenchForApps && selectedBenchForApps.status !== 'running'"
+                  class="text-sm text-ink-amber-4"
+                >
+                  Start the bench before installing or removing apps.
+                </p>
+              </div>
+            </template>
+            <template #actions>
+              <div class="flex justify-end gap-3">
+                <Button
+                  size="md"
+                  variant="solid"
+                  @click="closeAppsDialog"
+                >
+                  Close
+                </Button>
+                <Button
+                  v-if="selectedBenchAppsTab === 'install'"
+                  size="md"
+                  variant="solid"
+                  :loading="updating"
+                  :disabled="!canMutateApps || updating || appsToInstall.length === 0"
+                  @click="onInstallSelectedApps"
+                >
+                  Install selected apps
+                </Button>
+              </div>
+            </template>
+          </Dialog>
+
+          <ConfirmationDialog
+            :open="removeAppConfirmOpen"
+            title="Remove app"
+            :message="removeAppConfirmMessage"
+            confirm-label="Remove app"
+            @cancel="onCancelRemoveBenchApp"
+            @confirm="onConfirmRemoveBenchApp"
+          />
+        </section>
+      </template>
+
+  <script setup lang="ts">
+  import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
+  import { useRouter } from 'vue-router';
+  import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Tabs, TextInput, toast } from 'frappe-ui';
+  import IconPlus from '~icons/lucide/plus';
+  import IconExternalLink from '~icons/lucide/external-link';
+  import IconChevronRight from '~icons/lucide/chevron-right';
+  import IconPlay from '~icons/lucide/play';
+  import IconSquare from '~icons/lucide/square';
+  import IconFolder from '~icons/lucide/folder';
+  import IconTrash from '~icons/lucide/trash-2';
+  import IconBrushCleaning from '~icons/lucide/brush-cleaning';
+  import IconActivity from '~icons/lucide/activity';
+  import IconRotateCw from '~icons/lucide/rotate-cw';
+  import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+  import IconPackage from '~icons/lucide/package';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
@@ -413,6 +505,8 @@ import { useAppCatalog } from '../composables/useAppCatalog';
 import { getBenchWizardStepErrors, buildBenchCreatePayload, type BenchWizardStep } from '../bench-wizard';
 import { toSelectorFrappeVersion } from '../frappe-version';
 import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
+import { CORE_BENCH_APPS_LABEL, CORE_BENCH_APPS_SET } from '../../shared/bench-apps';
+import { normalizeSelection } from '../app-picker-state';
 import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
 const {
@@ -448,12 +542,49 @@ watch(error, (err) => {
 
 const { state: catalogState } = useAppCatalog();
 const showAppsDialog = ref(false);
-const selectedBenchForApps = ref<BenchListItem | null>(null);
+const selectedBenchForAppsId = ref<string | null>(null);
+const selectedBenchAppsTab = ref<'installed' | 'install'>('installed');
+const benchAppsTabs = [
+  { label: 'Installed apps' },
+  { label: 'Install apps' },
+];
+const selectedBenchAppsTabIndex = computed({
+  get: () => (selectedBenchAppsTab.value === 'installed' ? 0 : 1),
+  set: (value: string | number) => {
+    const normalizedValue = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+    selectedBenchAppsTab.value = normalizedValue === 0 ? 'installed' : 'install';
+  },
+});
+const appsToInstall = ref<string[]>([]);
+const removeAppConfirmOpen = ref(false);
+const pendingRemoveBenchAppId = ref<string | null>(null);
+const pendingRemoveBenchAppName = ref('');
+
+const selectedBenchForApps = computed(
+  () => benches.value.find((bench) => bench.id === selectedBenchForAppsId.value) ?? null,
+);
 
 const onShowApps = (bench: BenchListItem) => {
-  selectedBenchForApps.value = bench;
+  selectedBenchForAppsId.value = bench.id;
+  selectedBenchAppsTab.value = 'installed';
+  appsToInstall.value = [];
+  removeAppConfirmOpen.value = false;
+  pendingRemoveBenchAppId.value = null;
+  pendingRemoveBenchAppName.value = '';
   showAppsDialog.value = true;
 };
+
+const closeAppsDialog = () => {
+  showAppsDialog.value = false;
+  selectedBenchForAppsId.value = null;
+  selectedBenchAppsTab.value = 'installed';
+  appsToInstall.value = [];
+  removeAppConfirmOpen.value = false;
+  pendingRemoveBenchAppId.value = null;
+  pendingRemoveBenchAppName.value = '';
+};
+
+const canMutateApps = computed(() => selectedBenchForApps.value?.status === 'running');
 
 const getAppInfo = (appId: string) => {
   return catalogState.value.data?.find((app) => app.id === appId) ?? ({
@@ -465,6 +596,112 @@ const getAppInfo = (appId: string) => {
     category: 'other',
     compatibility: {},
   } satisfies CatalogAppItem);
+};
+
+const installedAppRows = computed(() => {
+  const benchApps = selectedBenchForApps.value?.apps ?? [];
+
+  return benchApps.map((appId) => {
+    const appInfo = getAppInfo(appId);
+    const isCore = CORE_BENCH_APPS_SET.has(appId);
+
+    return {
+      id: appId,
+      appId,
+      appName: appInfo.name,
+      description: appInfo.description,
+      icon: appInfo.icon,
+      version: appInfo.version,
+      isCore,
+      removable: !isCore,
+    };
+  });
+});
+
+const installedAppColumns = reactive([
+  { label: 'App', key: 'app', width: 2.2 },
+  { label: 'Version', key: 'version', width: 0.8 },
+  { label: '', key: 'actions', width: 0.7 },
+]);
+
+const installedAppsListOptions = {
+  selectable: false,
+  showTooltip: false,
+  resizeColumn: true,
+  rowHeight: '72px',
+};
+
+const queueBenchAppsUpdate = async (nextApps: readonly string[]) => {
+  const bench = selectedBenchForApps.value;
+  if (!bench) {
+    return;
+  }
+
+  const normalizedNextApps = normalizeSelection(nextApps);
+  const currentApps = normalizeSelection(bench.apps);
+  const sameApps = normalizedNextApps.length === currentApps.length && normalizedNextApps.every((appId, index) => appId === currentApps[index]);
+  if (sameApps) {
+    return;
+  }
+
+  await update(bench.id, { apps: normalizedNextApps });
+};
+
+const onInstallSelectedApps = async () => {
+  const bench = selectedBenchForApps.value;
+  if (!bench || !canMutateApps.value || appsToInstall.value.length === 0) {
+    return;
+  }
+
+  const nextApps = normalizeSelection([...bench.apps, ...appsToInstall.value]);
+  toast.success(`Installing apps to bench ${bench.name}...`);
+  await queueBenchAppsUpdate(nextApps);
+  closeAppsDialog();
+  appsToInstall.value = [];
+};
+
+const onRequestRemoveBenchApp = (appId: string) => {
+  const bench = selectedBenchForApps.value;
+  if (!bench || !canMutateApps.value) {
+    return;
+  }
+
+  const appInfo = getAppInfo(appId);
+  pendingRemoveBenchAppId.value = appId;
+  pendingRemoveBenchAppName.value = appInfo.name;
+  removeAppConfirmOpen.value = true;
+};
+
+const onCancelRemoveBenchApp = () => {
+  removeAppConfirmOpen.value = false;
+  pendingRemoveBenchAppId.value = null;
+  pendingRemoveBenchAppName.value = '';
+};
+
+const removeAppConfirmMessage = computed(() => {
+  const bench = selectedBenchForApps.value;
+  if (!bench) {
+    return 'Remove this app from the bench?';
+  }
+
+  return `Remove ${pendingRemoveBenchAppName.value} from bench "${bench.name}"? This will update the bench app list and remove the app from the bench.`;
+});
+
+const onConfirmRemoveBenchApp = async () => {
+  const bench = selectedBenchForApps.value;
+  const appId = pendingRemoveBenchAppId.value;
+  if (!bench || !appId || !canMutateApps.value) {
+    onCancelRemoveBenchApp();
+    return;
+  }
+
+  removeAppConfirmOpen.value = false;
+  pendingRemoveBenchAppId.value = null;
+
+  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
+  toast.success(`Removing app from bench ${bench.name}...`);
+  await queueBenchAppsUpdate(nextApps);
+  pendingRemoveBenchAppName.value = '';
 };
 
 const router = useRouter();
@@ -482,7 +719,6 @@ const formatPath = (path: string) => {
 const benchColumns = reactive([
   { label: 'Name', key: 'name', width: 2 },
   { label: 'Frappe', key: 'frappeVersion', width: 1.2 },
-  { label: 'Apps', key: 'appCount', width: 0.8 },
   { label: 'Status', key: 'status', width: 1 },
   { label: '', key: 'actions', width: 0.5 },
 ]);
@@ -523,6 +759,10 @@ watch(
 const getStatusTheme = (row: BenchListItem) => {
   if (getPendingBenchAction(row.id)) return 'blue';
   if (isResourceBusy(row.id, 'bench')) return 'blue';
+  const failedAppTask = (tasks.value || []).find(
+    (t) => t.resourceId === row.id && t.resource === 'bench' && t.status === 'failure' && t.taskName.toLowerCase().includes('update bench apps')
+  );
+  if (failedAppTask) return String(failedAppTask.message ?? '').toLowerCase().includes('cancelled') ? 'gray' : 'red';
   const status = row.status;
   if (status === 'running') return 'green';
   if (status === 'stopped') return 'gray';
@@ -606,17 +846,30 @@ const showCreateFailureDialog = ref(false);
 const createFailureTitle = ref('Bench Creation Failed');
 const createFailureMessage = ref('Bench creation failed. Check Progress for details.');
 const acknowledgedCreateFailures = ref(new Set<string>());
+const acknowledgedBenchAppTaskResults = ref(new Set<string>());
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
+
 const formatStatusLabel = (row: BenchListItem) => {
   const pendingAction = getPendingBenchAction(row.id);
   if (pendingAction === 'starting') return 'Starting';
   if (pendingAction === 'restarting') return 'Restarting';
   if (pendingAction === 'stopping') return 'Stopping';
+
+  const failedAppTask = (tasks.value || []).find(
+    (t) => t.resourceId === row.id && t.resource === 'bench' && t.status === 'failure' && t.taskName.toLowerCase().includes('update bench apps')
+  );
+
+  if (failedAppTask) {
+    const failureMessage = String(failedAppTask.message ?? '').toLowerCase();
+    if (failureMessage.includes('cancelled')) return 'Install cancelled';
+    if (failureMessage.includes('timed out')) return 'Install timed out';
+    return 'Install failed';
+  }
 
   const task = (tasks.value || []).find(
     (t) => t.resourceId === row.id && t.resource === 'bench' && (t.status === 'running' || t.status === 'queued')
@@ -625,6 +878,12 @@ const formatStatusLabel = (row: BenchListItem) => {
   if (task) {
     const name = String(task.taskName ?? '').toLowerCase();
     if (name.includes('create bench')) return 'Creating';
+    if (name.includes('update bench apps')) {
+      const stepName = String(task.stepName ?? '').toLowerCase();
+      if (stepName.includes('install')) return 'Installing';
+      if (stepName.includes('remov')) return 'Removing apps';
+      return 'Installing';
+    }
     if (name.includes('restart bench')) return 'Restarting';
     if (name.includes('start bench')) return 'Starting';
     if (name.includes('stop bench')) return 'Stopping';
@@ -649,12 +908,36 @@ const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
+  const isBenchAppsTask = (taskName: string) => taskName.toLowerCase().includes('update bench apps');
+
+  const activeBenchAppsTask = resource === 'bench'
+    ? tasks.value.find(
+      (t) => t.resourceId === resourceId && t.resource === resource && isBenchAppsTask(t.taskName) && (t.status === 'running' || t.status === 'queued')
+    )
+    : null;
+
+  if (activeBenchAppsTask) {
+    selectedTaskId.value = activeBenchAppsTask.taskId;
+    return;
+  }
+
   const activeTask = tasks.value.find(
     (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
   );
 
   if (activeTask) {
     selectedTaskId.value = activeTask.taskId;
+    return;
+  }
+
+  const completedBenchAppsTask = resource === 'bench'
+    ? tasks.value.find(
+      (t) => t.resourceId === resourceId && t.resource === resource && isBenchAppsTask(t.taskName) && (t.status === 'success' || t.status === 'failure')
+    )
+    : null;
+
+  if (completedBenchAppsTask) {
+    selectedTaskId.value = completedBenchAppsTask.taskId;
     return;
   }
 
@@ -679,6 +962,26 @@ watch(
         createFailureTitle.value = 'Bench Creation Failed';
         createFailureMessage.value = humanizeCreateFailure('bench', task.message);
         showCreateFailureDialog.value = true;
+      }
+
+      if (
+        task.resource === 'bench' &&
+        task.taskName.toLowerCase().includes('update bench apps') &&
+        (task.status === 'success' || task.status === 'failure') &&
+        !acknowledgedBenchAppTaskResults.value.has(task.taskId)
+      ) {
+        acknowledgedBenchAppTaskResults.value.add(task.taskId);
+        const benchName = benches.value.find((bench) => bench.id === task.resourceId)?.name
+          ?? task.taskName.replace(/^Update Bench Apps\s+/i, '').trim();
+
+        void refresh(true);
+
+        if (task.status === 'success') {
+          toast.success(`Bench apps updated for ${benchName}.`);
+        } else {
+          toast.error(`App update failed for ${benchName}. Check progress logs.`);
+          selectedTaskId.value = task.taskId;
+        }
       }
     }
   },
@@ -885,146 +1188,8 @@ const onOpenBenchFolder = async (id: string) => {
 </script>
 
 <style scoped>
-.benches-view {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
 :deep(.frappe-list-cell) {
   min-width: 0 !important;
-}
-
-.bench-empty-state {
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px;
-  background: white;
-  text-align: center;
-}
-
-.bench-empty-state__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.bench-empty-state__description {
-  margin: 8px 0 24px;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-/* Wizard Styles */
-.bench-wizard-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.wizard-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0 8px;
-}
-
-.wizard-header__item {
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-
-.wizard-header__item--active {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.wizard-header__item--inactive {
-  color: var(--text-muted);
-}
-
-.wizard-header__icon {
-  width: 15px;
-  height: 15px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.form-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.form-grid--bench-details {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-field__control {
-  width: 100%;
-}
-
-.path-picker {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.path-picker__input-wrap {
-  flex: 1;
-  min-width: 0;
-}
-
-.path-picker :deep(button) {
-  flex-shrink: 0;
-}
-
-@media (max-width: 720px) {
-  .form-grid--bench-details {
-    grid-template-columns: 1fr;
-  }
-}
-
-.wizard-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.wizard-summary > div {
-  font-size: 13px;
-}
-
-.wizard-summary strong {
-  font-weight: 600;
-}
-
-.font-mono {
-  font-family: 'Monaco', 'Menlo', monospace;
-  word-break: break-all;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
 }
 
 /* Keep Select Apps modal capped to viewport while letting its list scroll internally. */
@@ -1042,57 +1207,5 @@ const onOpenBenchFolder = async (id: string) => {
 
 :deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content > div:last-child) {
   flex-shrink: 0;
-}
-
-.app-picker-dialog__body {
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.status-badge__spinner {
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 9999px;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.installed-apps-list {
-  padding: 8px;
-}
-
-.installed-apps-table {
-  width: 100%;
-}
-
-.app-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-}
-
-.app-name {
-  font-weight: 500;
-}
-
-.app-desc {
-  font-size: 12px;
-  color: var(--text-muted);
 }
 </style>

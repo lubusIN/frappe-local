@@ -59,7 +59,7 @@ export const useBenches = () => {
     }
   };
 
-  const create = async (input: BenchCreateInput) => {
+  const create = async (input: BenchCreateInput): Promise<BenchListItem | null> => {
     creating.value = true;
     error.value = null;
     successMessage.value = null;
@@ -69,8 +69,10 @@ export const useBenches = () => {
       const created = await ipc.createBench(input);
       benches.value = [created, ...benches.value];
       // Toast will be shown when status changes from queued to running
+      return created;
     } catch (err) {
       error.value = humanizeCreateFailure('bench', stripIpcPrefix(String(err)));
+      return null;
     } finally {
       creating.value = false;
     }
@@ -91,7 +93,15 @@ export const useBenches = () => {
       }
 
       benches.value = benches.value.map((bench) => (bench.id === id ? updated : bench));
-      if (input.status !== 'running' && input.status !== 'stopped') {
+      const isAppsOnlyUpdate =
+        Array.isArray(input.apps) &&
+        input.status === undefined &&
+        input.name === undefined &&
+        input.path === undefined &&
+        input.frappeVersion === undefined &&
+        input.httpPort === undefined;
+
+      if (!isAppsOnlyUpdate && input.status !== 'running' && input.status !== 'stopped') {
         successMessage.value = `Updated bench ${updated.name}.`;
       }
     } catch (err) {

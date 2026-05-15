@@ -4,11 +4,21 @@
     "name": "Frappe Framework",
     "description": "Full-stack web framework with metadata-driven architecture, ORM, REST API, and admin UI.",
     "source": "https://github.com/frappe/frappe",
-    "version": "16.0.0",
+    "version": "v16.18.2",
     "category": "core",
     "icon": "https://raw.githubusercontent.com/frappe/frappe/develop/frappe/public/images/frappe-framework-logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "version-15",
+      "version-16": "version-16",
+      "develop": "develop"
     }
   },
   {
@@ -16,11 +26,21 @@
     "name": "ERPNext",
     "description": "Full-featured open-source ERP for accounting, inventory, manufacturing, HR, and CRM.",
     "source": "https://github.com/frappe/erpnext",
-    "version": "16.0.0",
+    "version": "v16.18.3",
     "category": "business",
     "icon": "https://raw.githubusercontent.com/frappe/erpnext/develop/erpnext/public/images/erpnext-logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "version-15",
+      "version-16": "version-16",
+      "develop": "develop"
     }
   },
   {
@@ -28,11 +48,21 @@
     "name": "Frappe HR",
     "description": "Human resource management with payroll, attendance, leaves, expense claims, and recruitment.",
     "source": "https://github.com/frappe/hrms",
-    "version": "16.0.0",
+    "version": "v16.7.0",
     "category": "business",
     "icon": "https://raw.githubusercontent.com/frappe/hrms/develop/hrms/public/images/frappe-hr-logo.png",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "version-15",
+      "version-16": "version-16",
+      "develop": "develop"
     }
   },
   {
@@ -40,11 +70,19 @@
     "name": "Lending",
     "description": "Loan management with disbursement, repayment schedules, interest calculation, and NPA tracking.",
     "source": "https://github.com/frappe/lending",
-    "version": "16.0.0",
+    "version": "v1.5.4",
     "category": "business",
     "icon": "https://raw.githubusercontent.com/frappe/lending/develop/lending/public/images/frappe-lending-logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "version-15",
+      "develop": "develop"
     }
   },
   {
@@ -56,7 +94,17 @@
     "category": "business",
     "icon": "https://raw.githubusercontent.com/frappe/frappe/develop/frappe/public/images/frappe-framework-logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "version-15",
+      "version-16": "version-16",
+      "develop": "develop"
     }
   },
   {
@@ -64,12 +112,21 @@
     "name": "eCommerce Integrations",
     "description": "Connectors for Shopify, WooCommerce, and other eCommerce platforms with ERPNext.",
     "source": "https://github.com/frappe/ecommerce_integrations",
-    "version": "15.0.0",
+    "version": "v16.0.0",
     "category": "business",
     "icon": "https://raw.githubusercontent.com/frappe/erpnext/develop/erpnext/public/images/erpnext-logo.svg",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0",
-      "maximumFrappeVersion": "15.999.999"
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "version-15",
+      "version-16": "version-16",
+      "develop": "develop"
     }
   },
   {
@@ -77,11 +134,22 @@
     "name": "Frappe CRM",
     "description": "Modern, open-source CRM with deal pipeline, email, calls, notes, and AI integration.",
     "source": "https://github.com/frappe/crm",
-    "version": "16.0.0",
+    "installBranch": "main",
+    "version": "v1.71.2",
     "category": "crm-support",
     "icon": "https://raw.githubusercontent.com/frappe/crm/develop/.github/logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "main",
+      "version-16": "main",
+      "develop": "develop"
     }
   },
   {
@@ -89,11 +157,21 @@
     "name": "Frappe Helpdesk",
     "description": "Customer service software with ticketing, SLA tracking, knowledge base, and customer portal.",
     "source": "https://github.com/frappe/helpdesk",
-    "version": "16.0.0",
+    "installBranch": "main",
+    "installBranches": {
+      "version-15": "main",
+      "version-16": "main",
+      "develop": "develop"
+    },
+    "version": "v1.24.1",
     "category": "crm-support",
     "icon": "https://raw.githubusercontent.com/frappe/helpdesk/develop/.github/hd-logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
     }
   },
   {
@@ -101,12 +179,21 @@
     "name": "Gameplan",
     "description": "Team collaboration and project discussions with pages, tasks, and real-time updates.",
     "source": "https://github.com/frappe/gameplan",
+    "installBranch": "main",
     "version": "15.0.0",
     "category": "productivity",
     "icon": "https://raw.githubusercontent.com/frappe/gameplan/develop/frontend/public/gameplan-logo.svg",
     "compatibility": {
       "minimumFrappeVersion": "15.0.0",
-      "maximumFrappeVersion": "15.999.999"
+      "maximumFrappeVersion": "15.999.999",
+      "supportedBenchVersions": [
+        "version-15",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "main",
+      "develop": "develop"
     }
   },
   {
@@ -114,11 +201,22 @@
     "name": "Wiki",
     "description": "Knowledge base and documentation tool with markdown support and version history.",
     "source": "https://github.com/frappe/wiki",
-    "version": "16.0.0",
+    "installBranch": "master",
+    "version": "v2.0.1",
     "category": "productivity",
     "icon": "https://raw.githubusercontent.com/frappe/wiki/develop/wiki/public/images/wiki-logo.png",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "master",
+      "version-16": "master",
+      "develop": "develop"
     }
   },
   {
@@ -126,11 +224,22 @@
     "name": "Frappe Drive",
     "description": "File storage and document management with sharing, permissions, and collaborative editing.",
     "source": "https://github.com/frappe/drive",
-    "version": "16.0.0",
+    "installBranch": "main",
+    "version": "v0.3.0",
     "category": "productivity",
     "icon": "https://raw.githubusercontent.com/frappe/drive/develop/drive/public/images/icons/logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "main",
+      "version-16": "main",
+      "develop": "develop"
     }
   },
   {
@@ -138,11 +247,22 @@
     "name": "Frappe LMS",
     "description": "Learning management system with courses, quizzes, certifications, and student progress tracking.",
     "source": "https://github.com/frappe/lms",
-    "version": "16.0.0",
+    "installBranch": "main",
+    "version": "v2.54.1",
     "category": "learning",
     "icon": "https://raw.githubusercontent.com/frappe/lms/develop/lms/public/images/lms-logo.png",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "main",
+      "version-16": "main",
+      "develop": "develop"
     }
   },
   {
@@ -150,11 +270,22 @@
     "name": "Print Designer",
     "description": "Visual drag-and-drop print format builder with dynamic fields, barcodes, and custom layouts.",
     "source": "https://github.com/frappe/print_designer",
-    "version": "16.0.0",
+    "installBranch": "main",
+    "version": "v1.6.7",
     "category": "tools",
     "icon": "https://raw.githubusercontent.com/frappe/print_designer/develop/print_designer/public/images/print-designer-logo.svg",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "main",
+      "version-16": "main",
+      "develop": "develop"
     }
   },
   {
@@ -162,11 +293,22 @@
     "name": "Frappe Insights",
     "description": "Business intelligence and data analytics with a visual query builder and dashboards.",
     "source": "https://github.com/frappe/insights",
-    "version": "16.0.0",
+    "installBranch": "main",
+    "version": "v3.9.9",
     "category": "tools",
     "icon": "https://raw.githubusercontent.com/frappe/insights/refs/heads/develop/frontend/public/insights-logo.png",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "main",
+      "version-16": "main",
+      "develop": "develop"
     }
   },
   {
@@ -174,11 +316,22 @@
     "name": "Frappe Builder",
     "description": "Visual no-code website builder with drag-and-drop blocks and dynamic data binding.",
     "source": "https://github.com/frappe/builder",
-    "version": "16.0.0",
+    "installBranch": "master",
+    "version": "v1.24.5",
     "category": "tools",
     "icon": "https://raw.githubusercontent.com/frappe/builder/develop/frontend/public/builder_logo.png",
     "compatibility": {
-      "minimumFrappeVersion": "15.0.0"
+      "minimumFrappeVersion": "15.0.0",
+      "supportedBenchVersions": [
+        "version-15",
+        "version-16",
+        "develop"
+      ]
+    },
+    "installBranches": {
+      "version-15": "master",
+      "version-16": "master",
+      "develop": "develop"
     }
   }
 ]

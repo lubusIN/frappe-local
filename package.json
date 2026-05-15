@@ -15,6 +15,9 @@
     "lint:fix": "eslint . --fix",
     "precommit:check": "bash scripts/precommit-check.sh",
     "dev:reset-state": "node scripts/reset-dev-state.js",
+    "catalog:build": "node scripts/build-default-catalog.js --write",
+    "catalog:build:check": "node scripts/build-default-catalog.js --check",
+    "catalog:audit": "node scripts/audit-catalog.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json",
     "postinstall": "node scripts/download-binaries.js"

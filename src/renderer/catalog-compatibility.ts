@@ -25,6 +25,8 @@ const normalizeFrappeVersion = (value: string): string => {
   return trimmed;
 };
 
+const normalizeSupportedVersion = (value: string): string => normalizeFrappeVersion(value);
+
 const parseVersion = (value: string): [number, number, number] => {
   const normalized = normalizeFrappeVersion(value);
   const [major = '0', minor = '0', patch = '0'] = normalized.split('.');
@@ -54,7 +56,18 @@ export const evaluateCatalogCompatibility = (
   item: CatalogAppItem,
   context: CatalogCompatibilityContext
 ): CatalogCompatibilityResult => {
+  if (context.frappeVersion && item.compatibility.supportedBenchVersions?.length) {
+    const normalizedContextVersion = normalizeSupportedVersion(context.frappeVersion);
+    const allowedVersions = new Set(item.compatibility.supportedBenchVersions.map(normalizeSupportedVersion));
 
+    if (!allowedVersions.has(normalizedContextVersion)) {
+      return {
+        isCompatible: false,
+        status: 'blocked',
+        message: `Supported on ${item.compatibility.supportedBenchVersions.join(', ')} only.`,
+      };
+    }
+  }
 
   if (context.frappeVersion && item.compatibility.minimumFrappeVersion) {
     if (compareVersion(context.frappeVersion, item.compatibility.minimumFrappeVersion) < 0) {

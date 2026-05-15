@@ -38,6 +38,7 @@ export const SiteSchema = z.object({
 export const AppCompatibilitySchema = z.object({
   minimumFrappeVersion: nonEmptyString.optional(),
   maximumFrappeVersion: nonEmptyString.optional(),
+  supportedBenchVersions: z.array(nonEmptyString).optional(),
 });
 
 export const AppCategorySchema = z.enum([
@@ -55,6 +56,8 @@ export const AppSchema = z.object({
   name: nonEmptyString,
   description: z.string(),
   source: nonEmptyString,
+  installBranch: nonEmptyString.optional(),
+  installBranches: z.record(nonEmptyString).optional(),
   version: nonEmptyString,
   category: AppCategorySchema.default('other'),
   icon: nonEmptyString.optional(),

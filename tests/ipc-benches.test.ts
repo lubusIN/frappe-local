@@ -3,6 +3,16 @@ import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Bench, Settings, Site } from '../src/shared/domain/models';
 
+const orchestrateBenchAppChangesMock = vi.fn();
+
+vi.mock('../src/main/bench-orchestration', async () => {
+  const actual = await vi.importActual<typeof import('../src/main/bench-orchestration')>('../src/main/bench-orchestration');
+  return {
+    ...actual,
+    orchestrateBenchAppChanges: (...args: Parameters<typeof actual.orchestrateBenchAppChanges>) => orchestrateBenchAppChangesMock(...args),
+  };
+});
+
 const benches: Bench[] = [
   {
     id: 'bench-001',
@@ -126,6 +136,40 @@ function makeStubSettingsRepo() {
 }
 
 describe('benches IPC handlers', () => {
+  it('defers installed app persistence for running bench app updates', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    orchestrateBenchAppChangesMock.mockReset();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const updateHandler = handlers.get(ipcChannels.benchesUpdate);
+    const updated = await updateHandler?.(undefined, 'bench-001', { apps: ['frappe', 'erpnext', 'payments'] });
+
+    expect(updated).toMatchObject({
+      id: 'bench-001',
+      apps: ['frappe', 'erpnext'],
+      appCount: 2,
+    });
+
+    expect(orchestrateBenchAppChangesMock).toHaveBeenCalledTimes(1);
+    expect(orchestrateBenchAppChangesMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'bench-001', apps: ['frappe', 'erpnext'] }),
+      expect.any(Object),
+      expect.any(Object),
+      ['frappe', 'erpnext'],
+      ['frappe', 'erpnext', 'payments']
+    );
+  });
+
   it('benches:list returns mapped bench list items', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
@@ -242,7 +286,8 @@ describe('benches IPC handlers', () => {
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
       status: 'queued',
-      appCount: 1,
+      appCount: 2,
+      apps: ['frappe', 'erpnext'],
     });
     expect((created as { httpPort?: number }).httpPort).toBeGreaterThanOrEqual(8080);
   });
