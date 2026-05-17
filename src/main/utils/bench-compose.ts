@@ -47,18 +47,29 @@ services:
     entrypoint: ["bash", "-c"]
     command:
       - >
-        cp -rn /home/frappe/frappe-bench/assets/. /home/frappe/frappe-bench/sites/assets/;
+        if [ -L /home/frappe/frappe-bench/sites/assets ]; then rm /home/frappe/frappe-bench/sites/assets; fi;
+        mkdir -p /home/frappe/frappe-bench/sites/assets;
+        cp -rn /home/frappe/frappe-bench/assets/. /var/local-bench/assets/;
+        cp -rn /var/local-bench/assets/. /home/frappe/frappe-bench/sites/assets/;
         cp -rn /home/frappe/frappe-bench/apps/. /var/local-bench/apps/;
-        chown -R 1000:1000 /home/frappe/frappe-bench/sites/assets/ /var/local-bench/apps/;
+        cp -rn /home/frappe/frappe-bench/env/. /var/local-bench/env/;
+        chown -R 1000:1000 /home/frappe/frappe-bench/sites/assets/ /var/local-bench/assets/ /var/local-bench/env/ || true;
+        chown 1000:1000 /var/local-bench/apps/ || true;
+        find /var/local-bench/apps -mindepth 1 -maxdepth 1 -type d -exec chown 1000:1000 {} + || true;
     volumes:
       - ../sites:/home/frappe/frappe-bench/sites
       - ../apps:/var/local-bench/apps
+      - bench_assets:/home/frappe/frappe-bench/assets
+      - ./assets:/var/local-bench/assets
+      - bench_env:/var/local-bench/env
 
   backend:
     image: ${image}
     volumes:
       - ../sites:/home/frappe/frappe-bench/sites
       - ../apps:/home/frappe/frappe-bench/apps
+      - bench_assets:/home/frappe/frappe-bench/assets
+      - bench_env:/home/frappe/frappe-bench/env
     environment:
       - DB_HOST=db
       - DB_ROOT_PASSWORD=${dbPassword}
@@ -84,6 +95,8 @@ services:
       - SOCKETIO=websocket:9000
     volumes:
       - ../sites:/home/frappe/frappe-bench/sites
+      - ../apps:/home/frappe/frappe-bench/apps:ro
+      - bench_assets:/home/frappe/frappe-bench/assets
     depends_on:
       backend:
         condition: service_healthy
@@ -96,6 +109,8 @@ services:
     volumes:
       - ../sites:/home/frappe/frappe-bench/sites
       - ../apps:/home/frappe/frappe-bench/apps
+      - bench_assets:/home/frappe/frappe-bench/assets
+      - bench_env:/home/frappe/frappe-bench/env
     depends_on:
       backend:
         condition: service_healthy
@@ -105,13 +120,17 @@ services:
     environment:
       - MARIADB_ROOT_PASSWORD=${dbPassword}
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\$\${MARIADB_ROOT_PASSWORD} || exit 1"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$\${MARIADB_ROOT_PASSWORD} || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: docker.io/redis:7-alpine
+
+volumes:
+  bench_assets:
+  bench_env:
 `;
 };
 
@@ -129,6 +148,11 @@ export const ensureBenchComposeWritten = (
   const localBenchDir = path.join(benchPath, LOCAL_BENCH_DIR);
   if (!fs.existsSync(localBenchDir)) {
     fs.mkdirSync(localBenchDir, { recursive: true });
+  }
+
+  const assetsDir = path.join(localBenchDir, 'assets');
+  if (!fs.existsSync(assetsDir)) {
+    fs.mkdirSync(assetsDir, { recursive: true });
   }
 
   const composePath = getBenchComposePath(benchPath);

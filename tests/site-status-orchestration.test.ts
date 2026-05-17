@@ -211,4 +211,68 @@ describe('site status orchestration commands', () => {
     expect(updateMock).toHaveBeenCalledWith(site.id, { status: 'stopped' });
     expect(context.log).toHaveBeenCalledWith('warning', expect.stringContaining('already in desired state'));
   });
+
+  it('clears cache for sites with non-core apps when starting a site', async () => {
+    const siteWithCustomApp: Site = {
+      ...site,
+      apps: ['frappe', 'builder'],
+    };
+
+    orchestrateSiteStatusUpdate(
+      {
+        benches: {
+          findById: findBenchByIdMock,
+        },
+        sites: {
+          update: updateMock,
+        },
+      },
+      siteWithCustomApp,
+      'running'
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(execPromiseMock).toHaveBeenCalledTimes(3);
+
+    const [, schedulerArgs] = execPromiseMock.mock.calls[0] as [string, string[]];
+    expect(schedulerArgs).toEqual([
+      '-p',
+      'local-bench-4db335b2',
+      'exec',
+      '-T',
+      'backend',
+      'bench',
+      '--site',
+      'myfrappe.local',
+      'enable-scheduler',
+    ]);
+
+    const [, clearCacheArgs] = execPromiseMock.mock.calls[1] as [string, string[]];
+    expect(clearCacheArgs).toEqual([
+      '-p',
+      'local-bench-4db335b2',
+      'exec',
+      '-T',
+      'backend',
+      'bench',
+      '--site',
+      'myfrappe.local',
+      'clear-cache',
+    ]);
+
+    const [, clearWebsiteCacheArgs] = execPromiseMock.mock.calls[2] as [string, string[]];
+    expect(clearWebsiteCacheArgs).toEqual([
+      '-p',
+      'local-bench-4db335b2',
+      'exec',
+      '-T',
+      'backend',
+      'bench',
+      '--site',
+      'myfrappe.local',
+      'clear-website-cache',
+    ]);
+  });
 });

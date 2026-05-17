@@ -26,7 +26,7 @@ vi.mock('../src/main/utils/exec', () => ({
 }));
 
 vi.mock('../src/main/hosts-manager', () => ({
-  removeAllLocalBenchHostsEntries: (...args: unknown[]) => removeAllLocalBenchHostsEntriesMock(...args),
+  removeAllLocalBenchHostsEntries: () => removeAllLocalBenchHostsEntriesMock(),
 }));
 
 const seedSettings: Settings = {

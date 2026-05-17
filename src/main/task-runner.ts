@@ -270,6 +270,7 @@ export class TaskRunner {
     this.emit({
       taskId,
       taskName: task.name,
+      ...(task.resource ? { resource: task.resource } : {}),
       type,
       status,
       stepId: task.currentStepId,

@@ -106,6 +106,8 @@
                   class="form-field__control"
                   :disabled="creating || loading"
                   :frappe-version="selectedBench?.frappeVersion"
+                  :allowed-app-ids="selectedBenchAppIds"
+                  :disabled-app-ids="defaultInstalledSiteApps"
                 />
               </label>
             </div>
@@ -332,13 +334,112 @@
         </div>
       </template>
     </Dialog>
+
+    <Dialog
+      v-model="showSiteAppsDialog"
+      :options="{ title: `Manage Apps in ${selectedSiteForApps?.name || 'Site'}`, size: '3xl' }"
+      @close="closeSiteAppsDialog"
+    >
+      <template #body-content>
+        <div class="flex flex-col gap-4">
+          <Tabs
+            v-model="selectedSiteAppsTabIndex"
+            as="div"
+            :tabs="siteAppsTabs"
+          >
+            <template #tab-panel="{ tab }">
+              <div
+                v-if="tab.label === 'Bench apps'"
+                class="flex flex-col gap-2 pt-4"
+              >
+                <div
+                  v-if="benchInstalledAppRows.length === 0"
+                  class="py-8 text-center text-ink-gray-5"
+                >
+                  No apps found on this bench.
+                </div>
+                <div
+                  v-else
+                  class="max-h-[48vh] overflow-y-auto rounded-md border border-outline-gray-1"
+                >
+                  <div
+                    v-for="appId in benchInstalledAppRows"
+                    :key="`bench-app-${appId}`"
+                    class="flex items-center justify-between px-4 py-3 border-b border-outline-gray-1 last:border-b-0"
+                  >
+                    <span class="font-medium text-ink-gray-8">{{ appId }}</span>
+                    <Badge
+                      variant="subtle"
+                      :theme="siteActivatedAppSet.has(appId) ? 'green' : 'gray'"
+                    >
+                      {{ siteActivatedAppSet.has(appId) ? 'Activated on site' : 'Not activated' }}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                v-else
+                class="flex flex-col gap-2 pt-4"
+              >
+                <div
+                  v-if="benchInstalledAppRows.length === 0"
+                  class="py-8 text-center text-ink-gray-5"
+                >
+                  No bench apps available to activate.
+                </div>
+                <div
+                  v-else
+                  class="max-h-[48vh] overflow-y-auto rounded-md border border-outline-gray-1"
+                >
+                  <div
+                    v-for="appId in benchInstalledAppRows"
+                    :key="`activate-app-${appId}`"
+                    class="flex items-center justify-between gap-3 px-4 py-3 border-b border-outline-gray-1 last:border-b-0"
+                  >
+                    <span class="font-medium text-ink-gray-8">{{ appId }}</span>
+                    <Button
+                      size="sm"
+                      :variant="siteActivatedAppSet.has(appId) ? 'subtle' : 'solid'"
+                      :loading="activatingSiteAppId === appId"
+                      :disabled="siteActivatedAppSet.has(appId) || activatingSiteAppId !== null || updating || !canActivateSelectedSiteApps"
+                      @click="siteActivatedAppSet.has(appId) ? undefined : onActivateSiteApp(appId)"
+                    >
+                      {{ siteActivatedAppSet.has(appId) ? 'Active' : 'Activate' }}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </Tabs>
+
+          <p
+            v-if="selectedSiteForApps && selectedSiteForApps.status !== 'running'"
+            class="text-sm text-ink-amber-4"
+          >
+            Start the site before activating apps.
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <div class="dialog-actions">
+          <Button
+            size="md"
+            variant="solid"
+            @click="closeSiteAppsDialog"
+          >
+            Close
+          </Button>
+        </div>
+      </template>
+    </Dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Select, Switch, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Select, Switch, Tabs, TextInput, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconChevronRight from '~icons/lucide/chevron-right';
@@ -346,6 +447,7 @@ import IconPlay from '~icons/lucide/play';
 import IconSearch from '~icons/lucide/search';
 import IconSquare from '~icons/lucide/square';
 import IconTrash from '~icons/lucide/trash-2';
+import IconPackage from '~icons/lucide/package';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
@@ -365,6 +467,7 @@ import {
 } from '../site-wizard';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
+import { acknowledgeHistoricalCompletedSiteAppTasks, isCompletedSiteAppUpdateTask } from '../site-app-task-results';
 import type { BenchListItem, SiteListItem } from '../../shared/ipc';
 import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
@@ -396,6 +499,23 @@ const showCreateFailureDialog = ref(false);
 const createFailureTitle = ref('Site Creation Failed');
 const createFailureMessage = ref('Site creation failed. Check Progress for details.');
 const acknowledgedCreateFailures = ref(new Set<string>());
+const acknowledgedSiteAppTaskResults = ref(new Set<string>());
+const initializedSiteAppTaskAcks = ref(false);
+const showSiteAppsDialog = ref(false);
+const selectedSiteForAppsId = ref<string | null>(null);
+const selectedSiteAppsTab = ref<'bench' | 'activate'>('activate');
+const siteAppsTabs = [
+  { label: 'Bench apps' },
+  { label: 'Activate on site' },
+];
+const selectedSiteAppsTabIndex = computed({
+  get: () => (selectedSiteAppsTab.value === 'bench' ? 0 : 1),
+  set: (value: string | number) => {
+    const normalizedValue = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+    selectedSiteAppsTab.value = normalizedValue === 0 ? 'bench' : 'activate';
+  },
+});
+const activatingSiteAppId = ref<string | null>(null);
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
@@ -443,6 +563,17 @@ const formatStatusLabel = (row: SiteListItem) => {
   if (pendingAction === 'starting') return 'Starting';
   if (pendingAction === 'stopping') return 'Stopping';
 
+  const failedAppTask = (tasks.value || []).find(
+    (t) => t.resourceId === row.id && t.resource === 'site' && t.status === 'failure' && t.taskName.toLowerCase().includes('update site apps')
+  );
+
+  if (failedAppTask) {
+    const failureMessage = String(failedAppTask.message ?? '').toLowerCase();
+    if (failureMessage.includes('cancelled')) return 'Install cancelled';
+    if (failureMessage.includes('timed out')) return 'Install timed out';
+    return 'Install failed';
+  }
+
   const task = (tasks.value || []).find(
     (t) => t.resourceId === row.id && t.resource === 'site' && (t.status === 'running' || t.status === 'queued')
   );
@@ -450,6 +581,12 @@ const formatStatusLabel = (row: SiteListItem) => {
   if (task) {
     const name = String(task.taskName ?? '').toLowerCase();
     if (name.includes('create site')) return 'Creating';
+    if (name.includes('update site apps')) {
+      const stepName = String(task.stepName ?? '').toLowerCase();
+      if (stepName.includes('install')) return 'Installing';
+      if (stepName.includes('migrate')) return 'Migrating';
+      return 'Installing';
+    }
     if (name.includes('stop site')) return 'Stopping';
     if (name.includes('start site')) return 'Starting';
     if (name.includes('delete site')) return 'Deleting';
@@ -470,12 +607,36 @@ const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
 };
 
 const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
+  const isSiteAppsTask = (taskName: string) => taskName.toLowerCase().includes('update site apps');
+
+  const activeSiteAppsTask = resource === 'site'
+    ? tasks.value.find(
+      (t) => t.resourceId === resourceId && t.resource === resource && isSiteAppsTask(t.taskName) && (t.status === 'running' || t.status === 'queued')
+    )
+    : null;
+
+  if (activeSiteAppsTask) {
+    selectedTaskId.value = activeSiteAppsTask.taskId;
+    return;
+  }
+
   const activeTask = tasks.value.find(
     (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
   );
 
   if (activeTask) {
     selectedTaskId.value = activeTask.taskId;
+    return;
+  }
+
+  const completedSiteAppsTask = resource === 'site'
+    ? tasks.value.find(
+      (t) => t.resourceId === resourceId && t.resource === resource && isSiteAppsTask(t.taskName) && (t.status === 'success' || t.status === 'failure')
+    )
+    : null;
+
+  if (completedSiteAppsTask) {
+    selectedTaskId.value = completedSiteAppsTask.taskId;
     return;
   }
 
@@ -489,6 +650,11 @@ const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
 watch(
   tasks,
   (items) => {
+    if (!initializedSiteAppTaskAcks.value) {
+      acknowledgeHistoricalCompletedSiteAppTasks(items, acknowledgedSiteAppTaskResults.value);
+      initializedSiteAppTaskAcks.value = true;
+    }
+
     for (const task of items) {
       if (
         task.status === 'failure' &&
@@ -501,6 +667,24 @@ watch(
         createFailureMessage.value = humanizeCreateFailure('site', task.message);
         showCreateFailureDialog.value = true;
       }
+
+      if (
+        isCompletedSiteAppUpdateTask(task) &&
+        !acknowledgedSiteAppTaskResults.value.has(task.taskId)
+      ) {
+        acknowledgedSiteAppTaskResults.value.add(task.taskId);
+        const siteName = sites.value.find((site) => site.id === task.resourceId)?.name
+          ?? task.taskName.replace(/^Update Site Apps\s+/i, '').trim();
+
+        void refresh();
+
+        if (task.status === 'success') {
+          toast.success(`Site apps updated for ${siteName}.`);
+        } else {
+          toast.error(`App activation failed for ${siteName}. Check progress logs.`);
+          selectedTaskId.value = task.taskId;
+        }
+      }
     }
   },
   { deep: true }
@@ -509,6 +693,10 @@ watch(
 const getStatusTheme = (row: SiteListItem) => {
   if (getPendingSiteAction(row.id)) return 'blue';
   if (isResourceBusy(row.id, 'site')) return 'blue';
+  const failedAppTask = (tasks.value || []).find(
+    (t) => t.resourceId === row.id && t.resource === 'site' && t.status === 'failure' && t.taskName.toLowerCase().includes('update site apps')
+  );
+  if (failedAppTask) return String(failedAppTask.message ?? '').toLowerCase().includes('cancelled') ? 'gray' : 'red';
   const status = row.status;
   if (status === 'running') return 'green';
   if (status === 'stopped') return 'gray';
@@ -571,6 +759,13 @@ const getSiteActions = (site: SiteListItem) => {
   });
 
   actions.push({
+    label: 'Apps',
+    icon: IconPackage,
+    disabled: updating.value || isBusy || site.status !== 'running',
+    onClick: () => onShowSiteApps(site),
+  });
+
+  actions.push({
     label: 'Delete',
     icon: IconTrash,
     theme: 'red' as const,
@@ -611,6 +806,11 @@ const createBenchOptions = computed(() => [
 ]);
 
 const selectedBench = computed(() => allBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
+const selectedBenchAppIds = computed(() => {
+  const apps = selectedBench.value?.apps ?? [];
+  return [...new Set(apps.map((app) => app.trim()).filter(Boolean))];
+});
+const defaultInstalledSiteApps = ['frappe'];
 const selectedApps = computed(() => createForm.appsSelected);
 const siteFilters = reactive({
   benchId: '',
@@ -666,6 +866,15 @@ const applyPathDefault = () => {
 
 watch(() => createForm.benchId, applyPathDefault);
 watch(() => createForm.name, applyPathDefault);
+watch(selectedBenchAppIds, (allowedApps) => {
+  if (allowedApps.length === 0) {
+    createForm.appsSelected = [];
+    return;
+  }
+
+  const allowed = new Set(allowedApps);
+  createForm.appsSelected = createForm.appsSelected.filter((appId) => allowed.has(appId));
+});
 
 const onNextStep = async () => {
   const errors = getSiteWizardStepErrors(wizardStep.value, createForm);
@@ -695,6 +904,73 @@ const onPreviousStep = () => {
 const getBenchName = (id: string) => {
   const bench = allBenches.value.find((b) => b.id === id);
   return bench ? bench.name : id;
+};
+
+const selectedSiteForApps = computed(() => {
+  if (!selectedSiteForAppsId.value) return null;
+  return sites.value.find((site) => site.id === selectedSiteForAppsId.value) ?? null;
+});
+
+const selectedBenchForSiteApps = computed(() => {
+  if (!selectedSiteForApps.value) return null;
+  return allBenches.value.find((bench) => bench.id === selectedSiteForApps.value?.benchId) ?? null;
+});
+
+const benchInstalledAppRows = computed(() => {
+  const apps = selectedBenchForSiteApps.value?.apps ?? [];
+  return [...apps].sort((left, right) => left.localeCompare(right));
+});
+
+const siteActivatedAppSet = computed(() => new Set(selectedSiteForApps.value?.apps ?? []));
+
+const canActivateSelectedSiteApps = computed(() => {
+  if (!selectedSiteForApps.value) return false;
+  return selectedSiteForApps.value.status === 'running' && !isResourceBusy(selectedSiteForApps.value.id, 'site');
+});
+
+const closeSiteAppsDialog = () => {
+  showSiteAppsDialog.value = false;
+  selectedSiteForAppsId.value = null;
+  selectedSiteAppsTab.value = 'activate';
+  activatingSiteAppId.value = null;
+};
+
+const onShowSiteApps = (site: SiteListItem) => {
+  selectedSiteForAppsId.value = site.id;
+  selectedSiteAppsTab.value = 'activate';
+  showSiteAppsDialog.value = true;
+};
+
+const onActivateSiteApp = async (appId: string) => {
+  const site = selectedSiteForApps.value;
+  if (!site) return;
+
+  if (site.status !== 'running') {
+    toast.error('Start the site before activating apps.');
+    return;
+  }
+
+  const benchApps = selectedBenchForSiteApps.value?.apps ?? [];
+  if (!benchApps.includes(appId)) {
+    toast.error(`App ${appId} is not installed on this bench.`);
+    return;
+  }
+
+  const existingApps = site.apps ?? [];
+  if (existingApps.includes(appId)) {
+    return;
+  }
+
+  activatingSiteAppId.value = appId;
+  const nextApps = Array.from(new Set([...existingApps, appId]));
+  toast.success(`Activating app ${appId} on ${site.name}...`);
+
+  try {
+    await update(site.id, { apps: nextApps });
+    closeSiteAppsDialog();
+  } finally {
+    activatingSiteAppId.value = null;
+  }
 };
 
 const onCreateSite = async () => {

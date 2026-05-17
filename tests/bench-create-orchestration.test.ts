@@ -58,6 +58,7 @@ describe('bench creation orchestration app install', () => {
 
     updateMock.mockResolvedValue(null);
 
+    execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     execPromiseMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
@@ -100,10 +101,10 @@ describe('bench creation orchestration app install', () => {
 
     const getAppArgs = getAppCalls.map((call) => call[1] as string[]);
     expect(getAppArgs[0]).toEqual(
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--branch', 'version-16', 'payments'])
+      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'payments'])
     );
     expect(getAppArgs[1]).toEqual(
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--branch', 'version-16', 'hrms'])
+      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'hrms'])
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
@@ -161,7 +162,7 @@ describe('bench creation orchestration app install', () => {
         'bench',
         'get-app',
         '--branch',
-        'version-15',
+        'version-16',
         'https://github.com/frappe/ecommerce_integrations',
       ])
     );
@@ -285,6 +286,64 @@ describe('bench creation orchestration app install', () => {
         '--branch',
         'main',
         'https://github.com/frappe/helpdesk',
+      ])
+    );
+  });
+
+  it('falls back to default catalog matrix when stored wiki metadata is stale', async () => {
+    const bench: Bench = {
+      id: 'c4f8f8ec-ffff-aaaa-bbbb-1234567890ab',
+      name: 'catalog-bench-wiki',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe', 'erpnext', 'wiki'],
+      status: 'queued',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+
+    const appCatalogRepo = {
+      findById: vi.fn(async (id: string) => {
+        if (id !== 'wiki') return null;
+        return {
+          id: 'wiki',
+          name: 'Wiki',
+          description: 'stale catalog item',
+          source: 'https://github.com/frappe/wiki',
+          installBranch: 'master',
+          version: 'v2.0.1',
+          category: 'productivity' as const,
+          compatibility: {
+            supportedBenchVersions: ['version-15', 'version-16', 'develop'],
+          },
+        };
+      }),
+    };
+
+    orchestrateBenchCreation(bench, { update: updateMock }, appCatalogRepo);
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    const getAppCall = execPromiseMock.mock.calls.find((call) => {
+      const args = call[1] as string[];
+      return args.includes('get-app') && args.includes('https://github.com/frappe/wiki');
+    });
+
+    expect(getAppCall).toBeTruthy();
+    expect(getAppCall?.[1]).toEqual(
+      expect.arrayContaining([
+        'exec',
+        '-T',
+        'backend',
+        'bench',
+        'get-app',
+        '--branch',
+        'develop',
+        'https://github.com/frappe/wiki',
       ])
     );
   });

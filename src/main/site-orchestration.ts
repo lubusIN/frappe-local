@@ -10,6 +10,7 @@ import { getRuntimeEnv } from './runtime-service';
 import { addHostsEntry, removeHostsEntry } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
+import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
 
 export type SiteCreationDependencies = {
   readonly benches: {
@@ -29,8 +30,6 @@ export type SiteCreationDependencies = {
     delete?: (id: string) => Promise<boolean>;
   };
 };
-
-
 
 export const orchestrateSiteCreation = async (
   dependencies: SiteCreationDependencies,
@@ -160,6 +159,111 @@ export const orchestrateSiteCreation = async (
         }
         
         context.completeStep('new-site', 'Site created successfully');
+
+        context.startStep('migrate', `Running migrate for ${input.name}`);
+        const migrateArgs = [
+          '-p', projectName,
+          'exec',
+          '-T',
+          DOCKER_SERVICES.BACKEND,
+          'bench',
+          '--site',
+          input.name,
+          'migrate',
+        ];
+
+        const migrateResult = await execPromise(
+          runtimeCmd,
+          migrateArgs,
+          bench.path,
+          (out) => context.log('info', out, 'migrate'),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.APP_INSTALL
+        );
+
+        if (migrateResult.code !== 0) {
+          throw new Error(`Failed to migrate site ${input.name}: ${migrateResult.stderr}`);
+        }
+
+        context.completeStep('migrate', 'Site migration completed');
+
+        context.startStep('cache', `Clearing cache for ${input.name}`);
+        const clearCacheArgs = [
+          '-p', projectName,
+          'exec',
+          '-T',
+          DOCKER_SERVICES.BACKEND,
+          'bench',
+          '--site',
+          input.name,
+          'clear-cache',
+        ];
+
+        const clearCacheResult = await execPromise(
+          runtimeCmd,
+          clearCacheArgs,
+          bench.path,
+          (out) => context.log('info', out, 'cache'),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.DEFAULT
+        );
+
+        if (clearCacheResult.code !== 0) {
+          throw new Error(`Failed to clear cache for site ${input.name}: ${clearCacheResult.stderr}`);
+        }
+
+        context.completeStep('cache', 'Site cache cleared');
+
+        context.startStep('website-cache', `Clearing website cache for ${input.name}`);
+        const clearWebsiteCacheArgs = [
+          '-p', projectName,
+          'exec',
+          '-T',
+          DOCKER_SERVICES.BACKEND,
+          'bench',
+          '--site',
+          input.name,
+          'clear-website-cache',
+        ];
+
+        const clearWebsiteCacheResult = await execPromise(
+          runtimeCmd,
+          clearWebsiteCacheArgs,
+          bench.path,
+          (out) => context.log('info', out, 'website-cache'),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.DEFAULT
+        );
+
+        if (clearWebsiteCacheResult.code !== 0) {
+          throw new Error(`Failed to clear website cache for site ${input.name}: ${clearWebsiteCacheResult.stderr}`);
+        }
+
+        context.completeStep('website-cache', 'Site website cache cleared');
+
+        context.startStep('restart', 'Restarting bench services');
+        const restartArgs = [
+          '-p', projectName,
+          'restart',
+          'backend',
+          'frontend',
+          'websocket',
+        ];
+
+        const restartResult = await execPromise(
+          runtimeCmd,
+          restartArgs,
+          bench.path,
+          (out) => context.log('info', out, 'restart'),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
+        );
+
+        if (restartResult.code !== 0) {
+          throw new Error(`Failed to restart bench services after site creation: ${restartResult.stderr}`);
+        }
+
+        context.completeStep('restart', 'Bench services restarted');
 
         context.startStep('hosts', 'Configuring local domain');
         const hostsAdded = await addHostsEntry(input.name, bench.id);
@@ -411,6 +515,66 @@ export const orchestrateSiteStatusUpdate = (
         if (code !== 0) {
           context.log('warning', `Scheduler already in desired state for ${site.name}. Continuing.`);
         }
+
+        if (targetStatus === 'running') {
+          const refreshApps = site.apps.filter((app) => !CORE_BENCH_APPS_SET.has(app));
+
+          if (refreshApps.length > 0) {
+            context.startStep('cache', `Clearing cache for ${site.name}`);
+            const clearCacheArgs = [
+              '-p', projectName,
+              'exec',
+              '-T',
+              DOCKER_SERVICES.BACKEND,
+              'bench',
+              '--site',
+              site.name,
+              'clear-cache',
+            ];
+
+            const clearCacheResult = await execPromise(
+              runtimeCmd,
+              clearCacheArgs,
+              benchCwd,
+              (out) => context.log('info', out, 'cache'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.DEFAULT
+            );
+
+            if (clearCacheResult.code !== 0) {
+              throw new Error(`Failed to clear cache for site ${site.name}: ${clearCacheResult.stderr}`);
+            }
+
+            context.completeStep('cache', 'Site cache cleared');
+
+            context.startStep('website-cache', `Clearing website cache for ${site.name}`);
+            const clearWebsiteCacheArgs = [
+              '-p', projectName,
+              'exec',
+              '-T',
+              DOCKER_SERVICES.BACKEND,
+              'bench',
+              '--site',
+              site.name,
+              'clear-website-cache',
+            ];
+
+            const clearWebsiteCacheResult = await execPromise(
+              runtimeCmd,
+              clearWebsiteCacheArgs,
+              benchCwd,
+              (out) => context.log('info', out, 'website-cache'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.DEFAULT
+            );
+
+            if (clearWebsiteCacheResult.code !== 0) {
+              throw new Error(`Failed to clear website cache for site ${site.name}: ${clearWebsiteCacheResult.stderr}`);
+            }
+
+            context.completeStep('website-cache', 'Site website cache cleared');
+          }
+        }
         
         context.completeStep('orchestration', targetStatus === 'running' ? 'Site started' : 'Site stopped');
         await dependencies.sites.update(site.id, { status: targetStatus });
@@ -420,5 +584,190 @@ export const orchestrateSiteStatusUpdate = (
         throw error;
       }
     }
+  });
+};
+
+export const orchestrateSiteAppsUpdate = (
+  dependencies: {
+    benches: {
+      findById: (id: string) => Promise<Bench | null>;
+    };
+    sites: {
+      update: (id: string, input: { apps?: string[]; status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Site | null>;
+    };
+  },
+  site: Site,
+  targetApps: readonly string[]
+): void => {
+  const taskRunner = getTaskRunner();
+
+  taskRunner.enqueue({
+    name: `Update Site Apps ${site.name}`,
+    resource: { type: 'site', id: site.id },
+    run: async (context) => {
+      try {
+        context.startStep('apps', 'Updating site apps');
+        const bench = await dependencies.benches.findById(site.benchId);
+        if (!bench) {
+          throw new Error('Cannot update site apps: parent bench was not found.');
+        }
+
+        const installDelta = targetApps.filter((app) => !site.apps.includes(app));
+        const runtimeCmd = getBinaryPath('docker-compose');
+        const projectName = `local-bench-${site.benchId.slice(0, 8)}`;
+        const runtimeEnv = await getRuntimeEnv();
+
+        if (installDelta.length > 0) {
+          context.startStep('install-apps', `Installing ${installDelta.length} app${installDelta.length === 1 ? '' : 's'} on ${site.name}`);
+
+          for (const app of installDelta) {
+            context.throwIfCancelled();
+            context.log('info', `Installing app ${app} on ${site.name}`, 'install-apps');
+
+            const args = [
+              '-p', projectName,
+              'exec',
+              '-T',
+              DOCKER_SERVICES.BACKEND,
+              'bench',
+              '--site',
+              site.name,
+              'install-app',
+              app,
+            ];
+
+            const { code, stderr } = await execPromise(
+              runtimeCmd,
+              args,
+              bench.path,
+              (out) => context.log('info', out, 'install-apps'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.APP_INSTALL
+            );
+
+            if (code !== 0) {
+              throw new Error(`Failed to install app ${app} on ${site.name}: ${stderr}`);
+            }
+          }
+
+          context.completeStep('install-apps', 'App installation completed');
+
+          context.startStep('migrate', `Running migrate for ${site.name}`);
+          const migrateArgs = [
+            '-p', projectName,
+            'exec',
+            '-T',
+            DOCKER_SERVICES.BACKEND,
+            'bench',
+            '--site',
+            site.name,
+            'migrate',
+          ];
+
+          const migrateResult = await execPromise(
+            runtimeCmd,
+            migrateArgs,
+            bench.path,
+            (out) => context.log('info', out, 'migrate'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.APP_INSTALL
+          );
+
+          if (migrateResult.code !== 0) {
+            throw new Error(`Failed to migrate site ${site.name}: ${migrateResult.stderr}`);
+          }
+
+          context.completeStep('migrate', 'Site migration completed');
+
+        }
+
+        context.startStep('cache', `Clearing cache for ${site.name}`);
+        const clearCacheArgs = [
+          '-p', projectName,
+          'exec',
+          '-T',
+          DOCKER_SERVICES.BACKEND,
+          'bench',
+          '--site',
+          site.name,
+          'clear-cache',
+        ];
+
+        const clearCacheResult = await execPromise(
+          runtimeCmd,
+          clearCacheArgs,
+          bench.path,
+          (out) => context.log('info', out, 'cache'),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.DEFAULT
+        );
+
+        if (clearCacheResult.code !== 0) {
+          throw new Error(`Failed to clear cache for site ${site.name}: ${clearCacheResult.stderr}`);
+        }
+
+        context.completeStep('cache', 'Site cache cleared');
+
+        context.startStep('website-cache', `Clearing website cache for ${site.name}`);
+        const clearWebsiteCacheArgs = [
+          '-p', projectName,
+          'exec',
+          '-T',
+          DOCKER_SERVICES.BACKEND,
+          'bench',
+          '--site',
+          site.name,
+          'clear-website-cache',
+        ];
+
+        const clearWebsiteCacheResult = await execPromise(
+          runtimeCmd,
+          clearWebsiteCacheArgs,
+          bench.path,
+          (out) => context.log('info', out, 'website-cache'),
+          runtimeEnv,
+          OPERATION_TIMEOUTS.DEFAULT
+        );
+
+        if (clearWebsiteCacheResult.code !== 0) {
+          throw new Error(`Failed to clear website cache for site ${site.name}: ${clearWebsiteCacheResult.stderr}`);
+        }
+
+        context.completeStep('website-cache', 'Site website cache cleared');
+
+        if (installDelta.length > 0) {
+          context.startStep('restart', 'Restarting bench services');
+          const restartArgs = [
+            '-p', projectName,
+            'restart',
+            'backend',
+            'frontend',
+            'websocket',
+          ];
+
+          const restartResult = await execPromise(
+            runtimeCmd,
+            restartArgs,
+            bench.path,
+            (out) => context.log('info', out, 'restart'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
+          );
+
+          if (restartResult.code !== 0) {
+            throw new Error(`Failed to restart bench services after app install: ${restartResult.stderr}`);
+          }
+
+          context.completeStep('restart', 'Bench services restarted');
+        }
+
+        await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'running' });
+        context.completeStep('apps', 'Site apps updated');
+      } catch (error) {
+        context.log('error', `Failed to update site apps: ${error instanceof Error ? error.message : String(error)}`, 'apps');
+        await dependencies.sites.update(site.id, { status: 'failure' });
+        throw error;
+      }
+    },
   });
 };

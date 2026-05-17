@@ -99,7 +99,7 @@
                 {{ row.description }}
               </p>
               <div class="flex flex-wrap items-center gap-2.5">
-                <span class="text-[10px] font-medium text-ink-gray-5">v{{ row.version }}</span>
+                <span class="text-[10px] font-medium text-ink-gray-5">{{ row.version }}</span>
                 <span
                   class="text-[10px] font-medium"
                   :class="{
@@ -140,6 +140,8 @@ const props = defineProps<{
   disabled?: boolean;
   frappeVersion?: string;
   disableCoreBenchApps?: boolean;
+  allowedAppIds?: readonly string[];
+  disabledAppIds?: readonly string[];
   excludeAppIds?: readonly string[];
 }>();
 
@@ -170,6 +172,14 @@ const categoryOptions = computed(() => [
 ]);
 
 const excludedAppIds = computed(() => new Set((props.excludeAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
+const disabledAppIds = computed(() => new Set((props.disabledAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
+const allowedAppIds = computed(() => {
+  if (!props.allowedAppIds || props.allowedAppIds.length === 0) {
+    return null;
+  }
+
+  return new Set(props.allowedAppIds.map((appId) => appId.trim()).filter(Boolean));
+});
 
 const items = computed(() =>
   filterAndSortCatalog(state.value.data ?? [], {
@@ -180,11 +190,24 @@ const items = computed(() =>
   })
 );
 
-const visibleItems = computed(() => items.value.filter((item) => !excludedAppIds.value.has(item.id)));
+const visibleItems = computed(() =>
+  items.value.filter((item) => {
+    if (excludedAppIds.value.has(item.id)) {
+      return false;
+    }
+
+    if (allowedAppIds.value && !allowedAppIds.value.has(item.id)) {
+      return false;
+    }
+
+    return true;
+  })
+);
 
 const rows = computed(() =>
   visibleItems.value.map((item) => {
     const isPreinstalledCoreApp = Boolean(props.disableCoreBenchApps && CORE_BENCH_APPS_SET.has(item.id));
+    const isExplicitlyDisabled = disabledAppIds.value.has(item.id);
     const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
       frappeVersion: props.frappeVersion,
     });
@@ -194,11 +217,13 @@ const rows = computed(() =>
       appId: item.id,
       appName: item.name,
       name: item.id,
-      disabled: props.disabled || isPreinstalledCoreApp || !compatibility.isCompatible,
+      disabled: props.disabled || isPreinstalledCoreApp || isExplicitlyDisabled || !compatibility.isCompatible,
       compatibilityStatus: compatibility.status,
       supportText:
         isPreinstalledCoreApp
           ? 'Preinstalled with bench'
+          : isExplicitlyDisabled
+          ? 'Already active and installed'
           : compatibility.status === 'ok'
           ? props.frappeVersion
             ? `Compatible with ${frappeVersionLabel.value}`

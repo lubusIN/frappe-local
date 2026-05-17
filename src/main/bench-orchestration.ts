@@ -12,8 +12,10 @@ import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-er
 import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
 import { ensureBenchComposeWritten, getBenchComposePath } from './utils/bench-compose';
 import type { AppCatalogItem } from '../shared/domain/models';
+import { getDefaultAppCatalogSeed } from './catalog-provider';
 
 const DEFAULT_HTTP_PORT = 8080;
+const DEFAULT_CATALOG_BY_APP_ID = new Map(getDefaultAppCatalogSeed().map((item) => [item.id, item]));
 
 const resolveBenchHttpPort = async (
   bench: Bench,
@@ -121,15 +123,48 @@ const resolveCatalogBranch = (catalogItem: AppCatalogItem | null, benchFrappeVer
   }
 
   const benchBranch = resolveBenchBranch(benchFrappeVersion);
-  const installBranches = catalogItem.installBranches;
-  const mappedBranch = installBranches?.[benchBranch] ?? installBranches?.[benchFrappeVersion.trim().toLowerCase()];
-  if (mappedBranch?.trim()) {
-    return mappedBranch.trim();
+  const fallbackCatalogItem = DEFAULT_CATALOG_BY_APP_ID.get(catalogItem.id);
+  const catalogInstallBranches = catalogItem.installBranches;
+  const catalogMappedBranch = catalogInstallBranches?.[benchBranch]
+    ?? catalogInstallBranches?.[benchFrappeVersion.trim().toLowerCase()];
+  if (catalogMappedBranch?.trim()) {
+    return catalogMappedBranch.trim();
   }
 
-  const installBranch = catalogItem.installBranch?.trim();
-  if (installBranch) {
-    return installBranch;
+  const catalogInstallBranch = catalogItem.installBranch?.trim();
+  const fallbackInstallBranch = fallbackCatalogItem?.installBranch?.trim();
+  const fallbackInstallBranches = fallbackCatalogItem?.installBranches;
+
+  // Persisted catalogs from older snapshots may only contain installBranch, while
+  // newer defaults provide a branch matrix (e.g. wiki version-16 -> develop).
+  // If both installBranch values match and there is no per-item matrix, prefer
+  // the default matrix for the target bench branch.
+  const shouldPreferFallbackMatrix =
+    !catalogInstallBranches
+    && Boolean(catalogInstallBranch)
+    && catalogInstallBranch === fallbackInstallBranch
+    && Boolean(fallbackInstallBranches);
+
+  if (shouldPreferFallbackMatrix) {
+    const fallbackMappedBranch = fallbackInstallBranches?.[benchBranch]
+      ?? fallbackInstallBranches?.[benchFrappeVersion.trim().toLowerCase()];
+    if (fallbackMappedBranch?.trim()) {
+      return fallbackMappedBranch.trim();
+    }
+  }
+
+  if (catalogInstallBranch) {
+    return catalogInstallBranch;
+  }
+
+  const fallbackMappedBranch = fallbackInstallBranches?.[benchBranch]
+    ?? fallbackInstallBranches?.[benchFrappeVersion.trim().toLowerCase()];
+  if (fallbackMappedBranch?.trim()) {
+    return fallbackMappedBranch.trim();
+  }
+
+  if (fallbackInstallBranch) {
+    return fallbackInstallBranch;
   }
 
   const version = catalogItem.version.trim().toLowerCase();
@@ -147,6 +182,46 @@ const resolveCatalogBranch = (catalogItem: AppCatalogItem | null, benchFrappeVer
   }
 
   return `version-${semverStyle[1]}`;
+};
+
+const isTimeoutError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.toLowerCase().includes('timed out');
+};
+
+const resolveAppInstallTimeout = (totalApps: number): number => {
+  const extraBudget = Math.max(0, totalApps - 1) * 300000;
+  return Math.min(OPERATION_TIMEOUTS.APP_INSTALL_BASE + extraBudget, OPERATION_TIMEOUTS.APP_INSTALL);
+};
+
+
+
+const execWithTimeoutRetry = async (
+  command: string,
+  args: string[],
+  cwd: string,
+  onOutput: ((out: string) => void) | undefined,
+  env: NodeJS.ProcessEnv,
+  timeout: number,
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
+  stepId: string,
+  label: string
+): Promise<Awaited<ReturnType<typeof execPromise>>> => {
+  const maxAttempts = 2;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await execPromise(command, args, cwd, onOutput, env, timeout);
+    } catch (error) {
+      if (!isTimeoutError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+
+      context.log('warning', `${label} timed out (attempt ${attempt}/${maxAttempts}). Retrying once...`, stepId);
+    }
+  }
+
+  throw new Error(`${label} failed unexpectedly.`);
 };
 
 const cleanupBenchAppArtifacts = (
@@ -226,6 +301,7 @@ export const orchestrateBenchCreation = (
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       let attemptedCreateAppInstalls: string[] = [];
+      let failingStepId = 'start';
       try {
         await benchesRepo.update(bench.id, { status: 'queued' });
 
@@ -280,10 +356,12 @@ export const orchestrateBenchCreation = (
         const runtimeEnv = await getRuntimeEnv();
 
         context.startStep('pull', 'Pulling images');
+        failingStepId = 'pull';
         await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, 300000);
         context.completeStep('pull', 'Images pulled');
 
         context.startStep('start', 'Starting bench containers');
+        failingStepId = 'start';
         const upArgs = [...commonArgs, 'up', '-d', '--remove-orphans'];
         const { code, stderr, stdout } = await execPromise(
           command,
@@ -304,6 +382,7 @@ export const orchestrateBenchCreation = (
         
         context.completeStep('start', 'Containers started');
         
+        failingStepId = 'wait';
         await waitForBackend(command, commonArgs, bench.path, runtimeEnv, context);
 
         const appsToInstall = (bench.apps ?? [])
@@ -315,26 +394,32 @@ export const orchestrateBenchCreation = (
 
         if (appsToInstall.length > 0) {
           context.startStep('apps', `Adding ${appsToInstall.length} app${appsToInstall.length === 1 ? '' : 's'} to bench`);
-          for (const app of appsToInstall) {
+          failingStepId = 'apps';
+          const appInstallTimeout = resolveAppInstallTimeout(appsToInstall.length);
+          for (const [index, app] of appsToInstall.entries()) {
             attemptedCreateAppInstalls = [...attemptedCreateAppInstalls, app];
             const catalogItem = appCatalogRepo?.findById ? await appCatalogRepo.findById(app) : null;
             const appSource = catalogItem?.source?.trim() || app;
             const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
 
-            context.log('info', `Fetching app ${app} via bench get-app (${appBranch})`, 'apps');
-            const { code, stderr } = await execPromise(
+            context.log('info', `[${index + 1}/${appsToInstall.length}] Fetching app ${app} via bench get-app (${appBranch})`, 'apps');
+            const { code, stderr } = await execWithTimeoutRetry(
               command,
               [...commonArgs, 'exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', appBranch, appSource],
               bench.path,
-              (out) => context.log('info', out, 'apps'),
+              (out: string) => context.log('info', out, 'apps'),
               runtimeEnv,
-              OPERATION_TIMEOUTS.SITE_CREATION
+              appInstallTimeout,
+              context,
+              'apps',
+              `Fetching app ${app}`
             );
 
             if (code !== 0) {
               throw new Error(`Failed to fetch app ${app}: ${stderr}`);
             }
           }
+
           context.completeStep('apps', 'Selected apps added to bench');
         }
 
@@ -342,7 +427,7 @@ export const orchestrateBenchCreation = (
       } catch (error) {
         const rawMessage = error instanceof Error ? error.message : String(error);
         const message = humanizeCreateFailure('bench', rawMessage);
-        context.log('error', message, 'start');
+        context.log('error', message, failingStepId);
 
         if (isLikelyOutOfMemory(rawMessage)) {
           context.log(
@@ -422,21 +507,25 @@ export const orchestrateBenchAppChanges = (
 
         if (delta.install.length > 0) {
           context.startStep('install-apps', `Installing ${delta.install.length} app${delta.install.length === 1 ? '' : 's'}`);
+          const appInstallTimeout = resolveAppInstallTimeout(delta.install.length);
 
-          for (const app of delta.install) {
+          for (const [index, app] of delta.install.entries()) {
             attemptedInstallAppIds = [...attemptedInstallAppIds, app];
             const catalogItem = appCatalogRepo?.findById ? await appCatalogRepo.findById(app) : null;
             const appSource = catalogItem?.source?.trim() || app;
             const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? resolveBenchBranch(bench.frappeVersion);
 
-            context.log('info', `Fetching app ${app} via bench get-app (${appBranch})`, 'install-apps');
-            const { code, stderr } = await execPromise(
+            context.log('info', `[${index + 1}/${delta.install.length}] Fetching app ${app} via bench get-app (${appBranch})`, 'install-apps');
+            const { code, stderr } = await execWithTimeoutRetry(
               command,
               [...commonArgs, 'exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', appBranch, appSource],
               bench.path,
-              (out) => context.log('info', out, 'install-apps'),
+              (out: string) => context.log('info', out, 'install-apps'),
               runtimeEnv,
-              OPERATION_TIMEOUTS.APP_INSTALL
+              appInstallTimeout,
+              context,
+              'install-apps',
+              `Fetching app ${app}`
             );
 
             if (code !== 0) {
@@ -827,6 +916,19 @@ export const orchestrateBenchDeletion = (
     name: `Delete Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
+      const removeBenchDirectoryBestEffort = () => {
+        context.startStep('fs', 'Removing bench directory');
+        try {
+          if (fs.existsSync(bench.path)) {
+            fs.rmSync(bench.path, { recursive: true, force: true });
+          }
+          context.completeStep('fs', 'Bench directory removed');
+        } catch (fsErr) {
+          context.log('warning', `Could not remove directory: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`);
+          context.completeStep('fs', 'Bench directory removal skipped');
+        }
+      };
+
       try {
         // Set status to queued so the UI knows to poll for updates
         await benchesRepo.update(bench.id, { status: 'queued' });
@@ -1013,17 +1115,7 @@ export const orchestrateBenchDeletion = (
           context.log('warning', `Could not remove hosts entries: ${hostsErr instanceof Error ? hostsErr.message : String(hostsErr)}`);
         }
 
-        // Remove folder
-        context.startStep('fs', 'Removing bench directory');
-        try {
-          if (fs.existsSync(bench.path)) {
-            fs.rmSync(bench.path, { recursive: true, force: true });
-          }
-          context.completeStep('fs', 'Bench directory removed');
-        } catch (fsErr) {
-          context.log('warning', `Could not remove directory: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`);
-          context.completeStep('fs', 'Bench directory removal skipped');
-        }
+        removeBenchDirectoryBestEffort();
 
         if (options?.onDeleted) {
           try {
@@ -1033,6 +1125,7 @@ export const orchestrateBenchDeletion = (
           }
         }
       } catch (error) {
+        removeBenchDirectoryBestEffort();
         context.log('error', `Force deletion failed: ${error instanceof Error ? error.message : String(error)}`);
         // If it fails, at least ensure it's not stuck in 'queued'
         await benchesRepo.update(bench.id, { status: 'failure' });

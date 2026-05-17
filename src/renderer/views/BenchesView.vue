@@ -846,6 +846,26 @@ const showCreateFailureDialog = ref(false);
 const createFailureTitle = ref('Bench Creation Failed');
 const createFailureMessage = ref('Bench creation failed. Check Progress for details.');
 const acknowledgedCreateFailures = ref(new Set<string>());
+
+// Reset error dialog and acknowledgments when starting a new bench creation
+watch(creating, (isCreating) => {
+  if (isCreating) {
+    showCreateFailureDialog.value = false;
+    createFailureTitle.value = 'Bench Creation Failed';
+    createFailureMessage.value = 'Bench creation failed. Check Progress for details.';
+    acknowledgedCreateFailures.value.clear();
+  }
+});
+
+// Also reset after a successful creation
+watch(successMessage, (msg) => {
+  if (msg && msg.toLowerCase().includes('created')) {
+    showCreateFailureDialog.value = false;
+    createFailureTitle.value = 'Bench Creation Failed';
+    createFailureMessage.value = 'Bench creation failed. Check Progress for details.';
+    acknowledgedCreateFailures.value.clear();
+  }
+});
 const acknowledgedBenchAppTaskResults = ref(new Set<string>());
 
 const selectedTask = computed(() => {

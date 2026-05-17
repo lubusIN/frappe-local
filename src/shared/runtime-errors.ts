@@ -25,6 +25,16 @@ export const humanizeCreateFailure = (resource: 'bench' | 'site', rawMessage: st
 
   if (resource === 'bench') {
     if (message.toLowerCase().includes('timed out')) {
+      const normalized = message.toLowerCase();
+
+      if (normalized.includes('bench get-app') || normalized.includes('bench build --app')) {
+        return 'Bench creation timed out while installing selected apps. This usually means dependency install or asset build is still running. Check the task log and retry.';
+      }
+
+      if (normalized.includes(' pull')) {
+        return 'Bench creation timed out while pulling images. Check network/runtime health and retry.';
+      }
+
       return 'Bench creation timed out while starting containers. Check the task log for the last completed step and retry.';
     }
     return `Bench creation failed: ${message}`;

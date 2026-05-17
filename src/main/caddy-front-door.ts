@@ -3,8 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { spawn, type ChildProcess } from 'node:child_process';
+import type { Bench, Site } from '../shared/domain/models';
 import { createMainLogger } from './logger';
 import { getBinaryPath } from './utils/binaries';
+import { resolveBenchHttpPort } from './utils/bench-http-port';
 import { normalizeSiteHost } from '../shared/site-hostname';
 
 const logger = createMainLogger('caddy-front-door');
@@ -21,6 +23,67 @@ const CADDY_CERTIFICATES_LOCAL_DIR = path.join(
   'local'
 );
 const LEGACY_WILDCARD_CERT_DIR = 'wildcard_.localhost';
+
+type FrontDoorRepositories = {
+  readonly benches: {
+    findAll: () => Promise<Bench[]>;
+  };
+  readonly sites: {
+    findAll: () => Promise<Site[]>;
+  };
+};
+
+type FrontDoorRoute = {
+  readonly siteHost: string;
+  readonly benchPort: number;
+  readonly assetAliases?: readonly FrontDoorAssetAlias[];
+};
+
+type FrontDoorAssetAlias = {
+  readonly requestPath: string;
+  readonly assetPath: string;
+};
+
+const getBenchAssetManifestCandidates = (benchPath: string): string[] => [
+  path.join(benchPath, '.local-bench', 'assets', 'assets.json'),
+  path.join(benchPath, 'sites', 'assets', 'assets.json'),
+];
+
+export const readBenchAssetAliasesFromPath = (benchPath: string): FrontDoorAssetAlias[] => {
+  const assetsJsonPath = getBenchAssetManifestCandidates(benchPath).find((candidate) => fs.existsSync(candidate));
+
+  try {
+    if (!assetsJsonPath) {
+      return [];
+    }
+
+    const parsed = JSON.parse(fs.readFileSync(assetsJsonPath, 'utf8')) as Record<string, unknown>;
+    const aliases: FrontDoorAssetAlias[] = [];
+
+    for (const [bundleName, targetPath] of Object.entries(parsed)) {
+      if (typeof targetPath !== 'string') {
+        continue;
+      }
+
+      const normalizedBundleName = bundleName.trim().replace(/^\/+/, '');
+      const normalizedTargetPath = targetPath.trim();
+      const isBundleAsset = normalizedBundleName.endsWith('.bundle.js') || normalizedBundleName.endsWith('.bundle.css');
+      if (!isBundleAsset || !normalizedTargetPath.startsWith('/assets/')) {
+        continue;
+      }
+
+      aliases.push({
+        requestPath: `/${normalizedBundleName}`,
+        assetPath: normalizedTargetPath,
+      });
+    }
+
+    return aliases.sort((left, right) => left.requestPath.localeCompare(right.requestPath));
+  } catch (error) {
+    logger.warn(`Failed to read bench asset aliases for ${benchPath}: ${error}`);
+    return [];
+  }
+};
 
 const listProcesses = (): Array<{ pid: number; command: string }> => {
   try {
@@ -100,14 +163,16 @@ const canReuseManagedFrontDoor = (desiredConfig: string): boolean => {
 };
 
 const stopOrphanFrontDoorProcesses = (): void => {
-  const localBenchTag = getManagedFrontDoorCommandTag();
+  // Match on the binary path + subcommand only — not the config path — so stale
+  // instances using a different temp dir (e.g. from a prior session) are also stopped.
+  const binaryPathTag = `${getBinaryPath('caddy')} run --config`;
 
   for (const processInfo of listProcesses()) {
     if (processInfo.pid === process.pid) {
       continue;
     }
 
-    if (!processInfo.command.includes(localBenchTag)) {
+    if (!processInfo.command.includes(binaryPathTag)) {
       continue;
     }
 
@@ -145,32 +210,53 @@ const stopPidFromFile = (): void => {
   }
 };
 
-const toManagedSiteHosts = (siteHosts: string[]): Set<string> => {
-  const hosts = new Set<string>(['localhost']);
-
-  for (const entry of siteHosts) {
-    const normalized = normalizeSiteHost(entry);
-    if (normalized.endsWith('.localhost')) {
-      hosts.add(normalized);
-    }
-  }
-
-  return hosts;
+const readBenchAssetAliases = (bench: Bench): FrontDoorAssetAlias[] => {
+  return readBenchAssetAliasesFromPath(bench.path);
 };
 
-const buildTlsSiteAddresses = (siteHosts: string[]): string => {
-  const hosts = toManagedSiteHosts(siteHosts);
+const buildFrontDoorRoutes = async (repositories: FrontDoorRepositories): Promise<FrontDoorRoute[]> => {
+  const [benches, sites] = await Promise.all([
+    repositories.benches.findAll(),
+    repositories.sites.findAll(),
+  ]);
 
-  return Array.from(hosts)
-    .map((host) => `https://${host}`)
-    .join(', ');
+  const benchesById = new Map(benches.map((bench) => [bench.id, bench]));
+  const aliasesByBenchId = new Map(benches.map((bench) => [bench.id, readBenchAssetAliases(bench)]));
+  const routesByHost = new Map<string, FrontDoorRoute>();
+
+  for (const site of sites) {
+    const siteHost = normalizeSiteHost(site.name);
+    if (!siteHost || routesByHost.has(siteHost)) {
+      continue;
+    }
+
+    const bench = benchesById.get(site.benchId);
+    if (!bench) {
+      continue;
+    }
+
+    routesByHost.set(siteHost, {
+      siteHost,
+      benchPort: resolveBenchHttpPort(bench),
+      assetAliases: aliasesByBenchId.get(bench.id) ?? [],
+    });
+  }
+
+  return Array.from(routesByHost.values()).sort((left, right) => left.siteHost.localeCompare(right.siteHost));
 };
 
 export const pruneStaleCaddySiteCertificates = (
   siteHosts: string[],
   certificatesDirectory = CADDY_CERTIFICATES_LOCAL_DIR
 ): void => {
-  const keepHosts = toManagedSiteHosts(siteHosts);
+  const keepHosts = new Set<string>(['localhost']);
+
+  for (const entry of siteHosts) {
+    const normalized = normalizeSiteHost(entry);
+    if (normalized.endsWith('.localhost')) {
+      keepHosts.add(normalized);
+    }
+  }
 
   let entries: fs.Dirent[] = [];
   try {
@@ -203,8 +289,35 @@ export const pruneStaleCaddySiteCertificates = (
   }
 };
 
-export const buildCaddyfile = (upstreamPort: number, siteHosts: string[] = []): string => {
-  const tlsSiteAddresses = buildTlsSiteAddresses(siteHosts);
+export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
+  const orderedRoutes = routes.length > 0 ? [{ siteHost: 'localhost', benchPort: routes[0]!.benchPort }, ...routes] : [];
+  const uniqueRoutes = new Map<string, FrontDoorRoute>();
+
+  for (const route of orderedRoutes) {
+    if (!uniqueRoutes.has(route.siteHost)) {
+      uniqueRoutes.set(route.siteHost, route);
+    }
+  }
+
+  const routeBlocks = Array.from(uniqueRoutes.values())
+    .map(({ siteHost, benchPort, assetAliases = [] }) => {
+      const aliasRules = assetAliases
+        .map(({ requestPath, assetPath }) => `  rewrite ${requestPath} ${assetPath}`)
+        .join('\n');
+
+      const optionalAliasRules = aliasRules ? `${aliasRules}\n` : '';
+
+      return `https://${siteHost} {
+  tls internal
+${optionalAliasRules}
+  reverse_proxy 127.0.0.1:${benchPort} {
+    header_up Host {host}
+    header_up X-Forwarded-Proto {scheme}
+    header_up X-Forwarded-Port {server_port}
+  }
+}`;
+    })
+    .join('\n\n');
 
   return `{
   admin off
@@ -217,39 +330,36 @@ http://localhost, http://*.localhost {
   redir https://{host}{uri} permanent
 }
 
-${tlsSiteAddresses} {
-  tls internal
-  reverse_proxy 127.0.0.1:${upstreamPort} {
-    header_up Host {host}
-    header_up X-Forwarded-Proto {scheme}
-    header_up X-Forwarded-Port {server_port}
-  }
-}
+${routeBlocks}
 `;
 };
 
 class CaddyFrontDoor {
   private process: ChildProcess | null = null;
   private running = false;
-  private upstreamPort: number | null = null;
-  private siteHostsKey = '';
+  private configKey = '';
 
   public isRunning(): boolean {
     return this.running;
   }
 
-  public async start(upstreamPort: number, siteHosts: string[] = []): Promise<boolean> {
-    const siteHostsKey = Array.from(toManagedSiteHosts(siteHosts)).sort().join('|');
-    if (this.running && this.upstreamPort === upstreamPort && this.siteHostsKey === siteHostsKey) {
+  public async start(repositories: FrontDoorRepositories): Promise<boolean> {
+    const routes = await buildFrontDoorRoutes(repositories);
+    if (routes.length === 0) {
+      await this.stop();
+      return false;
+    }
+
+    const siteHostsKey = routes.map((route) => `${route.siteHost}:${route.benchPort}`).join('|');
+    const desiredConfig = buildCaddyfile(routes);
+    if (this.running && this.configKey === siteHostsKey && canReuseManagedFrontDoor(desiredConfig)) {
       return true;
     }
 
-    const desiredConfig = buildCaddyfile(upstreamPort, siteHosts);
     if (canReuseManagedFrontDoor(desiredConfig)) {
       this.process = null;
       this.running = true;
-      this.upstreamPort = upstreamPort;
-      this.siteHostsKey = siteHostsKey;
+      this.configKey = siteHostsKey;
       logger.info('Reusing existing managed Caddy front door process with unchanged config.');
       return true;
     }
@@ -257,7 +367,7 @@ class CaddyFrontDoor {
     await this.stop();
     stopOrphanFrontDoorProcesses();
     stopPidFromFile();
-    pruneStaleCaddySiteCertificates(siteHosts);
+    pruneStaleCaddySiteCertificates(routes.map((route) => route.siteHost));
 
     fs.mkdirSync(CADDY_RUNTIME_DIR, { recursive: true });
     fs.writeFileSync(CADDY_CONFIG_PATH, desiredConfig, 'utf8');
@@ -285,8 +395,7 @@ class CaddyFrontDoor {
 
       const readyTimer = setTimeout(() => {
         this.running = true;
-        this.upstreamPort = upstreamPort;
-        this.siteHostsKey = siteHostsKey;
+        this.configKey = siteHostsKey;
         settle(true);
       }, 1000);
 
@@ -302,8 +411,7 @@ class CaddyFrontDoor {
         clearTimeout(readyTimer);
         this.process = null;
         this.running = false;
-        this.upstreamPort = null;
-        this.siteHostsKey = '';
+        this.configKey = '';
         stopPidFromFile();
         logger.error(`Caddy front door failed to start: ${error}`);
         settle(false);
@@ -313,8 +421,7 @@ class CaddyFrontDoor {
         clearTimeout(readyTimer);
         this.process = null;
         this.running = false;
-        this.upstreamPort = null;
-        this.siteHostsKey = '';
+        this.configKey = '';
         stopPidFromFile();
 
         if (!settled) {
@@ -332,8 +439,7 @@ class CaddyFrontDoor {
     const child = this.process;
     this.process = null;
     this.running = false;
-    this.upstreamPort = null;
-    this.siteHostsKey = '';
+    this.configKey = '';
     stopPidFromFile();
 
     if (!child) {
@@ -358,8 +464,8 @@ class CaddyFrontDoor {
 
 const caddyFrontDoor = new CaddyFrontDoor();
 
-export const initializeCaddyFrontDoor = async (upstreamPort: number, siteHosts: string[] = []): Promise<boolean> => {
-  return caddyFrontDoor.start(upstreamPort, siteHosts);
+export const initializeCaddyFrontDoor = async (repositories: FrontDoorRepositories): Promise<boolean> => {
+  return caddyFrontDoor.start(repositories);
 };
 
 export const stopCaddyFrontDoor = async (): Promise<void> => {

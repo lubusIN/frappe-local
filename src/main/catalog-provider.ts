@@ -1,7 +1,7 @@
 import { AppSchema, type AppCatalogItem } from '../shared/domain/models';
 import defaultCatalog from './default-catalog.json';
 
-export const APP_CATALOG_SEED_VERSION = 10;
+export const APP_CATALOG_SEED_VERSION = 11;
 
 type RawCatalogProviderItem = {
   readonly id: string;

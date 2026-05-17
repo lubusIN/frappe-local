@@ -30,6 +30,7 @@ describe('catalog provider normalization', () => {
     const seed = getDefaultAppCatalogSeed();
     const builder = seed.find((item) => item.id === 'builder');
     const helpdesk = seed.find((item) => item.id === 'helpdesk');
+    const wiki = seed.find((item) => item.id === 'wiki');
 
     expect(seed.length).toBeGreaterThan(0);
     expect(seed[0]?.id).toBe(seed[0]?.id.toLowerCase());
@@ -37,6 +38,7 @@ describe('catalog provider normalization', () => {
     expect(builder?.installBranches?.['version-16']).toBe('master');
     expect(helpdesk?.version).toBe('v1.24.1');
     expect(helpdesk?.installBranches?.['version-16']).toBe('main');
+    expect(wiki?.installBranches?.['version-16']).toBe('develop');
     expect(helpdesk?.compatibility.supportedBenchVersions).toEqual(['version-15', 'version-16', 'develop']);
   });
 });

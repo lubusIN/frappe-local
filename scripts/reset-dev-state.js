@@ -8,6 +8,7 @@ import defaultCatalog from '../src/main/default-catalog.json' with { type: 'json
 const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Local Bench');
 const storagePath = path.join(appSupportPath, 'storage');
 const configPath = path.join(appSupportPath, 'config');
+const benchesPath = path.join(appSupportPath, 'benches');
 const storageFilePath = path.join(storagePath, 'storage.json');
 const APP_CATALOG_SEED_VERSION = 5;
 
@@ -103,7 +104,7 @@ if (networkNames.length > 0) {
   runBestEffort('remove local-bench networks', podmanBinary, ['network', 'rm', ...networkNames]);
 }
 
-const targets = [storagePath, configPath];
+const targets = [storagePath, configPath, benchesPath];
 
 for (const target of targets) {
   if (!fs.existsSync(target)) {
@@ -116,6 +117,7 @@ for (const target of targets) {
 }
 
 fs.mkdirSync(storagePath, { recursive: true });
+fs.mkdirSync(benchesPath, { recursive: true });
 
 const timestamp = new Date().toISOString();
 const freshSnapshot = {

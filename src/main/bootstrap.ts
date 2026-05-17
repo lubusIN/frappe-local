@@ -21,7 +21,6 @@ import { InMemorySiteAnalytics } from './site-analytics';
 import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
 import { runDiagnostics } from './diagnostics-service';
 import { getAppIconPath } from './app-icon';
-import { getSharedBenchProxyPort, initializeSharedBenchProxy } from './shared-proxy';
 import { initializeCaddyFrontDoor, isCaddyFrontDoorRunning } from './caddy-front-door';
 
 type BootstrapContext = {
@@ -125,23 +124,16 @@ export const runApplicationBootstrap = async (
     } satisfies AppRepositories;
 
     const refreshCaddyFrontDoorHosts = async (): Promise<void> => {
-      const sharedProxyPort = getSharedBenchProxyPort();
-      if (sharedProxyPort === null) {
-        return;
-      }
-
-      const knownSiteHosts = (await repositories.sites.findAll()).map((site) => site.name);
-      const caddyReady = await initializeCaddyFrontDoor(sharedProxyPort, knownSiteHosts);
+      const caddyReady = await initializeCaddyFrontDoor({ benches: repositories.benches, sites: repositories.sites });
       if (!caddyReady) {
         bootstrapLogger.warn('Caddy front door is unavailable. Falling back to port-based site URLs.');
       }
     };
 
     try {
-      const sharedProxyPort = await initializeSharedBenchProxy({ benches: repositories.benches, sites: repositories.sites });
       await refreshCaddyFrontDoorHosts();
     } catch (error) {
-      bootstrapLogger.warn(`Shared proxy failed to start: ${error}`);
+      bootstrapLogger.warn(`Caddy front door failed to start: ${error}`);
     }
 
 
@@ -168,8 +160,7 @@ export const runApplicationBootstrap = async (
         return openInEditor(targetPath, editorPreference);
       },
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
-      getSharedProxyPort: () => getSharedBenchProxyPort(),
-      isSharedProxyAvailable: () => isCaddyFrontDoorRunning(),
+      isFrontDoorAvailable: () => isCaddyFrontDoorRunning(),
       refreshFrontDoorHosts: async () => {
         try {
           await refreshCaddyFrontDoorHosts();

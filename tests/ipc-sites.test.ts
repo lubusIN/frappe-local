@@ -26,7 +26,7 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
   };
 }
 
-function makeStubBenchRepo() {
+function makeStubBenchRepo(apps: string[] = ['frappe']) {
   const benches = [
     {
       id: 'bench-001',
@@ -34,7 +34,7 @@ function makeStubBenchRepo() {
       path: '/Users/dev/frappe-bench',
       frappeVersion: '15.0.0',
       status: 'running' as const,
-      apps: ['frappe'],
+      apps,
       timestamps: {
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
@@ -166,6 +166,7 @@ describe('sites IPC handlers', () => {
         status: 'running',
         path: '/Users/dev/frappe-bench/sites/demo.localhost',
         appCount: 2,
+        apps: ['frappe', 'erpnext'],
         createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-02-02T00:00:00.000Z').toISOString(),
       },
@@ -284,6 +285,31 @@ describe('sites IPC handlers', () => {
     ).rejects.toThrow('parent bench was not found');
   });
 
+  it('sites:create rejects apps that are not installed on the selected bench', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(['frappe', 'erpnext']),
+        sites: makeStubSiteRepo([]),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const createHandler = handlers.get(ipcChannels.sitesCreate);
+
+    await expect(
+      createHandler?.(undefined, {
+        name: 'bad.localhost',
+        benchId: 'bench-001',
+        path: '/Users/dev/frappe-bench/sites/bad.localhost',
+        apps: ['frappe', 'wiki'],
+      })
+    ).rejects.toThrow('Cannot create site with apps not installed on bench: wiki');
+  });
+
   it('sites:create blocks duplicate canonical host across benches', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
@@ -340,6 +366,37 @@ describe('sites IPC handlers', () => {
       id: 'site-001',
       status: 'stopped',
     });
+  });
+
+  it('sites:update with apps queues site app activation without optimistic persistence', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(['frappe', 'erpnext']),
+        sites: makeStubSiteRepo([
+          {
+            ...sites[0]!,
+            apps: ['frappe'],
+            status: 'running',
+          },
+        ]),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    const updateHandler = handlers.get(ipcChannels.sitesUpdate);
+    const updated = await updateHandler?.(undefined, 'site-001', { apps: ['frappe', 'erpnext'] }) as {
+      status: string;
+      appCount: number;
+      apps?: string[];
+    };
+
+    expect(updated.status).toBe('queued');
+    expect(updated.appCount).toBe(1);
+    expect(updated.apps).toEqual(['frappe']);
   });
 
   it('sites:update blocks invalid status transition', async () => {
@@ -495,7 +552,7 @@ describe('sites IPC handlers', () => {
     expect(trackSiteOperation).toHaveBeenCalledWith('site-001', 'open-folder');
   });
 
-  it('sites:open-external routes through shared proxy port', async () => {
+  it('sites:open-external routes through the Caddy front door over https', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
     const openExternal = vi.fn(async () => true);
 
@@ -512,7 +569,7 @@ describe('sites IPC handlers', () => {
         openInEditor: async () => false,
         openExternal,
         pathExists: () => true,
-        isSharedProxyAvailable: () => true,
+        isFrontDoorAvailable: () => true,
       }
     );
 
@@ -545,7 +602,6 @@ describe('sites IPC handlers', () => {
         openInEditor: async () => false,
         openExternal,
         pathExists: () => true,
-        getSharedProxyPort: () => null,
       }
     );
 

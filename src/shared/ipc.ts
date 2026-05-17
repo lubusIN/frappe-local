@@ -115,6 +115,7 @@ export type SiteListItem = {
   readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
   readonly path: string;
   readonly appCount: number;
+  readonly apps?: string[];
   readonly createdAt: string;
   readonly updatedAt: string;
 };

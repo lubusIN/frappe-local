@@ -70,10 +70,15 @@ export const OPERATION_TIMEOUTS = {
   SITE_CREATION: 300000,
 
   /**
+    * Base timeout for a single app fetch/build cycle.
+    */
+    APP_INSTALL_BASE: 900000,
+
+    /**
    * Global ceiling for any bench app installation/removal.
-   * Long enough for the slowest apps without allowing hour-long hangs.
+    * Long enough for the slowest apps without allowing hour-long hangs.
    */
-  APP_INSTALL: 1200000,
+    APP_INSTALL: 1800000,
 
   /**
    * Extended timeout for site start/stop scheduler operations

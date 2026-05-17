@@ -176,4 +176,29 @@ describe('TaskRunner', () => {
       errorCode: 'task-failed',
     });
   });
+
+  it('preserves resource metadata on task completion events', async () => {
+    const runner = new TaskRunner();
+    const events: TaskProgressEvent[] = [];
+
+    runner.onEvent((event) => {
+      events.push(event);
+    });
+
+    runner.enqueue({
+      name: 'Update Site Apps alpha.localhost',
+      resource: { type: 'site', id: 'site-123' },
+      run: async (context) => {
+        context.startStep('apps', 'Updating site apps');
+        context.completeStep('apps', 'Site apps updated');
+      },
+    });
+
+    await flushPromises();
+    await flushPromises();
+
+    const completedEvent = events.find((event) => event.type === 'task.completed');
+    expect(completedEvent).toBeDefined();
+    expect(completedEvent?.resource).toEqual({ type: 'site', id: 'site-123' });
+  });
 });

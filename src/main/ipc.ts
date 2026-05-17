@@ -21,7 +21,6 @@ import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import { createMainLogger } from './logger';
 import { findNextAvailableTcpPort } from './utils/ports';
-import { SHARED_PROXY_PORT_RANGE } from './shared-proxy';
 import { normalizeSiteHost } from '../shared/site-hostname';
 import { withCoreBenchApps } from '../shared/bench-apps';
 import { resolveBenchHttpPort } from './utils/bench-http-port';
@@ -56,7 +55,7 @@ import { getBinaryPath } from './utils/binaries';
 import { OPERATION_TIMEOUTS } from './constants';
 import type { BenchLifecycleOperation } from './bench-analytics';
 import type { SiteLifecycleOperation } from './site-analytics';
-import { orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
+import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
 import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
 
 type IpcMainLike = {
@@ -84,17 +83,11 @@ const resolveUserPath = (untrimmedPath: string): string => {
 const DEFAULT_HTTP_PORT = 8080;
 
 const deriveUsedBenchPorts = (benches: Bench[]): Set<number> => {
-  const usedPorts = new Set(
+  return new Set(
     benches
       .map((bench) => bench.httpPort ?? DEFAULT_HTTP_PORT)
       .filter((port) => Number.isInteger(port) && port >= 1024 && port <= 65535)
   );
-
-  for (let port = SHARED_PROXY_PORT_RANGE.START; port <= SHARED_PROXY_PORT_RANGE.END; port += 1) {
-    usedPorts.add(port);
-  }
-
-  return usedPorts;
 };
 
 export type IpcRepositories = {
@@ -131,8 +124,7 @@ export type IpcOperations = {
   openInEditor: (targetPath: string) => Promise<boolean>;
   openExternal: (url: string) => Promise<boolean>;
   pathExists: (targetPath: string) => boolean;
-  getSharedProxyPort?: () => number | null;
-  isSharedProxyAvailable?: () => boolean;
+  isFrontDoorAvailable?: () => boolean;
   refreshFrontDoorHosts?: () => Promise<void>;
   trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
   trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
@@ -160,6 +152,7 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   status: site.status,
   path: site.path,
   appCount: site.apps.length,
+  apps: site.apps,
   createdAt: site.timestamps.createdAt,
   updatedAt: site.timestamps.updatedAt,
 });
@@ -257,8 +250,7 @@ export const registerIpcHandlers = (
     openInEditor: async () => false,
     openExternal: async () => false,
     pathExists: (targetPath) => fs.existsSync(targetPath),
-    getSharedProxyPort: () => null,
-    isSharedProxyAvailable: () => false,
+    isFrontDoorAvailable: () => false,
     refreshFrontDoorHosts: async () => undefined,
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
@@ -403,6 +395,18 @@ export const registerIpcHandlers = (
         }
       }
     }
+
+     // Remove all bench folders and their sites from the filesystem
+     for (const bench of benches) {
+       try {
+         if (fs.existsSync(bench.path)) {
+           fs.rmSync(bench.path, { recursive: true, force: true });
+           mainLogger.info(`Removed bench folder: ${bench.path}`);
+         }
+       } catch (error) {
+         mainLogger.warn(`Failed to remove bench folder ${bench.path}: ${error}`);
+       }
+     }
 
     fs.rmSync(runtimePaths.storagePath, { recursive: true, force: true });
     fs.rmSync(runtimePaths.configPath, { recursive: true, force: true });
@@ -684,6 +688,16 @@ export const registerIpcHandlers = (
       throw new Error(`A site host "${normalizeSiteHost(payload.name)}" already exists. Use a unique site name.`);
     }
 
+    const bench = await repositories.benches.findById(payload.benchId);
+    if (!bench) {
+      throw new Error('Cannot create site: parent bench was not found.');
+    }
+
+    const unavailableApps = payload.apps.filter((app) => !bench.apps.includes(app));
+    if (unavailableApps.length > 0) {
+      throw new Error(`Cannot create site with apps not installed on bench: ${unavailableApps.join(', ')}`);
+    }
+
     const created = await orchestrateSiteCreation(repositories, payload);
     operations.trackSiteOperation?.(created.id, 'create');
     await operations.refreshFrontDoorHosts?.();
@@ -733,7 +747,40 @@ export const registerIpcHandlers = (
       return toSiteListItem(existing);
     }
 
-    let updated = await repositories.sites.update(id, otherUpdates);
+    const requestedApps = Array.isArray(payload.apps)
+      ? Array.from(new Set(payload.apps.map((app) => app.trim()).filter(Boolean)))
+      : null;
+
+    if (requestedApps) {
+      if (existing.status !== 'running') {
+        throw new Error('Site must be running before activating apps.');
+      }
+
+      const unavailableApps = requestedApps.filter((app) => !bench.apps.includes(app));
+      if (unavailableApps.length > 0) {
+        throw new Error(`Cannot activate apps not installed on bench: ${unavailableApps.join(', ')}`);
+      }
+
+      const appsToInstall = requestedApps.filter((app) => !existing.apps.includes(app));
+      const removedApps = existing.apps.filter((app) => !requestedApps.includes(app));
+
+      if (removedApps.length > 0) {
+        throw new Error('Removing apps from a site is not supported yet.');
+      }
+
+      if (appsToInstall.length === 0) {
+        return toSiteListItem(existing);
+      }
+
+      const queuedSite = (await repositories.sites.update(id, { status: 'queued' })) ?? existing;
+      operations.trackSiteOperation?.(queuedSite.id, 'update');
+
+      orchestrateSiteAppsUpdate(repositories, existing, requestedApps);
+      return toSiteListItem(queuedSite);
+    }
+
+    const { apps: _ignoredApps, ...safeOtherUpdates } = otherUpdates;
+    let updated = await repositories.sites.update(id, safeOtherUpdates);
 
     if (updated) {
       operations.trackSiteOperation?.(updated.id, 'update');
@@ -830,8 +877,8 @@ export const registerIpcHandlers = (
     }
 
     const preferredHost = normalizeSiteHost(site.name);
-    const sharedProxyAvailable = operations.isSharedProxyAvailable?.() ?? false;
-    if (sharedProxyAvailable) {
+    const frontDoorAvailable = operations.isFrontDoorAvailable?.() ?? false;
+    if (frontDoorAvailable) {
       return operations.openExternal(`https://${preferredHost}`);
     }
 

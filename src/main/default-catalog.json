@@ -215,7 +215,7 @@
     },
     "installBranches": {
       "version-15": "master",
-      "version-16": "master",
+      "version-16": "develop",
       "develop": "develop"
     }
   },
