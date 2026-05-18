@@ -10,7 +10,7 @@
           :class="isCollapsed ? 'justify-center' : ''"
         >
           <div class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0">
-            <CafeLogo class="w-5 h-5 text-ink-white" />
+            <Logo class="w-5 h-5 text-ink-white" />
           </div>
           <div 
             v-if="!isCollapsed"
@@ -93,7 +93,7 @@ import IconActivity from '~icons/lucide/activity';
 import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
-import CafeLogo from './CafeLogo.vue';
+import Logo from './Logo.vue';
 import SettingsDialog from './SettingsDialog.vue';
 import { isIpcBridgeAvailable } from '../composables/useIpc';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';

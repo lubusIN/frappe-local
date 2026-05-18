@@ -370,4 +370,44 @@ describe('bench app orchestration', () => {
     expect(getAppCalls).toHaveLength(2);
     expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe', 'erpnext', 'builder'] });
   });
+
+  it('allows removing a pre-bundled app like erpnext post-creation', async () => {
+    const bench: Bench = {
+      id: 'bench-apps-007',
+      name: 'bench-apps',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe', 'erpnext'],
+      status: 'running',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+
+    const updateMock = vi.fn(async () => bench);
+
+    orchestrateBenchAppChanges(
+      bench,
+      { update: updateMock },
+      undefined,
+      bench.apps,
+      ['frappe']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'remove-app', 'erpnext']),
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.any(Number)
+    );
+
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe'] });
+  });
 });

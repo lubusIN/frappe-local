@@ -613,6 +613,7 @@ export const orchestrateSiteAppsUpdate = (
         }
 
         const installDelta = targetApps.filter((app) => !site.apps.includes(app));
+        const uninstallDelta = site.apps.filter((app) => !targetApps.includes(app));
         const runtimeCmd = getBinaryPath('docker-compose');
         const projectName = `local-bench-${site.benchId.slice(0, 8)}`;
         const runtimeEnv = await getRuntimeEnv();
@@ -678,7 +679,97 @@ export const orchestrateSiteAppsUpdate = (
           }
 
           context.completeStep('migrate', 'Site migration completed');
+        }
 
+        if (uninstallDelta.length > 0) {
+          context.startStep('uninstall-apps', `Uninstalling ${uninstallDelta.length} app${uninstallDelta.length === 1 ? '' : 's'} from ${site.name}`);
+
+          for (const app of uninstallDelta) {
+            context.throwIfCancelled();
+            context.log('info', `Uninstalling app ${app} from ${site.name}`, 'uninstall-apps');
+
+            // Proactively purge pending jobs to avoid QueueOverloaded errors in local dev environments
+            const purgeArgs = [
+              '-p', projectName,
+              'exec',
+              '-T',
+              DOCKER_SERVICES.BACKEND,
+              'bench',
+              '--site',
+              site.name,
+              'purge-jobs',
+            ];
+            
+            try {
+              context.log('info', `Purging pending background jobs for site ${site.name} to avoid queue overload`, 'uninstall-apps');
+              await execPromise(
+                runtimeCmd,
+                purgeArgs,
+                bench.path,
+                (out) => context.log('info', out, 'uninstall-apps'),
+                runtimeEnv,
+                OPERATION_TIMEOUTS.APP_INSTALL
+              );
+            } catch (err) {
+              // Ignore failure of purge-jobs (e.g. if the command is not supported on older frappe versions)
+              context.log('warning', `Failed to purge jobs: ${String(err)}`, 'uninstall-apps');
+            }
+
+            const args = [
+              '-p', projectName,
+              'exec',
+              '-T',
+              DOCKER_SERVICES.BACKEND,
+              'bench',
+              '--site',
+              site.name,
+              'uninstall-app',
+              app,
+              '--yes',
+            ];
+
+            const { code, stderr } = await execPromise(
+              runtimeCmd,
+              args,
+              bench.path,
+              (out) => context.log('info', out, 'uninstall-apps'),
+              runtimeEnv,
+              OPERATION_TIMEOUTS.APP_INSTALL
+            );
+
+            if (code !== 0) {
+              throw new Error(`Failed to uninstall app ${app} from ${site.name}: ${stderr}`);
+            }
+          }
+
+          context.completeStep('uninstall-apps', 'App uninstallation completed');
+
+          context.startStep('migrate', `Running migrate for ${site.name}`);
+          const migrateArgs = [
+            '-p', projectName,
+            'exec',
+            '-T',
+            DOCKER_SERVICES.BACKEND,
+            'bench',
+            '--site',
+            site.name,
+            'migrate',
+          ];
+
+          const migrateResult = await execPromise(
+            runtimeCmd,
+            migrateArgs,
+            bench.path,
+            (out) => context.log('info', out, 'migrate'),
+            runtimeEnv,
+            OPERATION_TIMEOUTS.APP_INSTALL
+          );
+
+          if (migrateResult.code !== 0) {
+            throw new Error(`Failed to migrate site ${site.name}: ${migrateResult.stderr}`);
+          }
+
+          context.completeStep('migrate', 'Site migration completed');
         }
 
         context.startStep('cache', `Clearing cache for ${site.name}`);
@@ -735,7 +826,7 @@ export const orchestrateSiteAppsUpdate = (
 
         context.completeStep('website-cache', 'Site website cache cleared');
 
-        if (installDelta.length > 0) {
+        if (installDelta.length > 0 || uninstallDelta.length > 0) {
           context.startStep('restart', 'Restarting bench services');
           const restartArgs = [
             '-p', projectName,
@@ -755,7 +846,7 @@ export const orchestrateSiteAppsUpdate = (
           );
 
           if (restartResult.code !== 0) {
-            throw new Error(`Failed to restart bench services after app install: ${restartResult.stderr}`);
+            throw new Error(`Failed to restart bench services after app update: ${restartResult.stderr}`);
           }
 
           context.completeStep('restart', 'Bench services restarted');

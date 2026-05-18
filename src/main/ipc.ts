@@ -764,11 +764,7 @@ export const registerIpcHandlers = (
       const appsToInstall = requestedApps.filter((app) => !existing.apps.includes(app));
       const removedApps = existing.apps.filter((app) => !requestedApps.includes(app));
 
-      if (removedApps.length > 0) {
-        throw new Error('Removing apps from a site is not supported yet.');
-      }
-
-      if (appsToInstall.length === 0) {
+      if (appsToInstall.length === 0 && removedApps.length === 0) {
         return toSiteListItem(existing);
       }
 

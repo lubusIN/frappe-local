@@ -51,4 +51,15 @@ describe('bench compose generation', () => {
     expect(content).toContain('volumes:\n  bench_assets:\n  bench_env:');
     expect(content).not.toContain('../env');
   });
+
+  it('sets empty entrypoint arrays for backend, frontend, and websocket to bypass problematic entrypoint scripts', () => {
+    const content = generateBenchCompose({
+      frappeVersion: 'version-16',
+      httpPort: 8080,
+    });
+
+    expect(content).toContain('backend:\n    image: docker.io/frappe/erpnext:version-16\n    entrypoint: []');
+    expect(content).toContain('frontend:\n    image: docker.io/frappe/erpnext:version-16\n    entrypoint: []');
+    expect(content).toContain('websocket:\n    image: docker.io/frappe/erpnext:version-16\n    entrypoint: []');
+  });
 });

@@ -65,6 +65,7 @@ services:
 
   backend:
     image: ${image}
+    entrypoint: []
     volumes:
       - ../sites:/home/frappe/frappe-bench/sites
       - ../apps:/home/frappe/frappe-bench/apps
@@ -87,6 +88,7 @@ services:
 
   frontend:
     image: ${image}
+    entrypoint: []
     command: nginx-entrypoint.sh
     ports:
       - "127.0.0.1:${httpPort}:8080"
@@ -103,6 +105,7 @@ services:
 
   websocket:
     image: ${image}
+    entrypoint: []
     command: node /home/frappe/frappe-bench/apps/frappe/socketio.js
     ports:
       - "127.0.0.1:${socketPort}:9000"

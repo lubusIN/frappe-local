@@ -278,8 +278,8 @@ const getAppDelta = (previousApps: readonly string[], nextApps: readonly string[
   return {
     previous,
     next,
-    install: next.filter((app) => !CORE_BENCH_APPS_SET.has(app) && !previous.includes(app)),
-    remove: previous.filter((app) => !CORE_BENCH_APPS_SET.has(app) && !next.includes(app)),
+    install: next.filter((app) => app !== 'frappe' && !previous.includes(app)),
+    remove: previous.filter((app) => app !== 'frappe' && !next.includes(app)),
   };
 };
 

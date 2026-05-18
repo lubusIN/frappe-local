@@ -320,7 +320,9 @@
       :options="{ title: createFailureTitle, size: 'md' }"
     >
       <template #body-content>
-        <p class="text-sm text-ink-gray-7">{{ createFailureMessage }}</p>
+        <p class="text-sm text-ink-gray-7">
+          {{ createFailureMessage }}
+        </p>
       </template>
       <template #actions>
         <div class="dialog-actions">
@@ -337,92 +339,33 @@
 
     <Dialog
       v-model="showSiteAppsDialog"
-      :options="{ title: `Manage Apps in ${selectedSiteForApps?.name || 'Site'}`, size: '3xl' }"
+      :options="{ title: `Manage Apps in ${selectedSiteForApps?.name || 'Site'}`, size: '4xl' }"
       @close="closeSiteAppsDialog"
     >
       <template #body-content>
         <div class="flex flex-col gap-4">
-          <Tabs
-            v-model="selectedSiteAppsTabIndex"
-            as="div"
-            :tabs="siteAppsTabs"
-          >
-            <template #tab-panel="{ tab }">
-              <div
-                v-if="tab.label === 'Bench apps'"
-                class="flex flex-col gap-2 pt-4"
-              >
-                <div
-                  v-if="benchInstalledAppRows.length === 0"
-                  class="py-8 text-center text-ink-gray-5"
-                >
-                  No apps found on this bench.
-                </div>
-                <div
-                  v-else
-                  class="max-h-[48vh] overflow-y-auto rounded-md border border-outline-gray-1"
-                >
-                  <div
-                    v-for="appId in benchInstalledAppRows"
-                    :key="`bench-app-${appId}`"
-                    class="flex items-center justify-between px-4 py-3 border-b border-outline-gray-1 last:border-b-0"
-                  >
-                    <span class="font-medium text-ink-gray-8">{{ appId }}</span>
-                    <Badge
-                      variant="subtle"
-                      :theme="siteActivatedAppSet.has(appId) ? 'green' : 'gray'"
-                    >
-                      {{ siteActivatedAppSet.has(appId) ? 'Activated on site' : 'Not activated' }}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                v-else
-                class="flex flex-col gap-2 pt-4"
-              >
-                <div
-                  v-if="benchInstalledAppRows.length === 0"
-                  class="py-8 text-center text-ink-gray-5"
-                >
-                  No bench apps available to activate.
-                </div>
-                <div
-                  v-else
-                  class="max-h-[48vh] overflow-y-auto rounded-md border border-outline-gray-1"
-                >
-                  <div
-                    v-for="appId in benchInstalledAppRows"
-                    :key="`activate-app-${appId}`"
-                    class="flex items-center justify-between gap-3 px-4 py-3 border-b border-outline-gray-1 last:border-b-0"
-                  >
-                    <span class="font-medium text-ink-gray-8">{{ appId }}</span>
-                    <Button
-                      size="sm"
-                      :variant="siteActivatedAppSet.has(appId) ? 'subtle' : 'solid'"
-                      :loading="activatingSiteAppId === appId"
-                      :disabled="siteActivatedAppSet.has(appId) || activatingSiteAppId !== null || updating || !canActivateSelectedSiteApps"
-                      @click="siteActivatedAppSet.has(appId) ? undefined : onActivateSiteApp(appId)"
-                    >
-                      {{ siteActivatedAppSet.has(appId) ? 'Active' : 'Activate' }}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </Tabs>
-
+          <div class="flex flex-col min-h-0 gap-3 pt-6">
+            <AppManager
+              context="site"
+              :active-app-ids="Array.from(siteActivatedAppSet)"
+              :allowed-app-ids="benchInstalledAppRows"
+              :disabled="updating || !canActivateSelectedSiteApps"
+              :frappe-version="selectedBenchForSiteApps?.frappeVersion"
+              :loading-app-id="activatingSiteAppId"
+              @install-app="onActivateSiteApp"
+              @uninstall-app="onRequestDeactivateSiteApp"
+            />
+          </div>
           <p
             v-if="selectedSiteForApps && selectedSiteForApps.status !== 'running'"
             class="text-sm text-ink-amber-4"
           >
-            Start the site before activating apps.
+            Start the site before managing apps.
           </p>
         </div>
       </template>
       <template #actions>
-        <div class="dialog-actions">
+        <div class="flex justify-end gap-3">
           <Button
             size="md"
             variant="solid"
@@ -433,13 +376,22 @@
         </div>
       </template>
     </Dialog>
+
+    <ConfirmationDialog
+      :open="removeSiteAppConfirmOpen"
+      title="Deactivate app"
+      :message="`Are you sure you want to deactivate and uninstall &quot;${pendingRemoveSiteAppName}&quot; from site &quot;${selectedSiteForApps?.name}&quot;? This will drop the app's database tables and delete all associated data.`"
+      confirm-label="Deactivate"
+      @cancel="onCancelDeactivateSiteApp"
+      @confirm="onConfirmDeactivateSiteApp"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Select, Switch, Tabs, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, Select, Switch, TextInput, toast } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconChevronRight from '~icons/lucide/chevron-right';
@@ -449,6 +401,7 @@ import IconSquare from '~icons/lucide/square';
 import IconTrash from '~icons/lucide/trash-2';
 import IconPackage from '~icons/lucide/package';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
+import AppManager from '../components/AppManager.vue';
 import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
@@ -458,6 +411,7 @@ import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
+import { useAppCatalog } from '../composables/useAppCatalog';
 import {
   buildSiteCreatePayload,
   getSiteWizardStepErrors,
@@ -468,7 +422,7 @@ import {
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
 import { acknowledgeHistoricalCompletedSiteAppTasks, isCompletedSiteAppUpdateTask } from '../site-app-task-results';
-import type { BenchListItem, SiteListItem } from '../../shared/ipc';
+import type { BenchListItem, SiteListItem, CatalogAppItem } from '../../shared/ipc';
 import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
 const ipc = useIpc();
@@ -503,18 +457,6 @@ const acknowledgedSiteAppTaskResults = ref(new Set<string>());
 const initializedSiteAppTaskAcks = ref(false);
 const showSiteAppsDialog = ref(false);
 const selectedSiteForAppsId = ref<string | null>(null);
-const selectedSiteAppsTab = ref<'bench' | 'activate'>('activate');
-const siteAppsTabs = [
-  { label: 'Bench apps' },
-  { label: 'Activate on site' },
-];
-const selectedSiteAppsTabIndex = computed({
-  get: () => (selectedSiteAppsTab.value === 'bench' ? 0 : 1),
-  set: (value: string | number) => {
-    const normalizedValue = typeof value === 'string' ? Number.parseInt(value, 10) : value;
-    selectedSiteAppsTab.value = normalizedValue === 0 ? 'bench' : 'activate';
-  },
-});
 const activatingSiteAppId = ref<string | null>(null);
 
 const selectedTask = computed(() => {
@@ -928,16 +870,38 @@ const canActivateSelectedSiteApps = computed(() => {
   return selectedSiteForApps.value.status === 'running' && !isResourceBusy(selectedSiteForApps.value.id, 'site');
 });
 
+
+// Track selected apps to install in the site manage apps dialog
+const appsToInstall = ref<string[]>([]);
+const { state: catalogState } = useAppCatalog();
+const getAppInfo = (appId: string) => {
+  return catalogState.value.data?.find((app) => app.id === appId) ?? ({
+    id: appId,
+    name: appId,
+    description: '',
+    source: '',
+    version: '',
+    category: 'other',
+    compatibility: {},
+  } satisfies CatalogAppItem);
+};
+
+const removeSiteAppConfirmOpen = ref(false);
+const pendingRemoveSiteAppId = ref<string | null>(null);
+const pendingRemoveSiteAppName = ref('');
+
 const closeSiteAppsDialog = () => {
   showSiteAppsDialog.value = false;
   selectedSiteForAppsId.value = null;
-  selectedSiteAppsTab.value = 'activate';
   activatingSiteAppId.value = null;
+  appsToInstall.value = [];
+  removeSiteAppConfirmOpen.value = false;
+  pendingRemoveSiteAppId.value = null;
+  pendingRemoveSiteAppName.value = '';
 };
 
 const onShowSiteApps = (site: SiteListItem) => {
   selectedSiteForAppsId.value = site.id;
-  selectedSiteAppsTab.value = 'activate';
   showSiteAppsDialog.value = true;
 };
 
@@ -970,6 +934,62 @@ const onActivateSiteApp = async (appId: string) => {
     closeSiteAppsDialog();
   } finally {
     activatingSiteAppId.value = null;
+  }
+};
+
+const onRequestDeactivateSiteApp = (appId: string) => {
+  const site = selectedSiteForApps.value;
+  if (!site) return;
+
+  const appInfo = getAppInfo(appId);
+  pendingRemoveSiteAppId.value = appId;
+  pendingRemoveSiteAppName.value = appInfo.name;
+  removeSiteAppConfirmOpen.value = true;
+};
+
+const onCancelDeactivateSiteApp = () => {
+  removeSiteAppConfirmOpen.value = false;
+  pendingRemoveSiteAppId.value = null;
+  pendingRemoveSiteAppName.value = '';
+};
+
+const onConfirmDeactivateSiteApp = async () => {
+  const appId = pendingRemoveSiteAppId.value;
+  if (!appId) {
+    onCancelDeactivateSiteApp();
+    return;
+  }
+
+  removeSiteAppConfirmOpen.value = false;
+  pendingRemoveSiteAppId.value = null;
+
+  await onDeactivateSiteApp(appId);
+};
+
+const onDeactivateSiteApp = async (appId: string) => {
+  const site = selectedSiteForApps.value;
+  if (!site) return;
+
+  if (site.status !== 'running') {
+    toast.error('Start the site before deactivating apps.');
+    return;
+  }
+
+  const existingApps = site.apps ?? [];
+  if (!existingApps.includes(appId)) {
+    return;
+  }
+
+  activatingSiteAppId.value = appId;
+  const nextApps = existingApps.filter((x) => x !== appId);
+  toast.success(`Deactivating app ${appId} from ${site.name}...`);
+
+  try {
+    await update(site.id, { apps: nextApps });
+    closeSiteAppsDialog();
+  } finally {
+    activatingSiteAppId.value = null;
+    pendingRemoveSiteAppName.value = '';
   }
 };
 
