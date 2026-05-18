@@ -53,7 +53,23 @@ const config: ForgeConfig = {
     // Cross-platform ZIP archives (works on all platforms)
     new MakerZIP({}, ['darwin', 'linux', 'win32']),
     // macOS DMG Disk Image
-    new MakerDMG({}),
+    new MakerDMG({
+      icon: path.resolve(process.cwd(), 'resources/icons/icon.icns'),
+      background: path.resolve(process.cwd(), 'resources/dmg-background.png'),
+      iconSize: 120,
+      additionalDMGOptions: {
+        window: {
+          size: {
+            width: 600,
+            height: 400,
+          },
+        },
+      },
+      contents: (opts: any) => [
+        { x: 150, y: 200, type: 'file', path: opts.appPath },
+        { x: 450, y: 200, type: 'link', path: '/Applications' },
+      ],
+    }),
     // Windows Squirrel Setup installer (creates .exe)
     new MakerSquirrel({
       authors: 'Lubus',
