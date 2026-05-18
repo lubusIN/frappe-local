@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import path from 'node:path';
 import { buildStartupErrorHtml, createBootstrapContext } from '../src/main/bootstrap';
 
 describe('startup bootstrap', () => {
@@ -20,8 +21,8 @@ describe('startup bootstrap', () => {
 
     expect(context.runtimePaths.userDataPath).toBe('/tmp/local-bench-user');
     expect(context.runtimePaths.logsPath).toBe('/tmp/local-bench-logs');
-    expect(context.runtimePaths.configPath.endsWith('/config')).toBe(true);
-    expect(context.runtimePaths.storagePath.endsWith('/storage')).toBe(true);
+    expect(context.runtimePaths.configPath.endsWith(`${path.sep}config`)).toBe(true);
+    expect(context.runtimePaths.storagePath.endsWith(`${path.sep}storage`)).toBe(true);
   });
 
   it('renders startup fallback html with app name', () => {

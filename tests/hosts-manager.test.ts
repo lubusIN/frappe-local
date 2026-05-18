@@ -40,10 +40,14 @@ describe('hosts manager localhost behavior', () => {
 
     expect(result).toBe(true);
     expect(writeFileSyncMock).toHaveBeenCalled();
-    expect(execPromiseMock).toHaveBeenCalledWith('osascript', [
-      '-e',
-      expect.stringContaining('Action: Add host entry for demo.local.'),
-    ]);
+    if (process.platform === 'darwin') {
+      expect(execPromiseMock).toHaveBeenCalledWith('osascript', [
+        '-e',
+        expect.stringContaining('Action: Add host entry for demo.local.'),
+      ]);
+    } else {
+      expect(execPromiseMock).not.toHaveBeenCalled();
+    }
   });
 
   it('skips removing hosts entry for .localhost domains', async () => {

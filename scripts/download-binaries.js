@@ -75,7 +75,11 @@ const findBinary = (dir, name) => {
     if (fs.statSync(fullPath).isDirectory()) {
       const found = findBinary(fullPath, name);
       if (found) return found;
-    } else if (file === name || (platform === 'win32' && file === `${name}.exe`)) {
+    } else if (
+      file === name ||
+      (platform === 'win32' && file === `${name}.exe`) ||
+      (platform === 'linux' && name === 'podman' && file.startsWith('podman-remote-static-linux_'))
+    ) {
       return fullPath;
     }
   }

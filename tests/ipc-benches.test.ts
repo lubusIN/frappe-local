@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import path from 'node:path';
 import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Bench, Settings, Site } from '../src/shared/domain/models';
@@ -283,7 +284,7 @@ describe('benches IPC handlers', () => {
 
     expect(created).toMatchObject({
       name: 'new-bench',
-      path: '/Users/dev/new-bench',
+      path: path.resolve('/Users/dev/new-bench'),
       frappeVersion: '15.0.0',
       status: 'queued',
       appCount: 2,
