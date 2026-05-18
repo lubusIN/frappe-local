@@ -7,11 +7,14 @@ import { app } from 'electron';
  * and production (using the Electron resources/bin folder).
  */
 export function getBinaryPath(name: string): string {
+  // Add .exe extension on Windows if not already present
+  const binaryName = process.platform === 'win32' && !name.endsWith('.exe') ? `${name}.exe` : name;
+
   // In development, the bin folder is at the project root
-  const devPath = path.join(app.getAppPath(), 'bin', name);
+  const devPath = path.join(app.getAppPath(), 'bin', binaryName);
   
   // In production, Electron forge usually puts extra resources in the resources path
-  const prodPath = path.join(process.resourcesPath, 'bin', name);
+  const prodPath = path.join(process.resourcesPath, 'bin', binaryName);
   
   // Return prod path if packaged, otherwise dev path
   return app.isPackaged ? prodPath : devPath;

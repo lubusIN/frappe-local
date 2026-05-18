@@ -14,14 +14,34 @@ const logger = createMainLogger('caddy-front-door');
 const CADDY_RUNTIME_DIR = path.join(os.tmpdir(), 'local-bench-caddy');
 const CADDY_CONFIG_PATH = path.join(CADDY_RUNTIME_DIR, 'Caddyfile');
 const CADDY_PID_PATH = path.join(CADDY_RUNTIME_DIR, 'caddy.pid');
-const CADDY_CERTIFICATES_LOCAL_DIR = path.join(
-  os.homedir(),
-  'Library',
-  'Application Support',
-  'Caddy',
-  'certificates',
-  'local'
-);
+const getCaddyCertificatesLocalDir = (): string => {
+  if (process.platform === 'win32') {
+    return path.join(
+      process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
+      'Caddy',
+      'certificates',
+      'local'
+    );
+  }
+  if (process.platform === 'darwin') {
+    return path.join(
+      os.homedir(),
+      'Library',
+      'Application Support',
+      'Caddy',
+      'certificates',
+      'local'
+    );
+  }
+  // Linux & others
+  return path.join(
+    process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'),
+    'caddy',
+    'certificates',
+    'local'
+  );
+};
+const CADDY_CERTIFICATES_LOCAL_DIR = getCaddyCertificatesLocalDir();
 const LEGACY_WILDCARD_CERT_DIR = 'wildcard_.localhost';
 
 type FrontDoorRepositories = {
@@ -86,6 +106,38 @@ export const readBenchAssetAliasesFromPath = (benchPath: string): FrontDoorAsset
 };
 
 const listProcesses = (): Array<{ pid: number; command: string }> => {
+  if (process.platform === 'win32') {
+    try {
+      const output = execFileSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-Command',
+          '@(Get-CimInstance Win32_Process | Select-Object ProcessId, CommandLine) | ConvertTo-Json -Compress',
+        ],
+        { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }
+      );
+      if (!output.trim()) {
+        return [];
+      }
+      const data = JSON.parse(output.trim());
+      if (!Array.isArray(data)) {
+        return [];
+      }
+      return data
+        .filter((item): item is { ProcessId: number; CommandLine: string | null } =>
+          item !== null && typeof item === 'object' && 'ProcessId' in item
+        )
+        .map((item) => ({
+          pid: item.ProcessId,
+          command: item.CommandLine || '',
+        }));
+    } catch (err) {
+      logger.warn(`Failed to list processes on Windows: ${err}`);
+      return [];
+    }
+  }
+
   try {
     const output = execFileSync('ps', ['-ax', '-o', 'pid=', '-o', 'command='], { encoding: 'utf8' });
     return output

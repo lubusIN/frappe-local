@@ -492,6 +492,7 @@ export const registerIpcHandlers = (
     const deferAppsPersistence = appsChanged && existing.status === 'running' && !payload.status;
 
     const { status: targetStatus, apps: _ignoredApps, ...otherUpdates } = payload;
+    void _ignoredApps;
     const persistedUpdates = deferAppsPersistence
       ? otherUpdates
       : {
@@ -776,6 +777,7 @@ export const registerIpcHandlers = (
     }
 
     const { apps: _ignoredApps, ...safeOtherUpdates } = otherUpdates;
+    void _ignoredApps;
     let updated = await repositories.sites.update(id, safeOtherUpdates);
 
     if (updated) {

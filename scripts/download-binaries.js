@@ -54,7 +54,12 @@ const CADDY_URLS = {
   win32: `https://github.com/caddyserver/caddy/releases/download/${CADDY_VERSION}/caddy_${CADDY_VERSION.replace(/^v/, '')}_windows_${getPodmanArch(arch)}.zip`,
 };
 
-const quoteShell = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
+const quoteShell = (value) => {
+  if (platform === 'win32') {
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+};
 
 const copyFileWithMode = (src, dest) => {
   fs.copyFileSync(src, dest);
@@ -134,9 +139,11 @@ function extractZip(zipPath, targetDir) {
   console.log(`Extracting ${zipPath} ...`);
   // Simple extraction using open source zip utility natively available
   if (platform === 'darwin' || platform === 'linux') {
-    execSync(`unzip -o ${zipPath} -d ${targetDir}`);
+    execSync(`unzip -o ${quoteShell(zipPath)} -d ${quoteShell(targetDir)}`);
   } else if (platform === 'win32') {
-    execSync(`powershell -command "Expand-Archive -Force '${zipPath}' '${targetDir}'"`);
+    const escapedZipPath = zipPath.replace(/'/g, "''");
+    const escapedTargetDir = targetDir.replace(/'/g, "''");
+    execSync(`powershell -NoProfile -Command "Expand-Archive -Force -Path '${escapedZipPath}' -DestinationPath '${escapedTargetDir}'"`);
   }
 }
 

@@ -47,7 +47,7 @@ const openInEditor = async (targetPath: string, editorPreference: string): Promi
     const childProcess = spawn(command, [...args, targetPath], {
       detached: true,
       stdio: 'ignore',
-      shell: false,
+      shell: process.platform === 'win32',
     });
     childProcess.unref();
     return true;

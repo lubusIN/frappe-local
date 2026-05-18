@@ -1,16 +1,28 @@
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { execPromise } from './utils/exec';
 import { createMainLogger } from './logger';
 
 const logger = createMainLogger('hosts-manager');
 
-const HOSTS_FILE = '/etc/hosts';
+const getHostsFilePath = (): string => {
+  if (process.platform === 'win32') {
+    const winDir = process.env.SystemRoot || process.env.windir || 'C:\\Windows';
+    return path.join(winDir, 'System32', 'drivers', 'etc', 'hosts');
+  }
+  return '/etc/hosts';
+};
+
+const HOSTS_FILE = getHostsFilePath();
 const MARKER_PREFIX = '# local-bench:';
 const LOCAL_BENCH_BLOCK_START = '#LOCAL-BENCH-START';
 const LOCAL_BENCH_BLOCK_END = '#LOCAL-BENCH-END';
 
 const HOSTS_PERMISSION_PROMPT_BASE =
-  'Local Bench needs administrator permission to update /etc/hosts for local site routing.';
+  process.platform === 'win32'
+    ? 'Local Bench needs administrator permission to update the hosts file for local site routing.'
+    : 'Local Bench needs administrator permission to update /etc/hosts for local site routing.';
 
 const escapeAppleScriptString = (value: string): string => value.replace(/"/g, '\\"');
 
@@ -61,7 +73,7 @@ const ensureLocalBenchBlock = (content: string): { lines: string[]; start: numbe
 
 const writeHostsContent = async (newContent: string, promptAction: string): Promise<boolean> => {
   if (process.platform === 'darwin') {
-    const tempPath = `/tmp/local-bench-hosts-${Date.now()}`;
+    const tempPath = path.join(os.tmpdir(), `local-bench-hosts-${Date.now()}`);
     try {
       fs.writeFileSync(tempPath, newContent, 'utf8');
       const script = buildPrivilegedShellScript(
@@ -70,28 +82,60 @@ const writeHostsContent = async (newContent: string, promptAction: string): Prom
       );
       const { code } = await execPromise('osascript', ['-e', script]);
       if (code !== 0) {
-        logger.error(`Failed to update hosts file for action: ${promptAction}`);
+        logger.error(`Failed to update hosts file on macOS for action: ${promptAction}`);
       }
       return code === 0;
     } catch (error) {
       logger.error(`Failed to update hosts file for action ${promptAction}:`, error);
       return false;
+    } finally {
+      try {
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+      } catch (err) {
+        logger.warn(`Failed to clean up temp file ${tempPath}: ${err}`);
+      }
     }
   }
 
+  // Try direct write first (useful for Windows when running as admin, or when hosts is writable)
   try {
     fs.writeFileSync(HOSTS_FILE, newContent, 'utf8');
     return true;
   } catch {
-    const tempPath = `/tmp/local-bench-hosts-${Date.now()}`;
+    // If direct write fails, elevate privileges
+    const tempPath = path.join(os.tmpdir(), `local-bench-hosts-${Date.now()}`);
     try {
       fs.writeFileSync(tempPath, newContent, 'utf8');
+
+      if (process.platform === 'win32') {
+        const powershellCmd = `Start-Process powershell -ArgumentList '-NoProfile', '-Command', 'Copy-Item -Path ''${tempPath}'' -Destination ''${HOSTS_FILE}'' -Force' -Verb RunAs -Wait -WindowStyle Hidden`;
+        const { code } = await execPromise('powershell.exe', ['-NoProfile', '-Command', powershellCmd]);
+        if (code !== 0) {
+          logger.error(`Failed to update hosts file on Windows for action: ${promptAction}`);
+        }
+        return code === 0;
+      }
+
+      // Linux/POSIX fallback
       const command = `cp ${quoteForShell(tempPath)} ${HOSTS_FILE} && rm ${quoteForShell(tempPath)}`;
       const { code } = await execPromise('sudo', ['sh', '-c', command]);
+      if (code !== 0) {
+        logger.error(`Failed to update hosts file on Linux for action: ${promptAction}`);
+      }
       return code === 0;
     } catch (error) {
       logger.error(`Failed to update hosts file for action ${promptAction}:`, error);
       return false;
+    } finally {
+      try {
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+      } catch (err) {
+        logger.warn(`Failed to clean up temp file ${tempPath}: ${err}`);
+      }
     }
   }
 };
