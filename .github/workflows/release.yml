@@ -48,7 +48,7 @@ jobs:
         run: bash ./scripts/validate-artifacts.sh
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: local-bench-${{ matrix.os }}
           path: |
@@ -67,7 +67,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
