@@ -1,16 +1,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: write
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -60,10 +56,10 @@ jobs:
           retention-days: 1
 
   release:
-    name: Create Release
+    name: Upload Release Assets
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'release'
 
     steps:
       - name: Download all artifacts
@@ -77,10 +73,8 @@ jobs:
           find artifacts -type f -exec cp {} release-assets/ \;
           ls -R release-assets
 
-      - name: Create GitHub Release
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
