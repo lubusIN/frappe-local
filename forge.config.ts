@@ -36,7 +36,7 @@ const macOSConfig = {
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'Local Bench',
-    executableName: 'Local Bench',
+    executableName: 'local-bench',
     appBundleId: 'com.lubusin.local.bench',
     appCategoryType: 'public.app-category.developer-tools',
     asar: true,
@@ -55,7 +55,10 @@ const config: ForgeConfig = {
     // macOS DMG Disk Image
     new MakerDMG({}),
     // Windows Squirrel Setup installer (creates .exe)
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      authors: 'Lubus',
+      description: 'Desktop app for managing local Frappe benches and sites.',
+    }),
     // Linux Debian/Ubuntu package (.deb)
     new MakerDeb({}),
     // Linux RedHat/Fedora package (.rpm)

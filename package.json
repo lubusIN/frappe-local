@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json",
     "postinstall": "node scripts/download-binaries.js"
   },
-  "author": "",
+  "author": "Lubus",
   "license": "MIT",
   "devDependencies": {
     "@electron-forge/cli": "^7.8.1",
