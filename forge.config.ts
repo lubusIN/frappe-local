@@ -1,5 +1,9 @@
 import type { ForgeConfig } from '@electron-forge/shared-types';
 import { MakerZIP } from '@electron-forge/maker-zip';
+import { MakerDMG } from '@electron-forge/maker-dmg';
+import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerDeb } from '@electron-forge/maker-deb';
+import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import path from 'node:path';
 
@@ -48,6 +52,14 @@ const config: ForgeConfig = {
   makers: [
     // Cross-platform ZIP archives (works on all platforms)
     new MakerZIP({}, ['darwin', 'linux', 'win32']),
+    // macOS DMG Disk Image
+    new MakerDMG({}),
+    // Windows Squirrel Setup installer (creates .exe)
+    new MakerSquirrel({}),
+    // Linux Debian/Ubuntu package (.deb)
+    new MakerDeb({}),
+    // Linux RedHat/Fedora package (.rpm)
+    new MakerRpm({}),
   ],
   plugins: [
     new VitePlugin({
