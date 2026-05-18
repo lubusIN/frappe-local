@@ -18,7 +18,7 @@
 
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
-    viewBox="10 14 75 75"
+    viewBox="12 11 76 76"
     fill="currentColor"
   >
     <path
