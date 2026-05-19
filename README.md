@@ -2,6 +2,8 @@
 
 Local Bench is a cross-platform desktop app that lets anyone create local Frappe benches and sites visually without Docker setup, dependency management, or terminal commands.
 
+<img src=".github/assets/local-bench-banner.jpg" />
+
 ## Status
 
 > [!CAUTION]
@@ -9,7 +11,18 @@ Local Bench is a cross-platform desktop app that lets anyone create local Frappe
 
 ## Installation
 
-Download the latest release for your platform from [releases](https://github.com/lubusIN/local-bench/releases).
+### macOS
+
+#### Download
+Download the latest release .dmg directly from the from [releases](https://github.com/lubusIN/local-bench/releases). After download open and drag the app to the applications folder.
+
+#### Unblock Gatekeeper
+Apple blocks apps not from Mac App Store or signed by trusted developers. Open terminal and run the following command:
+
+```shell
+xattr -rd com.apple.quarantine /Applications/Local\ bench.app
+```
+this will remove the quarantine attribute from the app and you can open it normally.
 
 ## Development
 
