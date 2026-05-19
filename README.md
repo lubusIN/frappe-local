@@ -66,19 +66,6 @@ npm start
 - `src/renderer` - Vue renderer app
 - `src/shared` - shared contracts/types between processes
 - `tests` - unit/integration tests
-- `src/preload` - preload bridge
-- `src/renderer` - Vue renderer app
-- `src/shared` - shared contracts/types between processes
-- `tests` - unit/integration tests
-
-## UI consistency rule: ##
-- Do not apply `class` or `style` directly on `TextInput` components.
-- Use Frappe UI props (`variant`, `size`, `disabled`) and wrapper containers for layout.
-- Do not use native `<input>`, `<textarea>`, or `<select>` in renderer Vue templates.
-- Use Frappe UI components (for example `TextInput`, `Select`) instead.
-- Do not style input internals via deep selectors (for example `:deep(input...)` or `::v-deep ... input`).
-- Do not add global CSS selectors for `input`, `textarea`, or `select` in `src/renderer/styles.css`.
-- This is enforced by `npm run precommit:check`.
 
 ## Meet Your Artisans
 
