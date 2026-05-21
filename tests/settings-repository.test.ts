@@ -24,13 +24,11 @@ function makeInMemoryAdapter(initial?: StorageSnapshot): StorageAdapter {
   };
 }
 
+import { DEFAULT_SETTINGS } from '../src/shared/domain/models';
+
 const fullSettings: Settings = {
-  defaultFrappeVersion: '15.0.0',
+  ...DEFAULT_SETTINGS,
   storagePath: '/home/user/.local-bench',
-  editorPreference: 'code',
-  updateChannel: 'stable',
-  autoUpdateEnabled: true,
-  sidebarCompact: false,
 };
 
 describe('SettingsRepository', () => {
@@ -48,7 +46,7 @@ describe('SettingsRepository', () => {
 
   it('set creates settings and returns the full object', async () => {
     const saved = await repo.set(fullSettings);
-    expect(saved.defaultFrappeVersion).toBe('15.0.0');
+    expect(saved.defaultFrappeVersion).toBe('16.0.0');
     expect(saved.updateChannel).toBe('stable');
   });
 
@@ -67,7 +65,7 @@ describe('SettingsRepository', () => {
     const patched = await repo.patch({ autoUpdateEnabled: false });
     expect(patched).not.toBeNull();
     expect(patched!.autoUpdateEnabled).toBe(false);
-    expect(patched!.defaultFrappeVersion).toBe('15.0.0');
+    expect(patched!.defaultFrappeVersion).toBe('16.0.0');
   });
 
   it('patch returns null when settings not yet configured', async () => {

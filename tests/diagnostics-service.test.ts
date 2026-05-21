@@ -28,13 +28,11 @@ vi.mock('node:dns/promises', () => ({
 
 const createdPaths: string[] = [];
 
+import { DEFAULT_SETTINGS } from '../src/shared/domain/models';
+
 const seedSettings: Settings = {
-  defaultFrappeVersion: '15.0.0',
+  ...DEFAULT_SETTINGS,
   storagePath: '/tmp/local-bench',
-  editorPreference: 'code',
-  updateChannel: 'stable',
-  autoUpdateEnabled: true,
-  sidebarCompact: false,
 };
 
 afterEach(async () => {

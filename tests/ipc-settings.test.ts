@@ -3,13 +3,11 @@ import { registerIpcHandlers } from '../src/main/ipc';
 import { ipcChannels } from '../src/shared/ipc';
 import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 
+import { DEFAULT_SETTINGS } from '../src/shared/domain/models';
+
 const seedSettings: Settings = {
-  defaultFrappeVersion: '15.0.0',
+  ...DEFAULT_SETTINGS,
   storagePath: '/Users/dev/.local-bench',
-  editorPreference: 'code',
-  updateChannel: 'stable',
-  autoUpdateEnabled: true,
-  sidebarCompact: false,
 };
 
 function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
@@ -110,7 +108,7 @@ describe('settings IPC handlers', () => {
 
     const result = await handlers.get(ipcChannels.settingsGet)?.();
     expect(result).toMatchObject({
-      defaultFrappeVersion: '15.0.0',
+      defaultFrappeVersion: '16.0.0',
       updateChannel: 'stable',
       autoUpdateEnabled: true,
     });

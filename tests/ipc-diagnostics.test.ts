@@ -24,13 +24,11 @@ vi.mock('../src/main/utils/exec', () => ({
   execPromise: (...args: unknown[]) => execPromiseMock(...args),
 }));
 
+import { DEFAULT_SETTINGS } from '../src/shared/domain/models';
+
 const seedSettings: Settings = {
-  defaultFrappeVersion: '15.0.0',
+  ...DEFAULT_SETTINGS,
   storagePath: '/Users/dev/.local-bench',
-  editorPreference: 'code',
-  updateChannel: 'stable',
-  autoUpdateEnabled: true,
-  sidebarCompact: false,
 };
 
 function makeStubCatalogRepo(items: AppCatalogItem[] = []) {

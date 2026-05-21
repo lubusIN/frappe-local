@@ -73,6 +73,15 @@ export const SettingsSchema = z.object({
   sidebarCompact: z.boolean().default(false),
 });
 
+export const DEFAULT_SETTINGS: Settings = {
+  defaultFrappeVersion: '16.0.0',
+  storagePath: '~/Library/Application Support/Local Bench',
+  editorPreference: 'code',
+  updateChannel: 'stable',
+  autoUpdateEnabled: true,
+  sidebarCompact: false,
+};
+
 export const CreateBenchInputSchema = BenchSchema.omit({
   id: true,
   status: true,

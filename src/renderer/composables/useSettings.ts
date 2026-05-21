@@ -1,15 +1,9 @@
 import { onMounted, ref } from 'vue';
 import type { SettingsItem } from '../../shared/ipc';
 import { useIpc } from './useIpc';
+import { DEFAULT_SETTINGS } from '../../shared/domain/models';
 
-const defaultSettings = (): SettingsItem => ({
-  defaultFrappeVersion: '15.0.0',
-  storagePath: '~/Library/Application Support/Local Bench',
-  editorPreference: 'code',
-  updateChannel: 'stable',
-  autoUpdateEnabled: true,
-  sidebarCompact: false,
-});
+const defaultSettings = (): SettingsItem => ({ ...DEFAULT_SETTINGS });
 
 export const useSettings = () => {
   const form = ref<SettingsItem>(defaultSettings());
