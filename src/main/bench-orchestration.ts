@@ -5,7 +5,6 @@ import fs from 'node:fs';
 import { getTaskRunner } from './task-runner';
 import type { Bench, Site } from '../shared/domain/models';
 import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
-import { removeAllHostsEntriesForBench } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from './utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
@@ -1104,16 +1103,6 @@ export const orchestrateBenchDeletion = (
         // Remove bench
         await benchesRepo.delete(bench.id);
         context.completeStep('db', 'Database records removed');
-
-        // Remove hosts entries for all sites in this bench
-        context.startStep('hosts', 'Removing local domain mappings');
-        try {
-          const siteNames = attachedSites.map(s => s.name);
-          await removeAllHostsEntriesForBench(bench.id, siteNames, bench.name);
-          context.completeStep('hosts', 'Domain mappings removed');
-        } catch (hostsErr) {
-          context.log('warning', `Could not remove hosts entries: ${hostsErr instanceof Error ? hostsErr.message : String(hostsErr)}`);
-        }
 
         removeBenchDirectoryBestEffort();
 

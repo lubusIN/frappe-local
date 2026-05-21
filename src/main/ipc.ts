@@ -24,7 +24,6 @@ import { findNextAvailableTcpPort } from './utils/ports';
 import { normalizeSiteHost } from '../shared/site-hostname';
 import { withCoreBenchApps } from '../shared/bench-apps';
 import { resolveBenchHttpPort } from './utils/bench-http-port';
-import { removeAllLocalBenchHostsEntries } from './hosts-manager';
 
 const mainLogger = createMainLogger('ipc');
 
@@ -317,13 +316,6 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.diagnosticsResetDevState, async (): Promise<boolean> => {
     const benches = await repositories.benches.findAll();
-
-    // Reset performs one hosts cleanup pass so macOS prompts for permission only once.
-    try {
-      await removeAllLocalBenchHostsEntries();
-    } catch (err) {
-      mainLogger.warn(`Failed to remove Local Bench hosts block during reset: ${err}`);
-    }
 
     let runtimeEnv: NodeJS.ProcessEnv | undefined;
     try {

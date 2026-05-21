@@ -8,7 +8,6 @@ const getBinaryPathMock = vi.fn();
 const ensureRuntimeRunningMock = vi.fn();
 const getRuntimeEnvMock = vi.fn();
 const enqueueMock = vi.fn();
-const removeAllHostsEntriesForBenchMock = vi.fn();
 
 vi.mock('../src/main/utils/exec', () => ({
   execPromise: (...args: unknown[]) => execPromiseMock(...args),
@@ -27,10 +26,6 @@ vi.mock('../src/main/task-runner', () => ({
   getTaskRunner: () => ({
     enqueue: (...args: unknown[]) => enqueueMock(...args),
   }),
-}));
-
-vi.mock('../src/main/hosts-manager', () => ({
-  removeAllHostsEntriesForBench: (...args: unknown[]) => removeAllHostsEntriesForBenchMock(...args),
 }));
 
 describe('bench delete orchestration cleanup', () => {
@@ -118,7 +113,6 @@ describe('bench delete orchestration cleanup', () => {
 
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    removeAllHostsEntriesForBenchMock.mockResolvedValue(true);
 
     execPromiseMock
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
@@ -186,11 +180,5 @@ describe('bench delete orchestration cleanup', () => {
       expect.any(Number)
     );
 
-    expect(removeAllHostsEntriesForBenchMock).toHaveBeenCalledTimes(1);
-    expect(removeAllHostsEntriesForBenchMock).toHaveBeenCalledWith(
-      bench.id,
-      ['demo.localhost', 'erp.localhost'],
-      bench.name
-    );
   });
 });

@@ -7,7 +7,6 @@ import { orchestrateSiteAppsUpdate, orchestrateSiteCreation } from '../src/main/
 const execPromiseMock = vi.fn();
 const getBinaryPathMock = vi.fn();
 const getRuntimeEnvMock = vi.fn();
-const addHostsEntryMock = vi.fn();
 const enqueueMock = vi.fn();
 const updateSiteMock = vi.fn();
 
@@ -21,11 +20,6 @@ vi.mock('../src/main/utils/binaries', () => ({
 
 vi.mock('../src/main/runtime-service', () => ({
   getRuntimeEnv: () => getRuntimeEnvMock(),
-}));
-
-vi.mock('../src/main/hosts-manager', () => ({
-  addHostsEntry: (...args: unknown[]) => addHostsEntryMock(...args),
-  removeHostsEntry: async () => true,
 }));
 
 vi.mock('../src/main/task-runner', () => ({
@@ -78,7 +72,6 @@ describe('site orchestration command execution', () => {
 
     getBinaryPathMock.mockReturnValue('/mock/docker-compose');
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    addHostsEntryMock.mockResolvedValue(true);
     execPromiseMock.mockResolvedValue({ stdout: '', stderr: '', code: 0 });
     updateSiteMock.mockResolvedValue(createdSite);
 

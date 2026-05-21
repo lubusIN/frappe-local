@@ -7,7 +7,6 @@ import type { SiteCreateInput } from '../shared/ipc';
 import { canAttachSiteToBench } from '../shared/domain/site-lifecycle';
 import { getTaskRunner } from './task-runner';
 import { getRuntimeEnv } from './runtime-service';
-import { addHostsEntry, removeHostsEntry } from './hosts-manager';
 import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
 import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
@@ -99,12 +98,6 @@ export const orchestrateSiteCreation = async (
           }
         } catch (cleanupError) {
           context.log('warning', `Filesystem cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
-        }
-
-        try {
-          await removeHostsEntry(input.name);
-        } catch (cleanupError) {
-          context.log('warning', `Hosts cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
         }
 
         context.completeStep('cleanup', 'Partial resources cleaned up');
@@ -265,14 +258,6 @@ export const orchestrateSiteCreation = async (
 
         context.completeStep('restart', 'Bench services restarted');
 
-        context.startStep('hosts', 'Configuring local domain');
-        const hostsAdded = await addHostsEntry(input.name, bench.id);
-        if (hostsAdded) {
-          context.completeStep('hosts', `Mapped ${input.name} → 127.0.0.1`);
-        } else {
-          context.log('warning', `Could not add hosts entry for ${input.name}. You may need to add it manually to /etc/hosts.`, 'hosts');
-        }
-
         await dependencies.sites.update(createdSite.id, { status: 'running' });
       } catch (error) {
         const rawMessage = error instanceof Error ? error.message : String(error);
@@ -385,14 +370,6 @@ export const orchestrateSiteDeletion = async (
           context.completeStep('rm-dir', `Site directory removed`);
         } catch (fsError) {
           context.log('warning', `Failed to remove site directory: ${fsError instanceof Error ? fsError.message : String(fsError)}`, 'rm-dir');
-        }
-
-        context.startStep('hosts', 'Removing local domain mapping');
-        const hostsRemoved = await removeHostsEntry(site.name);
-        if (hostsRemoved) {
-          context.completeStep('hosts', `Removed ${site.name} from /etc/hosts`);
-        } else {
-          context.log('warning', `Could not remove hosts entry for ${site.name}. You may need to remove it manually from /etc/hosts.`, 'hosts');
         }
 
         await dependencies.sites.delete(siteId);
