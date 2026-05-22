@@ -99,7 +99,7 @@ describe('site status orchestration commands', () => {
 
     expect(execPromiseMock).toHaveBeenCalledTimes(1);
 
-    const [command, args, cwd, _onOutput, env, timeout] = execPromiseMock.mock.calls[0] as [
+    const [command, args, cwd, , env, timeout] = execPromiseMock.mock.calls[0] as [
       string,
       string[],
       string,

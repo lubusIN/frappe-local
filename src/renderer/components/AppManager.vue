@@ -176,9 +176,7 @@ import { computed, ref } from 'vue';
 import IconSearch from '~icons/lucide/search';
 import { Badge, Button, ListRows, ListView, Select, TextInput } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/ipc';
-import { useAppCatalog } from '../composables/useAppCatalog';
-import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '../catalog-query';
-import { evaluateCatalogCompatibility } from '../catalog-compatibility';
+import { useAppCatalogFilters } from '../composables/useAppCatalogFilters';
 
 const appColumns = [
   { key: 'icon', label: '', width: '46px' },
@@ -202,18 +200,19 @@ const emit = defineEmits<{
   (e: 'uninstall-app', appId: string): void;
 }>();
 
-const query = ref('');
-const categoryFilter = ref('');
-const sort = ref<CatalogSort>('name-asc');
-const { state, reload } = useAppCatalog();
+const frappeVersionRef = computed(() => props.frappeVersion);
+
+const {
+  query,
+  categoryFilter,
+  state,
+  categoryOptions,
+  items,
+  evaluateCompatibility,
+  onSearch,
+} = useAppCatalogFilters({ frappeVersion: frappeVersionRef });
+
 const imageErrors = ref<Record<string, boolean>>({});
-
-
-const categories = computed(() => getCatalogCategories(state.value.data ?? []));
-const categoryOptions = computed(() => [
-  { label: 'All categories', value: '' },
-  ...categories.value.map((category) => ({ label: category.label, value: category.id })),
-]);
 
 const allowedAppIds = computed(() => {
   if (!props.allowedAppIds || props.allowedAppIds.length === 0) {
@@ -223,15 +222,6 @@ const allowedAppIds = computed(() => {
   return new Set(props.allowedAppIds.map((appId) => appId.trim()).filter(Boolean));
 });
 
-const items = computed(() =>
-  filterAndSortCatalog(state.value.data ?? [], {
-    query: query.value,
-    sourceHost: '',
-    category: categoryFilter.value,
-    sort: sort.value,
-  })
-);
-
 const visibleItems = computed(() =>
   items.value.filter((item) => {
     if (allowedAppIds.value && !allowedAppIds.value.has(item.id)) {
@@ -239,9 +229,7 @@ const visibleItems = computed(() =>
     }
 
     // Filter out incompatible apps
-    const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
-      frappeVersion: props.frappeVersion,
-    });
+    const compatibility = evaluateCompatibility(item as CatalogAppItem);
     if (!compatibility.isCompatible) {
       return false;
     }
@@ -253,9 +241,7 @@ const visibleItems = computed(() =>
 const rows = computed(() =>
   visibleItems.value.map((item) => {
     const isActive = props.activeAppIds.includes(item.id) || (props.context === 'site' && item.id === 'frappe');
-    const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
-      frappeVersion: props.frappeVersion,
-    });
+    const compatibility = evaluateCompatibility(item as CatalogAppItem);
 
     return {
       ...item,
@@ -273,7 +259,4 @@ const rows = computed(() =>
   })
 );
 
-const onSearch = () => {
-  void reload(query.value);
-};
 </script>

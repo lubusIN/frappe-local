@@ -133,10 +133,8 @@ import IconSearch from '~icons/lucide/search';
 import { Badge, ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/ipc';
 import { CORE_BENCH_APPS_SET } from '../../shared/bench-apps';
-import { useAppCatalog } from '../composables/useAppCatalog';
 import { normalizeSelection } from '../app-picker-state';
-import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '../catalog-query';
-import { evaluateCatalogCompatibility } from '../catalog-compatibility';
+import { useAppCatalogFilters } from '../composables/useAppCatalogFilters';
 
 const appColumns = [
   { key: 'icon', label: '', width: '46px' },
@@ -157,21 +155,22 @@ const emit = defineEmits<{
   'update:modelValue': [value: string[]];
 }>();
 
-const query = ref('');
-const categoryFilter = ref('');
-const sort = ref<CatalogSort>('name-asc');
-const { state, reload } = useAppCatalog();
+const frappeVersionRef = computed(() => props.frappeVersion);
+
+const {
+  query,
+  categoryFilter,
+  state,
+  categoryOptions,
+  items,
+  evaluateCompatibility,
+  onSearch,
+} = useAppCatalogFilters({ frappeVersion: frappeVersionRef });
+
 const imageErrors = ref<Record<string, boolean>>({});
 const listViewRef = ref<{ selections: Set<string> } | null>(null);
 const syncingFromUser = ref(false);
 const syncingFromModel = ref(false);
-
-
-const categories = computed(() => getCatalogCategories(state.value.data ?? []));
-const categoryOptions = computed(() => [
-  { label: 'All categories', value: '' },
-  ...categories.value.map((category) => ({ label: category.label, value: category.id })),
-]);
 
 const excludedAppIds = computed(() => new Set((props.excludeAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
 const disabledAppIds = computed(() => new Set((props.disabledAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
@@ -182,15 +181,6 @@ const allowedAppIds = computed(() => {
 
   return new Set(props.allowedAppIds.map((appId) => appId.trim()).filter(Boolean));
 });
-
-const items = computed(() =>
-  filterAndSortCatalog(state.value.data ?? [], {
-    query: query.value,
-    sourceHost: '',
-    category: categoryFilter.value,
-    sort: sort.value,
-  })
-);
 
 const visibleItems = computed(() =>
   items.value.filter((item) => {
@@ -203,9 +193,7 @@ const visibleItems = computed(() =>
     }
 
     // Filter out incompatible apps
-    const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
-      frappeVersion: props.frappeVersion,
-    });
+    const compatibility = evaluateCompatibility(item as CatalogAppItem);
     if (!compatibility.isCompatible) {
       return false;
     }
@@ -218,9 +206,7 @@ const rows = computed(() =>
   visibleItems.value.map((item) => {
     const isPreinstalledCoreApp = Boolean(props.disableCoreBenchApps && CORE_BENCH_APPS_SET.has(item.id));
     const isExplicitlyDisabled = disabledAppIds.value.has(item.id);
-    const compatibility = evaluateCatalogCompatibility(item as CatalogAppItem, {
-      frappeVersion: props.frappeVersion,
-    });
+    const compatibility = evaluateCompatibility(item as CatalogAppItem);
 
     return {
       ...item,
@@ -239,10 +225,6 @@ const rows = computed(() =>
     };
   })
 );
-
-const onSearch = () => {
-  void reload(query.value);
-};
 
 const syncSelectionsFromModel = () => {
   const selectionSet = listViewRef.value?.selections;

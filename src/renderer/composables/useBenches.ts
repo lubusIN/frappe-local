@@ -1,4 +1,5 @@
-import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
+import { ref } from 'vue';
+import { useStatusPolling } from './useStatusPolling';
 import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '../../shared/ipc';
 import { useIpc } from './useIpc';
 import { humanizeCreateFailure, stripIpcPrefix } from '../../shared/runtime-errors';
@@ -193,39 +194,7 @@ export const useBenches = () => {
     }
   };
 
-  const pollingInterval = ref<ReturnType<typeof setInterval> | null>(null);
-
-  const startPolling = () => {
-    if (pollingInterval.value) return;
-    pollingInterval.value = setInterval(() => {
-      void load(true);
-    }, 3000);
-  };
-
-  const stopPolling = () => {
-    if (pollingInterval.value) {
-      clearInterval(pollingInterval.value);
-      pollingInterval.value = null;
-    }
-  };
-
-  watchEffect(() => {
-    const hasQueued = benches.value.some((b) => b.status === 'queued');
-    const hasDeleting = deletingIds.value.size > 0;
-    if (hasQueued || hasDeleting) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
-  });
-
-  onMounted(() => {
-    void load();
-  });
-
-  onUnmounted(() => {
-    stopPolling();
-  });
+  useStatusPolling(benches, deletingIds, load);
 
   return {
     benches,

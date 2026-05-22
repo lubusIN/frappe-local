@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Bench } from '../../shared/domain/models';
 
-const DEFAULT_HTTP_PORT = 8080;
+export const DEFAULT_HTTP_PORT = 8080;
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value >= 1024 && value <= 65535;
 

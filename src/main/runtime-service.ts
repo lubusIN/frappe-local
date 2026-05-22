@@ -1,4 +1,5 @@
 import { execPromise } from './utils/exec';
+import { isPodmanMachineRequired, getPodmanMachines, cleanupStaleMacPodmanProcesses } from './utils/podman';
 import { getBinaryPath } from './utils/binaries';
 import { createMainLogger } from './logger';
 import path from 'node:path';
@@ -32,7 +33,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
     DOCKER_CONFIG: isolatedConfigDir,
   };
   
-  if (process.platform === 'darwin' || process.platform === 'win32') {
+  if (isPodmanMachineRequired()) {
     try {
       // Try machine inspect first (most reliable for machine-based podman)
       const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
@@ -78,11 +79,8 @@ async function ensurePodmanRunning(): Promise<boolean> {
     await execPromise(getBinaryPath('podman'), ['--version']);
 
     // 2. On Mac/Windows, check machine status
-    if (process.platform === 'darwin' || process.platform === 'win32') {
-      
-
-      const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
-      const machines = JSON.parse(stdout || '[]');
+    if (isPodmanMachineRequired()) {
+      const machines = await getPodmanMachines();
       
       if (machines.length === 0) {
         logger.info('No podman machine found, initializing default...');
@@ -90,8 +88,7 @@ async function ensurePodmanRunning(): Promise<boolean> {
       }
 
       // Check machine status
-      const { stdout: statusOutput } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
-      const refreshedMachines = JSON.parse(statusOutput || '[]');
+      const refreshedMachines = await getPodmanMachines();
       const machineState = (refreshedMachines[0]?.State || refreshedMachines[0]?.Status || 'unknown').toLowerCase();
       
       const isRunning = machineState === 'running';
@@ -102,8 +99,7 @@ async function ensurePodmanRunning(): Promise<boolean> {
         // Wait up to 30 seconds for it to transition to running
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 1000));
-          const { stdout: pollOutput } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json']);
-          const pollMachines = JSON.parse(pollOutput || '[]');
+          const pollMachines = await getPodmanMachines();
           const pollState = (pollMachines[0]?.State || pollMachines[0]?.Status || '').toLowerCase();
           if (pollState === 'running') {
             logger.info('Podman machine is now running.');
@@ -120,10 +116,7 @@ async function ensurePodmanRunning(): Promise<boolean> {
           const message = err instanceof Error ? err.message : String(err);
           if (message.includes('proxy already running')) {
             logger.warn('Podman proxy already running but machine state is not running. Cleaning up stale proxy...');
-            if (process.platform === 'darwin') {
-              try { await execPromise('pkill', ['-9', 'gvproxy']); } catch { logger.warn('No stale gvproxy process found.'); }
-              try { await execPromise('pkill', ['-9', 'vfkit']); } catch { logger.warn('No stale vfkit process found.'); }
-            }
+            await cleanupStaleMacPodmanProcesses(logger);
             logger.info('Retrying podman machine start after stale proxy cleanup...');
             await execPromise(getBinaryPath('podman'), ['machine', 'start']);
           } else {
@@ -138,10 +131,7 @@ async function ensurePodmanRunning(): Promise<boolean> {
         await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 15000);
       } catch (err) {
         logger.warn(`Podman health check failed (timeout or error): ${err}. Auto-healing...`);
-        if (process.platform === 'darwin') {
-          try { await execPromise('pkill', ['-9', 'vfkit']); } catch { logger.warn('No stale vfkit process found.'); }
-          try { await execPromise('pkill', ['-9', 'gvproxy']); } catch { logger.warn('No stale gvproxy process found.'); }
-        }
+        await cleanupStaleMacPodmanProcesses(logger);
         try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch { logger.warn('Podman machine stop failed during auto-heal.'); }
         
         logger.info('Restarting podman machine after auto-heal...');

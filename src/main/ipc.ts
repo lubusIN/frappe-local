@@ -23,7 +23,7 @@ import { createMainLogger } from './logger';
 import { findNextAvailableTcpPort } from './utils/ports';
 import { normalizeSiteHost } from '../shared/site-hostname';
 import { withCoreBenchApps } from '../shared/bench-apps';
-import { resolveBenchHttpPort } from './utils/bench-http-port';
+import { resolveBenchHttpPort, DEFAULT_HTTP_PORT } from './utils/bench-http-port';
 
 const mainLogger = createMainLogger('ipc');
 
@@ -49,13 +49,9 @@ import {
 } from '../shared/domain/site-lifecycle';
 import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
 import { createDefaultStorageSnapshot } from './storage/schema';
-import { execPromise } from './utils/exec';
-import { getBinaryPath } from './utils/binaries';
-import { OPERATION_TIMEOUTS } from './constants';
-import type { BenchLifecycleOperation } from './bench-analytics';
-import type { SiteLifecycleOperation } from './site-analytics';
+import type { LifecycleOperation } from './analytics';
 import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
-import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion } from './bench-orchestration';
+import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './bench-orchestration';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -78,8 +74,6 @@ const resolveUserPath = (untrimmedPath: string): string => {
 
   return path.resolve(trimmedPath);
 };
-
-const DEFAULT_HTTP_PORT = 8080;
 
 const deriveUsedBenchPorts = (benches: Bench[]): Set<number> => {
   return new Set(
@@ -125,8 +119,8 @@ export type IpcOperations = {
   pathExists: (targetPath: string) => boolean;
   isFrontDoorAvailable?: () => boolean;
   refreshFrontDoorHosts?: () => Promise<void>;
-  trackBenchOperation?: (benchId: string, operation: BenchLifecycleOperation) => void;
-  trackSiteOperation?: (siteId: string, operation: SiteLifecycleOperation) => void;
+  trackBenchOperation?: (benchId: string, operation: LifecycleOperation) => void;
+  trackSiteOperation?: (siteId: string, operation: LifecycleOperation) => void;
 };
 
 export type AppRepositories = IpcRepositories;
@@ -328,64 +322,7 @@ export const registerIpcHandlers = (
     }
 
     if (runtimeEnv) {
-      const composeBinary = getBinaryPath('docker-compose');
-
-      for (const bench of benches) {
-        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
-        try {
-          await execPromise(
-            composeBinary,
-            ['-p', projectName, 'down', '-v', '--remove-orphans'],
-            bench.path,
-            undefined,
-            runtimeEnv,
-            OPERATION_TIMEOUTS.BENCH_STOP
-          );
-        } catch (error) {
-          mainLogger.warn(`Failed to clean compose project ${projectName}: ${error}`);
-        }
-      }
-
-      const podmanBinary = getBinaryPath('podman');
-      const listNames = async (args: string[]): Promise<string[]> => {
-        try {
-          const { stdout } = await execPromise(podmanBinary, args, undefined, undefined, runtimeEnv, 60000);
-          return stdout
-            .split('\n')
-            .map((line) => line.trim())
-            .filter(Boolean);
-        } catch (error) {
-          mainLogger.warn(`Failed to list podman resources for args [${args.join(' ')}]: ${error}`);
-          return [];
-        }
-      };
-
-      const containerIds = await listNames(['ps', '-a', '--filter', 'name=local-bench-', '--format', '{{.ID}}']);
-      if (containerIds.length > 0) {
-        try {
-          await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, undefined, runtimeEnv, 60000);
-        } catch (error) {
-          mainLogger.warn(`Failed to remove local-bench containers: ${error}`);
-        }
-      }
-
-      const volumeNames = await listNames(['volume', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
-      if (volumeNames.length > 0) {
-        try {
-          await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, undefined, runtimeEnv, 60000);
-        } catch (error) {
-          mainLogger.warn(`Failed to remove local-bench volumes: ${error}`);
-        }
-      }
-
-      const networkNames = await listNames(['network', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
-      if (networkNames.length > 0) {
-        try {
-          await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, undefined, runtimeEnv, 60000);
-        } catch (error) {
-          mainLogger.warn(`Failed to remove local-bench networks: ${error}`);
-        }
-      }
+      await resetAllBenchContainers(benches, runtimeEnv, mainLogger);
     }
 
      // Remove all bench folders and their sites from the filesystem

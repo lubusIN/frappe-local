@@ -55,11 +55,11 @@
               :variant="'subtle'"
               :theme="getStatusTheme(row)"
               class="inline-flex cursor-pointer items-center gap-1.5"
-              @click.stop="onStatusClick(row.id, 'bench')"
+              @click.stop="onStatusClick(row.id)"
             >
               {{ formatStatusLabel(row) }}
               <span
-                v-if="isResourceBusy(row.id, 'bench')"
+                v-if="isResourceBusy(row.id)"
                 class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
               />
             </Badge>
@@ -121,152 +121,10 @@
       @confirm="onConfirmDelete"
     />
 
-    <Dialog
-      v-model="showCreateBenchModal"
-      :options="{ title: 'New bench', size: '3xl' }"
-      @close="onCloseBenchWizard"
-    >
-      <template #body-content>
-        <div class="flex flex-col gap-4">
-          <div class="flex items-center gap-2.5 px-0 py-1">
-            <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 1 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-              Details
-            </span>
-            <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-            <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 2 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-              Apps
-            </span>
-            <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-            <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 3 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-              Confirm
-            </span>
-          </div>
-
-          <form
-            class="flex flex-col gap-4"
-            @submit.prevent="onCreateBench"
-          >
-            <p
-              v-if="wizardErrors.length > 0"
-              class="mb-4 text-sm text-ink-red-3"
-            >
-              {{ wizardErrors.join(' ') }}
-            </p>
-
-            <div
-              v-if="wizardStep === 1"
-              class="grid gap-4"
-            >
-              <label class="flex flex-col gap-1.5">
-                <FormLabel label="Name" />
-                <TextInput
-                  v-model="createForm.name"
-                  type="text"
-                  required
-                  placeholder="my-bench"
-                  variant="outline"
-                />
-              </label>
-
-              <label class="flex flex-col gap-1.5">
-                <FormLabel label="Frappe Version" />
-                <FrappeVersionSelect
-                  v-model="createForm.frappeVersion"
-                  class="w-full"
-                />
-              </label>
-
-              <label class="flex flex-col gap-1.5">
-                <FormLabel label="Path" />
-                <div class="flex w-full gap-2">
-                  <div class="flex-1 min-w-0">
-                    <TextInput
-                      v-model="createForm.path"
-                      type="text"
-                      required
-                      placeholder="/path/to/bench"
-                      variant="outline"
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    type="button"
-                    @click="triggerFolderPicker"
-                  >
-                    Browse
-                  </Button>
-                </div>
-              </label>
-            </div>
-
-            <div
-              v-if="wizardStep === 2"
-              class="grid gap-4"
-            >
-              <label class="flex flex-col gap-1.5">
-                <AppPicker
-                  v-model="createForm.appsSelected"
-                  class="w-full"
-                  :disabled="creating || loading"
-                  :frappe-version="createForm.frappeVersion"
-                  :disable-core-bench-apps="true"
-                />
-              </label>
-            </div>
-
-            <div
-              v-if="wizardStep === 3"
-              class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2"
-            >
-              <div class="mb-2 flex justify-between text-[13px]">
-                <span>Name</span><strong class="font-semibold">{{ createForm.name }}</strong>
-              </div>
-              <div class="mb-2 flex justify-between text-[13px]">
-                <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
-              </div>
-              <div class="mb-2 flex justify-between text-[13px]">
-                <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
-              </div>
-              <div class="flex justify-between text-[13px]">
-                <span>Apps</span><strong class="font-semibold">{{ createForm.appsSelected.length > 0 ? `${CORE_BENCH_APPS_LABEL}, ${createForm.appsSelected.join(', ')}` : CORE_BENCH_APPS_LABEL }}</strong>
-              </div>
-            </div>
-          </form>
-        </div>
-      </template>
-
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <Button
-            v-if="wizardStep > 1"
-            size="md"
-            variant="subtle"
-            @click="onPreviousStep"
-          >
-            Back
-          </Button>
-          <Button
-            v-if="wizardStep < 3"
-            size="md"
-            variant="solid"
-            @click="onNextStep"
-          >
-            Next
-          </Button>
-          <Button
-            v-if="wizardStep === 3"
-            size="md"
-            variant="solid"
-            :loading="creating"
-            :disabled="loading"
-            @click="onCreateBench"
-          >
-            {{ creating ? 'Creating…' : 'Create bench' }}
-          </Button>
-        </div>
-      </template>
-    </Dialog>
+    <BenchWizardDialog
+      v-model:open="showCreateBenchModal"
+      @created="refresh(true)"
+    />
     <Dialog
       v-model="showAppPicker"
       :options="{ title: 'Select Apps', size: '2xl' }"
@@ -375,10 +233,10 @@
   <script setup lang="ts">
   import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
   import { useRouter } from 'vue-router';
-  import { Badge, Button, Dialog, Dropdown, FormLabel, ListView, TextInput, toast } from 'frappe-ui';
+  import { Badge, Button, Dialog, Dropdown, ListView, toast } from 'frappe-ui';
   import IconPlus from '~icons/lucide/plus';
   import IconExternalLink from '~icons/lucide/external-link';
-  import IconChevronRight from '~icons/lucide/chevron-right';
+  
   import IconPlay from '~icons/lucide/play';
   import IconSquare from '~icons/lucide/square';
   import IconFolder from '~icons/lucide/folder';
@@ -393,17 +251,15 @@ import AppPicker from '../components/AppPicker.vue';
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import StatePanel from '../components/StatePanel.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
-import FrappeVersionSelect from '../components/FrappeVersionSelect.vue';
+
 import { useBenches } from '../composables/useBenches';
-import { useIpc } from '../composables/useIpc';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
-import { useSettings } from '../composables/useSettings';
 import { useProgressCenter } from '../composables/useProgressCenter';
+import { useResourceTaskState } from '../composables/useResourceTaskState';
 import { useAppCatalog } from '../composables/useAppCatalog';
-import { getBenchWizardStepErrors, buildBenchCreatePayload, type BenchWizardStep } from '../bench-wizard';
-import { toSelectorFrappeVersion } from '../frappe-version';
+import BenchWizardDialog from '../components/BenchWizardDialog.vue';
 import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
-import { CORE_BENCH_APPS_LABEL } from '../../shared/bench-apps';
+
 import { normalizeSelection } from '../app-picker-state';
 import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
@@ -416,7 +272,6 @@ const {
   openingFolder,
   error,
   successMessage,
-  create,
   update,
   remove,
   openFolder,
@@ -567,53 +422,17 @@ const benchColumns = reactive([
   { label: '', key: 'actions', width: 0.5 },
 ]);
 
-const pendingBenchActions = ref<Record<string, 'starting' | 'restarting' | 'stopping'>>({});
+const { tasks } = useProgressCenter();
 
-const getPendingBenchAction = (benchId: string) => pendingBenchActions.value[benchId];
-
-const setPendingBenchAction = (benchId: string, action: 'starting' | 'restarting' | 'stopping') => {
-  pendingBenchActions.value = {
-    ...pendingBenchActions.value,
-    [benchId]: action,
-  };
-};
-
-const clearPendingBenchAction = (benchId: string) => {
-  if (!pendingBenchActions.value[benchId]) {
-    return;
-  }
-
-  const next = { ...pendingBenchActions.value };
-  delete next[benchId];
-  pendingBenchActions.value = next;
-};
-
-watch(
-  benches,
-  (nextBenches) => {
-    for (const bench of nextBenches) {
-      if (bench.status !== 'queued') {
-        clearPendingBenchAction(bench.id);
-      }
-    }
-  },
-  { deep: true }
-);
-
-const getStatusTheme = (row: BenchListItem) => {
-  if (getPendingBenchAction(row.id)) return 'blue';
-  if (isResourceBusy(row.id, 'bench')) return 'blue';
-  const failedAppTask = (tasks.value || []).find(
-    (t) => t.resourceId === row.id && t.resource === 'bench' && t.status === 'failure' && t.taskName.toLowerCase().includes('update bench apps')
-  );
-  if (failedAppTask) return String(failedAppTask.message ?? '').toLowerCase().includes('cancelled') ? 'gray' : 'red';
-  const status = row.status;
-  if (status === 'running') return 'green';
-  if (status === 'stopped') return 'gray';
-  if (status === 'queued') return 'blue';
-  if (status === 'failure') return 'red';
-  return 'gray';
-};
+const {
+  setPendingAction: setPendingBenchAction,
+  getPendingAction: getPendingBenchAction,
+  clearPendingAction: clearPendingBenchAction,
+  isResourceBusy,
+  formatStatusLabel,
+  getStatusTheme,
+  getLatestRelevantTaskId,
+} = useResourceTaskState('bench', computed(() => tasks.value || []));
 
 const benchListOptions = {
   selectable: false,
@@ -622,7 +441,7 @@ const benchListOptions = {
 };
 
 const getBenchActions = (bench: BenchListItem) => {
-  const isBusy = isResourceBusy(bench.id, 'bench') || Boolean(getPendingBenchAction(bench.id));
+  const isBusy = isResourceBusy(bench.id) || Boolean(getPendingBenchAction(bench.id));
 
   const actions: Array<{
     label: string;
@@ -640,7 +459,7 @@ const getBenchActions = (bench: BenchListItem) => {
     {
       label: 'View Progress',
       icon: IconActivity,
-      onClick: () => onStatusClick(bench.id, 'bench'),
+      onClick: () => onStatusClick(bench.id),
       hidden: !isBusy,
     },
     {
@@ -684,7 +503,7 @@ const getBenchActions = (bench: BenchListItem) => {
   return actions.filter(a => !a.hidden);
 };
 
-const { tasks } = useProgressCenter();
+
 const selectedTaskId = ref<string | null>(null);
 const showCreateFailureDialog = ref(false);
 const createFailureTitle = ref('Bench Creation Failed');
@@ -718,98 +537,8 @@ const selectedTask = computed(() => {
 });
 
 
-const formatStatusLabel = (row: BenchListItem) => {
-  const pendingAction = getPendingBenchAction(row.id);
-  if (pendingAction === 'starting') return 'Starting';
-  if (pendingAction === 'restarting') return 'Restarting';
-  if (pendingAction === 'stopping') return 'Stopping';
-
-  const failedAppTask = (tasks.value || []).find(
-    (t) => t.resourceId === row.id && t.resource === 'bench' && t.status === 'failure' && t.taskName.toLowerCase().includes('update bench apps')
-  );
-
-  if (failedAppTask) {
-    const failureMessage = String(failedAppTask.message ?? '').toLowerCase();
-    if (failureMessage.includes('cancelled')) return 'Install cancelled';
-    if (failureMessage.includes('timed out')) return 'Install timed out';
-    return 'Install failed';
-  }
-
-  const task = (tasks.value || []).find(
-    (t) => t.resourceId === row.id && t.resource === 'bench' && (t.status === 'running' || t.status === 'queued')
-  );
-
-  if (task) {
-    const name = String(task.taskName ?? '').toLowerCase();
-    if (name.includes('create bench')) return 'Creating';
-    if (name.includes('update bench apps')) {
-      const stepName = String(task.stepName ?? '').toLowerCase();
-      if (stepName.includes('install')) return 'Installing';
-      if (stepName.includes('remov')) return 'Removing apps';
-      return 'Installing';
-    }
-    if (name.includes('restart bench')) return 'Restarting';
-    if (name.includes('start bench')) return 'Starting';
-    if (name.includes('stop bench')) return 'Stopping';
-    if (name.includes('delete bench')) return 'Deleting';
-    if (name.includes('clean bench')) return 'Cleaning';
-    return typeof task.stepName === 'string' && task.stepName.length > 0
-      ? task.stepName.replace(/\.\.\./g, '')
-      : 'Processing';
-  }
-
-  if (row.status === 'running') return 'Running';
-  if (row.status === 'stopped') return 'Stopped';
-  if (row.status === 'queued') return 'In Progress';
-  if (row.status === 'failure') return 'Failed';
-  return typeof row.status === 'string' && row.status.length > 0 ? row.status : 'Unknown';
-};
-
-const isResourceBusy = (id: string, resource: 'bench' | 'site') => {
-  return (tasks.value || []).some(
-    (t) => t.resourceId === id && t.resource === resource && (t.status === 'running' || t.status === 'queued')
-  );
-};
-
-const onStatusClick = (resourceId: string, resource: 'bench' | 'site') => {
-  const isBenchAppsTask = (taskName: string) => taskName.toLowerCase().includes('update bench apps');
-
-  const activeBenchAppsTask = resource === 'bench'
-    ? tasks.value.find(
-      (t) => t.resourceId === resourceId && t.resource === resource && isBenchAppsTask(t.taskName) && (t.status === 'running' || t.status === 'queued')
-    )
-    : null;
-
-  if (activeBenchAppsTask) {
-    selectedTaskId.value = activeBenchAppsTask.taskId;
-    return;
-  }
-
-  const activeTask = tasks.value.find(
-    (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'running' || t.status === 'queued')
-  );
-
-  if (activeTask) {
-    selectedTaskId.value = activeTask.taskId;
-    return;
-  }
-
-  const completedBenchAppsTask = resource === 'bench'
-    ? tasks.value.find(
-      (t) => t.resourceId === resourceId && t.resource === resource && isBenchAppsTask(t.taskName) && (t.status === 'success' || t.status === 'failure')
-    )
-    : null;
-
-  if (completedBenchAppsTask) {
-    selectedTaskId.value = completedBenchAppsTask.taskId;
-    return;
-  }
-
-  const completedTask = tasks.value.find(
-    (t) => t.resourceId === resourceId && t.resource === resource && (t.status === 'success' || t.status === 'failure')
-  );
-
-  selectedTaskId.value = completedTask?.taskId ?? null;
+const onStatusClick = (resourceId: string) => {
+  selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
 
 watch(
@@ -851,21 +580,9 @@ watch(
   },
   { deep: true }
 );
-
-const { form: settingsForm } = useSettings();
-const getDefaultFrappeVersion = () => toSelectorFrappeVersion(settingsForm.value.defaultFrappeVersion);
-
-const createForm = reactive({
-  name: '',
-  path: '',
-  frappeVersion: getDefaultFrappeVersion(),
-  appsSelected: [] as string[],
-});
 const showAppPicker = ref(false);
 const showCreateBenchModal = ref(false);
-const wizardStep = ref<BenchWizardStep>(1);
-const wizardErrors = ref<string[]>([]);
-const ipc = useIpc();
+
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
 
 watchEffect(() => {
@@ -887,79 +604,7 @@ onBeforeUnmount(() => {
   clearPageHeaderActions();
 });
 
-watch(() => [createForm.name, settingsForm.value.storagePath], ([newName, storagePath], [oldName]) => {
-  if (!storagePath) return;
 
-  const oldDefaultPath = oldName ? `${storagePath}/benches/${oldName}` : '';
-  const newDefaultPath = newName ? `${storagePath}/benches/${newName}` : '';
-
-  if (!createForm.path || createForm.path === oldDefaultPath || createForm.path === `${storagePath}/benches` || createForm.path === storagePath) {
-    createForm.path = newDefaultPath;
-  }
-});
-
-watch(
-  () => settingsForm.value.defaultFrappeVersion,
-  (nextValue, previousValue) => {
-    const nextDefault = toSelectorFrappeVersion(nextValue);
-    const previousDefault = toSelectorFrappeVersion(previousValue);
-
-    if (!createForm.frappeVersion || createForm.frappeVersion === previousDefault) {
-      createForm.frappeVersion = nextDefault;
-    }
-  }
-);
-
-const triggerFolderPicker = async () => {
-  const selectedPath = await ipc.pickBenchFolder();
-  if (selectedPath) {
-    const name = createForm.name.trim();
-    if (name && !selectedPath.endsWith(name)) {
-      createForm.path = selectedPath.endsWith('/') ? `${selectedPath}${name}` : `${selectedPath}/${name}`;
-    } else {
-      createForm.path = selectedPath;
-    }
-  }
-};
-
-const onNextStep = () => {
-  const errors = getBenchWizardStepErrors(wizardStep.value, createForm);
-  wizardErrors.value = errors;
-  if (errors.length > 0) return;
-  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
-};
-
-const onPreviousStep = () => {
-  wizardErrors.value = [];
-  if (wizardStep.value > 1) wizardStep.value = (wizardStep.value - 1) as BenchWizardStep;
-};
-
-const onCreateBench = async () => {
-  const result = buildBenchCreatePayload(createForm);
-  wizardErrors.value = result.errors;
-  if (!result.payload) return;
-  
-  toast.success(`Creating bench ${result.payload.name}...`);
-  await create(result.payload);
-
-  createForm.name = '';
-  createForm.path = '';
-  createForm.frappeVersion = getDefaultFrappeVersion();
-  createForm.appsSelected = [];
-  showCreateBenchModal.value = false;
-  wizardStep.value = 1;
-  wizardErrors.value = [];
-};
-
-const onCloseBenchWizard = () => {
-  showCreateBenchModal.value = false;
-  wizardStep.value = 1;
-  wizardErrors.value = [];
-  createForm.name = '';
-  createForm.path = '';
-  createForm.frappeVersion = getDefaultFrappeVersion();
-  createForm.appsSelected = [];
-};
 
 const onStopBench = async (id: string) => {
   await onSetBenchStatus(id, 'stopped');

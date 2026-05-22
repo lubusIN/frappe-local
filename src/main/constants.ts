@@ -28,11 +28,6 @@ export const DATABASE_CREDENTIALS = {
    * Default database hostname in docker-compose
    */
   DB_HOST: 'db',
-
-  /**
-   * Default database port
-   */
-  DB_PORT: 3306,
 } as const;
 
 /**
@@ -43,16 +38,6 @@ export const DOCKER_SERVICES = {
    * Main backend service for running bench commands
    */
   BACKEND: 'backend',
-  
-  /**
-   * Database service
-   */
-  DATABASE: 'db',
-  
-  /**
-   * Redis service (handles both cache and queue)
-   */
-  REDIS_CACHE: 'redis',
 } as const;
 
 /**
@@ -68,6 +53,11 @@ export const OPERATION_TIMEOUTS = {
    * Extended timeout for site creation
    */
   SITE_CREATION: 300000,
+
+  /**
+   * Extended timeout for image pull operations
+   */
+  IMAGE_PULL: 300000,
 
   /**
     * Base timeout for a single app fetch/build cycle.

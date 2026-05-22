@@ -13,11 +13,9 @@ import { JsonStorageAdapter } from './storage/adapter';
 import { initializeStorage } from './storage/bootstrap';
 import { AppCatalogRepository } from './storage/repositories/app-catalog-repository';
 import { BenchRepository } from './storage/repositories/bench-repository';
-
 import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
-import { InMemoryBenchAnalytics } from './bench-analytics';
-import { InMemorySiteAnalytics } from './site-analytics';
+import { analytics } from './analytics';
 import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
 import { runDiagnostics } from './diagnostics-service';
 import { getAppIconPath } from './app-icon';
@@ -136,11 +134,6 @@ export const runApplicationBootstrap = async (
       bootstrapLogger.warn(`Caddy front door failed to start: ${error}`);
     }
 
-
-
-    const benchAnalytics = new InMemoryBenchAnalytics();
-    const siteAnalytics = new InMemorySiteAnalytics();
-
     context.registerHandlers(ipcMain, repositories, {
       openPath: async (targetPath: string) => {
         const result = await shell.openPath(targetPath);
@@ -168,12 +161,8 @@ export const runApplicationBootstrap = async (
           bootstrapLogger.warn(`Failed to refresh Caddy front door hosts: ${error}`);
         }
       },
-      trackBenchOperation: (benchId, operation) => {
-        benchAnalytics.track(benchId, operation);
-      },
-      trackSiteOperation: (siteId, operation) => {
-        siteAnalytics.track(siteId, operation);
-      },
+      trackBenchOperation: (id, op) => analytics.trackOperation(id, op),
+      trackSiteOperation: (id, op) => analytics.trackOperation(id, op),
     }, undefined, context.appVersion, context.runtimePaths);
     
     await context.createMainWindow();

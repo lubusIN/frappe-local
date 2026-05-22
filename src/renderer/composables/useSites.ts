@@ -1,4 +1,5 @@
-import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
+import { ref } from 'vue';
+import { useStatusPolling } from './useStatusPolling';
 import type { LifecycleLogItem, SiteCreateInput, SiteListItem, SiteUpdateInput } from '../../shared/ipc';
 import { useIpc } from './useIpc';
 import { humanizeCreateFailure, stripIpcPrefix } from '../../shared/runtime-errors';
@@ -168,39 +169,7 @@ export const useSites = () => {
     }
   };
 
-  const pollingInterval = ref<ReturnType<typeof setInterval> | null>(null);
-
-  const startPolling = () => {
-    if (pollingInterval.value) return;
-    pollingInterval.value = setInterval(() => {
-      void load();
-    }, 3000);
-  };
-
-  const stopPolling = () => {
-    if (pollingInterval.value) {
-      clearInterval(pollingInterval.value);
-      pollingInterval.value = null;
-    }
-  };
-
-  watchEffect(() => {
-    const hasQueued = sites.value.some((s) => s.status === 'queued');
-    const hasDeleting = deletingIds.value.size > 0;
-    if (hasQueued || hasDeleting) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
-  });
-
-  onMounted(() => {
-    void load();
-  });
-
-  onUnmounted(() => {
-    stopPolling();
-  });
+  useStatusPolling(sites, deletingIds, load);
 
   return {
     sites,

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button, FormControl, FormLabel, LoadingIndicator, Select, Switch } from 'frappe-ui';
 import IconCheckCircle from '~icons/lucide/check-circle';
+import FrappeVersionSelect from '../components/FrappeVersionSelect.vue';
 import { useSettings } from '../composables/useSettings';
 
 const { form, loading, saving, error, successMessage, save } = useSettings();
@@ -46,12 +47,13 @@ const editorOptions = [
         variant="outline"
       />
 
-      <FormControl
-        v-model="form.defaultFrappeVersion"
-        label="Default Frappe Version"
-        placeholder="version-15"
-        variant="outline"
-      />
+      <div class="settings-field">
+        <FormLabel label="Default Frappe Version" />
+        <FrappeVersionSelect
+          v-model="form.defaultFrappeVersion"
+          class="w-full mt-1.5"
+        />
+      </div>
 
       <div class="settings-field">
         <FormLabel label="Editor Preference" />

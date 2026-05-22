@@ -317,7 +317,3 @@ export const getTaskRunner = (): TaskRunner => {
 
   return instance;
 };
-
-export const resetTaskRunner = (): void => {
-  instance = null;
-};

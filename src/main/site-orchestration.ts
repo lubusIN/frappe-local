@@ -1,16 +1,154 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import { errorMessage } from '../shared/utils';
 import { execPromise } from './utils/exec';
 import { getBinaryPath } from './utils/binaries';
 import type { Bench, Site } from '../shared/domain/models';
 import type { SiteCreateInput } from '../shared/ipc';
 import { canAttachSiteToBench } from '../shared/domain/site-lifecycle';
-import { getTaskRunner } from './task-runner';
+import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import { getRuntimeEnv } from './runtime-service';
-import { DATABASE_CREDENTIALS, DOCKER_SERVICES, OPERATION_TIMEOUTS } from './constants';
+import { DATABASE_CREDENTIALS, OPERATION_TIMEOUTS } from './constants';
+import { getComposeProjectName, composeBenchArgs, composeBenchSiteArgs } from './utils/compose-args';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
 import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
 
+import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
+
+/** Shared execution context for running bench commands against a site. */
+export type SiteCommandEnv = {
+  projectName: string;
+  benchPath: string;
+  runtimeCmd: string;
+  runtimeEnv: NodeJS.ProcessEnv;
+};
+
+const executeSiteCommand = async (
+  context: TaskExecutionContext,
+  options: {
+    stepId: string;
+    description: string;
+    successMessage: string;
+    commandName: string;
+    siteName: string;
+    env: SiteCommandEnv;
+    timeout: number;
+  }
+) => {
+  context.startStep(options.stepId, options.description);
+  const args = composeBenchSiteArgs(options.env.projectName, options.siteName, [options.commandName]);
+
+  const result = await execPromise(
+    options.env.runtimeCmd,
+    args,
+    options.env.benchPath,
+    (out) => context.log('info', out, options.stepId),
+    options.env.runtimeEnv,
+    options.timeout
+  );
+
+  if (result.code !== 0) {
+    throw new Error(`Failed to ${options.commandName} for site ${options.siteName}: ${result.stderr}`);
+  }
+
+  context.completeStep(options.stepId, options.successMessage);
+};
+
+const clearSiteCaches = async (
+  context: TaskExecutionContext,
+  siteName: string,
+  env: SiteCommandEnv
+) => {
+  await executeSiteCommand(context, {
+    stepId: 'cache',
+    description: `Clearing cache for ${siteName}`,
+    successMessage: 'Site cache cleared',
+    commandName: 'clear-cache',
+    siteName,
+    env,
+    timeout: OPERATION_TIMEOUTS.DEFAULT
+  });
+
+  await executeSiteCommand(context, {
+    stepId: 'website-cache',
+    description: `Clearing website cache for ${siteName}`,
+    successMessage: 'Site website cache cleared',
+    commandName: 'clear-website-cache',
+    siteName,
+    env,
+    timeout: OPERATION_TIMEOUTS.DEFAULT
+  });
+};
+
+const migrateSite = async (
+  context: TaskExecutionContext,
+  siteName: string,
+  env: SiteCommandEnv
+) => {
+  await executeSiteCommand(context, {
+    stepId: 'migrate',
+    description: `Running migrate for ${siteName}`,
+    successMessage: 'Site migration completed',
+    commandName: 'migrate',
+    siteName,
+    env,
+    timeout: OPERATION_TIMEOUTS.APP_INSTALL
+  });
+};
+
+const restartBenchServices = async (
+  context: TaskExecutionContext,
+  env: SiteCommandEnv
+) => {
+  context.startStep('restart', 'Restarting bench services');
+  const restartArgs = [
+    '-p', env.projectName,
+    'restart',
+    'backend',
+    'frontend',
+    'websocket',
+  ];
+
+  const restartResult = await execPromise(
+    env.runtimeCmd,
+    restartArgs,
+    env.benchPath,
+    (out) => context.log('info', out, 'restart'),
+    env.runtimeEnv,
+    OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
+  );
+
+  if (restartResult.code !== 0) {
+    throw new Error(`Failed to restart bench services: ${restartResult.stderr}`);
+  }
+
+  // Poll for backend container health to ensure Gunicorn is ready before proceeding
+  context.startStep('wait', 'Waiting for backend to become healthy');
+  let backendReady = false;
+  for (let i = 0; i < 40; i++) {
+    const { stdout } = await execPromise(
+      env.runtimeCmd,
+      ['-p', env.projectName, 'ps', 'backend', '--format', '{{.Health}}'],
+      env.benchPath,
+      undefined,
+      env.runtimeEnv,
+      5000
+    ).catch(() => ({ stdout: '' }));
+
+    if (stdout.trim().toLowerCase().includes('healthy')) {
+      backendReady = true;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  if (!backendReady) {
+    throw new Error('Backend failed to become healthy after restart');
+  }
+
+  context.completeStep('wait', 'Backend is ready');
+  context.completeStep('restart', 'Bench services restarted');
+};
 export type SiteCreationDependencies = {
   readonly benches: {
     findById: (id: string) => Promise<Bench | null>;
@@ -30,6 +168,10 @@ export type SiteCreationDependencies = {
   };
 };
 
+/**
+ * Orchestrates the creation of a new Frappe site within an existing bench.
+ * Reuses the bench's credentials and runtime environment to run `bench new-site`.
+ */
 export const orchestrateSiteCreation = async (
   dependencies: SiteCreationDependencies,
   input: SiteCreateInput
@@ -56,7 +198,7 @@ export const orchestrateSiteCreation = async (
     name: `Create Site: ${input.name}`,
     resource: { type: 'site', id: createdSite.id },
     run: async (context) => {
-      const projectName = `local-bench-${bench.id.slice(0, 8)}`;
+      const projectName = getComposeProjectName(bench.id);
 
       const cleanupFailedCreate = async () => {
         context.startStep('cleanup', 'Cleaning up partial site resources');
@@ -65,19 +207,14 @@ export const orchestrateSiteCreation = async (
 
         try {
           const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
-          const dropArgs = [
-            '-p', projectName,
-            'exec',
-            '-T',
-            'backend',
-            'bench',
+          const dropArgs = composeBenchArgs(projectName, [
             'drop-site',
             '--no-backup',
             '--db-root-username', 'root',
             '--db-root-password', dbPassword,
             '--force',
             input.name,
-          ];
+          ]);
 
           await execPromise(
             runtimeCmd,
@@ -88,7 +225,7 @@ export const orchestrateSiteCreation = async (
             OPERATION_TIMEOUTS.BENCH_CLEANUP
           );
         } catch (cleanupError) {
-          context.log('warning', `Database cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
+          context.log('warning', `Database cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
         }
 
         try {
@@ -97,7 +234,7 @@ export const orchestrateSiteCreation = async (
             fs.rmSync(siteFolderPath, { recursive: true, force: true });
           }
         } catch (cleanupError) {
-          context.log('warning', `Filesystem cleanup skipped: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`, 'cleanup');
+          context.log('warning', `Filesystem cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
         }
 
         context.completeStep('cleanup', 'Partial resources cleaned up');
@@ -107,20 +244,15 @@ export const orchestrateSiteCreation = async (
         context.startStep('init', 'Preparing site environment');
         // In frappe_docker, we run commands via compose
         const runtimeCmd = getBinaryPath('docker-compose');
-        
+
         context.startStep('new-site', `Running bench new-site ${input.name}`);
-        
+
         // We assume the service name is 'backend' in frappe_docker
         const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
         const adminPassword = DATABASE_CREDENTIALS.ADMIN_PASSWORD;
-        
+
         const runtimeEnv = await getRuntimeEnv();
-        const args = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          'backend',
-          'bench',
+        const args = composeBenchArgs(projectName, [
           'new-site',
           input.force ? '--force' : '',
           '--mariadb-user-host-login-scope', '%',
@@ -130,7 +262,7 @@ export const orchestrateSiteCreation = async (
           '--install-app', 'frappe',
           ...input.apps.filter(app => app !== 'frappe').flatMap(app => ['--install-app', app]),
           input.name
-        ].filter(Boolean);
+        ].filter(Boolean));
 
         context.log('info', `Running: ${runtimeCmd} ${args.join(' ')}`, 'new-site');
 
@@ -150,117 +282,17 @@ export const orchestrateSiteCreation = async (
             : `Command failed with code ${code}: ${stderr}`;
           throw new Error(failure);
         }
-        
+
         context.completeStep('new-site', 'Site created successfully');
 
-        context.startStep('migrate', `Running migrate for ${input.name}`);
-        const migrateArgs = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          DOCKER_SERVICES.BACKEND,
-          'bench',
-          '--site',
-          input.name,
-          'migrate',
-        ];
-
-        const migrateResult = await execPromise(
-          runtimeCmd,
-          migrateArgs,
-          bench.path,
-          (out) => context.log('info', out, 'migrate'),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.APP_INSTALL
-        );
-
-        if (migrateResult.code !== 0) {
-          throw new Error(`Failed to migrate site ${input.name}: ${migrateResult.stderr}`);
-        }
-
-        context.completeStep('migrate', 'Site migration completed');
-
-        context.startStep('cache', `Clearing cache for ${input.name}`);
-        const clearCacheArgs = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          DOCKER_SERVICES.BACKEND,
-          'bench',
-          '--site',
-          input.name,
-          'clear-cache',
-        ];
-
-        const clearCacheResult = await execPromise(
-          runtimeCmd,
-          clearCacheArgs,
-          bench.path,
-          (out) => context.log('info', out, 'cache'),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.DEFAULT
-        );
-
-        if (clearCacheResult.code !== 0) {
-          throw new Error(`Failed to clear cache for site ${input.name}: ${clearCacheResult.stderr}`);
-        }
-
-        context.completeStep('cache', 'Site cache cleared');
-
-        context.startStep('website-cache', `Clearing website cache for ${input.name}`);
-        const clearWebsiteCacheArgs = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          DOCKER_SERVICES.BACKEND,
-          'bench',
-          '--site',
-          input.name,
-          'clear-website-cache',
-        ];
-
-        const clearWebsiteCacheResult = await execPromise(
-          runtimeCmd,
-          clearWebsiteCacheArgs,
-          bench.path,
-          (out) => context.log('info', out, 'website-cache'),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.DEFAULT
-        );
-
-        if (clearWebsiteCacheResult.code !== 0) {
-          throw new Error(`Failed to clear website cache for site ${input.name}: ${clearWebsiteCacheResult.stderr}`);
-        }
-
-        context.completeStep('website-cache', 'Site website cache cleared');
-
-        context.startStep('restart', 'Restarting bench services');
-        const restartArgs = [
-          '-p', projectName,
-          'restart',
-          'backend',
-          'frontend',
-          'websocket',
-        ];
-
-        const restartResult = await execPromise(
-          runtimeCmd,
-          restartArgs,
-          bench.path,
-          (out) => context.log('info', out, 'restart'),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
-        );
-
-        if (restartResult.code !== 0) {
-          throw new Error(`Failed to restart bench services after site creation: ${restartResult.stderr}`);
-        }
-
-        context.completeStep('restart', 'Bench services restarted');
+        const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
+        await migrateSite(context, input.name, siteEnv);
+        await clearSiteCaches(context, input.name, siteEnv);
+        await restartBenchServices(context, siteEnv);
 
         await dependencies.sites.update(createdSite.id, { status: 'running' });
       } catch (error) {
-        const rawMessage = error instanceof Error ? error.message : String(error);
+        const rawMessage = errorMessage(error);
         const message = humanizeCreateFailure('site', rawMessage);
         context.log('error', message, 'new-site');
 
@@ -287,6 +319,12 @@ export const orchestrateSiteCreation = async (
 
   return createdSite;
 };
+
+/**
+ * Orchestrates the deletion of a site.
+ * Backs up (optional), drops the site database, removes the site folder,
+ * and deletes the metadata from the database.
+ */
 export const orchestrateSiteDeletion = async (
   dependencies: {
     sites: {
@@ -321,23 +359,18 @@ export const orchestrateSiteDeletion = async (
       try {
         context.startStep('drop-site', `Dropping site ${site.name}`);
         const runtimeCmd = getBinaryPath('docker-compose');
-        const projectName = `local-bench-${bench.id.slice(0, 8)}`;
+        const projectName = getComposeProjectName(bench.id);
         const runtimeEnv = await getRuntimeEnv();
         const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
 
-        const args = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          'backend',
-          'bench',
+        const args = composeBenchArgs(projectName, [
           'drop-site',
           '--no-backup',
           '--db-root-username', 'root',
           '--db-root-password', dbPassword,
           '--force',
           site.name
-        ];
+        ]);
 
         context.log('info', `Running: ${runtimeCmd} ${args.join(' ')}`, 'drop-site');
 
@@ -357,7 +390,7 @@ export const orchestrateSiteDeletion = async (
             context.completeStep('drop-site', 'Site dropped successfully');
           }
         } catch (execError) {
-          const message = execError instanceof Error ? execError.message : String(execError);
+          const message = errorMessage(execError);
           context.log('warning', `Failed to drop site database: ${message}`, 'drop-site');
         }
 
@@ -369,7 +402,7 @@ export const orchestrateSiteDeletion = async (
           }
           context.completeStep('rm-dir', `Site directory removed`);
         } catch (fsError) {
-          context.log('warning', `Failed to remove site directory: ${fsError instanceof Error ? fsError.message : String(fsError)}`, 'rm-dir');
+          context.log('warning', `Failed to remove site directory: ${errorMessage(fsError)}`, 'rm-dir');
         }
 
         await dependencies.sites.delete(siteId);
@@ -377,11 +410,11 @@ export const orchestrateSiteDeletion = async (
           try {
             await options.onDeleted(site);
           } catch (error) {
-            context.log('warning', `Post-delete site cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
+            context.log('warning', `Post-delete site cleanup failed: ${errorMessage(error)}`);
           }
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         context.log('error', message, 'drop-site');
         await dependencies.sites.update(siteId, { status: 'failure' });
         throw error;
@@ -405,6 +438,14 @@ const isBenignSchedulerState = (
   return combined.includes('scheduler') && combined.includes('already') && combined.includes('disable');
 };
 
+/**
+ * Updates the runtime status (running/stopped) of an existing site.
+ * Frappe site scheduler background jobs are controlled by the `pause-scheduler`
+ * and `resume-scheduler` commands.
+ *
+ * It uses an `isBenignSchedulerState` heuristic to skip failures where the
+ * target state is already active.
+ */
 export const orchestrateSiteStatusUpdate = (
   dependencies: {
     benches: {
@@ -427,25 +468,16 @@ export const orchestrateSiteStatusUpdate = (
         context.startStep('orchestration', targetStatus === 'running' ? 'Starting site' : 'Stopping site');
         const bench = await dependencies.benches.findById(site.benchId);
         const benchCwd = bench?.path ?? '';
-        
+
         // Execute docker-compose commands to actually start/stop the site
         const runtimeCmd = getBinaryPath('docker-compose');
-        const projectName = `local-bench-${site.benchId.slice(0, 8)}`;
+        const projectName = getComposeProjectName(site.benchId);
         const runtimeEnv = await getRuntimeEnv();
-        
+
         // Control site availability via scheduler for the specific site.
         // `enable-site` / `disable-site` do not exist on bench.
         const siteCommand = targetStatus === 'running' ? 'enable-scheduler' : 'disable-scheduler';
-        const args = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          DOCKER_SERVICES.BACKEND,
-          'bench',
-          '--site',
-          site.name,
-          siteCommand,
-        ];
+        const args = composeBenchSiteArgs(projectName, site.name, [siteCommand]);
 
         const runSchedulerCommand = async () => {
           return execPromise(
@@ -466,7 +498,7 @@ export const orchestrateSiteStatusUpdate = (
             result = await runSchedulerCommand();
             break;
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message = errorMessage(error);
             const isTimeoutError = message.includes('Command timed out');
             if (!isTimeoutError || attempt === maxTimeoutRetries) {
               throw error;
@@ -484,7 +516,7 @@ export const orchestrateSiteStatusUpdate = (
         }
 
         const { code, stderr } = result;
-        
+
         if (code !== 0 && !isBenignSchedulerState(targetStatus, result.stdout, stderr)) {
           throw new Error(`Failed to update scheduler for ${site.name}: ${stderr}`);
         }
@@ -497,66 +529,15 @@ export const orchestrateSiteStatusUpdate = (
           const refreshApps = site.apps.filter((app) => !CORE_BENCH_APPS_SET.has(app));
 
           if (refreshApps.length > 0) {
-            context.startStep('cache', `Clearing cache for ${site.name}`);
-            const clearCacheArgs = [
-              '-p', projectName,
-              'exec',
-              '-T',
-              DOCKER_SERVICES.BACKEND,
-              'bench',
-              '--site',
-              site.name,
-              'clear-cache',
-            ];
-
-            const clearCacheResult = await execPromise(
-              runtimeCmd,
-              clearCacheArgs,
-              benchCwd,
-              (out) => context.log('info', out, 'cache'),
-              runtimeEnv,
-              OPERATION_TIMEOUTS.DEFAULT
-            );
-
-            if (clearCacheResult.code !== 0) {
-              throw new Error(`Failed to clear cache for site ${site.name}: ${clearCacheResult.stderr}`);
-            }
-
-            context.completeStep('cache', 'Site cache cleared');
-
-            context.startStep('website-cache', `Clearing website cache for ${site.name}`);
-            const clearWebsiteCacheArgs = [
-              '-p', projectName,
-              'exec',
-              '-T',
-              DOCKER_SERVICES.BACKEND,
-              'bench',
-              '--site',
-              site.name,
-              'clear-website-cache',
-            ];
-
-            const clearWebsiteCacheResult = await execPromise(
-              runtimeCmd,
-              clearWebsiteCacheArgs,
-              benchCwd,
-              (out) => context.log('info', out, 'website-cache'),
-              runtimeEnv,
-              OPERATION_TIMEOUTS.DEFAULT
-            );
-
-            if (clearWebsiteCacheResult.code !== 0) {
-              throw new Error(`Failed to clear website cache for site ${site.name}: ${clearWebsiteCacheResult.stderr}`);
-            }
-
-            context.completeStep('website-cache', 'Site website cache cleared');
+            const siteEnv: SiteCommandEnv = { projectName, benchPath: benchCwd, runtimeCmd, runtimeEnv };
+            await clearSiteCaches(context, site.name, siteEnv);
           }
         }
-        
+
         context.completeStep('orchestration', targetStatus === 'running' ? 'Site started' : 'Site stopped');
         await dependencies.sites.update(site.id, { status: targetStatus });
       } catch (error) {
-        context.log('error', `Failed to update site status: ${error instanceof Error ? error.message : String(error)}`);
+        context.log('error', `Failed to update site status: ${errorMessage(error)}`);
         await dependencies.sites.update(site.id, { status: 'failure' });
         throw error;
       }
@@ -564,6 +545,12 @@ export const orchestrateSiteStatusUpdate = (
   });
 };
 
+/**
+ * Modifies the installed apps for an existing site.
+ * Computes the delta of apps to install and uninstall, then runs the
+ * corresponding bench commands. Automatically migrates the site and clears
+ * caches afterward.
+ */
 export const orchestrateSiteAppsUpdate = (
   dependencies: {
     benches: {
@@ -592,8 +579,9 @@ export const orchestrateSiteAppsUpdate = (
         const installDelta = targetApps.filter((app) => !site.apps.includes(app));
         const uninstallDelta = site.apps.filter((app) => !targetApps.includes(app));
         const runtimeCmd = getBinaryPath('docker-compose');
-        const projectName = `local-bench-${site.benchId.slice(0, 8)}`;
+        const projectName = getComposeProjectName(site.benchId);
         const runtimeEnv = await getRuntimeEnv();
+        const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
 
         if (installDelta.length > 0) {
           context.startStep('install-apps', `Installing ${installDelta.length} app${installDelta.length === 1 ? '' : 's'} on ${site.name}`);
@@ -602,17 +590,7 @@ export const orchestrateSiteAppsUpdate = (
             context.throwIfCancelled();
             context.log('info', `Installing app ${app} on ${site.name}`, 'install-apps');
 
-            const args = [
-              '-p', projectName,
-              'exec',
-              '-T',
-              DOCKER_SERVICES.BACKEND,
-              'bench',
-              '--site',
-              site.name,
-              'install-app',
-              app,
-            ];
+            const args = composeBenchSiteArgs(projectName, site.name, ['install-app', app]);
 
             const { code, stderr } = await execPromise(
               runtimeCmd,
@@ -630,32 +608,7 @@ export const orchestrateSiteAppsUpdate = (
 
           context.completeStep('install-apps', 'App installation completed');
 
-          context.startStep('migrate', `Running migrate for ${site.name}`);
-          const migrateArgs = [
-            '-p', projectName,
-            'exec',
-            '-T',
-            DOCKER_SERVICES.BACKEND,
-            'bench',
-            '--site',
-            site.name,
-            'migrate',
-          ];
-
-          const migrateResult = await execPromise(
-            runtimeCmd,
-            migrateArgs,
-            bench.path,
-            (out) => context.log('info', out, 'migrate'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.APP_INSTALL
-          );
-
-          if (migrateResult.code !== 0) {
-            throw new Error(`Failed to migrate site ${site.name}: ${migrateResult.stderr}`);
-          }
-
-          context.completeStep('migrate', 'Site migration completed');
+          await migrateSite(context, site.name, siteEnv);
         }
 
         if (uninstallDelta.length > 0) {
@@ -666,17 +619,8 @@ export const orchestrateSiteAppsUpdate = (
             context.log('info', `Uninstalling app ${app} from ${site.name}`, 'uninstall-apps');
 
             // Proactively purge pending jobs to avoid QueueOverloaded errors in local dev environments
-            const purgeArgs = [
-              '-p', projectName,
-              'exec',
-              '-T',
-              DOCKER_SERVICES.BACKEND,
-              'bench',
-              '--site',
-              site.name,
-              'purge-jobs',
-            ];
-            
+            const purgeArgs = composeBenchSiteArgs(projectName, site.name, ['purge-jobs']);
+
             try {
               context.log('info', `Purging pending background jobs for site ${site.name} to avoid queue overload`, 'uninstall-apps');
               await execPromise(
@@ -692,18 +636,7 @@ export const orchestrateSiteAppsUpdate = (
               context.log('warning', `Failed to purge jobs: ${String(err)}`, 'uninstall-apps');
             }
 
-            const args = [
-              '-p', projectName,
-              'exec',
-              '-T',
-              DOCKER_SERVICES.BACKEND,
-              'bench',
-              '--site',
-              site.name,
-              'uninstall-app',
-              app,
-              '--yes',
-            ];
+            const args = composeBenchSiteArgs(projectName, site.name, ['uninstall-app', app, '--yes']);
 
             const { code, stderr } = await execPromise(
               runtimeCmd,
@@ -721,118 +654,19 @@ export const orchestrateSiteAppsUpdate = (
 
           context.completeStep('uninstall-apps', 'App uninstallation completed');
 
-          context.startStep('migrate', `Running migrate for ${site.name}`);
-          const migrateArgs = [
-            '-p', projectName,
-            'exec',
-            '-T',
-            DOCKER_SERVICES.BACKEND,
-            'bench',
-            '--site',
-            site.name,
-            'migrate',
-          ];
-
-          const migrateResult = await execPromise(
-            runtimeCmd,
-            migrateArgs,
-            bench.path,
-            (out) => context.log('info', out, 'migrate'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.APP_INSTALL
-          );
-
-          if (migrateResult.code !== 0) {
-            throw new Error(`Failed to migrate site ${site.name}: ${migrateResult.stderr}`);
-          }
-
-          context.completeStep('migrate', 'Site migration completed');
+          await migrateSite(context, site.name, siteEnv);
         }
 
-        context.startStep('cache', `Clearing cache for ${site.name}`);
-        const clearCacheArgs = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          DOCKER_SERVICES.BACKEND,
-          'bench',
-          '--site',
-          site.name,
-          'clear-cache',
-        ];
-
-        const clearCacheResult = await execPromise(
-          runtimeCmd,
-          clearCacheArgs,
-          bench.path,
-          (out) => context.log('info', out, 'cache'),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.DEFAULT
-        );
-
-        if (clearCacheResult.code !== 0) {
-          throw new Error(`Failed to clear cache for site ${site.name}: ${clearCacheResult.stderr}`);
-        }
-
-        context.completeStep('cache', 'Site cache cleared');
-
-        context.startStep('website-cache', `Clearing website cache for ${site.name}`);
-        const clearWebsiteCacheArgs = [
-          '-p', projectName,
-          'exec',
-          '-T',
-          DOCKER_SERVICES.BACKEND,
-          'bench',
-          '--site',
-          site.name,
-          'clear-website-cache',
-        ];
-
-        const clearWebsiteCacheResult = await execPromise(
-          runtimeCmd,
-          clearWebsiteCacheArgs,
-          bench.path,
-          (out) => context.log('info', out, 'website-cache'),
-          runtimeEnv,
-          OPERATION_TIMEOUTS.DEFAULT
-        );
-
-        if (clearWebsiteCacheResult.code !== 0) {
-          throw new Error(`Failed to clear website cache for site ${site.name}: ${clearWebsiteCacheResult.stderr}`);
-        }
-
-        context.completeStep('website-cache', 'Site website cache cleared');
+        await clearSiteCaches(context, site.name, siteEnv);
 
         if (installDelta.length > 0 || uninstallDelta.length > 0) {
-          context.startStep('restart', 'Restarting bench services');
-          const restartArgs = [
-            '-p', projectName,
-            'restart',
-            'backend',
-            'frontend',
-            'websocket',
-          ];
-
-          const restartResult = await execPromise(
-            runtimeCmd,
-            restartArgs,
-            bench.path,
-            (out) => context.log('info', out, 'restart'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
-          );
-
-          if (restartResult.code !== 0) {
-            throw new Error(`Failed to restart bench services after app update: ${restartResult.stderr}`);
-          }
-
-          context.completeStep('restart', 'Bench services restarted');
+          await restartBenchServices(context, siteEnv);
         }
 
         await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'running' });
         context.completeStep('apps', 'Site apps updated');
       } catch (error) {
-        context.log('error', `Failed to update site apps: ${error instanceof Error ? error.message : String(error)}`, 'apps');
+        context.log('error', `Failed to update site apps: ${errorMessage(error)}`, 'apps');
         await dependencies.sites.update(site.id, { status: 'failure' });
         throw error;
       }

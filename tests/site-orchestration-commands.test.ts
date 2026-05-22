@@ -72,7 +72,7 @@ describe('site orchestration command execution', () => {
 
     getBinaryPathMock.mockReturnValue('/mock/docker-compose');
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    execPromiseMock.mockResolvedValue({ stdout: '', stderr: '', code: 0 });
+    execPromiseMock.mockResolvedValue({ stdout: 'healthy\n', stderr: '', code: 0 });
     updateSiteMock.mockResolvedValue(createdSite);
 
     enqueueMock.mockImplementation((definition: { run: (ctx: TaskExecutionContext) => Promise<void> }) => {
@@ -103,9 +103,9 @@ describe('site orchestration command execution', () => {
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
 
-    expect(execPromiseMock).toHaveBeenCalledTimes(5);
+    expect(execPromiseMock).toHaveBeenCalledTimes(6);
 
-    const [command, args, cwd, _onOutput, env, timeout] = execPromiseMock.mock.calls[0] as [
+    const [command, args, cwd, , env, timeout] = execPromiseMock.mock.calls[0] as [
       string,
       string[],
       string,
@@ -113,7 +113,7 @@ describe('site orchestration command execution', () => {
       NodeJS.ProcessEnv,
       number,
     ];
-
+    
     expect(command).toBe('/mock/docker-compose');
     expect(cwd).toBe('/Users/dev/bench-two');
     expect(env).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
@@ -211,10 +211,9 @@ describe('site orchestration command execution', () => {
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
+    expect(execPromiseMock).toHaveBeenCalledTimes(6);
 
-    expect(execPromiseMock).toHaveBeenCalledTimes(5);
-
-    const [installCommand, installArgs, installCwd, _installOutput, installEnv, installTimeout] = execPromiseMock.mock.calls[0] as [
+    const [installCommand, installArgs, installCwd, , installEnv, installTimeout] = execPromiseMock.mock.calls[0] as [
       string,
       string[],
       string,
@@ -240,7 +239,7 @@ describe('site orchestration command execution', () => {
       'erpnext',
     ]);
 
-    const [migrateCommand, migrateArgs, migrateCwd, _migrateOutput, migrateEnv, migrateTimeout] = execPromiseMock.mock.calls[1] as [
+    const [migrateCommand, migrateArgs, migrateCwd, , migrateEnv, migrateTimeout] = execPromiseMock.mock.calls[1] as [
       string,
       string[],
       string,
@@ -265,7 +264,7 @@ describe('site orchestration command execution', () => {
       'migrate',
     ]);
 
-    const [clearCacheCommand, clearCacheArgs, clearCacheCwd, _clearCacheOutput, clearCacheEnv, clearCacheTimeout] = execPromiseMock.mock.calls[2] as [
+    const [clearCacheCommand, clearCacheArgs, clearCacheCwd, , clearCacheEnv, clearCacheTimeout] = execPromiseMock.mock.calls[2] as [
       string,
       string[],
       string,
@@ -290,7 +289,7 @@ describe('site orchestration command execution', () => {
       'clear-cache',
     ]);
 
-    const [clearWebsiteCacheCommand, clearWebsiteCacheArgs, clearWebsiteCacheCwd, _clearWebsiteCacheOutput, clearWebsiteCacheEnv, clearWebsiteCacheTimeout] = execPromiseMock.mock.calls[3] as [
+    const [clearWebsiteCacheCommand, clearWebsiteCacheArgs, clearWebsiteCacheCwd, , clearWebsiteCacheEnv, clearWebsiteCacheTimeout] = execPromiseMock.mock.calls[3] as [
       string,
       string[],
       string,
@@ -315,7 +314,7 @@ describe('site orchestration command execution', () => {
       'clear-website-cache',
     ]);
 
-    const [restartCommand, restartArgs, restartCwd, _restartOutput, restartEnv, restartTimeout] = execPromiseMock.mock.calls[4] as [
+    const [restartCommand, restartArgs, restartCwd, , restartEnv, restartTimeout] = execPromiseMock.mock.calls[4] as [
       string,
       string[],
       string,

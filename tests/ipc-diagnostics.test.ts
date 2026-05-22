@@ -9,7 +9,7 @@ import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 const ensureRuntimeRunningMock = vi.fn(async () => false);
 const getRuntimeEnvMock = vi.fn(async () => ({}));
 const getBinaryPathMock = vi.fn((name: string) => `/mock/${name}`);
-const execPromiseMock = vi.fn(async (..._args: unknown[]) => ({ code: 0, stdout: '', stderr: '' }));
+const execPromiseMock = vi.fn(async () => ({ code: 0, stdout: '', stderr: '' }));
 
 vi.mock('../src/main/runtime-service', () => ({
   ensureRuntimeRunning: () => ensureRuntimeRunningMock(),

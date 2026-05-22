@@ -8,6 +8,7 @@ import type { Settings } from '../shared/domain/models';
 import { createMainLogger } from './logger';
 import { execPromise } from './utils/exec';
 import { getBinaryPath } from './utils/binaries';
+import { isPodmanMachineRequired, getPodmanMachines } from './utils/podman';
 import { getRuntimeEnv } from './runtime-service';
 
 type DiagnosticsContext = {
@@ -114,26 +115,6 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
 
 
 
-const parsePodmanJson = (stdout: string) => {
-  try {
-    // Podman might output warnings before JSON
-    const jsonStart = stdout.indexOf('[');
-    const jsonStartObj = stdout.indexOf('{');
-    let start = -1;
-    
-    if (jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj)) {
-      start = jsonStart;
-    } else {
-      start = jsonStartObj;
-    }
-
-    if (start === -1) return null;
-    return JSON.parse(stdout.substring(start));
-  } catch {
-    return null;
-  }
-};
-
 const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
   
@@ -199,7 +180,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   }
 
   if (podmanAvailable) {
-    const isVmRequired = process.platform === 'darwin' || process.platform === 'win32';
+    const isVmRequired = isPodmanMachineRequired();
     
     checks.push({
       type: 'runtime-health',
@@ -211,54 +192,43 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
 
     if (isVmRequired) {
       try {
-        const { stdout, code } = await execPromise(getBinaryPath('podman'), ['machine', 'ls', '--format', 'json'], undefined, undefined, undefined, 10000);
-        if (code === 0) {
-          const machines = parsePodmanJson(stdout);
+        const machines = await getPodmanMachines();
 
-          if (Array.isArray(machines) && machines.length > 0) {
-            type PodmanMachineStatus = {
-              CurrentlyRunning?: boolean;
-              Running?: boolean;
-              State?: string;
-              Name?: string;
-            };
-            const activeMachine = (machines as PodmanMachineStatus[]).find(
-              (machine) =>
-                machine.CurrentlyRunning === true ||
-                machine.Running === true ||
-                machine.State === 'running'
-            );
+        if (machines.length > 0) {
+          const activeMachine = machines.find(
+            (machine) =>
+              machine.CurrentlyRunning === true ||
+              machine.Running === true ||
+              machine.State === 'running'
+          );
 
-            if (activeMachine) {
-              checks.push({
-                type: 'runtime-health',
-                status: 'passed',
-                title: 'Podman Machine',
-                description: `Podman machine '${activeMachine.Name}' is running. On macOS and Windows, this virtual machine is required to run Linux containers.`,
-                timestamp: new Date().toISOString(),
-              });
-            } else {
-              checks.push({
-                type: 'runtime-health',
-                status: failureStatus,
-                title: 'Podman Machine',
-                description: 'Podman machine exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.',
-                remediation: 'Click "Attempt Fix" to start the Podman machine.',
-                timestamp: new Date().toISOString(),
-              });
-            }
+          if (activeMachine) {
+            checks.push({
+              type: 'runtime-health',
+              status: 'passed',
+              title: 'Podman Machine',
+              description: `Podman machine '${activeMachine.Name}' is running. On macOS and Windows, this virtual machine is required to run Linux containers.`,
+              timestamp: new Date().toISOString(),
+            });
           } else {
             checks.push({
               type: 'runtime-health',
               status: failureStatus,
               title: 'Podman Machine',
-              description: 'No Podman machine found',
-              remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
+              description: 'Podman machine exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.',
+              remediation: 'Click "Attempt Fix" to start the Podman machine.',
               timestamp: new Date().toISOString(),
             });
           }
         } else {
-          throw new Error('ls failed');
+          checks.push({
+            type: 'runtime-health',
+            status: failureStatus,
+            title: 'Podman Machine',
+            description: 'No Podman machine found',
+            remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
+            timestamp: new Date().toISOString(),
+          });
         }
       } catch (err) {
         checks.push({
