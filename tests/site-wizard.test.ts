@@ -3,16 +3,11 @@ import {
   buildSiteCreatePayload,
   getSiteWizardStepErrors,
   isValidSiteName,
-  parseAppsText,
   suggestSitePath,
   toSiteDomain,
 } from '../src/renderer/site-wizard';
 
 describe('site wizard helpers', () => {
-  it('normalizes apps text into trimmed array', () => {
-    expect(parseAppsText(' frappe, erpnext ,, payments ')).toEqual(['frappe', 'erpnext', 'payments']);
-  });
-
   it('validates supported site name format', () => {
     expect(isValidSiteName('demo-site')).toBe(true);
     expect(isValidSiteName('demo.localhost')).toBe(false);
@@ -34,7 +29,6 @@ describe('site wizard helpers', () => {
       benchId: '',
       name: 'Demo Local',
       path: '',
-      appsText: '',
     };
 
     expect(getSiteWizardStepErrors(1, draft)).toEqual(['Select a bench to continue.']);
@@ -49,7 +43,6 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo-site',
       path: '/Users/dev/frappe-bench/sites/demo.localhost',
-      appsText: '',
     };
 
     expect(getSiteWizardStepErrors(3, draft)).toEqual([]);
@@ -61,7 +54,7 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo-site',
       path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
-      appsText: 'frappe, erpnext',
+      appsSelected: ['frappe', 'erpnext'],
     };
 
     const result = buildSiteCreatePayload(draft);
@@ -81,7 +74,7 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'my-site',
       path: '/Users/dev/frappe-bench/sites/my-site',
-      appsText: 'frappe',
+      appsSelected: ['frappe'],
     });
 
     expect(result.payload).toEqual({
@@ -91,17 +84,5 @@ describe('site wizard helpers', () => {
       apps: ['frappe'],
       force: false,
     });
-  });
-
-  it('prefers selected apps from picker when present', () => {
-    const result = buildSiteCreatePayload({
-      benchId: 'bench-001',
-      name: 'demo-site',
-      path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
-      appsText: 'legacy-text-app',
-      appsSelected: ['frappe', 'erpnext'],
-    });
-
-    expect(result.payload?.apps).toEqual(['frappe', 'erpnext']);
   });
 });

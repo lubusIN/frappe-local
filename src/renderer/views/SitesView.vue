@@ -109,7 +109,7 @@
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
           <div class="py-3">
-            <div class="font-medium text-ink-gray-9">
+            <div class="font-medium text-md text-ink-gray-9">
               {{ row.name }}
             </div>
           </div>
@@ -263,6 +263,7 @@ import ConfirmationDialog from '../components/ConfirmationDialog.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
+import SiteWizardDialog from '../components/SiteWizardDialog.vue';
 import { useIpc } from '../composables/useIpc';
 import { useSites } from '../composables/useSites';
 import { useProgressCenter } from '../composables/useProgressCenter';

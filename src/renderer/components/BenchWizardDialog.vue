@@ -1,158 +1,106 @@
 <template>
-  <Dialog
-    :model-value="open"
-    :options="{ title: 'New bench', size: '3xl' }"
-    @update:model-value="$emit('update:open', $event)"
+  <WizardDialog
+    :open="open"
+    title="New bench"
+    :steps="['Details', 'Apps', 'Confirm']"
+    :current-step="wizardStep"
+    :errors="wizardErrors"
+    :creating="creating"
+    :loading="loading"
+    submit-label="Create bench"
+    @update:open="$emit('update:open', $event)"
     @close="onCloseBenchWizard"
+    @next="onNextStep"
+    @previous="onPreviousStep"
+    @submit="onCreateBench"
   >
-    <template #body-content>
-      <div class="flex flex-col gap-4">
-        <div class="flex items-center gap-2.5 px-0 py-1">
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 1 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-            Details
-          </span>
-          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 2 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-            Apps
-          </span>
-          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 3 ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-            Confirm
-          </span>
+    <div
+      v-if="wizardStep === 1"
+      class="grid gap-4"
+    >
+      <label class="flex flex-col gap-1.5">
+        <FormLabel label="Name" />
+        <TextInput
+          v-model="createForm.name"
+          type="text"
+          required
+          placeholder="my-bench"
+          variant="outline"
+        />
+      </label>
+
+      <label class="flex flex-col gap-1.5">
+        <FormLabel label="Frappe Version" />
+        <FrappeVersionSelect
+          v-model="createForm.frappeVersion"
+          class="w-full"
+        />
+      </label>
+
+      <label class="flex flex-col gap-1.5">
+        <FormLabel label="Path" />
+        <div class="flex w-full gap-2">
+          <div class="flex-1 min-w-0">
+            <TextInput
+              v-model="createForm.path"
+              type="text"
+              required
+              placeholder="/path/to/bench"
+              variant="outline"
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="subtle"
+            type="button"
+            @click="triggerFolderPicker"
+          >
+            Browse
+          </Button>
         </div>
+      </label>
+    </div>
 
-        <form
-          class="flex flex-col gap-4"
-          @submit.prevent="onCreateBench"
-        >
-          <p
-            v-if="wizardErrors.length > 0"
-            class="mb-4 text-sm text-ink-red-3"
-          >
-            {{ wizardErrors.join(' ') }}
-          </p>
+    <div
+      v-if="wizardStep === 2"
+      class="grid gap-4"
+    >
+      <label class="flex flex-col gap-1.5">
+        <AppManager
+          mode="select"
+          v-model="createForm.appsSelected"
+          class="w-full"
+          :disabled="creating || loading"
+          :frappe-version="createForm.frappeVersion"
+          :disable-core-bench-apps="true"
+        />
+      </label>
+    </div>
 
-          <div
-            v-if="wizardStep === 1"
-            class="grid gap-4"
-          >
-            <label class="flex flex-col gap-1.5">
-              <FormLabel label="Name" />
-              <TextInput
-                v-model="createForm.name"
-                type="text"
-                required
-                placeholder="my-bench"
-                variant="outline"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <FormLabel label="Frappe Version" />
-              <FrappeVersionSelect
-                v-model="createForm.frappeVersion"
-                class="w-full"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <FormLabel label="Path" />
-              <div class="flex w-full gap-2">
-                <div class="flex-1 min-w-0">
-                  <TextInput
-                    v-model="createForm.path"
-                    type="text"
-                    required
-                    placeholder="/path/to/bench"
-                    variant="outline"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  type="button"
-                  @click="triggerFolderPicker"
-                >
-                  Browse
-                </Button>
-              </div>
-            </label>
-          </div>
-
-          <div
-            v-if="wizardStep === 2"
-            class="grid gap-4"
-          >
-            <label class="flex flex-col gap-1.5">
-              <AppManager
-                mode="select"
-                v-model="createForm.appsSelected"
-                class="w-full"
-                :disabled="creating || loading"
-                :frappe-version="createForm.frappeVersion"
-                :disable-core-bench-apps="true"
-              />
-            </label>
-          </div>
-
-          <div
-            v-if="wizardStep === 3"
-            class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2"
-          >
-            <div class="mb-2 flex justify-between text-[13px]">
-              <span>Name</span><strong class="font-semibold">{{ createForm.name }}</strong>
-            </div>
-            <div class="mb-2 flex justify-between text-[13px]">
-              <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
-            </div>
-            <div class="mb-2 flex justify-between text-[13px]">
-              <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
-            </div>
-            <div class="flex justify-between text-[13px]">
-              <span>Apps</span><strong class="font-semibold">{{ createForm.appsSelected.length > 0 ? `${CORE_BENCH_APPS_LABEL}, ${createForm.appsSelected.join(', ')}` : CORE_BENCH_APPS_LABEL }}</strong>
-            </div>
-          </div>
-        </form>
+    <div
+      v-if="wizardStep === 3"
+      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2"
+    >
+      <div class="mb-2 flex justify-between text-[13px]">
+        <span>Name</span><strong class="font-semibold">{{ createForm.name }}</strong>
       </div>
-    </template>
-
-    <template #actions>
-      <div class="flex justify-end gap-3">
-        <Button
-          v-if="wizardStep > 1"
-          size="md"
-          variant="subtle"
-          @click="onPreviousStep"
-        >
-          Back
-        </Button>
-        <Button
-          v-if="wizardStep < 3"
-          size="md"
-          variant="solid"
-          @click="onNextStep"
-        >
-          Next
-        </Button>
-        <Button
-          v-if="wizardStep === 3"
-          size="md"
-          variant="solid"
-          :loading="creating"
-          :disabled="loading"
-          @click="onCreateBench"
-        >
-          {{ creating ? 'Creating…' : 'Create bench' }}
-        </Button>
+      <div class="mb-2 flex justify-between text-[13px]">
+        <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
       </div>
-    </template>
-  </Dialog>
+      <div class="mb-2 flex justify-between text-[13px]">
+        <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
+      </div>
+      <div class="flex justify-between text-[13px]">
+        <span>Apps</span><strong class="font-semibold">{{ createForm.appsSelected.length > 0 ? `${CORE_BENCH_APPS_LABEL}, ${createForm.appsSelected.join(', ')}` : CORE_BENCH_APPS_LABEL }}</strong>
+      </div>
+    </div>
+  </WizardDialog>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue';
-import { Button, Dialog, FormLabel, TextInput } from 'frappe-ui';
-import IconChevronRight from '~icons/lucide/chevron-right';
+import { Button, FormLabel, TextInput } from 'frappe-ui';
+import WizardDialog from './WizardDialog.vue';
 import AppManager from './AppManager.vue';
 import FrappeVersionSelect from './FrappeVersionSelect.vue';
 import { useBenches } from '../composables/useBenches';

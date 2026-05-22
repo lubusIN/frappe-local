@@ -1,160 +1,105 @@
 <template>
-  <Dialog
-    :model-value="open"
-    :options="{ title: 'New site', size: '3xl' }"
-    @update:model-value="$emit('update:open', $event)"
+  <WizardDialog
+    :open="open"
+    title="New site"
+    :steps="['Bench', 'Details', 'Apps', 'Confirm']"
+    :current-step="wizardStep"
+    :errors="wizardErrors"
+    :creating="creating"
+    :loading="loading"
+    submit-label="Create site"
+    @update:open="$emit('update:open', $event)"
     @close="onCloseSiteWizard"
+    @next="onNextStep"
+    @previous="onPreviousStep"
+    @submit="onCreateSite"
   >
-    <template #body-content>
-      <div class="flex flex-col gap-4">
-        <div class="flex items-center gap-2.5 py-1">
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 1 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
-            Bench
-          </span>
-          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 2 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
-            Details
-          </span>
-          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 3 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
-            Apps
-          </span>
-          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
-          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 4 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
-            Confirm
-          </span>
-        </div>
+    <div
+      v-if="wizardStep === 1"
+      class="grid gap-4"
+    >
+      <label class="flex flex-col gap-1.5">
+        <span class="mb-1 text-xs font-medium text-ink-gray-6">Select bench</span>
+        <Select
+          v-model="createBenchSelection"
+          :disabled="benchLoading"
+          :options="createBenchOptions"
+          variant="outline"
+        />
+      </label>
+    </div>
 
-        <form
-          class="flex flex-col gap-4"
-          @submit.prevent="onCreateSite"
+    <div
+      v-if="wizardStep === 2"
+      class="grid gap-4"
+    >
+      <label class="flex flex-col gap-1.5">
+        <FormLabel label="Site name" />
+        <TextInput
+          v-model="createForm.name"
+          type="text"
+          required
+          placeholder="my-site"
+          variant="outline"
         >
-          <p
-            v-if="wizardErrors.length > 0"
-            class="mb-4 text-sm text-ink-red-3"
-          >
-            {{ wizardErrors.join(' ') }}
-          </p>
-
-          <div
-            v-if="wizardStep === 1"
-            class="grid gap-4"
-          >
-            <label class="flex flex-col gap-1.5">
-              <span class="mb-1 text-xs font-medium text-ink-gray-6">Select bench</span>
-              <Select
-                v-model="createBenchSelection"
-                :disabled="benchLoading"
-                :options="createBenchOptions"
-                variant="outline"
-              />
-            </label>
-          </div>
-
-          <div
-            v-if="wizardStep === 2"
-            class="grid gap-4"
-          >
-            <label class="flex flex-col gap-1.5">
-              <FormLabel label="Site name" />
-              <TextInput
-                v-model="createForm.name"
-                type="text"
-                required
-                placeholder="my-site"
-                variant="outline"
-              >
-                <template #suffix>
-                  <span class="text-p-sm text-ink-gray-6">.localhost</span>
-                </template>
-              </TextInput>
-            </label>
-            <div class="flex items-center gap-2">
-              <Switch
-                v-model="createForm.force"
-                label="Force create"
-              />
-            </div>
-          </div>
-
-          <div
-            v-if="wizardStep === 3"
-            class="grid gap-4"
-          >
-            <label class="flex flex-col gap-1.5">
-              <FormLabel label="Apps" />
-              <AppManager
-                mode="select"
-                v-model="createForm.appsSelected"
-                class="w-full"
-                :disabled="creating || loading"
-                :frappe-version="selectedBench?.frappeVersion"
-                :allowed-app-ids="selectedBenchAppIds"
-                :disabled-app-ids="defaultInstalledSiteApps"
-              />
-            </label>
-          </div>
-
-          <div
-            v-if="wizardStep === 4"
-            class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px]"
-          >
-            <div class="flex justify-between mb-2">
-              <span>Bench</span><strong class="font-semibold">{{ selectedBench?.name ?? createForm.benchId }}</strong>
-            </div>
-            <div class="flex justify-between mb-2">
-              <span>Site</span><strong class="font-semibold">{{ toSiteDomain(createForm.name) }}</strong>
-            </div>
-            <div
-              v-if="createForm.force"
-              class="flex justify-between mb-2"
-            >
-              <span>Force</span><strong class="font-semibold">Yes</strong>
-            </div>
-            <div class="flex justify-between">
-              <span>Apps</span><strong class="font-semibold">{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong>
-            </div>
-          </div>
-        </form>
+          <template #suffix>
+            <span class="text-p-sm text-ink-gray-6">.localhost</span>
+          </template>
+        </TextInput>
+      </label>
+      <div class="flex items-center gap-2">
+        <Switch
+          v-model="createForm.force"
+          label="Force create"
+        />
       </div>
-    </template>
-    <template #actions>
-      <div class="flex justify-end gap-3">
-        <Button
-          v-if="wizardStep > 1"
-          size="md"
-          variant="subtle"
-          @click="onPreviousStep"
-        >
-          Back
-        </Button>
-        <Button
-          v-if="wizardStep < 4"
-          size="md"
-          variant="solid"
-          @click="onNextStep"
-        >
-          Next
-        </Button>
-        <Button
-          v-if="wizardStep === 4"
-          size="md"
-          variant="solid"
-          :loading="creating"
-          :disabled="loading"
-          @click="onCreateSite"
-        >
-          {{ creating ? 'Creating…' : 'Create site' }}
-        </Button>
+    </div>
+
+    <div
+      v-if="wizardStep === 3"
+      class="grid gap-4"
+    >
+      <label class="flex flex-col gap-1.5">
+        <FormLabel label="Apps" />
+        <AppManager
+          mode="select"
+          v-model="createForm.appsSelected"
+          class="w-full"
+          :disabled="creating || loading"
+          :frappe-version="selectedBench?.frappeVersion"
+          :allowed-app-ids="selectedBenchAppIds"
+          :disabled-app-ids="defaultInstalledSiteApps"
+        />
+      </label>
+    </div>
+
+    <div
+      v-if="wizardStep === 4"
+      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px]"
+    >
+      <div class="flex justify-between mb-2">
+        <span>Bench</span><strong class="font-semibold">{{ selectedBench?.name ?? createForm.benchId }}</strong>
       </div>
-    </template>
-  </Dialog>
+      <div class="flex justify-between mb-2">
+        <span>Site</span><strong class="font-semibold">{{ toSiteDomain(createForm.name) }}</strong>
+      </div>
+      <div
+        v-if="createForm.force"
+        class="flex justify-between mb-2"
+      >
+        <span>Force</span><strong class="font-semibold">Yes</strong>
+      </div>
+      <div class="flex justify-between">
+        <span>Apps</span><strong class="font-semibold">{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong>
+      </div>
+    </div>
+  </WizardDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { Button, Dialog, FormLabel, Select, Switch, TextInput } from 'frappe-ui';
-import IconChevronRight from '~icons/lucide/chevron-right';
+import { FormLabel, Select, Switch, TextInput } from 'frappe-ui';
+import WizardDialog from './WizardDialog.vue';
 import AppManager from './AppManager.vue';
 import { useSites } from '../composables/useSites';
 import { useBenches } from '../composables/useBenches';

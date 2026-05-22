@@ -7,7 +7,6 @@ export type SiteWizardDraft = {
   readonly name: string;
   readonly path: string;
 
-  readonly appsText: string;
   readonly appsSelected?: string[];
   readonly force?: boolean;
 };
@@ -23,11 +22,7 @@ export const normalizeSiteSlug = (value: string): string => value.trim().toLower
 
 export const toSiteDomain = (slugOrName: string): string => `${normalizeSiteSlug(slugOrName)}.localhost`;
 
-export const parseAppsText = (appsText: string): string[] =>
-  appsText
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+
 
 export const isValidSiteName = (siteName: string): boolean => SITE_SLUG_PATTERN.test(normalizeSiteSlug(siteName));
 
@@ -87,7 +82,7 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
       name: normalizedName,
       path: normalizedPath,
 
-      apps: selectedApps.length > 0 ? selectedApps : parseAppsText(draft.appsText),
+      apps: selectedApps,
       force: draft.force ?? false,
     },
     errors: [],

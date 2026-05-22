@@ -57,17 +57,14 @@
 
       <div
         v-if="showIpcWarning"
-        class="flex items-start gap-3 p-3 mx-6 mt-4 border rounded-lg border-outline-red-1 bg-surface-red-2/50 shrink-0"
+        class="mx-6 mt-4 shrink-0"
       >
-        <IconAlertTriangle class="w-4 h-4 text-ink-red-3 mt-0.5 shrink-0" />
-        <div class="min-w-0">
-          <h3 class="text-xs font-bold text-ink-red-4">
-            Desktop services unavailable
-          </h3>
-          <p class="text-xs text-ink-red-3/80 leading-relaxed mt-0.5">
-            Preload bridge failed. Runtime actions will be unavailable until the connection is restored.
-          </p>
-        </div>
+        <ErrorNotice
+          :notice="{
+            title: 'Desktop services unavailable',
+            message: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
+          }"
+        />
       </div>
 
       <main class="flex-1 p-8 overflow-y-auto">
@@ -92,9 +89,9 @@ import IconGlobe from '~icons/lucide/globe';
 import IconActivity from '~icons/lucide/activity';
 import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import Logo from './Logo.vue';
 import SettingsDialog from './SettingsDialog.vue';
+import ErrorNotice from './ErrorNotice.vue';
 import { isIpcBridgeAvailable } from '../composables/useIpc';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { useSettingsDialog } from '../composables/useSettingsDialog';

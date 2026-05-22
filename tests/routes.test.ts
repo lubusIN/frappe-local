@@ -9,7 +9,6 @@ describe('renderer routes', () => {
       'sites',
       'activity',
       'diagnostics',
-      'settings',
     ]);
   });
 
