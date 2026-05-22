@@ -54,7 +54,20 @@ const configureApplicationMenu = (): void => {
         { role: 'quit' },
       ],
     },
-    { role: 'viewMenu' },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        ...(isDev ? [{ role: 'toggleDevTools' } as MenuItemConstructorOptions, { type: 'separator' } as MenuItemConstructorOptions] : []),
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
     { role: 'windowMenu' },
   ];
 
@@ -75,6 +88,7 @@ const createMainWindow = async (): Promise<void> => {
       preload: path.join(currentDirectory, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: isDev,
     },
     ...(appIconPath ? { icon: appIconPath } : {}),
   });
@@ -87,6 +101,18 @@ const createMainWindow = async (): Promise<void> => {
     mainLogger.error(`renderer process exited: ${details.reason} (code: ${details.exitCode})`);
   });
 
+  window.webContents.on('before-input-event', (event, input) => {
+    if (!isDev) {
+      if (
+        (input.control && input.shift && input.key.toLowerCase() === 'i') ||
+        (input.meta && input.alt && input.key.toLowerCase() === 'i') ||
+        input.key === 'F12'
+      ) {
+        event.preventDefault();
+      }
+    }
+  });
+
   window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
     if (level >= 2) {
       mainLogger.error(`renderer console [${level}] ${message} (${sourceId}:${line})`);
@@ -95,7 +121,6 @@ const createMainWindow = async (): Promise<void> => {
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    window.webContents.openDevTools({ mode: 'detach' });
     return;
   }
 
