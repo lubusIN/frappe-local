@@ -1,75 +1,89 @@
 <template>
-  <div class="flex w-screen h-screen overflow-hidden">
-    <Sidebar
-      v-model:collapsed="isCollapsed"
-      :sections="sidebarSections"
+  <div class="flex flex-col w-screen h-screen overflow-hidden bg-surface-white">
+    <!-- Global Title Bar for Frameless Window -->
+    <div 
+      class="w-full h-10 shrink-0 flex items-center justify-center border-b border-outline-gray-1 bg-surface-white z-50"
+      style="-webkit-app-region: drag;"
     >
-      <template #header>
-        <div
-          class="flex items-center p-3 transition-all duration-300"
-          :class="isCollapsed ? 'justify-center' : ''"
-        >
-          <div class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0">
-            <Logo class="w-5 h-5 text-ink-white" />
-          </div>
-          <div 
-            v-if="!isCollapsed"
-            class="flex flex-col ml-3 truncate transition-all duration-300"
-          >
-            <span class="text-sm font-bold leading-tight text-ink-gray-9">Local Bench</span>
-            <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">frappe for humans</span>
-          </div>
-        </div>
-      </template>
-      
-      <template #footer-items>
-        <SidebarItem
-          label="Settings"
-          :icon="IconSettings"
-          @click="openSettings"
-        />
-      </template>
-    </Sidebar>
+      <span class="text-[11px] font-medium text-ink-gray-4">Local Bench</span>
+    </div>
 
-    <div class="flex flex-col flex-1 min-w-0 bg-surface-white">
-      <header class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0">
-        <h1 class="text-lg font-medium truncate text-ink-gray-9">
-          {{ currentTitle }}
-        </h1>
-        
-        <div
-          v-if="headerActions.length > 0"
-          class="flex items-center gap-3"
-        >
-          <Button
-            v-for="action in headerActions"
-            :key="action.id"
-            :variant="action.variant === 'primary' ? 'solid' : 'subtle'"
-            :disabled="action.disabled"
-            :loading="action.loading"
-            :icon-left="action.icon"
-            @click="action.onClick"
-          >
-            {{ action.label }}
-          </Button>
-        </div>
-      </header>
-
-      <div
-        v-if="showIpcWarning"
-        class="mx-6 mt-4 shrink-0"
+    <!-- Main Content Area -->
+    <div class="flex flex-1 min-h-0">
+      <Sidebar
+        v-model:collapsed="isCollapsed"
+        :sections="sidebarSections"
+        class="border-r border-outline-gray-1"
       >
-        <ErrorNotice
-          :notice="{
-            title: 'Desktop services unavailable',
-            message: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
-          }"
-        />
-      </div>
+        <template #header>
+          <div
+            class="flex items-center p-3 transition-all duration-300"
+            :class="isCollapsed ? 'justify-center' : ''"
+          >
+            <div 
+              class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0"
+            >
+              <Logo class="w-5 h-5 text-ink-white" />
+            </div>
+            <div 
+              v-if="!isCollapsed"
+              class="flex flex-col ml-3 truncate transition-all duration-300"
+            >
+              <span class="text-sm font-bold leading-tight text-ink-gray-9">Local Bench</span>
+              <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">frappe for humans</span>
+            </div>
+          </div>
+        </template>
+        
+        <template #footer-items>
+          <SidebarItem
+            label="Settings"
+            :icon="IconSettings"
+            @click="openSettings"
+          />
+        </template>
+      </Sidebar>
 
-      <main class="flex-1 p-8 overflow-y-auto">
-        <RouterView />
-      </main>
+      <div class="flex flex-col flex-1 min-w-0 bg-surface-white">
+        <header class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0">
+          <h1 class="text-lg font-medium truncate text-ink-gray-9">
+            {{ currentTitle }}
+          </h1>
+          
+          <div
+            v-if="headerActions.length > 0"
+            class="flex items-center gap-3"
+          >
+            <Button
+              v-for="action in headerActions"
+              :key="action.id"
+              :variant="action.variant === 'primary' ? 'solid' : 'subtle'"
+              :disabled="action.disabled"
+              :loading="action.loading"
+              :icon-left="action.icon"
+              @click="action.onClick"
+            >
+              {{ action.label }}
+            </Button>
+          </div>
+        </header>
+
+        <div
+          v-if="showIpcWarning"
+          class="mx-6 mt-4 shrink-0"
+        >
+          <ErrorNotice
+            :notice="{
+              title: 'Desktop services unavailable',
+              message: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
+            }"
+          />
+        </div>
+
+        <main class="flex-1 p-8 overflow-y-auto">
+          <RouterView />
+        </main>
+      </div>
     </div>
 
     <SettingsDialog

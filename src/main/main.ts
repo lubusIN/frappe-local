@@ -84,6 +84,12 @@ const createMainWindow = async (): Promise<void> => {
     minWidth: 1024,
     minHeight: 720,
     backgroundColor: '#f5f2ea',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#ffffff',
+      symbolColor: '#1a1919',
+    },
+    trafficLightPosition: { x: 16, y: 12 },
     webPreferences: {
       preload: path.join(currentDirectory, 'preload.js'),
       contextIsolation: true,
