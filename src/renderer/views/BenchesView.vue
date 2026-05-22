@@ -70,20 +70,7 @@
 
     <TaskLogModal v-if="selectedTask" :task="selectedTask" @close="selectedTaskId = null" />
 
-    <Dialog v-model="createFailureDialogOpen" :options="{ title: 'Failed to Create Bench', size: 'xl' }">
-      <template #body-content>
-        <div class="py-2 text-sm text-ink-gray-7">
-          <ErrorNotice v-if="createFailureNotice" :notice="createFailureNotice" />
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <Button size="md" variant="solid" @click="closeCreateFailureDialog">
-            OK
-          </Button>
-        </div>
-      </template>
-    </Dialog>
+
 
     <ManageAppsDialog v-model:open="showAppsDialog" :resource-name="selectedBenchForApps?.name || 'Bench'"
       context="bench" :active-app-ids="selectedBenchForApps?.apps ?? []" :disabled="!canMutateApps || updating"
@@ -100,7 +87,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
 import { useRouter } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, ListView, toast, ConfirmDialog } from 'frappe-ui';
+import { Badge, Button, Dropdown, ListView, toast, ConfirmDialog } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 
@@ -114,14 +101,12 @@ import IconRotateCw from '~icons/lucide/rotate-cw';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';
 
-import ErrorNotice from '../components/ErrorNotice.vue';
 import StatePanel from '../components/StatePanel.vue';
 import EmptyState from '../components/EmptyState.vue';
 import ManageAppsDialog from '../components/ManageAppsDialog.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
 
 import { useConfirmAction } from '../composables/useConfirmAction';
-import { useCreateFailureDialog } from '../composables/useCreateFailureDialog';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { useResourceTaskState } from '../composables/useResourceTaskState';
@@ -306,11 +291,7 @@ const {
   cancel: cancelCleanBench,
 } = useConfirmAction();
 
-const {
-  createFailureDialogOpen,
-  createFailureNotice,
-  closeCreateFailureDialog,
-} = useCreateFailureDialog(tasks, 'Bench');
+
 
 
 const benchListOptions = {
