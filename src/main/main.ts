@@ -6,6 +6,7 @@ import { createMainLogger } from './logger';
 import { getAppIconPath } from './utils/app-icon';
 import { stopCaddyFrontDoor } from './services/caddy-front-door';
 
+let isQuitting = false;
 const APP_DISPLAY_NAME = 'Local Bench';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -103,6 +104,17 @@ const createMainWindow = async (): Promise<void> => {
     mainLogger.error(`renderer failed to load (${errorCode}) ${errorDescription} at ${validatedURL}`);
   });
 
+  window.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      if (process.platform === 'darwin') {
+        window.hide();
+      } else {
+        window.minimize();
+      }
+    }
+  });
+
   window.webContents.on('render-process-gone', (_event, details) => {
     mainLogger.error(`renderer process exited: ${details.reason} (code: ${details.exitCode})`);
   });
@@ -158,8 +170,11 @@ app.whenReady().then(async () => {
   await runApplicationBootstrap(bootstrapContext, ipcMain);
 
   app.on('activate', async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length === 0) {
       await createMainWindow();
+    } else {
+      windows[0].show();
     }
   });
 });
@@ -173,5 +188,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   void stopCaddyFrontDoor();
 });
