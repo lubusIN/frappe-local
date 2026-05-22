@@ -9,7 +9,8 @@ import type { AppCatalogItem, Settings } from '../src/shared/domain/models';
 const ensureRuntimeRunningMock = vi.fn(async () => false);
 const getRuntimeEnvMock = vi.fn(async () => ({}));
 const getBinaryPathMock = vi.fn((name: string) => `/mock/${name}`);
-const execPromiseMock = vi.fn(async () => ({ code: 0, stdout: '', stderr: '' }));
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const execPromiseMock = vi.fn(async (...args: unknown[]) => ({ code: 0, stdout: '', stderr: '' }));
 
 vi.mock('../src/main/runtime-service', () => ({
   ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
@@ -106,7 +107,7 @@ describe('diagnostics IPC handlers', () => {
   });
 
   it('runs diagnostics on demand and caches the latest report', async () => {
-    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
@@ -135,7 +136,7 @@ describe('diagnostics IPC handlers', () => {
   });
 
   it('resets development state and recreates fresh storage snapshot', async () => {
-    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
     const refreshFrontDoorHosts = vi.fn(async () => undefined);
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-test-'));
     const storagePath = path.join(tempRoot, 'storage');
@@ -222,7 +223,7 @@ describe('diagnostics IPC handlers', () => {
       return { code: 0, stdout: '', stderr: '' };
     });
 
-    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-cleanup-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');

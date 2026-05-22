@@ -10,7 +10,6 @@ const componentMap = {
   benches: BenchesView,
   sites: SitesView,
   diagnostics: () => import('./views/DiagnosticsView.vue'),
-  settings: () => import('./views/SettingsView.vue'),
 } as const;
 
 export { navigationItems };

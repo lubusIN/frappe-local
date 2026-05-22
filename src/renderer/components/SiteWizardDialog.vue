@@ -6,27 +6,27 @@
     @close="onCloseSiteWizard"
   >
     <template #body-content>
-      <div class="site-wizard-dialog">
-        <div class="wizard-header">
-          <span :class="['wizard-header__item', wizardStep === 1 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center gap-2.5 py-1">
+          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 1 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
             Bench
           </span>
-          <IconChevronRight class="wizard-header__icon" />
-          <span :class="['wizard-header__item', wizardStep === 2 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
+          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 2 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
             Details
           </span>
-          <IconChevronRight class="wizard-header__icon" />
-          <span :class="['wizard-header__item', wizardStep === 3 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
+          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 3 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
             Apps
           </span>
-          <IconChevronRight class="wizard-header__icon" />
-          <span :class="['wizard-header__item', wizardStep === 4 ? 'wizard-header__item--active' : 'wizard-header__item--inactive']">
+          <IconChevronRight class="size-[15px] shrink-0 text-ink-gray-5" />
+          <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', wizardStep === 4 ? 'font-medium text-ink-gray-9' : 'text-ink-gray-5']">
             Confirm
           </span>
         </div>
 
         <form
-          class="form-body"
+          class="flex flex-col gap-4"
           @submit.prevent="onCreateSite"
         >
           <p
@@ -38,9 +38,9 @@
 
           <div
             v-if="wizardStep === 1"
-            class="form-grid"
+            class="grid gap-4"
           >
-            <label class="form-field">
+            <label class="flex flex-col gap-1.5">
               <span class="mb-1 text-xs font-medium text-ink-gray-6">Select bench</span>
               <Select
                 v-model="createBenchSelection"
@@ -53,9 +53,9 @@
 
           <div
             v-if="wizardStep === 2"
-            class="form-grid"
+            class="grid gap-4"
           >
-            <label class="form-field">
+            <label class="flex flex-col gap-1.5">
               <FormLabel label="Site name" />
               <TextInput
                 v-model="createForm.name"
@@ -79,13 +79,14 @@
 
           <div
             v-if="wizardStep === 3"
-            class="form-grid"
+            class="grid gap-4"
           >
-            <label class="form-field">
+            <label class="flex flex-col gap-1.5">
               <FormLabel label="Apps" />
-              <AppPicker
+              <AppManager
+                mode="select"
                 v-model="createForm.appsSelected"
-                class="form-field__control"
+                class="w-full"
                 :disabled="creating || loading"
                 :frappe-version="selectedBench?.frappeVersion"
                 :allowed-app-ids="selectedBenchAppIds"
@@ -96,29 +97,29 @@
 
           <div
             v-if="wizardStep === 4"
-            class="p-4 rounded wizard-summary bg-surface-gray-2"
+            class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px]"
           >
             <div class="flex justify-between mb-2">
-              <span>Bench</span><strong>{{ selectedBench?.name ?? createForm.benchId }}</strong>
+              <span>Bench</span><strong class="font-semibold">{{ selectedBench?.name ?? createForm.benchId }}</strong>
             </div>
             <div class="flex justify-between mb-2">
-              <span>Site</span><strong>{{ toSiteDomain(createForm.name) }}</strong>
+              <span>Site</span><strong class="font-semibold">{{ toSiteDomain(createForm.name) }}</strong>
             </div>
             <div
               v-if="createForm.force"
               class="flex justify-between mb-2"
             >
-              <span>Force</span><strong>Yes</strong>
+              <span>Force</span><strong class="font-semibold">Yes</strong>
             </div>
             <div class="flex justify-between">
-              <span>Apps</span><strong>{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong>
+              <span>Apps</span><strong class="font-semibold">{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong>
             </div>
           </div>
         </form>
       </div>
     </template>
     <template #actions>
-      <div class="dialog-actions">
+      <div class="flex justify-end gap-3">
         <Button
           v-if="wizardStep > 1"
           size="md"
@@ -154,7 +155,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Button, Dialog, FormLabel, Select, Switch, TextInput } from 'frappe-ui';
 import IconChevronRight from '~icons/lucide/chevron-right';
-import AppPicker from './AppPicker.vue';
+import AppManager from './AppManager.vue';
 import { useSites } from '../composables/useSites';
 import { useBenches } from '../composables/useBenches';
 import { useIpc } from '../composables/useIpc';
@@ -182,7 +183,7 @@ const createForm = reactive({
   name: '',
   benchId: '',
   path: '',
-  appsText: '',
+
   appsSelected: [] as string[],
   force: false,
 });
@@ -265,7 +266,7 @@ const onCloseSiteWizard = () => {
   createForm.name = '';
   createForm.benchId = '';
   createForm.path = '';
-  createForm.appsText = '';
+
   createForm.appsSelected = [];
   createForm.force = false;
   emit('update:open', false);
@@ -285,78 +286,3 @@ const onCreateSite = async () => {
   }
 };
 </script>
-
-<style scoped>
-.site-wizard-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.wizard-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0 8px;
-}
-
-.wizard-header__item {
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-
-.wizard-header__item--active {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.wizard-header__item--inactive {
-  color: var(--text-muted);
-}
-
-.wizard-header__icon {
-  width: 15px;
-  height: 15px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.form-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-grid {
-  display: grid;
-  gap: 16px;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.wizard-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.wizard-summary > div {
-  font-size: 13px;
-}
-
-.wizard-summary strong {
-  font-weight: 600;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-</style>

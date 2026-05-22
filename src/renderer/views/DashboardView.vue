@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard">
+  <div class="grid gap-6">
     <FirstRunGuide
       v-if="showGettingStarted"
       title="Set up your local environment"
@@ -9,71 +9,71 @@
 
     <section
       id="shortcuts"
-      class="dashboard-section"
+      class="grid gap-4"
     >
-      <div class="shortcut-grid">
+      <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <RouterLink
           to="/benches"
-          class="shortcut-link"
+          class="no-underline text-inherit"
         >
-          <Card class="shortcut-card">
-            <div class="shortcut-card__content">
-              <div class="shortcut-card__icon">
-                <IconPackage class="shortcut-card__svg" />
+          <div class="w-full rounded-lg border border-outline-gray-2 bg-surface-white p-4 transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3">
+            <div class="flex items-start gap-3">
+              <div class="flex items-center justify-center size-9 min-w-9 rounded-lg bg-surface-gray-2 text-ink-gray-5">
+                <IconPackage class="size-5" />
               </div>
               <div>
-                <p class="shortcut-card__title">
+                <p class="m-0 text-[13px] font-semibold text-ink-gray-9 leading-snug">
                   Manage Benches
                 </p>
-                <p class="shortcut-card__desc">
+                <p class="m-0 mt-0.5 text-xs text-ink-gray-5 leading-normal">
                   Create and control bench environments
                 </p>
               </div>
             </div>
-          </Card>
+          </div>
         </RouterLink>
         <RouterLink
           to="/sites"
-          class="shortcut-link"
+          class="no-underline text-inherit"
         >
-          <Card class="shortcut-card">
-            <div class="shortcut-card__content">
-              <div class="shortcut-card__icon">
-                <IconGlobe class="shortcut-card__svg" />
+          <div class="w-full rounded-lg border border-outline-gray-2 bg-surface-white p-4 transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3">
+            <div class="flex items-start gap-3">
+              <div class="flex items-center justify-center size-9 min-w-9 rounded-lg bg-surface-gray-2 text-ink-gray-5">
+                <IconGlobe class="size-5" />
               </div>
               <div>
-                <p class="shortcut-card__title">
+                <p class="m-0 text-[13px] font-semibold text-ink-gray-9 leading-snug">
                   Manage Sites
                 </p>
-                <p class="shortcut-card__desc">
+                <p class="m-0 mt-0.5 text-xs text-ink-gray-5 leading-normal">
                   View and control local sites
                 </p>
               </div>
             </div>
-          </Card>
+          </div>
         </RouterLink>
-        <Card
-          class="shortcut-card shortcut-card--interactive"
+        <div
+          class="w-full rounded-lg border border-outline-gray-2 bg-surface-white p-4 transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3 cursor-pointer focus-visible:outline-2 focus-visible:outline-outline-gray-3 focus-visible:outline-offset-2"
           role="button"
           tabindex="0"
           @click="openSettings"
           @keydown.enter="openSettings"
           @keydown.space.prevent="openSettings"
         >
-          <div class="shortcut-card__content">
-            <div class="shortcut-card__icon">
-              <IconSettings class="shortcut-card__svg" />
+          <div class="flex items-start gap-3">
+            <div class="flex items-center justify-center size-9 min-w-9 rounded-lg bg-surface-gray-2 text-ink-gray-5">
+              <IconSettings class="size-5" />
             </div>
             <div>
-              <p class="shortcut-card__title">
+              <p class="m-0 text-[13px] font-semibold text-ink-gray-9 leading-snug">
                 Configure Settings
               </p>
-              <p class="shortcut-card__desc">
+              <p class="m-0 mt-0.5 text-xs text-ink-gray-5 leading-normal">
                 Configure global settings and defaults
               </p>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </section>
   </div>
@@ -81,7 +81,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive } from 'vue';
-import { Card } from 'frappe-ui';
 import { RouterLink } from 'vue-router';
 import IconGlobe from '~icons/lucide/globe';
 import IconPackage from '~icons/lucide/package';
@@ -139,129 +138,3 @@ const gettingStartedLinks = computed<FirstRunGuideLink[]>(() => {
 
 
 </script>
-
-<style scoped>
-.dashboard {
-  display: grid;
-  gap: 24px;
-}
-
-.dashboard-section {
-  display: grid;
-  gap: 16px;
-}
-
-.section-heading {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.section-desc {
-  margin: -8px 0 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-
-
-/* ============================================================
-   Shortcut Grid
-   ============================================================ */
-
-.shortcut-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.shortcut-link {
-  text-decoration: none;
-  color: inherit;
-}
-
-.shortcut-card {
-  width: 100%;
-  height: 100%;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  background: var(--surface-card);
-  box-shadow: none;
-  padding: 16px !important;
-  transition: background-color 100ms ease, border-color 100ms ease;
-}
-
-.shortcut-card__content {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.shortcut-card:hover,
-.shortcut-card--interactive:hover {
-  background: var(--surface-hover);
-  border-color: var(--border-default);
-}
-
-.shortcut-card--interactive {
-  cursor: pointer;
-}
-
-.shortcut-card--interactive:focus-visible {
-  outline: 2px solid var(--outline-gray-3);
-  outline-offset: 2px;
-}
-
-.shortcut-card__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  border-radius: 8px;
-  background: var(--surface-subtle);
-  color: var(--text-secondary);
-}
-
-.shortcut-card__svg {
-  width: 20px;
-  height: 20px;
-}
-
-.shortcut-card__title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--text-primary);
-}
-
-.shortcut-card__desc {
-  margin: 2px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-}
-
-.shortcut-card :deep(.flex.items-baseline.justify-between) {
-  display: none;
-}
-
-.shortcut-card :deep(.mt-4.flex-auto.overflow-auto) {
-  margin-top: 0;
-  overflow: visible;
-}
-
-/* ============================================================
-   Responsive
-   ============================================================ */
-
-@media (max-width: 1080px) {
-  .shortcut-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

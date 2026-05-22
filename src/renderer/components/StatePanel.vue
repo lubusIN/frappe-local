@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex items-start gap-2.5 rounded-lg border p-4"
+    class="flex items-start gap-2.5 rounded-lg border p-4 select-text"
     :class="{
       'border-outline-gray-2 bg-surface-white': kind === 'empty',
       'border-outline-gray-2 bg-surface-gray-2': kind === 'loading',

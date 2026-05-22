@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex items-start gap-3 rounded-lg border p-4"
+    class="flex items-start gap-3 rounded-lg border p-4 select-text"
     :class="tone === 'warning' ? 'border-outline-amber-2 bg-surface-amber-2 text-ink-amber-3' : 'border-outline-red-2 bg-surface-red-2 text-ink-red-4'"
     role="alert"
     aria-live="polite"

@@ -12,7 +12,7 @@
 
             <Badge
               variant="subtle"
-              :theme="statusTheme"
+              :theme="statusThemeValue"
             >
               {{ formattedStatus }}
               <LoadingIndicator
@@ -31,7 +31,7 @@
     <template #body-content>
       <div
         ref="logsContainer"
-        class="selectable-text max-h-[58vh] overflow-y-auto rounded-lg border border-outline-gray-3 bg-surface-gray-7 p-4 font-mono text-[13px] leading-relaxed text-ink-gray-5"
+        class="select-text max-h-[58vh] overflow-y-auto rounded-lg border border-outline-gray-3 bg-surface-gray-7 p-4 font-mono text-[13px] leading-relaxed text-ink-gray-5"
       >
         <div
           v-if="task.logs.length === 0"
@@ -87,6 +87,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import IconCopy from '~icons/lucide/copy';
 import type { ProgressTaskSummary } from '../progress-center';
+import { statusTheme } from '../utils/format';
 
 const props = defineProps<{
   task: ProgressTaskSummary | null;
@@ -146,13 +147,7 @@ const formattedStatus = computed(() => {
   return props.task.status || 'Unknown';
 });
 
-const statusTheme = computed(() => {
-  if (!props.task) return 'gray';
-  if (props.task.status === 'success') return 'green';
-  if (props.task.status === 'failure') return 'red';
-  if (isBusy.value) return 'blue';
-  return 'gray';
-});
+const statusThemeValue = computed(() => statusTheme(props.task?.status || ''));
 
 const formatTime = (timestamp: string) =>
   new Date(timestamp).toLocaleTimeString(undefined, {

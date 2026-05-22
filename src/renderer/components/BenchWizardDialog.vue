@@ -84,7 +84,8 @@
             class="grid gap-4"
           >
             <label class="flex flex-col gap-1.5">
-              <AppPicker
+              <AppManager
+                mode="select"
                 v-model="createForm.appsSelected"
                 class="w-full"
                 :disabled="creating || loading"
@@ -152,7 +153,7 @@
 import { reactive, ref, watch } from 'vue';
 import { Button, Dialog, FormLabel, TextInput } from 'frappe-ui';
 import IconChevronRight from '~icons/lucide/chevron-right';
-import AppPicker from './AppPicker.vue';
+import AppManager from './AppManager.vue';
 import FrappeVersionSelect from './FrappeVersionSelect.vue';
 import { useBenches } from '../composables/useBenches';
 import { useIpc } from '../composables/useIpc';
@@ -183,7 +184,7 @@ const createForm = reactive({
   name: '',
   path: '',
   frappeVersion: getDefaultFrappeVersion(),
-  appsText: '',
+
   appsSelected: [] as string[],
 });
 

@@ -37,7 +37,7 @@
         v-for="link in links"
         :key="`${link.to || 'action'}-${link.label}`"
         variant="outline"
-        class="first-run-guide__action"
+        class="min-h-7"
         @click="handleLinkClick(link)"
       >
         <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -80,9 +80,3 @@ defineProps<{
   compact?: boolean;
 }>();
 </script>
-
-<style scoped>
-.first-run-guide__action {
-  min-height: 1.75rem;
-}
-</style>

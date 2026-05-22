@@ -1,5 +1,5 @@
 <template>
-  <section class="sites-view">
+  <section class="flex flex-col">
     <StatePanel
       v-if="error"
       kind="error"
@@ -32,12 +32,12 @@
 
     <section
       v-if="!error && (!loading || sites.length > 0) && sites.length === 0"
-      class="bench-empty-state"
+      class="flex min-h-[300px] flex-col items-center justify-center p-12 bg-white text-center"
     >
-      <h2 class="bench-empty-state__title">
+      <h2 class="m-0 text-lg font-semibold text-ink-gray-9">
         No sites yet
       </h2>
-      <p class="bench-empty-state__description">
+      <p class="mt-2 mb-6 text-sm text-ink-gray-5">
         Create your first site to manage runtime status, inspect logs, and access dashboards.
       </p>
       <div
@@ -67,24 +67,24 @@
     <!-- Filters -->
     <div
       v-if="!error && sites.length > 0"
-      class="site-filters"
+      class="flex items-center gap-3 mb-6"
     >
-      <div class="site-filters__left">
+      <div class="flex items-center gap-3">
         <Select
           v-model="benchFilterSelection"
-          class="site-filters__select"
+          class="flex-none w-auto"
           :options="benchFilterOptions"
           variant="outline"
         />
         <Select
           v-model="statusFilterSelection"
-          class="site-filters__select"
+          class="flex-none w-auto"
           :options="statusFilterOptions"
           variant="outline"
         />
       </div>
-      <div class="site-filters__right">
-        <div class="site-filters__search">
+      <div class="ml-auto w-[200px]">
+        <div class="w-full">
           <TextInput
             v-model="siteFilters.search"
             type="search"
@@ -123,13 +123,13 @@
             <Badge
               :variant="'subtle'"
               :theme="getStatusTheme(row)"
-              class="cursor-pointer status-badge"
+              class="inline-flex cursor-pointer items-center gap-1.5"
               @click.stop="onStatusClick(row.id)"
             >
               {{ formatStatusLabel(row) }}
               <span
                 v-if="isResourceBusy(row.id)"
-                class="status-badge__spinner"
+                class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
               />
             </Badge>
           </div>
@@ -153,16 +153,14 @@
       </template>
     </ListView>
 
-    <ConfirmationDialog
-      :open="deleteConfirmOpen"
-      title="Delete site"
-      :message="`Delete site ${pendingDeleteSiteName}? Type the site name to confirm.`"
-      confirm-label="Delete site"
-      :confirmation-phrase="pendingDeleteSiteName || null"
-      :typed-value="deleteTypedValue"
-      @update:typed-value="val => deleteTypedValue = val"
-      @cancel="onCancelDeleteSite"
+    <ConfirmDialog
+      :open="confirmDeleteSiteOpen"
+      title="Delete Site"
+      :message="`Are you sure you want to delete site &quot;${deleteSiteName}&quot;? This will remove all data and cannot be undone.`"
+      confirm-label="Delete"
+      confirm-theme="red"
       @confirm="onConfirmDeleteSite"
+      @cancel="cancelDeleteSite"
     />
 
     <TaskLogModal
@@ -172,20 +170,20 @@
     />
 
     <Dialog
-      v-model="showCreateFailureDialog"
-      :options="{ title: createFailureTitle, size: 'md' }"
+      v-model="createFailureDialogOpen"
+      :options="{ title: createFailureDialogTitle, size: 'xl' }"
     >
       <template #body-content>
-        <p class="text-sm text-ink-gray-7">
-          {{ createFailureMessage }}
-        </p>
+        <div class="py-2 text-sm text-ink-gray-7">
+          {{ createFailureDialogBody }}
+        </div>
       </template>
       <template #actions>
         <div class="dialog-actions">
           <Button
             size="md"
             variant="solid"
-            @click="showCreateFailureDialog = false"
+            @click="createFailureDialogOpen = false"
           >
             OK
           </Button>
@@ -202,6 +200,7 @@
         <div class="flex flex-col gap-4">
           <div class="flex flex-col min-h-0 gap-3 pt-6">
             <AppManager
+              mode="manage"
               context="site"
               :active-app-ids="Array.from(siteActivatedAppSet)"
               :allowed-app-ids="benchInstalledAppRows"
@@ -247,7 +246,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, ListView, Select, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, Dropdown, ListView, Select, TextInput, toast, ConfirmDialog } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconActivity from '~icons/lucide/activity';
@@ -270,13 +269,11 @@ import { useProgressCenter } from '../composables/useProgressCenter';
 import { useResourceTaskState } from '../composables/useResourceTaskState';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { useAppCatalog } from '../composables/useAppCatalog';
-import SiteWizardDialog from '../components/SiteWizardDialog.vue';
 import { useBenches } from '../composables/useBenches';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
 import { isCompletedSiteAppUpdateTask } from '../site-app-task-results';
-import type { SiteListItem, CatalogAppItem } from '../../shared/ipc';
-import { humanizeCreateFailure } from '../../shared/runtime-errors';
+import type { SiteListItem } from '../../shared/ipc';
 
 const ipc = useIpc();
 const route = useRoute();
@@ -300,9 +297,6 @@ onBeforeUnmount(() => {
 
 const { tasks, acknowledgedTasks } = useProgressCenter();
 const selectedTaskId = ref<string | null>(null);
-const showCreateFailureDialog = ref(false);
-const createFailureTitle = ref('Site Creation Failed');
-const createFailureMessage = ref('Site creation failed. Check Progress for details.');
 const showSiteAppsDialog = ref(false);
 const selectedSiteForAppsId = ref<string | null>(null);
 const activatingSiteAppId = ref<string | null>(null);
@@ -331,18 +325,6 @@ watch(
   (items) => {
     for (const task of items) {
       if (
-        task.status === 'failure' &&
-        task.resource === 'site' &&
-        task.taskName.toLowerCase().includes('create site') &&
-        !acknowledgedTasks.has(task.taskId)
-      ) {
-        acknowledgedTasks.add(task.taskId);
-        createFailureTitle.value = 'Site Creation Failed';
-        createFailureMessage.value = humanizeCreateFailure('site', task.message);
-        showCreateFailureDialog.value = true;
-      }
-
-      if (
         isCompletedSiteAppUpdateTask(task) &&
         !acknowledgedTasks.has(task.taskId)
       ) {
@@ -365,8 +347,6 @@ watch(
 );
 
 const SELECT_ALL = '__all__';
-
-
 
 const siteColumns = reactive([
   { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
@@ -441,7 +421,7 @@ const getSiteActions = (site: SiteListItem) => {
     icon: IconTrash,
     theme: 'red' as const,
     disabled: updating.value || deleting.value || site.status === 'running' || isResourceBusy(site.id),
-    onClick: () => onDeleteSite(site.id, site.name),
+    onClick: () => confirmDeleteSite(site.id, site.name),
   });
 
   return actions;
@@ -485,10 +465,6 @@ const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Review runtime', to: '/diagnostics' },
 ]);
 
-
-
-
-
 const getBenchName = (id: string) => {
   const bench = allBenches.value.find((b) => b.id === id);
   return bench ? bench.name : id;
@@ -516,21 +492,8 @@ const canActivateSelectedSiteApps = computed(() => {
   return selectedSiteForApps.value.status === 'running' && !isResourceBusy(selectedSiteForApps.value.id, 'site');
 });
 
-
-// Track selected apps to install in the site manage apps dialog
 const appsToInstall = ref<string[]>([]);
-const { state: catalogState } = useAppCatalog();
-const getAppInfo = (appId: string) => {
-  return catalogState.value.data?.find((app) => app.id === appId) ?? ({
-    id: appId,
-    name: appId,
-    description: '',
-    source: '',
-    version: '',
-    category: 'other',
-    compatibility: {},
-  } satisfies CatalogAppItem);
-};
+const { getAppInfo } = useAppCatalog();
 
 const removeSiteAppConfirmOpen = ref(false);
 const pendingRemoveSiteAppId = ref<string | null>(null);
@@ -639,8 +602,6 @@ const onDeactivateSiteApp = async (appId: string) => {
   }
 };
 
-
-
 const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
   const site = sites.value.find(s => s.id === id);
   const name = site ? site.name : '';
@@ -670,36 +631,35 @@ const canStopSite = (siteId: string): boolean => {
   return site ? canStopSiteFromUi(site) : false;
 };
 
-const deleteConfirmOpen = ref(false);
-const pendingDeleteSiteId = ref<string | null>(null);
-const pendingDeleteSiteName = ref('');
-const deleteTypedValue = ref('');
+const confirmDeleteSiteOpen = ref(false);
+const deleteSiteId = ref<string | null>(null);
+const deleteSiteName = ref('');
+const createFailureDialogOpen = ref(false);
+const createFailureDialogTitle = ref('');
+const createFailureDialogBody = ref('');
 
-const onDeleteSite = async (id: string, name: string) => {
-  pendingDeleteSiteId.value = id;
-  pendingDeleteSiteName.value = name;
-  deleteTypedValue.value = '';
-  deleteConfirmOpen.value = true;
+const confirmDeleteSite = (id: string, name: string) => {
+  deleteSiteId.value = id;
+  deleteSiteName.value = name;
+  confirmDeleteSiteOpen.value = true;
 };
 
-const onCancelDeleteSite = (): void => {
-  deleteConfirmOpen.value = false;
-  pendingDeleteSiteId.value = null;
-  pendingDeleteSiteName.value = '';
-  deleteTypedValue.value = '';
+const cancelDeleteSite = () => {
+  confirmDeleteSiteOpen.value = false;
+  deleteSiteId.value = null;
+  deleteSiteName.value = '';
 };
 
 const onConfirmDeleteSite = async (): Promise<void> => {
-  const id = pendingDeleteSiteId.value;
-  const name = pendingDeleteSiteName.value;
+  const id = deleteSiteId.value;
+  const name = deleteSiteName.value;
   if (!id) {
-    onCancelDeleteSite();
     return;
   }
-  deleteConfirmOpen.value = false;
+  confirmDeleteSiteOpen.value = false;
   toast.success(`Deleting site ${name}...`);
   await remove(id);
-  onCancelDeleteSite();
+  cancelDeleteSite();
 };
 
 
@@ -734,110 +694,3 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
   setPageHeaderActions(actions);
 }, { immediate: true });
 </script>
-
-<style scoped>
-.sites-view {
-  display: flex;
-  flex-direction: column;
-}
-
-.bench-empty-state {
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px;
-  background: white;
-  text-align: center;
-}
-
-.bench-empty-state__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.bench-empty-state__description {
-  margin: 8px 0 24px;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-
-.site-filters {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.site-filters__left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 0 0 auto;
-}
-
-.site-filters__select {
-  flex: 0 0 auto;
-  width: auto;
-}
-
-.site-filters__right {
-  margin-left: auto;
-  width: 200px;
-  max-width: 200px;
-  min-width: 200px;
-}
-
-.site-filters__search {
-  width: 100%;
-}
-
-.site-filters__search :deep(.relative) {
-  width: 100%;
-}
-
-@media (max-width: 980px) {
-  .site-filters {
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
-
-  .site-filters__left {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .site-filters__right {
-    margin-left: 0;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-}
-
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.status-badge__spinner {
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 9999px;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>

@@ -54,7 +54,7 @@
         :rows="rows"
         row-key="name"
         :options="{
-          selectable: false,
+          selectable: mode === 'select',
           showTooltip: false,
           rowHeight: '80px',
           emptyState: {
@@ -62,9 +62,12 @@
             description: 'No apps found in the catalog.',
           },
         }"
+        @update:selections="onSelectionsChange"
       >
-        <template #default>
+        <template #default="{ selectable }">
+          <ListHeader v-if="selectable" class="sticky top-0 z-[3]" />
           <ListRows class="flex-1 min-h-0 pr-1 overflow-y-auto" />
+          <ListSelectBanner v-if="selectable" />
         </template>
 
         <template #cell="{ column, row }">
@@ -89,8 +92,16 @@
               class="grid min-w-0 gap-1"
               :class="{ 'opacity-60': row.disabled }"
             >
-              <div class="flex items-center min-w-0">
+              <div class="flex items-center gap-2 min-w-0">
                 <span class="text-sm font-semibold truncate text-ink-gray-9">{{ row.appName }}</span>
+                <Badge
+                  v-if="mode === 'select' && row.isPreinstalledCoreApp"
+                  theme="gray"
+                  variant="subtle"
+                  size="sm"
+                >
+                  Pre-bundled
+                </Badge>
               </div>
               <p class="m-0 text-xs leading-snug text-wrap text-ink-gray-6">
                 {{ row.description }}
@@ -172,33 +183,65 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import IconSearch from '~icons/lucide/search';
-import { Badge, Button, ListRows, ListView, Select, TextInput } from 'frappe-ui';
+import { Badge, Button, ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/ipc';
+import { CORE_BENCH_APPS_SET } from '../../shared/bench-apps';
+import { normalizeSelection } from '../app-picker-state';
 import { useAppCatalogFilters } from '../composables/useAppCatalogFilters';
 
-const appColumns = [
-  { key: 'icon', label: '', width: '46px' },
-  { key: 'name', label: 'Name', width: 'minmax(70%, 450px)' },
-  { key: 'actions', label: '', width: '120px' },
-];
+const props = withDefaults(
+  defineProps<{
+    mode: 'select' | 'manage';
 
-const props = defineProps<{
-  context: 'bench' | 'site';
-  activeAppIds: readonly string[];
-  allowedAppIds?: readonly string[];
-  disabled?: boolean;
-  frappeVersion?: string;
-  loadingAppId?: string | null;
-}>();
+    // common
+    disabled?: boolean;
+    frappeVersion?: string;
+    allowedAppIds?: readonly string[];
+    
+    // select mode
+    modelValue?: string[];
+    disableCoreBenchApps?: boolean;
+    disabledAppIds?: readonly string[];
+    excludeAppIds?: readonly string[];
+
+    // manage mode
+    context?: 'bench' | 'site';
+    activeAppIds?: readonly string[];
+    loadingAppId?: string | null;
+  }>(),
+  {
+    disabled: false,
+    disableCoreBenchApps: false,
+    modelValue: () => [],
+    disabledAppIds: () => [],
+    excludeAppIds: () => [],
+    activeAppIds: () => [],
+  }
+);
 
 const emit = defineEmits<{
+  (e: 'update:modelValue', value: string[]): void;
   (e: 'add-app', appId: string): void;
   (e: 'remove-app', appId: string): void;
   (e: 'install-app', appId: string): void;
   (e: 'uninstall-app', appId: string): void;
 }>();
+
+const appColumns = computed(() => {
+  if (props.mode === 'select') {
+    return [
+      { key: 'icon', label: '', width: '46px' },
+      { key: 'name', label: 'Name', width: 'minmax(85%, 500px)' },
+    ];
+  }
+  return [
+    { key: 'icon', label: '', width: '46px' },
+    { key: 'name', label: 'Name', width: 'minmax(70%, 450px)' },
+    { key: 'actions', label: '', width: '120px' },
+  ];
+});
 
 const frappeVersionRef = computed(() => props.frappeVersion);
 
@@ -213,22 +256,29 @@ const {
 } = useAppCatalogFilters({ frappeVersion: frappeVersionRef });
 
 const imageErrors = ref<Record<string, boolean>>({});
+const listViewRef = ref<{ selections: Set<string> } | null>(null);
+const syncingFromUser = ref(false);
+const syncingFromModel = ref(false);
 
+const excludedAppIds = computed(() => new Set((props.excludeAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
+const disabledAppIds = computed(() => new Set((props.disabledAppIds ?? []).map((appId) => appId.trim()).filter(Boolean)));
 const allowedAppIds = computed(() => {
   if (!props.allowedAppIds || props.allowedAppIds.length === 0) {
     return null;
   }
-
   return new Set(props.allowedAppIds.map((appId) => appId.trim()).filter(Boolean));
 });
 
 const visibleItems = computed(() =>
   items.value.filter((item) => {
+    if (props.mode === 'select' && excludedAppIds.value.has(item.id)) {
+      return false;
+    }
+
     if (allowedAppIds.value && !allowedAppIds.value.has(item.id)) {
       return false;
     }
 
-    // Filter out incompatible apps
     const compatibility = evaluateCompatibility(item as CatalogAppItem);
     if (!compatibility.isCompatible) {
       return false;
@@ -240,23 +290,68 @@ const visibleItems = computed(() =>
 
 const rows = computed(() =>
   visibleItems.value.map((item) => {
-    const isActive = props.activeAppIds.includes(item.id) || (props.context === 'site' && item.id === 'frappe');
     const compatibility = evaluateCompatibility(item as CatalogAppItem);
+
+    if (props.mode === 'manage') {
+      const isActive = props.activeAppIds.includes(item.id) || (props.context === 'site' && item.id === 'frappe');
+      return {
+        ...item,
+        appId: item.id,
+        appName: item.name,
+        name: item.id,
+        disabled: props.disabled,
+        isActive,
+        compatibilityStatus: compatibility.status,
+        supportText: compatibility.status === 'ok' ? '' : compatibility.message,
+      };
+    }
+
+    // select mode
+    const isPreinstalledCoreApp = Boolean(props.disableCoreBenchApps && CORE_BENCH_APPS_SET.has(item.id));
+    const isExplicitlyDisabled = disabledAppIds.value.has(item.id);
 
     return {
       ...item,
       appId: item.id,
       appName: item.name,
       name: item.id,
-      disabled: props.disabled,
-      isActive,
+      disabled: props.disabled || isPreinstalledCoreApp || isExplicitlyDisabled,
       compatibilityStatus: compatibility.status,
+      isPreinstalledCoreApp,
       supportText:
-        compatibility.status === 'ok'
+        isExplicitlyDisabled
+          ? 'Already active and installed'
+          : compatibility.status === 'ok'
           ? ''
           : compatibility.message,
     };
   })
 );
 
+const syncSelectionsFromModel = () => {
+  if (props.mode !== 'select') return;
+  const selectionSet = listViewRef.value?.selections;
+  if (!selectionSet) return;
+
+  syncingFromModel.value = true;
+  selectionSet.clear();
+  rows.value.forEach((row) => {
+    if (!row.disabled && props.modelValue.includes(row.appId)) {
+      selectionSet.add(row.name);
+    }
+  });
+  nextTick(() => { syncingFromModel.value = false; });
+};
+
+const onSelectionsChange = (value: Set<string>) => {
+  if (props.mode !== 'select' || syncingFromModel.value) return;
+  syncingFromUser.value = true;
+  emit('update:modelValue', normalizeSelection(Array.from(value)));
+  nextTick(() => { syncingFromUser.value = false; });
+};
+
+watch([() => props.modelValue, rows], () => {
+  if (props.mode !== 'select' || syncingFromUser.value) return;
+  syncSelectionsFromModel();
+}, { immediate: true });
 </script>

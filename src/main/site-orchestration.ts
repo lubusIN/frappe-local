@@ -13,8 +13,6 @@ import { getComposeProjectName, composeBenchArgs, composeBenchSiteArgs } from '.
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../shared/runtime-errors';
 import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
 
-import { CORE_BENCH_APPS_SET } from '../shared/bench-apps';
-
 /** Shared execution context for running bench commands against a site. */
 export type SiteCommandEnv = {
   projectName: string;

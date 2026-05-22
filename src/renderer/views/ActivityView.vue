@@ -1,5 +1,5 @@
 <template>
-  <div class="activity-view">
+  <div class="flex flex-col">
     <div class="mb-6 flex items-center gap-4 justify-start">
       <Select
         v-model="statusFilterModel"
@@ -82,6 +82,7 @@ import type { RouteLocationRaw } from 'vue-router';
 import ErrorNotice from '../components/ErrorNotice.vue';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { buildErrorRemediationNotice } from '../error-remediation';
+import { formatStatus, formatTime, statusTheme } from '../utils/format';
 import type { ProgressTaskSummary } from '../progress-center';
 
 const {
@@ -115,14 +116,6 @@ const statusOptions = [
   { label: 'Failure', value: 'failure' },
 ];
 
-const formatStatus = (status: string): string => {
-  if (status === 'queued') return 'In Progress';
-  if (status === 'running') return 'Running';
-  if (status === 'success') return 'Success';
-  if (status === 'failure') return 'Failed';
-  return status;
-};
-
 const resourceOptions = [
   { label: 'All resources', value: 'all' },
   { label: 'Bench', value: 'bench' },
@@ -131,17 +124,7 @@ const resourceOptions = [
   { label: 'System', value: 'system' },
 ];
 
-const statusTheme = (
-  status: string
-): 'gray' | 'blue' | 'green' | 'red' | 'orange' => {
-  const map: Record<string, 'gray' | 'blue' | 'green' | 'red' | 'orange'> = {
-    queued: 'gray',
-    running: 'blue',
-    success: 'green',
-    failure: 'red',
-  };
-  return map[status] ?? 'gray';
-};
+
 
 const retryProgressSubscription = async (): Promise<void> => {
   await reconnect();
@@ -193,12 +176,4 @@ const errorNotice = computed(() =>
   progressError.value ? buildErrorRemediationNotice('progress-center', progressError.value) : null
 );
 
-const formatTime = (value: string): string => new Date(value).toLocaleString();
 </script>
-
-<style scoped>
-.activity-view {
-  display: flex;
-  flex-direction: column;
-}
-</style>

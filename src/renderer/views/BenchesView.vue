@@ -104,53 +104,27 @@
     </section>
 
     <ConfirmationDialog
-      :open="cleanConfirmOpen"
-      title="Clean bench"
-      :message="`Are you sure you want to clean all sites from bench &quot;${pendingCleanBenchName}&quot;? This will drop all databases and remove all site data.`"
-      confirm-label="Clean bench"
-      @cancel="onCancelClean"
-      @confirm="onConfirmClean"
+      :open="confirmCleanBenchOpen"
+      title="Clean Bench"
+      :message="`Are you sure you want to clear the site cache for &quot;${cleanBenchName}&quot;?`"
+      confirm-label="Clean"
+      @cancel="cancelCleanBench"
+      @confirm="onConfirmCleanBench"
     />
 
     <ConfirmationDialog
-      :open="deleteConfirmOpen"
-      title="Delete bench"
-      :message="`Delete bench ${pendingDeleteBenchName}? This cannot be undone.`"
-      confirm-label="Delete bench"
-      @cancel="onCancelDelete"
-      @confirm="onConfirmDelete"
+      :open="confirmDeleteBenchOpen"
+      title="Delete Bench"
+      :message="`Are you sure you want to delete bench &quot;${deleteBenchName}&quot;? This cannot be undone.`"
+      confirm-label="Delete"
+      @cancel="cancelDeleteBench"
+      @confirm="onConfirmDeleteBench"
     />
 
     <BenchWizardDialog
       v-model:open="showCreateBenchModal"
       @created="refresh(true)"
     />
-    <Dialog
-      v-model="showAppPicker"
-      :options="{ title: 'Select Apps', size: '2xl' }"
-    >
-      <template #body-content>
-        <div class="flex flex-col h-full min-h-0 overflow-hidden">
-          <AppPicker
-            v-model="createForm.appsSelected"
-            :disabled="creating || loading"
-            :frappe-version="createForm.frappeVersion"
-            :disable-core-bench-apps="true"
-          />
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <Button
-            size="md"
-            variant="solid"
-            @click="showAppPicker = false"
-          >
-            Done
-          </Button>
-        </div>
-      </template>
-    </Dialog>
 
     <TaskLogModal
       v-if="selectedTask"
@@ -159,20 +133,20 @@
     />
 
     <Dialog
-      v-model="showCreateFailureDialog"
-      :options="{ title: createFailureTitle, size: 'md' }"
+      v-model="createFailureDialogOpen"
+      :options="{ title: 'Failed to Create Bench', size: 'xl' }"
     >
       <template #body-content>
-        <p class="text-sm text-ink-gray-7">
-          {{ createFailureMessage }}
-        </p>
+        <div class="py-2 text-sm text-ink-gray-7">
+          <ErrorNotice v-if="createFailureNotice" :notice="createFailureNotice" />
+        </div>
       </template>
       <template #actions>
         <div class="flex justify-end gap-3">
           <Button
             size="md"
             variant="solid"
-            @click="showCreateFailureDialog = false"
+            @click="closeCreateFailureDialog"
           >
             OK
           </Button>
@@ -189,6 +163,7 @@
         <div class="flex flex-col gap-4">
           <div class="flex flex-col min-h-0 gap-3 pt-6">
             <AppManager
+              mode="manage"
               context="bench"
               :active-app-ids="selectedBenchForApps?.apps ?? []"
               :disabled="!canMutateApps || updating"
@@ -247,35 +222,37 @@
   import IconMoreHorizontal from '~icons/lucide/more-horizontal';
   import IconPackage from '~icons/lucide/package';
 import AppManager from '../components/AppManager.vue';
-import AppPicker from '../components/AppPicker.vue';
+
 import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import ErrorNotice from '../components/ErrorNotice.vue';
 import StatePanel from '../components/StatePanel.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
 
-import { useBenches } from '../composables/useBenches';
+import { useConfirmAction } from '../composables/useConfirmAction';
+import { useCreateFailureDialog } from '../composables/useCreateFailureDialog';
 import { usePageHeaderActions } from '../composables/usePageHeaderActions';
 import { useProgressCenter } from '../composables/useProgressCenter';
 import { useResourceTaskState } from '../composables/useResourceTaskState';
 import { useAppCatalog } from '../composables/useAppCatalog';
+import { useBenches } from '../composables/useBenches';
 import BenchWizardDialog from '../components/BenchWizardDialog.vue';
-import type { BenchListItem, CatalogAppItem } from '../../shared/ipc';
+import type { BenchListItem } from '../../shared/ipc';
 
 import { normalizeSelection } from '../app-picker-state';
-import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
 const {
   benches,
   loading,
-  creating,
+
   updating,
   deleting,
   openingFolder,
   error,
   successMessage,
   update,
-  remove,
+  remove: deleteBench,
   openFolder,
-  cleanSites,
+  cleanSites: cleanBench,
   refresh,
 } = useBenches();
 
@@ -293,7 +270,7 @@ watch(error, (err) => {
   }
 });
 
-const { state: catalogState } = useAppCatalog();
+const { getAppInfo } = useAppCatalog();
 const showAppsDialog = ref(false);
 const selectedBenchForAppsId = ref<string | null>(null);
 const removeAppConfirmOpen = ref(false);
@@ -318,18 +295,6 @@ const closeAppsDialog = () => {
 };
 
 const canMutateApps = computed(() => selectedBenchForApps.value?.status === 'running');
-
-const getAppInfo = (appId: string) => {
-  return catalogState.value.data?.find((app) => app.id === appId) ?? ({
-    id: appId,
-    name: appId,
-    description: '',
-    source: '',
-    version: '',
-    category: 'other',
-    compatibility: {},
-  } satisfies CatalogAppItem);
-};
 
 const queueBenchAppsUpdate = async (nextApps: readonly string[]) => {
   const bench = selectedBenchForApps.value;
@@ -434,6 +399,29 @@ const {
   getLatestRelevantTaskId,
 } = useResourceTaskState('bench', computed(() => tasks.value || []));
 
+const {
+  isOpen: confirmDeleteBenchOpen,
+  pendingId: deleteBenchId,
+  pendingName: deleteBenchName,
+  open: confirmDeleteBench,
+  cancel: cancelDeleteBench,
+} = useConfirmAction();
+
+const {
+  isOpen: confirmCleanBenchOpen,
+  pendingId: cleanBenchId,
+  pendingName: cleanBenchName,
+  open: confirmCleanBench,
+  cancel: cancelCleanBench,
+} = useConfirmAction();
+
+const {
+  createFailureDialogOpen,
+  createFailureNotice,
+  closeCreateFailureDialog,
+} = useCreateFailureDialog(tasks, 'Bench');
+
+
 const benchListOptions = {
   selectable: false,
   showTooltip: true,
@@ -489,14 +477,14 @@ const getBenchActions = (bench: BenchListItem) => {
       label: 'Clean Bench',
       icon: IconBrushCleaning,
       disabled: updating.value || (bench.status !== 'running' && bench.status !== 'success') || isBusy,
-      onClick: () => onCleanBench(bench.id, bench.name),
+      onClick: () => confirmCleanBench(bench.id, bench.name),
     },
     {
       label: 'Delete',
       icon: IconTrash,
       theme: 'red' as const,
       disabled: updating.value || deleting.value || bench.status === 'running' || isBusy,
-      onClick: () => onDeleteBench(bench.id, bench.name),
+      onClick: () => confirmDeleteBench(bench.id, bench.name),
     },
   ];
 
@@ -505,27 +493,6 @@ const getBenchActions = (bench: BenchListItem) => {
 
 
 const selectedTaskId = ref<string | null>(null);
-const showCreateFailureDialog = ref(false);
-const createFailureTitle = ref('Bench Creation Failed');
-const createFailureMessage = ref('Bench creation failed. Check Progress for details.');
-
-// Reset error dialog and acknowledgments when starting a new bench creation
-watch(creating, (isCreating) => {
-  if (isCreating) {
-    showCreateFailureDialog.value = false;
-    createFailureTitle.value = 'Bench Creation Failed';
-    createFailureMessage.value = 'Bench creation failed. Check Progress for details.';
-  }
-});
-
-// Also reset after a successful creation
-watch(successMessage, (msg) => {
-  if (msg && msg.toLowerCase().includes('created')) {
-    showCreateFailureDialog.value = false;
-    createFailureTitle.value = 'Bench Creation Failed';
-    createFailureMessage.value = 'Bench creation failed. Check Progress for details.';
-  }
-});
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
@@ -541,18 +508,6 @@ watch(
   tasks,
   (items) => {
     for (const task of items) {
-      if (
-        task.status === 'failure' &&
-        task.resource === 'bench' &&
-        task.taskName.toLowerCase().includes('create bench') &&
-        !acknowledgedTasks.has(task.taskId)
-      ) {
-        acknowledgedTasks.add(task.taskId);
-        createFailureTitle.value = 'Bench Creation Failed';
-        createFailureMessage.value = humanizeCreateFailure('bench', task.message);
-        showCreateFailureDialog.value = true;
-      }
-
       if (
         task.resource === 'bench' &&
         task.taskName.toLowerCase().includes('update bench apps') &&
@@ -576,7 +531,7 @@ watch(
   },
   { deep: true }
 );
-const showAppPicker = ref(false);
+
 const showCreateBenchModal = ref(false);
 
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
@@ -629,62 +584,25 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
   }
 };
 
-const deleteConfirmOpen = ref(false);
-const pendingDeleteBenchId = ref<string | null>(null);
-const pendingDeleteBenchName = ref('');
-
-const onDeleteBench = async (id: string, name: string) => {
-  pendingDeleteBenchId.value = id;
-  pendingDeleteBenchName.value = name;
-  deleteConfirmOpen.value = true;
-};
-
-const onCancelDelete = (): void => {
-  deleteConfirmOpen.value = false;
-  pendingDeleteBenchId.value = null;
-  pendingDeleteBenchName.value = '';
-};
-
-const onConfirmDelete = async (): Promise<void> => {
-  const id = pendingDeleteBenchId.value;
-  const name = pendingDeleteBenchName.value;
-  if (!id) {
-    onCancelDelete();
-    return;
+const onConfirmDeleteBench = async () => {
+  if (!deleteBenchId.value) return;
+  try {
+    toast.success(`Deleting bench ${deleteBenchName.value}...`);
+    await deleteBench(deleteBenchId.value);
+    cancelDeleteBench();
+  } catch (err) {
+    console.error(err);
   }
-
-  deleteConfirmOpen.value = false;
-  toast.success(`Deleting bench ${name}...`);
-  await remove(id);
-  onCancelDelete();
 };
 
-const cleanConfirmOpen = ref(false);
-const pendingCleanBenchId = ref<string | null>(null);
-const pendingCleanBenchName = ref('');
-
-const onCleanBench = (id: string, name: string) => {
-  pendingCleanBenchId.value = id;
-  pendingCleanBenchName.value = name;
-  cleanConfirmOpen.value = true;
-};
-
-const onCancelClean = () => {
-  cleanConfirmOpen.value = false;
-  pendingCleanBenchId.value = null;
-  pendingCleanBenchName.value = '';
-};
-
-const onConfirmClean = async () => {
-  const id = pendingCleanBenchId.value;
-  if (!id) {
-    onCancelClean();
-    return;
+const onConfirmCleanBench = async () => {
+  if (!cleanBenchId.value) return;
+  try {
+    await cleanBench(cleanBenchId.value);
+    cancelCleanBench();
+  } catch (err) {
+    console.error(err);
   }
-
-  cleanConfirmOpen.value = false;
-  await cleanSites(id);
-  onCancelClean();
 };
 
 const onOpenBenchFolder = async (id: string) => {
@@ -692,25 +610,4 @@ const onOpenBenchFolder = async (id: string) => {
 };
 </script>
 
-<style scoped>
-:deep(.frappe-list-cell) {
-  min-width: 0 !important;
-}
 
-/* Keep Select Apps modal capped to viewport while letting its list scroll internally. */
-:deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content) {
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-:deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content > div:first-child) {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-:deep(.dialog-overlay[data-dialog="Select Apps"] .dialog-content > div:last-child) {
-  flex-shrink: 0;
-}
-</style>

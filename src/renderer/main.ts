@@ -1,6 +1,5 @@
 import { createApp } from 'vue';
 import 'frappe-ui/style.css';
-import './styles.css';
 
 const renderFatalScreen = (title: string, detail: unknown): void => {
 	const target = document.getElementById('app');
@@ -11,10 +10,10 @@ const renderFatalScreen = (title: string, detail: unknown): void => {
 	const detailText = detail instanceof Error ? `${detail.message}\n\n${detail.stack ?? ''}` : String(detail);
 
 	target.innerHTML = `
-		<section style="max-width: 860px; margin: 40px auto; padding: 20px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #7f1d1d; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;">
-			<h1 style="margin: 0 0 10px; font-size: 18px;">${title}</h1>
-			<p style="margin: 0 0 14px; font-size: 13px; line-height: 1.5;">The renderer crashed before it could render the app shell.</p>
-			<pre style="margin: 0; padding: 12px; border-radius: 8px; background: #fff; border: 1px solid #fecaca; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.4;">${detailText}</pre>
+		<section class="max-w-[860px] mx-auto my-10 p-5 rounded-lg border border-outline-red-2 bg-surface-red-2 text-ink-red-4 font-sans">
+			<h1 class="m-0 mb-2.5 text-lg font-semibold">${title}</h1>
+			<p class="m-0 mb-3.5 text-[13px] leading-relaxed">The renderer crashed before it could render the app shell.</p>
+			<pre class="select-text m-0 p-3 rounded-lg bg-surface-white border border-outline-red-2 whitespace-pre-wrap break-words text-xs leading-snug">${detailText}</pre>
 		</section>
 	`;
 };

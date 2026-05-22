@@ -24,5 +24,9 @@ export const useAppCatalog = () => {
 
   onMounted(() => { void load(); });
 
-  return { state, reload: load };
+  const getAppInfo = (appId: string) => {
+    return state.value.data?.find((app) => app.id === appId) || { name: appId };
+  };
+
+  return { state, reload: load, getAppInfo };
 };
