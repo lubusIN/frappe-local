@@ -30,16 +30,11 @@
       body="Fetching sites and active status metadata."
     />
 
-    <section
+    <EmptyState
       v-if="!error && (!loading || sites.length > 0) && sites.length === 0"
-      class="flex min-h-[300px] flex-col items-center justify-center p-12 bg-white text-center"
+      title="No sites yet"
+      description="Create your first site to manage runtime status, inspect logs, and access dashboards."
     >
-      <h2 class="m-0 text-lg font-semibold text-ink-gray-9">
-        No sites yet
-      </h2>
-      <p class="mt-2 mb-6 text-sm text-ink-gray-5">
-        Create your first site to manage runtime status, inspect logs, and access dashboards.
-      </p>
       <div
         v-if="creatableBenches.length > 0"
         class="mt-6"
@@ -62,7 +57,7 @@
           Go to Benches
         </Button>
       </div>
-    </section>
+    </EmptyState>
 
     <!-- Filters -->
     <div
@@ -169,74 +164,27 @@
       @close="selectedTaskId = null"
     />
 
-    <Dialog
-      v-model="createFailureDialogOpen"
-      :options="{ title: createFailureDialogTitle, size: 'xl' }"
-    >
-      <template #body-content>
-        <div class="py-2 text-sm text-ink-gray-7">
-          {{ createFailureDialogBody }}
-        </div>
-      </template>
-      <template #actions>
-        <div class="dialog-actions">
-          <Button
-            size="md"
-            variant="solid"
-            @click="createFailureDialogOpen = false"
-          >
-            OK
-          </Button>
-        </div>
-      </template>
-    </Dialog>
-
-    <Dialog
-      v-model="showSiteAppsDialog"
-      :options="{ title: `Manage Apps in ${selectedSiteForApps?.name || 'Site'}`, size: '4xl' }"
+    <ManageAppsDialog
+      v-model:open="showSiteAppsDialog"
+      :resource-name="selectedSiteForApps?.name || 'Site'"
+      context="site"
+      :active-app-ids="Array.from(siteActivatedAppSet)"
+      :allowed-app-ids="benchInstalledAppRows"
+      :disabled="updating || !canActivateSelectedSiteApps"
+      :can-mutate="canMutateSiteApps"
+      :frappe-version="selectedBenchForSiteApps?.frappeVersion"
+      :loading-app-id="activatingSiteAppId"
       @close="closeSiteAppsDialog"
-    >
-      <template #body-content>
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col min-h-0 gap-3 pt-6">
-            <AppManager
-              mode="manage"
-              context="site"
-              :active-app-ids="Array.from(siteActivatedAppSet)"
-              :allowed-app-ids="benchInstalledAppRows"
-              :disabled="updating || !canActivateSelectedSiteApps"
-              :frappe-version="selectedBenchForSiteApps?.frappeVersion"
-              :loading-app-id="activatingSiteAppId"
-              @install-app="onActivateSiteApp"
-              @uninstall-app="onRequestDeactivateSiteApp"
-            />
-          </div>
-          <p
-            v-if="selectedSiteForApps && selectedSiteForApps.status !== 'running'"
-            class="text-sm text-ink-amber-4"
-          >
-            Start the site before managing apps.
-          </p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <Button
-            size="md"
-            variant="solid"
-            @click="closeSiteAppsDialog"
-          >
-            Close
-          </Button>
-        </div>
-      </template>
-    </Dialog>
+      @add-app="onActivateSiteApp"
+      @remove-app="onRequestDeactivateSiteApp"
+    />
 
-    <ConfirmationDialog
+    <ConfirmDialog
       :open="removeSiteAppConfirmOpen"
       title="Deactivate app"
       :message="`Are you sure you want to deactivate and uninstall &quot;${pendingRemoveSiteAppName}&quot; from site &quot;${selectedSiteForApps?.name}&quot;? This will drop the app's database tables and delete all associated data.`"
       confirm-label="Deactivate"
+      confirm-theme="red"
       @cancel="onCancelDeactivateSiteApp"
       @confirm="onConfirmDeactivateSiteApp"
     />
@@ -246,7 +194,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dialog, Dropdown, ListView, Select, TextInput, toast, ConfirmDialog } from 'frappe-ui';
+import { Badge, Button, Dropdown, ListView, Select, TextInput, toast, ConfirmDialog } from 'frappe-ui';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconActivity from '~icons/lucide/activity';
@@ -257,11 +205,13 @@ import IconSquare from '~icons/lucide/square';
 import IconTrash from '~icons/lucide/trash-2';
 import IconPackage from '~icons/lucide/package';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import AppManager from '../components/AppManager.vue';
 
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+
+
 import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/StatePanel.vue';
+import EmptyState from '../components/EmptyState.vue';
+import ManageAppsDialog from '../components/ManageAppsDialog.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
 import SiteWizardDialog from '../components/SiteWizardDialog.vue';
 import { useIpc } from '../composables/useIpc';
@@ -635,9 +585,7 @@ const canStopSite = (siteId: string): boolean => {
 const confirmDeleteSiteOpen = ref(false);
 const deleteSiteId = ref<string | null>(null);
 const deleteSiteName = ref('');
-const createFailureDialogOpen = ref(false);
-const createFailureDialogTitle = ref('');
-const createFailureDialogBody = ref('');
+
 
 const confirmDeleteSite = (id: string, name: string) => {
   deleteSiteId.value = id;
@@ -662,7 +610,6 @@ const onConfirmDeleteSite = async (): Promise<void> => {
   await remove(id);
   cancelDeleteSite();
 };
-
 
 onMounted(() => {
 

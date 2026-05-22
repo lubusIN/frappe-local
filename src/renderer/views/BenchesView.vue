@@ -1,41 +1,20 @@
 <template>
   <section class="flex flex-col gap-6">
-    <StatePanel
-      v-if="error && !benches.length"
-      kind="error"
-      title="Unable to load benches"
-      :body="error"
-      action-label="Retry"
-      @action="refresh"
-    />
+    <StatePanel v-if="error && !benches.length" kind="error" title="Unable to load benches" :body="error"
+      action-label="Retry" @action="refresh" />
 
-    <StatePanel
-      v-if="!error && loading && benches.length === 0"
-      kind="loading"
-      title="Loading benches"
-      body="Fetching the latest bench list and lifecycle state."
-    />
+    <StatePanel v-if="!error && loading && benches.length === 0" kind="loading" title="Loading benches"
+      body="Fetching the latest bench list and lifecycle state." />
 
-    <ListView
-      v-if="!error && (!loading || benches.length > 0) && benches.length"
-      :columns="benchColumns"
-      :rows="benches"
-      row-key="id"
-      :options="benchListOptions"
-    >
+    <ListView v-if="!error && (!loading || benches.length > 0) && benches.length" :columns="benchColumns"
+      :rows="benches" row-key="id" :options="benchListOptions">
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
-          <div
-            class="py-3 cursor-pointer group"
-            @click="onManageBench(row.id)"
-          >
+          <div class="py-3 cursor-pointer group" @click="onManageBench(row.id)">
             <div class="font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
               {{ row.name }}
             </div>
-            <div
-              class="text-xs truncate text-ink-gray-5"
-              :title="row.path"
-            >
+            <div class="text-xs truncate text-ink-gray-5" :title="row.path">
               {{ formatPath(row.path) }}
             </div>
           </div>
@@ -51,33 +30,20 @@
 
         <template v-else-if="column.key === 'status'">
           <div class="flex items-center">
-            <Badge
-              :variant="'subtle'"
-              :theme="getStatusTheme(row)"
-              class="inline-flex cursor-pointer items-center gap-1.5"
-              @click.stop="onStatusClick(row.id)"
-            >
+            <Badge :variant="'subtle'" :theme="getStatusTheme(row)"
+              class="inline-flex cursor-pointer items-center gap-1.5" @click.stop="onStatusClick(row.id)">
               {{ formatStatusLabel(row) }}
-              <span
-                v-if="isResourceBusy(row.id)"
-                class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
-              />
+              <span v-if="isResourceBusy(row.id)"
+                class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin" />
             </Badge>
           </div>
         </template>
 
         <template v-else-if="column.key === 'actions'">
-          <div
-            class="flex justify-end"
-            @click.stop
-          >
+          <div class="flex justify-end" @click.stop>
             <Dropdown :options="getBenchActions(row)">
               <template #default>
-                <Button
-                  size="md"
-                  variant="subtle"
-                  :icon="IconMoreHorizontal"
-                />
+                <Button size="md" variant="subtle" :icon="IconMoreHorizontal" />
               </template>
             </Dropdown>
           </div>
@@ -85,57 +51,26 @@
       </template>
     </ListView>
 
-    <section
-      v-if="!error && (!loading || benches.length > 0) && !benches.length"
-      class="flex min-h-[300px] flex-col items-center justify-center bg-white px-12 text-center"
-    >
-      <h2 class="m-0 text-lg font-semibold text-ink-gray-9">
-        No benches found
-      </h2>
-      <p class="mt-2 mb-6 text-sm text-ink-gray-6">
-        Create a new bench to get started.
-      </p>
-      <Button
-        variant="solid"
-        @click="showCreateBenchModal = true"
-      >
+    <EmptyState v-if="!error && (!loading || benches.length > 0) && !benches.length" title="No benches found"
+      description="Create a new bench to get started.">
+      <Button variant="solid" @click="showCreateBenchModal = true">
         Create Bench
       </Button>
-    </section>
+    </EmptyState>
 
-    <ConfirmationDialog
-      :open="confirmCleanBenchOpen"
-      title="Clean Bench"
+    <ConfirmDialog :open="confirmCleanBenchOpen" title="Clean Bench"
       :message="`Are you sure you want to clear the site cache for &quot;${cleanBenchName}&quot;?`"
-      confirm-label="Clean"
-      @cancel="cancelCleanBench"
-      @confirm="onConfirmCleanBench"
-    />
+      confirm-label="Clean" @cancel="cancelCleanBench" @confirm="onConfirmCleanBench" />
 
-    <ConfirmationDialog
-      :open="confirmDeleteBenchOpen"
-      title="Delete Bench"
+    <ConfirmDialog :open="confirmDeleteBenchOpen" title="Delete Bench"
       :message="`Are you sure you want to delete bench &quot;${deleteBenchName}&quot;? This cannot be undone.`"
-      confirm-label="Delete"
-      @cancel="cancelDeleteBench"
-      @confirm="onConfirmDeleteBench"
-    />
+      confirm-label="Delete" confirm-theme="red" @cancel="cancelDeleteBench" @confirm="onConfirmDeleteBench" />
 
-    <BenchWizardDialog
-      v-model:open="showCreateBenchModal"
-      @created="refresh(true)"
-    />
+    <BenchWizardDialog v-model:open="showCreateBenchModal" @created="refresh(true)" />
 
-    <TaskLogModal
-      v-if="selectedTask"
-      :task="selectedTask"
-      @close="selectedTaskId = null"
-    />
+    <TaskLogModal v-if="selectedTask" :task="selectedTask" @close="selectedTaskId = null" />
 
-    <Dialog
-      v-model="createFailureDialogOpen"
-      :options="{ title: 'Failed to Create Bench', size: 'xl' }"
-    >
+    <Dialog v-model="createFailureDialogOpen" :options="{ title: 'Failed to Create Bench', size: 'xl' }">
       <template #body-content>
         <div class="py-2 text-sm text-ink-gray-7">
           <ErrorNotice v-if="createFailureNotice" :notice="createFailureNotice" />
@@ -143,89 +78,46 @@
       </template>
       <template #actions>
         <div class="flex justify-end gap-3">
-          <Button
-            size="md"
-            variant="solid"
-            @click="closeCreateFailureDialog"
-          >
+          <Button size="md" variant="solid" @click="closeCreateFailureDialog">
             OK
           </Button>
         </div>
       </template>
     </Dialog>
 
-    <Dialog
-      v-model="showAppsDialog"
-      :options="{ title: `Manage Apps in ${selectedBenchForApps?.name || 'Bench'}`, size: '4xl' }"
-      @close="closeAppsDialog"
-    >
-      <template #body-content>
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col min-h-0 gap-3 pt-6">
-            <AppManager
-              mode="manage"
-              context="bench"
-              :active-app-ids="selectedBenchForApps?.apps ?? []"
-              :disabled="!canMutateApps || updating"
-              :frappe-version="selectedBenchForApps?.frappeVersion"
-              :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
-              @add-app="onAddBenchApp"
-              @remove-app="onRequestRemoveBenchApp"
-            />
-          </div>
-          <p
-            v-if="selectedBenchForApps && selectedBenchForApps.status !== 'running'"
-            class="text-sm text-ink-amber-4"
-          >
-            Start the bench before managing apps.
-          </p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex justify-end gap-3">
-          <Button
-            size="md"
-            variant="solid"
-            @click="closeAppsDialog"
-          >
-            Close
-          </Button>
-        </div>
-      </template>
-    </Dialog>
+    <ManageAppsDialog v-model:open="showAppsDialog" :resource-name="selectedBenchForApps?.name || 'Bench'"
+      context="bench" :active-app-ids="selectedBenchForApps?.apps ?? []" :disabled="!canMutateApps || updating"
+      :can-mutate="canMutateApps" :frappe-version="selectedBenchForApps?.frappeVersion"
+      :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null" @close="closeAppsDialog"
+      @add-app="onAddBenchApp" @remove-app="onRequestRemoveBenchApp" />
 
-    <ConfirmationDialog
-      :open="removeAppConfirmOpen"
-      title="Remove app"
-      :message="removeAppConfirmMessage"
-      confirm-label="Remove app"
-      @cancel="onCancelRemoveBenchApp"
-      @confirm="onConfirmRemoveBenchApp"
-    />
+    <ConfirmDialog :open="removeAppConfirmOpen" title="Remove app" :message="removeAppConfirmMessage"
+      confirm-label="Remove app" confirm-theme="red" @cancel="onCancelRemoveBenchApp"
+      @confirm="onConfirmRemoveBenchApp" />
   </section>
 </template>
 
-  <script setup lang="ts">
-  import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
-  import { useRouter } from 'vue-router';
-  import { Badge, Button, Dialog, Dropdown, ListView, toast } from 'frappe-ui';
-  import IconPlus from '~icons/lucide/plus';
-  import IconExternalLink from '~icons/lucide/external-link';
-  
-  import IconPlay from '~icons/lucide/play';
-  import IconSquare from '~icons/lucide/square';
-  import IconFolder from '~icons/lucide/folder';
-  import IconTrash from '~icons/lucide/trash-2';
-  import IconBrushCleaning from '~icons/lucide/brush-cleaning';
-  import IconActivity from '~icons/lucide/activity';
-  import IconRotateCw from '~icons/lucide/rotate-cw';
-  import IconMoreHorizontal from '~icons/lucide/more-horizontal';
-  import IconPackage from '~icons/lucide/package';
-import AppManager from '../components/AppManager.vue';
+<script setup lang="ts">
+import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
+import { useRouter } from 'vue-router';
+import { Badge, Button, Dialog, Dropdown, ListView, toast, ConfirmDialog } from 'frappe-ui';
+import IconPlus from '~icons/lucide/plus';
+import IconExternalLink from '~icons/lucide/external-link';
 
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
+import IconPlay from '~icons/lucide/play';
+import IconSquare from '~icons/lucide/square';
+import IconFolder from '~icons/lucide/folder';
+import IconTrash from '~icons/lucide/trash-2';
+import IconBrushCleaning from '~icons/lucide/brush-cleaning';
+import IconActivity from '~icons/lucide/activity';
+import IconRotateCw from '~icons/lucide/rotate-cw';
+import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+import IconPackage from '~icons/lucide/package';
+
 import ErrorNotice from '../components/ErrorNotice.vue';
 import StatePanel from '../components/StatePanel.vue';
+import EmptyState from '../components/EmptyState.vue';
+import ManageAppsDialog from '../components/ManageAppsDialog.vue';
 import TaskLogModal from '../components/TaskLogModal.vue';
 
 import { useConfirmAction } from '../composables/useConfirmAction';
@@ -243,7 +135,6 @@ import { normalizeSelection } from '../app-picker-state';
 const {
   benches,
   loading,
-
   updating,
   deleting,
   openingFolder,
@@ -439,54 +330,54 @@ const getBenchActions = (bench: BenchListItem) => {
     hidden?: boolean;
     onClick: () => void | Promise<void>;
   }> = [
-    {
-      label: 'Sites',
-      icon: IconExternalLink,
-      onClick: () => onManageBench(bench.id),
-    },
-    {
-      label: 'View Progress',
-      icon: IconActivity,
-      onClick: () => onStatusClick(bench.id),
-      hidden: !isBusy,
-    },
-    {
-      label: bench.status === 'running' ? 'Restart' : 'Start',
-      icon: bench.status === 'running' ? IconRotateCw : IconPlay,
-      disabled: updating.value || isBusy || bench.status === 'queued',
-      onClick: () => onSetBenchStatus(bench.id, 'running', bench.status),
-    },
-    {
-      label: 'Stop',
-      icon: IconSquare,
-      disabled: updating.value || bench.status === 'stopped' || bench.status === 'queued' || isBusy,
-      onClick: () => onStopBench(bench.id),
-    },
-    {
-      label: 'Apps',
-      icon: IconPackage,
-      onClick: () => onShowApps(bench),
-    },
-    {
-      label: 'Open Folder',
-      icon: IconFolder,
-      disabled: openingFolder.value,
-      onClick: () => onOpenBenchFolder(bench.id),
-    },
-    {
-      label: 'Clean Bench',
-      icon: IconBrushCleaning,
-      disabled: updating.value || (bench.status !== 'running' && bench.status !== 'success') || isBusy,
-      onClick: () => confirmCleanBench(bench.id, bench.name),
-    },
-    {
-      label: 'Delete',
-      icon: IconTrash,
-      theme: 'red' as const,
-      disabled: updating.value || deleting.value || bench.status === 'running' || isBusy,
-      onClick: () => confirmDeleteBench(bench.id, bench.name),
-    },
-  ];
+      {
+        label: 'Sites',
+        icon: IconExternalLink,
+        onClick: () => onManageBench(bench.id),
+      },
+      {
+        label: 'View Progress',
+        icon: IconActivity,
+        onClick: () => onStatusClick(bench.id),
+        hidden: !isBusy,
+      },
+      {
+        label: bench.status === 'running' ? 'Restart' : 'Start',
+        icon: bench.status === 'running' ? IconRotateCw : IconPlay,
+        disabled: updating.value || isBusy || bench.status === 'queued',
+        onClick: () => onSetBenchStatus(bench.id, 'running', bench.status),
+      },
+      {
+        label: 'Stop',
+        icon: IconSquare,
+        disabled: updating.value || bench.status === 'stopped' || bench.status === 'queued' || isBusy,
+        onClick: () => onStopBench(bench.id),
+      },
+      {
+        label: 'Apps',
+        icon: IconPackage,
+        onClick: () => onShowApps(bench),
+      },
+      {
+        label: 'Open Folder',
+        icon: IconFolder,
+        disabled: openingFolder.value,
+        onClick: () => onOpenBenchFolder(bench.id),
+      },
+      {
+        label: 'Clean Bench',
+        icon: IconBrushCleaning,
+        disabled: updating.value || (bench.status !== 'running' && bench.status !== 'success') || isBusy,
+        onClick: () => confirmCleanBench(bench.id, bench.name),
+      },
+      {
+        label: 'Delete',
+        icon: IconTrash,
+        theme: 'red' as const,
+        disabled: updating.value || deleting.value || bench.status === 'running' || isBusy,
+        onClick: () => confirmDeleteBench(bench.id, bench.name),
+      },
+    ];
 
   return actions.filter(a => !a.hidden);
 };
@@ -564,7 +455,7 @@ const onStopBench = async (id: string) => {
 const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', currentStatus?: string) => {
   const bench = benches.value.find(b => b.id === id);
   const name = bench ? bench.name : '';
-  
+
   if (status === 'running') {
     if (currentStatus === 'running') {
       toast.success(`Restarting bench ${name}...`);
@@ -609,5 +500,3 @@ const onOpenBenchFolder = async (id: string) => {
   await openFolder(id);
 };
 </script>
-
-
