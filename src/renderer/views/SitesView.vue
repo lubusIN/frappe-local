@@ -274,7 +274,7 @@ import SiteWizardDialog from '../components/SiteWizardDialog.vue';
 import { useBenches } from '../composables/useBenches';
 import { filterSites } from '../site-filters';
 import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
-import { acknowledgeHistoricalCompletedSiteAppTasks, isCompletedSiteAppUpdateTask } from '../site-app-task-results';
+import { isCompletedSiteAppUpdateTask } from '../site-app-task-results';
 import type { SiteListItem, CatalogAppItem } from '../../shared/ipc';
 import { humanizeCreateFailure } from '../../shared/runtime-errors';
 
@@ -298,14 +298,11 @@ onBeforeUnmount(() => {
   clearPageHeaderActions();
 });
 
-const { tasks } = useProgressCenter();
+const { tasks, acknowledgedTasks } = useProgressCenter();
 const selectedTaskId = ref<string | null>(null);
 const showCreateFailureDialog = ref(false);
 const createFailureTitle = ref('Site Creation Failed');
 const createFailureMessage = ref('Site creation failed. Check Progress for details.');
-const acknowledgedCreateFailures = ref(new Set<string>());
-const acknowledgedSiteAppTaskResults = ref(new Set<string>());
-const initializedSiteAppTaskAcks = ref(false);
 const showSiteAppsDialog = ref(false);
 const selectedSiteForAppsId = ref<string | null>(null);
 const activatingSiteAppId = ref<string | null>(null);
@@ -332,19 +329,14 @@ const onStatusClick = (resourceId: string) => {
 watch(
   tasks,
   (items) => {
-    if (!initializedSiteAppTaskAcks.value) {
-      acknowledgeHistoricalCompletedSiteAppTasks(items, acknowledgedSiteAppTaskResults.value);
-      initializedSiteAppTaskAcks.value = true;
-    }
-
     for (const task of items) {
       if (
         task.status === 'failure' &&
         task.resource === 'site' &&
         task.taskName.toLowerCase().includes('create site') &&
-        !acknowledgedCreateFailures.value.has(task.taskId)
+        !acknowledgedTasks.has(task.taskId)
       ) {
-        acknowledgedCreateFailures.value.add(task.taskId);
+        acknowledgedTasks.add(task.taskId);
         createFailureTitle.value = 'Site Creation Failed';
         createFailureMessage.value = humanizeCreateFailure('site', task.message);
         showCreateFailureDialog.value = true;
@@ -352,9 +344,9 @@ watch(
 
       if (
         isCompletedSiteAppUpdateTask(task) &&
-        !acknowledgedSiteAppTaskResults.value.has(task.taskId)
+        !acknowledgedTasks.has(task.taskId)
       ) {
-        acknowledgedSiteAppTaskResults.value.add(task.taskId);
+        acknowledgedTasks.add(task.taskId);
         const siteName = sites.value.find((site) => site.id === task.resourceId)?.name
           ?? task.taskName.replace(/^Update Site Apps\s+/i, '').trim();
 

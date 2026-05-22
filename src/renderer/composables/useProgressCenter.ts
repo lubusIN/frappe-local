@@ -8,6 +8,7 @@ import { useIpc } from './useIpc';
 
 // Global singleton state to avoid multiple IPC subscriptions
 const globalState = reactive(createDefaultProgressCenterState());
+const acknowledgedTasks = reactive(new Set<string>());
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
 
@@ -41,5 +42,6 @@ export const useProgressCenter = () => {
     ...toRefs(globalState),
     filteredTasks,
     reconnect,
+    acknowledgedTasks,
   };
 };

@@ -54,23 +54,29 @@
     </template>
 
     <template #actions>
-      <div class="flex justify-end gap-2">
-        <Button
-          v-if="task.logs.length > 0"
-          size="md"
-          variant="subtle"
-          :icon-left="IconCopy"
-          @click="onCopyLogs"
-        >
-          {{ copied ? 'Copied!' : 'Copy' }}
-        </Button>
-        <Button
-          size="md"
-          variant="subtle"
-          @click="emit('close')"
-        >
-          Close
-        </Button>
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-2">
+          <Switch v-model="autoScroll" />
+          <span class="text-sm select-none cursor-pointer text-ink-gray-6" @click="autoScroll = !autoScroll">Auto-scroll</span>
+        </div>
+        <div class="flex justify-end gap-2">
+          <Button
+            v-if="task.logs.length > 0"
+            size="md"
+            variant="subtle"
+            :icon-left="IconCopy"
+            @click="onCopyLogs"
+          >
+            {{ copied ? 'Copied!' : 'Copy' }}
+          </Button>
+          <Button
+            size="md"
+            variant="subtle"
+            @click="emit('close')"
+          >
+            Close
+          </Button>
+        </div>
       </div>
     </template>
   </Dialog>
@@ -78,7 +84,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { Badge, Button, Dialog, LoadingIndicator, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import IconCopy from '~icons/lucide/copy';
 import type { ProgressTaskSummary } from '../progress-center';
 
@@ -92,6 +98,14 @@ const emit = defineEmits<{
 
 const logsContainer = ref<HTMLElement | null>(null);
 const copied = ref(false);
+
+const LOCAL_STORAGE_KEY = 'local-bench:task-log-auto-scroll';
+const savedAutoScroll = localStorage.getItem(LOCAL_STORAGE_KEY);
+const autoScroll = ref(savedAutoScroll !== null ? savedAutoScroll === 'true' : true);
+
+watch(autoScroll, (val) => {
+  localStorage.setItem(LOCAL_STORAGE_KEY, String(val));
+});
 
 const isOpen = computed({
   get: () => Boolean(props.task),
@@ -148,13 +162,31 @@ const formatTime = (timestamp: string) =>
     second: '2-digit',
   });
 
+const scrollToBottom = () => {
+  if (logsContainer.value) {
+    logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
+  }
+};
+
+watch(logsContainer, (el) => {
+  if (el) {
+    nextTick(() => {
+      scrollToBottom();
+      let attempts = 0;
+      const interval = setInterval(() => {
+        scrollToBottom();
+        if (++attempts >= 10) clearInterval(interval);
+      }, 50);
+    });
+  }
+});
+
 watch(
   () => props.task?.logs.length,
   async () => {
+    if (!autoScroll.value) return;
     await nextTick();
-    if (logsContainer.value) {
-      logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
-    }
+    scrollToBottom();
   }
 );
 

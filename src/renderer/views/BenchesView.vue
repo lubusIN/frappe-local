@@ -422,7 +422,7 @@ const benchColumns = reactive([
   { label: '', key: 'actions', width: 0.5 },
 ]);
 
-const { tasks } = useProgressCenter();
+const { tasks, acknowledgedTasks } = useProgressCenter();
 
 const {
   setPendingAction: setPendingBenchAction,
@@ -508,7 +508,6 @@ const selectedTaskId = ref<string | null>(null);
 const showCreateFailureDialog = ref(false);
 const createFailureTitle = ref('Bench Creation Failed');
 const createFailureMessage = ref('Bench creation failed. Check Progress for details.');
-const acknowledgedCreateFailures = ref(new Set<string>());
 
 // Reset error dialog and acknowledgments when starting a new bench creation
 watch(creating, (isCreating) => {
@@ -516,7 +515,6 @@ watch(creating, (isCreating) => {
     showCreateFailureDialog.value = false;
     createFailureTitle.value = 'Bench Creation Failed';
     createFailureMessage.value = 'Bench creation failed. Check Progress for details.';
-    acknowledgedCreateFailures.value.clear();
   }
 });
 
@@ -526,10 +524,8 @@ watch(successMessage, (msg) => {
     showCreateFailureDialog.value = false;
     createFailureTitle.value = 'Bench Creation Failed';
     createFailureMessage.value = 'Bench creation failed. Check Progress for details.';
-    acknowledgedCreateFailures.value.clear();
   }
 });
-const acknowledgedBenchAppTaskResults = ref(new Set<string>());
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
@@ -549,9 +545,9 @@ watch(
         task.status === 'failure' &&
         task.resource === 'bench' &&
         task.taskName.toLowerCase().includes('create bench') &&
-        !acknowledgedCreateFailures.value.has(task.taskId)
+        !acknowledgedTasks.has(task.taskId)
       ) {
-        acknowledgedCreateFailures.value.add(task.taskId);
+        acknowledgedTasks.add(task.taskId);
         createFailureTitle.value = 'Bench Creation Failed';
         createFailureMessage.value = humanizeCreateFailure('bench', task.message);
         showCreateFailureDialog.value = true;
@@ -561,9 +557,9 @@ watch(
         task.resource === 'bench' &&
         task.taskName.toLowerCase().includes('update bench apps') &&
         (task.status === 'success' || task.status === 'failure') &&
-        !acknowledgedBenchAppTaskResults.value.has(task.taskId)
+        !acknowledgedTasks.has(task.taskId)
       ) {
-        acknowledgedBenchAppTaskResults.value.add(task.taskId);
+        acknowledgedTasks.add(task.taskId);
         const benchName = benches.value.find((bench) => bench.id === task.resourceId)?.name
           ?? task.taskName.replace(/^Update Bench Apps\s+/i, '').trim();
 

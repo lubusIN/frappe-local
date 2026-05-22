@@ -74,21 +74,21 @@ code,
   min-height: 100vh;
 }
 
-button {
+button:not([role="switch"]) {
   font: inherit;
 }
 
-button {
+button:not([role="switch"]) {
   cursor: pointer;
   transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
-button:disabled {
+button:disabled:not([role="switch"]) {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-button:focus-visible,
+button:focus-visible:not([role="switch"]),
 a:focus-visible {
   outline: 2px solid var(--text-primary);
   outline-offset: 2px;

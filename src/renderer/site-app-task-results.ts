@@ -9,14 +9,3 @@ export const isCompletedSiteAppUpdateTask = (task: ProgressTaskSummary): boolean
     (task.status === 'success' || task.status === 'failure')
   );
 };
-
-export const acknowledgeHistoricalCompletedSiteAppTasks = (
-  tasks: readonly ProgressTaskSummary[],
-  acknowledgedTaskIds: Set<string>
-): void => {
-  for (const task of tasks) {
-    if (isCompletedSiteAppUpdateTask(task)) {
-      acknowledgedTaskIds.add(task.taskId);
-    }
-  }
-};
