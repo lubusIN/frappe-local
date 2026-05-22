@@ -62,7 +62,7 @@ npm start
 ## Project Structure
 
 - `src/main` - Electron main process
-- `src/preload` - preload bridge
+- `src/main/preload.ts` - preload bridge
 - `src/renderer` - Vue renderer app
 - `src/shared` - shared contracts/types between processes
 - `tests` - unit/integration tests

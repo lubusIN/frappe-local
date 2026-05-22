@@ -50,9 +50,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import IconPlay from '~icons/lucide/play';
 import { Button, toast } from 'frappe-ui';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
-import ConfirmationDialog from '../components/ConfirmationDialog.vue';
-import { useDiagnostics } from '../composables/useDiagnostics';
-import { usePageHeaderActions } from '../composables/usePageHeaderActions';
+import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
+import { useDiagnostics } from '../composables/system/useDiagnostics';
+import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 
 const { report, running, fixing, resetting, error, run, fix, Reset } = useDiagnostics();
 const { setActions, clearActions } = usePageHeaderActions();

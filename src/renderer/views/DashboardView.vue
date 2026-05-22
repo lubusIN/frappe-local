@@ -41,9 +41,9 @@ import IconGlobe from '~icons/lucide/globe';
 import IconPackage from '~icons/lucide/package';
 import IconSettings from '~icons/lucide/settings';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import ShortcutCard from '../components/ShortcutCard.vue';
-import { useIpc } from '../composables/useIpc';
-import { useSettingsDialog } from '../composables/useSettingsDialog';
+import ShortcutCard from '../components/ui/ShortcutCard.vue';
+import { useIpc } from '../composables/system/useIpc';
+import { useSettingsDialog } from '../composables/ui/useSettingsDialog';
 
 const ipc = useIpc();
 const { open: openSettings } = useSettingsDialog();

@@ -4,7 +4,7 @@ import baseConfig, { externalModules } from './vite.base.config';
 export default mergeConfig(baseConfig, {
   build: {
     lib: {
-      entry: 'src/preload/preload.ts',
+      entry: 'src/main/preload.ts',
       formats: ['cjs'],
       fileName: () => 'preload.js',
     },

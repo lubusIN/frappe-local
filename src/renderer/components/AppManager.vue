@@ -186,10 +186,10 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import IconSearch from '~icons/lucide/search';
 import { Badge, Button, ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
-import type { CatalogAppItem } from '../../shared/ipc';
-import { CORE_BENCH_APPS_SET } from '../../shared/bench-apps';
-import { normalizeSelection } from '../app-picker-state';
-import { useAppCatalogFilters } from '../composables/useAppCatalogFilters';
+import type { CatalogAppItem } from '../../shared/core/ipc';
+import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
+import { normalizeSelection } from '../controllers/app-picker';
+import { useAppCatalogFilters } from '../composables/data/useAppCatalogFilters';
 
 const props = withDefaults(
   defineProps<{

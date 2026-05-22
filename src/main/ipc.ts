@@ -11,18 +11,18 @@ import type {
   SiteUpdateInput,
   UpdateCheckResult,
   UpdateStrategyStatus,
-} from '../shared/ipc';
+} from '../shared/core/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
-import { runDiagnostics, getLastDiagnosticsReport } from './diagnostics-service';
-import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
-import { buildUpdateStrategyStatus, runManualUpdateCheck } from './update-strategy-service';
-import { ipcChannels } from '../shared/ipc';
+import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
+import { ensureRuntimeRunning, getRuntimeEnv } from './services/runtime-service';
+import { buildUpdateStrategyStatus, runManualUpdateCheck } from './services/update-strategy-service';
+import { ipcChannels } from '../shared/core/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
-import { getTaskRunner, type TaskExecutionContext } from './task-runner';
+import { getTaskRunner, type TaskExecutionContext } from './services/task-runner';
 import { createMainLogger } from './logger';
 import { findNextAvailableTcpPort } from './utils/ports';
-import { normalizeSiteHost } from '../shared/site-hostname';
-import { withCoreBenchApps } from '../shared/bench-apps';
+import { normalizeSiteHost } from '../shared/utils/site-hostname';
+import { withCoreBenchApps } from '../shared/utils/bench-apps';
 import { resolveBenchHttpPort, DEFAULT_HTTP_PORT } from './utils/bench-http-port';
 
 const mainLogger = createMainLogger('ipc');
@@ -47,11 +47,11 @@ import {
   canTransitionSiteStatus,
   isBenchReadyForSiteStatus,
 } from '../shared/domain/site-lifecycle';
-import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
+import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/catalog-provider';
 import { createDefaultStorageSnapshot } from './storage/schema';
-import type { LifecycleOperation } from './analytics';
-import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './site-orchestration';
-import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './bench-orchestration';
+import type { LifecycleOperation } from './services/analytics';
+import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './services/site-orchestration';
+import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './services/bench-orchestration';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;

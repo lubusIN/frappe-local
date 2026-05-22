@@ -108,10 +108,10 @@
 </template>
 
 <script setup lang="ts">
-import type { UpdateCheckResult, UpdateStrategyStatus } from '../../shared/ipc';
+import type { UpdateCheckResult, UpdateStrategyStatus } from '../../shared/core/ipc';
 import { Badge, Button } from 'frappe-ui';
 import { computed } from 'vue';
-import StatePanel from './StatePanel.vue';
+import StatePanel from './ui/StatePanel.vue';
 
 const props = defineProps<{
   status: UpdateStrategyStatus | null;

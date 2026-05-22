@@ -10,7 +10,7 @@
     "node_modules/@electron-forge/plugin-vite/forge-vite-env.d.ts",
     "vite.*.config.ts",
     "src/main/**/*.ts",
-    "src/preload/**/*.ts",
+    "src/main/preload.ts",
     "tests/**/*.ts"
   ]
 }

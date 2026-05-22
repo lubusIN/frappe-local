@@ -15,11 +15,11 @@ import { AppCatalogRepository } from './storage/repositories/app-catalog-reposit
 import { BenchRepository } from './storage/repositories/bench-repository';
 import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
-import { analytics } from './analytics';
-import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './catalog-provider';
-import { runDiagnostics } from './diagnostics-service';
-import { getAppIconPath } from './app-icon';
-import { initializeCaddyFrontDoor, isCaddyFrontDoorRunning } from './caddy-front-door';
+import { analytics } from './services/analytics';
+import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/catalog-provider';
+import { runDiagnostics } from './services/diagnostics-service';
+import { getAppIconPath } from './utils/app-icon';
+import { initializeCaddyFrontDoor, isCaddyFrontDoorRunning } from './services/caddy-front-door';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;

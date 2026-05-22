@@ -79,11 +79,11 @@
 import { computed, reactive } from 'vue';
 import { Badge, ListView, LoadingIndicator, Select } from 'frappe-ui';
 import type { RouteLocationRaw } from 'vue-router';
-import ErrorNotice from '../components/ErrorNotice.vue';
-import { useProgressCenter } from '../composables/useProgressCenter';
-import { buildErrorRemediationNotice } from '../error-remediation';
+import ErrorNotice from '../components/ui/ErrorNotice.vue';
+import { useProgressCenter } from '../composables/system/useProgressCenter';
+import { buildErrorRemediationNotice } from '../utils/error-remediation';
 import { formatStatus, formatTime, statusTheme } from '../utils/format';
-import type { ProgressTaskSummary } from '../progress-center';
+import type { ProgressTaskSummary } from '../controllers/progress';
 
 const {
   filteredTasks,
@@ -173,7 +173,7 @@ const activityListOptions = computed(() => ({
 }));
 
 const errorNotice = computed(() =>
-  progressError.value ? buildErrorRemediationNotice('progress-center', progressError.value) : null
+  progressError.value ? buildErrorRemediationNotice('progress', progressError.value) : null
 );
 
 </script>

@@ -3,8 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBootstrapContext, runApplicationBootstrap } from './bootstrap';
 import { createMainLogger } from './logger';
-import { getAppIconPath } from './app-icon';
-import { stopCaddyFrontDoor } from './caddy-front-door';
+import { getAppIconPath } from './utils/app-icon';
+import { stopCaddyFrontDoor } from './services/caddy-front-door';
 
 const APP_DISPLAY_NAME = 'Local Bench';
 

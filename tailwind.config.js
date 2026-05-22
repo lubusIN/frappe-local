@@ -4,7 +4,7 @@ export default {
   presets: [frappeUiPreset],
   content: [
     './src/renderer/**/*.{vue,js,ts,jsx,tsx}',
-    './src/preload/**/*.{js,ts}',
+    './src/main/preload.ts',
     './node_modules/frappe-ui/src/**/*.{vue,js,ts}',
   ],
 };

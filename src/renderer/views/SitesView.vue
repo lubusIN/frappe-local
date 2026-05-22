@@ -158,7 +158,7 @@
       @cancel="cancelDeleteSite"
     />
 
-    <TaskLogModal
+    <TaskLogDialog
       v-if="selectedTask"
       :task="selectedTask"
       @close="selectedTaskId = null"
@@ -209,22 +209,22 @@ import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 
 
 import FirstRunGuide from '../components/FirstRunGuide.vue';
-import StatePanel from '../components/StatePanel.vue';
-import EmptyState from '../components/EmptyState.vue';
-import ManageAppsDialog from '../components/ManageAppsDialog.vue';
-import TaskLogModal from '../components/TaskLogModal.vue';
-import SiteWizardDialog from '../components/SiteWizardDialog.vue';
-import { useIpc } from '../composables/useIpc';
-import { useSites } from '../composables/useSites';
-import { useProgressCenter } from '../composables/useProgressCenter';
-import { useResourceTaskState } from '../composables/useResourceTaskState';
-import { usePageHeaderActions } from '../composables/usePageHeaderActions';
-import { useAppCatalog } from '../composables/useAppCatalog';
-import { useBenches } from '../composables/useBenches';
-import { filterSites } from '../site-filters';
-import { canStartSiteFromUi, canStopSiteFromUi } from '../site-action-guards';
-import { isCompletedSiteAppUpdateTask } from '../site-app-task-results';
-import type { SiteListItem } from '../../shared/ipc';
+import StatePanel from '../components/ui/StatePanel.vue';
+import EmptyState from '../components/ui/EmptyState.vue';
+import ManageAppsDialog from '../components/dialogs/ManageAppsDialog.vue';
+import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
+import SiteWizardDialog from '../components/dialogs/SiteWizardDialog.vue';
+import { useIpc } from '../composables/system/useIpc';
+import { useSites } from '../composables/data/useSites';
+import { useProgressCenter } from '../composables/system/useProgressCenter';
+import { useResourceTaskState } from '../composables/system/useResourceTaskState';
+import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
+import { useAppCatalog } from '../composables/data/useAppCatalog';
+import { useBenches } from '../composables/data/useBenches';
+import { filterSites } from '../utils/sites/site-filters';
+import { canStartSiteFromUi, canStopSiteFromUi } from '../utils/sites/site-action-guards';
+import { isCompletedSiteAppUpdateTask } from '../utils/sites/site-app-task-results';
+import type { SiteListItem } from '../../shared/core/ipc';
 
 const ipc = useIpc();
 const route = useRoute();

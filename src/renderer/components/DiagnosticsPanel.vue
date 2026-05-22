@@ -126,7 +126,7 @@
 import { computed, reactive } from 'vue';
 import { Alert, Badge, Button, ListHeader, ListHeaderItem, ListRow, ListRowItem, ListRows, ListView } from 'frappe-ui';
 import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '../../shared/domain/diagnostics';
-import StatePanel from './StatePanel.vue';
+import StatePanel from './ui/StatePanel.vue';
 
 const props = defineProps<{
   report: DiagnosticsReport | null;

@@ -68,7 +68,7 @@
 
     <BenchWizardDialog v-model:open="showCreateBenchModal" @created="refresh(true)" />
 
-    <TaskLogModal v-if="selectedTask" :task="selectedTask" @close="selectedTaskId = null" />
+    <TaskLogDialog v-if="selectedTask" :task="selectedTask" @close="selectedTaskId = null" />
 
 
 
@@ -101,21 +101,21 @@ import IconRotateCw from '~icons/lucide/rotate-cw';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';
 
-import StatePanel from '../components/StatePanel.vue';
-import EmptyState from '../components/EmptyState.vue';
-import ManageAppsDialog from '../components/ManageAppsDialog.vue';
-import TaskLogModal from '../components/TaskLogModal.vue';
+import StatePanel from '../components/ui/StatePanel.vue';
+import EmptyState from '../components/ui/EmptyState.vue';
+import ManageAppsDialog from '../components/dialogs/ManageAppsDialog.vue';
+import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
 
-import { useConfirmAction } from '../composables/useConfirmAction';
-import { usePageHeaderActions } from '../composables/usePageHeaderActions';
-import { useProgressCenter } from '../composables/useProgressCenter';
-import { useResourceTaskState } from '../composables/useResourceTaskState';
-import { useAppCatalog } from '../composables/useAppCatalog';
-import { useBenches } from '../composables/useBenches';
-import BenchWizardDialog from '../components/BenchWizardDialog.vue';
-import type { BenchListItem } from '../../shared/ipc';
+import { useConfirmAction } from '../composables/ui/useConfirmAction';
+import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
+import { useProgressCenter } from '../composables/system/useProgressCenter';
+import { useResourceTaskState } from '../composables/system/useResourceTaskState';
+import { useAppCatalog } from '../composables/data/useAppCatalog';
+import { useBenches } from '../composables/data/useBenches';
+import BenchWizardDialog from '../components/dialogs/BenchWizardDialog.vue';
+import type { BenchListItem } from '../../shared/core/ipc';
 
-import { normalizeSelection } from '../app-picker-state';
+import { normalizeSelection } from '../controllers/app-picker';
 
 const {
   benches,
