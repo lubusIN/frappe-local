@@ -7,12 +7,21 @@
   >
     <template #body-content>
       <div class="flex flex-col gap-4">
-        <div class="flex items-center gap-2.5 py-1" :class="{ 'px-0': compact }">
-          <template v-for="(step, index) in steps" :key="step">
+        <div
+          class="flex items-center gap-2.5 py-1"
+          :class="{ 'px-0': compact }"
+        >
+          <template
+            v-for="(step, index) in steps"
+            :key="step"
+          >
             <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', currentStep === (index + 1) ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
               {{ step }}
             </span>
-            <IconChevronRight v-if="index < steps.length - 1" class="size-[15px] shrink-0 text-ink-gray-5" />
+            <IconChevronRight
+              v-if="index < steps.length - 1"
+              class="size-[15px] shrink-0 text-ink-gray-5"
+            />
           </template>
         </div>
 

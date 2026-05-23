@@ -65,7 +65,10 @@
         @update:selections="onSelectionsChange"
       >
         <template #default="{ selectable }">
-          <ListHeader v-if="selectable" class="sticky top-0 z-[3]" />
+          <ListHeader
+            v-if="selectable"
+            class="sticky top-0 z-[3]"
+          />
           <ListRows class="flex-1 min-h-0 pr-1 overflow-y-auto" />
           <ListSelectBanner v-if="selectable" />
         </template>

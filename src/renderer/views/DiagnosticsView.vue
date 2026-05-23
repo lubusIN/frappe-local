@@ -44,11 +44,18 @@
     />
 
     <Teleport to="body">
-      <div v-if="resetting" class="fixed inset-0 z-[9999] bg-white/90 flex flex-col items-center justify-center backdrop-blur-sm">
+      <div
+        v-if="resetting"
+        class="fixed inset-0 z-[9999] bg-white/90 flex flex-col items-center justify-center backdrop-blur-sm"
+      >
         <Logo class="w-24 h-24 mb-6 text-ink-gray-9 animate-pulse" />
         <LoadingIndicator class="w-8 h-8 mb-4 text-ink-gray-9" />
-        <h2 class="text-xl font-semibold text-ink-gray-9">Resetting Local Bench</h2>
-        <p class="mt-2 text-ink-gray-6">This may take a few moments. Please do not close the application.</p>
+        <h2 class="text-xl font-semibold text-ink-gray-9">
+          Resetting Local Bench
+        </h2>
+        <p class="mt-2 text-ink-gray-6">
+          This may take a few moments. Please do not close the application.
+        </p>
       </div>
     </Teleport>
   </div>

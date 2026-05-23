@@ -1,20 +1,41 @@
 <template>
   <section class="flex flex-col gap-6">
-    <StatePanel v-if="error && !benches.length" kind="error" title="Unable to load benches" :body="error"
-      action-label="Retry" @action="refresh" />
+    <StatePanel
+      v-if="error && !benches.length"
+      kind="error"
+      title="Unable to load benches"
+      :body="error"
+      action-label="Retry"
+      @action="refresh"
+    />
 
-    <StatePanel v-if="!error && loading && benches.length === 0" kind="loading" title="Loading benches"
-      body="Fetching the latest bench list and lifecycle state." />
+    <StatePanel
+      v-if="!error && loading && benches.length === 0"
+      kind="loading"
+      title="Loading benches"
+      body="Fetching the latest bench list and lifecycle state."
+    />
 
-    <ListView v-if="!error && (!loading || benches.length > 0) && benches.length" :columns="benchColumns"
-      :rows="benches" row-key="id" :options="benchListOptions">
+    <ListView
+      v-if="!error && (!loading || benches.length > 0) && benches.length"
+      :columns="benchColumns"
+      :rows="benches"
+      row-key="id"
+      :options="benchListOptions"
+    >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
-          <div class="py-3 cursor-pointer group" @click="onManageBench(row.id)">
+          <div
+            class="py-3 cursor-pointer group"
+            @click="onManageBench(row.id)"
+          >
             <div class="font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
               {{ row.name }}
             </div>
-            <div class="text-xs truncate text-ink-gray-5" :title="row.path">
+            <div
+              class="text-xs truncate text-ink-gray-5"
+              :title="row.path"
+            >
               {{ formatPath(row.path) }}
             </div>
           </div>
@@ -30,20 +51,33 @@
 
         <template v-else-if="column.key === 'status'">
           <div class="flex items-center">
-            <Badge :variant="'subtle'" :theme="getStatusTheme(row)"
-              class="inline-flex cursor-pointer items-center gap-1.5" @click.stop="onStatusClick(row.id)">
+            <Badge
+              :variant="'subtle'"
+              :theme="getStatusTheme(row)"
+              class="inline-flex cursor-pointer items-center gap-1.5"
+              @click.stop="onStatusClick(row.id)"
+            >
               {{ formatStatusLabel(row) }}
-              <span v-if="isResourceBusy(row.id)"
-                class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin" />
+              <span
+                v-if="isResourceBusy(row.id)"
+                class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
+              />
             </Badge>
           </div>
         </template>
 
         <template v-else-if="column.key === 'actions'">
-          <div class="flex justify-end" @click.stop>
+          <div
+            class="flex justify-end"
+            @click.stop
+          >
             <Dropdown :options="getBenchActions(row)">
               <template #default>
-                <Button size="md" variant="subtle" :icon="IconMoreHorizontal" />
+                <Button
+                  size="md"
+                  variant="subtle"
+                  :icon="IconMoreHorizontal"
+                />
               </template>
             </Dropdown>
           </div>
@@ -51,36 +85,74 @@
       </template>
     </ListView>
 
-    <EmptyState v-if="!error && (!loading || benches.length > 0) && !benches.length" title="No benches found"
-      description="Create a new bench to get started.">
-      <Button variant="solid" @click="showCreateBenchModal = true">
+    <EmptyState
+      v-if="!error && (!loading || benches.length > 0) && !benches.length"
+      title="No benches found"
+      description="Create a new bench to get started."
+    >
+      <Button
+        variant="solid"
+        @click="showCreateBenchModal = true"
+      >
         Create Bench
       </Button>
     </EmptyState>
 
-    <ConfirmDialog :open="confirmCleanBenchOpen" title="Clean Bench"
+    <ConfirmDialog
+      :open="confirmCleanBenchOpen"
+      title="Clean Bench"
       :message="`Are you sure you want to clear the site cache for &quot;${cleanBenchName}&quot;?`"
-      confirm-label="Clean" @cancel="cancelCleanBench" @confirm="onConfirmCleanBench" />
+      confirm-label="Clean"
+      @cancel="cancelCleanBench"
+      @confirm="onConfirmCleanBench"
+    />
 
-    <ConfirmDialog :open="confirmDeleteBenchOpen" title="Delete Bench"
+    <ConfirmDialog
+      :open="confirmDeleteBenchOpen"
+      title="Delete Bench"
       :message="`Are you sure you want to delete bench &quot;${deleteBenchName}&quot;? This cannot be undone.`"
-      confirm-label="Delete" confirm-theme="red" @cancel="cancelDeleteBench" @confirm="onConfirmDeleteBench" />
+      confirm-label="Delete"
+      confirm-theme="red"
+      @cancel="cancelDeleteBench"
+      @confirm="onConfirmDeleteBench"
+    />
 
-    <BenchWizardDialog v-model:open="showCreateBenchModal" @created="refresh(true)" />
+    <BenchWizardDialog
+      v-model:open="showCreateBenchModal"
+      @created="refresh(true)"
+    />
 
-    <TaskLogDialog v-if="selectedTask" :task="selectedTask" @close="selectedTaskId = null" />
+    <TaskLogDialog
+      v-if="selectedTask"
+      :task="selectedTask"
+      @close="selectedTaskId = null"
+    />
 
 
 
-    <ManageAppsDialog v-model:open="showAppsDialog" :resource-name="selectedBenchForApps?.name || 'Bench'"
-      context="bench" :active-app-ids="selectedBenchForApps?.apps ?? []" :disabled="!canMutateApps || updating"
-      :can-mutate="canMutateApps" :frappe-version="selectedBenchForApps?.frappeVersion"
-      :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null" @close="closeAppsDialog"
-      @add-app="onAddBenchApp" @remove-app="onRequestRemoveBenchApp" />
+    <ManageAppsDialog
+      v-model:open="showAppsDialog"
+      :resource-name="selectedBenchForApps?.name || 'Bench'"
+      context="bench"
+      :active-app-ids="selectedBenchForApps?.apps ?? []"
+      :disabled="!canMutateApps || updating"
+      :can-mutate="canMutateApps"
+      :frappe-version="selectedBenchForApps?.frappeVersion"
+      :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
+      @close="closeAppsDialog"
+      @add-app="onAddBenchApp"
+      @remove-app="onRequestRemoveBenchApp"
+    />
 
-    <ConfirmDialog :open="removeAppConfirmOpen" title="Remove app" :message="removeAppConfirmMessage"
-      confirm-label="Remove app" confirm-theme="red" @cancel="onCancelRemoveBenchApp"
-      @confirm="onConfirmRemoveBenchApp" />
+    <ConfirmDialog
+      :open="removeAppConfirmOpen"
+      title="Remove app"
+      :message="removeAppConfirmMessage"
+      confirm-label="Remove app"
+      confirm-theme="red"
+      @cancel="onCancelRemoveBenchApp"
+      @confirm="onConfirmRemoveBenchApp"
+    />
   </section>
 </template>
 

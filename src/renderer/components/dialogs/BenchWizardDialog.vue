@@ -67,8 +67,8 @@
     >
       <label class="flex flex-col gap-1.5">
         <AppManager
-          mode="select"
           v-model="createForm.appsSelected"
+          mode="select"
           class="w-full"
           :disabled="creating || loading"
           :frappe-version="createForm.frappeVersion"

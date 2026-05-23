@@ -174,7 +174,7 @@ app.whenReady().then(async () => {
     if (windows.length === 0) {
       await createMainWindow();
     } else {
-      windows[0].show();
+      windows[0]?.show();
     }
   });
 });

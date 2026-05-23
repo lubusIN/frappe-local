@@ -62,8 +62,8 @@
       <label class="flex flex-col gap-1.5">
         <FormLabel label="Apps" />
         <AppManager
-          mode="select"
           v-model="createForm.appsSelected"
+          mode="select"
           class="w-full"
           :disabled="creating || loading"
           :frappe-version="selectedBench?.frappeVersion"
