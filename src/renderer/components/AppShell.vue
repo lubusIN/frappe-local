@@ -1,13 +1,5 @@
 <template>
   <div class="flex flex-col w-screen h-screen overflow-hidden bg-surface-white">
-    <!-- Global Title Bar for Frameless Window -->
-    <div 
-      class="w-full h-10 shrink-0 flex items-center justify-center border-b border-outline-gray-1 bg-surface-white z-50"
-      style="-webkit-app-region: drag;"
-    >
-      <span class="text-[11px] font-medium text-ink-gray-4">Local Bench</span>
-    </div>
-
     <!-- Main Content Area -->
     <div class="flex flex-1 min-h-0">
       <Sidebar
@@ -17,8 +9,9 @@
       >
         <template #header>
           <div
-            class="flex items-center p-3 transition-all duration-300"
+            class="flex items-center p-3 pt-8 transition-all duration-300"
             :class="isCollapsed ? 'justify-center' : ''"
+            style="-webkit-app-region: drag;"
           >
             <div 
               class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0"
@@ -45,7 +38,10 @@
       </Sidebar>
 
       <div class="flex flex-col flex-1 min-w-0 bg-surface-white">
-        <header class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0">
+        <header 
+          class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0"
+          style="-webkit-app-region: drag;"
+        >
           <h1 class="text-lg font-medium truncate text-ink-gray-9">
             {{ currentTitle }}
           </h1>
@@ -53,6 +49,7 @@
           <div
             v-if="headerActions.length > 0"
             class="flex items-center gap-3"
+            style="-webkit-app-region: no-drag;"
           >
             <Button
               v-for="action in headerActions"

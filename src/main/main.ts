@@ -90,7 +90,7 @@ const createMainWindow = async (): Promise<void> => {
       color: '#ffffff',
       symbolColor: '#1a1919',
     },
-    trafficLightPosition: { x: 16, y: 12 },
+    trafficLightPosition: { x: 8, y: 5 },
     webPreferences: {
       preload: path.join(currentDirectory, 'preload.js'),
       contextIsolation: true,
