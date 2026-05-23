@@ -437,6 +437,11 @@ const benchInstalledAppRows = computed(() => {
 
 const siteActivatedAppSet = computed(() => new Set(selectedSiteForApps.value?.apps ?? []));
 
+const canMutateSiteApps = computed(() => {
+  if (!selectedSiteForApps.value) return false;
+  return selectedSiteForApps.value.status === 'running';
+});
+
 const canActivateSelectedSiteApps = computed(() => {
   if (!selectedSiteForApps.value) return false;
   return selectedSiteForApps.value.status === 'running' && !isResourceBusy(selectedSiteForApps.value.id, 'site');

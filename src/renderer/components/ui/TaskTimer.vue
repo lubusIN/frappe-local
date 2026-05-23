@@ -1,7 +1,7 @@
 <template>
   <div :class="[sizeClass, colorClass, 'font-mono transition-colors duration-200']">
-    <span v-if="running">Time elapsed: {{ formattedTime }}</span>
-    <span v-else>Completed in: {{ formattedTime }}</span>
+    <span v-if="running">⏳ Time elapsed: {{ formattedTime }}</span>
+    <span v-else>✅ Completed in: {{ formattedTime }}</span>
   </div>
 </template>
 
