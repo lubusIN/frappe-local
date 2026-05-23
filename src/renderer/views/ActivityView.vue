@@ -64,6 +64,17 @@
         <template v-else-if="column.key === 'timestamp'">
           <span class="text-xs text-ink-gray-5 tabular-nums">{{ formatTime(row.timestamp) }}</span>
         </template>
+        <template v-else-if="column.key === 'elapsed'">
+          <TaskTimer
+            v-if="row.logs && row.logs.length > 0"
+            :start-time="row.logs[0].timestamp"
+            :end-time="row.logs[row.logs.length - 1].timestamp"
+            :running="row.status === 'running' || row.status === 'queued'"
+            size-class="text-xs"
+            color-class="text-ink-gray-5 tabular-nums"
+          />
+          <span v-else class="text-xs text-ink-gray-5">-</span>
+        </template>
         <template v-else-if="column.key === 'taskName'">
           <span class="text-sm font-medium text-ink-gray-9 truncate">{{ row.taskName }}</span>
         </template>
@@ -72,15 +83,24 @@
         </template>
       </template>
     </ListView>
+
+    <TaskLogDialog
+      v-if="selectedTask"
+      :task="selectedTask"
+      @close="selectedTask = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, reactive, ref, watch, onBeforeUnmount } from 'vue';
 import { Badge, ListView, LoadingIndicator, Select } from 'frappe-ui';
-import type { RouteLocationRaw } from 'vue-router';
+import IconTrash from '~icons/lucide/trash-2';
 import ErrorNotice from '../components/ui/ErrorNotice.vue';
+import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
+import TaskTimer from '../components/ui/TaskTimer.vue';
 import { useProgressCenter } from '../composables/system/useProgressCenter';
+import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { buildErrorRemediationNotice } from '../utils/error-remediation';
 import { formatStatus, formatTime, statusTheme } from '../utils/format';
 import type { ProgressTaskSummary } from '../controllers/progress';
@@ -92,7 +112,35 @@ const {
   statusFilter,
   resourceFilter,
   reconnect,
+  clearTasks,
 } = useProgressCenter();
+
+const { setActions, clearActions } = usePageHeaderActions();
+const selectedTask = ref<ProgressTaskSummary | null>(null);
+
+const headerActions = computed(() => {
+  if (filteredTasks.value.length === 0) return [];
+  return [
+    {
+      id: 'activity-clear',
+      label: 'Clear',
+      icon: IconTrash,
+      theme: 'red',
+      variant: 'subtle' as const,
+      onClick: () => {
+        clearTasks();
+      },
+    },
+  ];
+});
+
+watch(headerActions, (actions) => {
+  setActions(actions);
+}, { immediate: true });
+
+onBeforeUnmount(() => {
+  clearActions();
+});
 
 const statusFilterModel = computed({
   get: () => statusFilter.value,
@@ -135,28 +183,9 @@ const activityColumns = reactive([
   { key: 'resource', label: 'Resource', width: '120px' },
   { key: 'taskName', label: 'Task', width: 'minmax(160px, 1fr)' },
   { key: 'message', label: 'Message', width: 'minmax(240px, 2fr)' },
-  { key: 'timestamp', label: 'Updated', width: '160px' },
+  { key: 'timestamp', label: 'Updated', width: '100px' },
+  { key: 'elapsed', label: 'Elapsed', width: '120px' },
 ]);
-
-const taskRoute = (item: ProgressTaskSummary): RouteLocationRaw => {
-  if (item.resource === 'bench') {
-    return item.resourceId
-      ? { path: '/benches', query: { benchId: item.resourceId } }
-      : { path: '/benches' };
-  }
-
-  if (item.resource === 'site') {
-    return item.resourceId
-      ? { path: '/sites', query: { siteId: item.resourceId } }
-      : { path: '/sites' };
-  }
-
-  if (item.resource === 'runtime') {
-    return { path: '/diagnostics' };
-  }
-
-  return { path: '/' };
-};
 
 const activityRows = computed(() => filteredTasks.value);
 
@@ -165,7 +194,9 @@ const activityListOptions = computed(() => ({
   showTooltip: true,
   resizeColumn: true,
   rowHeight: '46px',
-  getRowRoute: (row: ProgressTaskSummary) => taskRoute(row),
+  onRowClick: (row: ProgressTaskSummary) => {
+    selectedTask.value = row;
+  },
   emptyState: {
     title: 'No Activity',
     description: 'No background tasks or recent activity found.',

@@ -80,6 +80,7 @@ import Logo from '../components/ui/Logo.vue';
 import TaskTimer from '../components/ui/TaskTimer.vue';
 import { useDiagnostics } from '../composables/system/useDiagnostics';
 import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
+import { ACTIVITIES_STORAGE_KEY } from '../composables/system/useProgressCenter';
 
 const { report, running, fixing, resetting, error, run, fix, Reset } = useDiagnostics();
 const { setActions, clearActions } = usePageHeaderActions();
@@ -111,6 +112,7 @@ const onConfirmReset = async (): Promise<void> => {
     return;
   }
 
+  localStorage.removeItem(ACTIVITIES_STORAGE_KEY);
   toast.success('Development state reset. Reloading app...');
   window.location.reload();
 };

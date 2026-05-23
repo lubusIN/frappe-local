@@ -55,6 +55,7 @@
               v-for="action in headerActions"
               :key="action.id"
               :variant="action.variant === 'primary' ? 'solid' : 'subtle'"
+              :theme="action.theme"
               :disabled="action.disabled"
               :loading="action.loading"
               :icon-left="action.icon"
