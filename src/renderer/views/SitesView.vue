@@ -196,6 +196,7 @@ import { Badge, Button, Dropdown, ListView, Select, TextInput, toast } from 'fra
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
+import IconFolderOpen from '~icons/lucide/folder-open';
 import IconActivity from '~icons/lucide/activity';
 
 import IconPlay from '~icons/lucide/play';
@@ -236,6 +237,7 @@ const {
   update,
   remove,
   refresh,
+  openFolder,
 } = useSites();
 
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
@@ -342,6 +344,12 @@ const getSiteActions = (site: SiteListItem) => {
     icon: IconActivity,
     hidden: !isBusy,
     onClick: () => onStatusClick(site.id),
+  });
+
+  actions.push({
+    label: 'Open Folder',
+    icon: IconFolderOpen,
+    onClick: () => openFolder(site.id),
   });
 
   actions.push({

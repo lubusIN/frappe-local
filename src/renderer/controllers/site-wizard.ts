@@ -20,7 +20,10 @@ const SITE_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 export const normalizeSiteSlug = (value: string): string => value.trim().toLowerCase();
 
-export const toSiteDomain = (slugOrName: string): string => `${normalizeSiteSlug(slugOrName)}.localhost`;
+export const toSiteDomain = (slugOrName: string): string => {
+  const slug = normalizeSiteSlug(slugOrName);
+  return slug.endsWith('.localhost') ? slug : `${slug}.localhost`;
+};
 
 
 
