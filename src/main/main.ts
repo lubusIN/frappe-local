@@ -101,7 +101,7 @@ const createMainWindow = async (): Promise<void> => {
     ...(appIconPath ? { icon: appIconPath } : {}),
   });
 
-  ipcMain.handleOnce('app:ui-ready', () => {
+  ipcMain.handle('app:ui-ready', () => {
     window.show();
   });
 
