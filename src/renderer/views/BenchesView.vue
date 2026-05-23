@@ -98,7 +98,7 @@
       </Button>
     </EmptyState>
 
-    <ConfirmDialog
+    <ConfirmationDialog
       :open="confirmCleanBenchOpen"
       title="Clean Bench"
       :message="`Are you sure you want to clear the site cache for &quot;${cleanBenchName}&quot;?`"
@@ -107,12 +107,11 @@
       @confirm="onConfirmCleanBench"
     />
 
-    <ConfirmDialog
+    <ConfirmationDialog
       :open="confirmDeleteBenchOpen"
       title="Delete Bench"
       :message="`Are you sure you want to delete bench &quot;${deleteBenchName}&quot;? This cannot be undone.`"
       confirm-label="Delete"
-      confirm-theme="red"
       @cancel="cancelDeleteBench"
       @confirm="onConfirmDeleteBench"
     />
@@ -144,12 +143,11 @@
       @remove-app="onRequestRemoveBenchApp"
     />
 
-    <ConfirmDialog
+    <ConfirmationDialog
       :open="removeAppConfirmOpen"
       title="Remove app"
       :message="removeAppConfirmMessage"
       confirm-label="Remove app"
-      confirm-theme="red"
       @cancel="onCancelRemoveBenchApp"
       @confirm="onConfirmRemoveBenchApp"
     />
@@ -159,7 +157,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
 import { useRouter } from 'vue-router';
-import { Badge, Button, Dropdown, ListView, toast, ConfirmDialog } from 'frappe-ui';
+import { Badge, Button, Dropdown, ListView, toast } from 'frappe-ui';
+import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 

@@ -148,12 +148,11 @@
       </template>
     </ListView>
 
-    <ConfirmDialog
+    <ConfirmationDialog
       :open="confirmDeleteSiteOpen"
       title="Delete Site"
       :message="`Are you sure you want to delete site &quot;${deleteSiteName}&quot;? This will remove all data and cannot be undone.`"
       confirm-label="Delete"
-      confirm-theme="red"
       @confirm="onConfirmDeleteSite"
       @cancel="cancelDeleteSite"
     />
@@ -179,12 +178,11 @@
       @remove-app="onRequestDeactivateSiteApp"
     />
 
-    <ConfirmDialog
+    <ConfirmationDialog
       :open="removeSiteAppConfirmOpen"
       title="Deactivate app"
       :message="`Are you sure you want to deactivate and uninstall &quot;${pendingRemoveSiteAppName}&quot; from site &quot;${selectedSiteForApps?.name}&quot;? This will drop the app's database tables and delete all associated data.`"
       confirm-label="Deactivate"
-      confirm-theme="red"
       @cancel="onCancelDeactivateSiteApp"
       @confirm="onConfirmDeactivateSiteApp"
     />
@@ -194,7 +192,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dropdown, ListView, Select, TextInput, toast, ConfirmDialog } from 'frappe-ui';
+import { Badge, Button, Dropdown, ListView, Select, TextInput, toast } from 'frappe-ui';
+import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconActivity from '~icons/lucide/activity';

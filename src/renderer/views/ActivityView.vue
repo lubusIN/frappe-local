@@ -89,6 +89,14 @@
       :task="selectedTask"
       @close="selectedTask = null"
     />
+
+    <ConfirmationDialog
+      :open="showClearConfirm"
+      title="Clear Activities"
+      message="Are you sure you want to clear all activity history? This action cannot be undone."
+      @confirm="onConfirmClear"
+      @cancel="showClearConfirm = false"
+    />
   </div>
 </template>
 
@@ -96,6 +104,7 @@
 import { computed, reactive, ref, watch, onBeforeUnmount } from 'vue';
 import { Badge, ListView, LoadingIndicator, Select } from 'frappe-ui';
 import IconTrash from '~icons/lucide/trash-2';
+import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import ErrorNotice from '../components/ui/ErrorNotice.vue';
 import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
 import TaskTimer from '../components/ui/TaskTimer.vue';
@@ -117,6 +126,12 @@ const {
 
 const { setActions, clearActions } = usePageHeaderActions();
 const selectedTask = ref<ProgressTaskSummary | null>(null);
+const showClearConfirm = ref(false);
+
+const onConfirmClear = () => {
+  clearTasks();
+  showClearConfirm.value = false;
+};
 
 const headerActions = computed(() => {
   if (filteredTasks.value.length === 0) return [];
@@ -128,7 +143,7 @@ const headerActions = computed(() => {
       theme: 'red',
       variant: 'subtle' as const,
       onClick: () => {
-        clearTasks();
+        showClearConfirm.value = true;
       },
     },
   ];
