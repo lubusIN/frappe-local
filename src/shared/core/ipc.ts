@@ -37,6 +37,7 @@ export const ipcChannels = {
   taskRunnerProgressEvent: 'task-runner:progress-event',
   utilsPathExists: 'utils:path-exists',
   utilsOpenExternal: 'utils:open-external',
+  uiReady: 'app:ui-ready',
 } as const;
 
 export type AppHealthResponse = {
@@ -181,6 +182,7 @@ export type RendererBridge = {
   readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;
   readonly pathExists: (path: string) => Promise<boolean>;
   readonly openExternal: (url: string) => Promise<void>;
+  readonly uiReady: () => Promise<void>;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

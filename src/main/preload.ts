@@ -43,6 +43,7 @@ const rendererBridge: RendererBridge = {
 	},
 	pathExists: async (path: string) => ipcRenderer.invoke(ipcChannels.utilsPathExists, path),
 	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
+	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 };
 
 contextBridge.exposeInMainWorld('localBench', rendererBridge);

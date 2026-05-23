@@ -145,6 +145,8 @@ onMounted(async () => {
     await window.localBench?.getSettings();
   } catch {
     // The inline warning already covers a missing preload bridge.
+  } finally {
+    await window.localBench?.uiReady();
   }
 });
 </script>

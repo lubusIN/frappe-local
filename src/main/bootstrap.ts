@@ -128,11 +128,10 @@ export const runApplicationBootstrap = async (
       }
     };
 
-    try {
-      await refreshCaddyFrontDoorHosts();
-    } catch (error) {
-      bootstrapLogger.warn(`Caddy front door failed to start: ${error}`);
-    }
+    // Initialize Caddy front door asynchronously in the background so it doesn't block window creation
+    refreshCaddyFrontDoorHosts().catch((error) => {
+      bootstrapLogger.warn(`Caddy front door background initialization failed: ${error}`);
+    });
 
     context.registerHandlers(ipcMain, repositories, {
       openPath: async (targetPath: string) => {

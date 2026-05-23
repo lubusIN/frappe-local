@@ -86,6 +86,7 @@ const createMainWindow = async (): Promise<void> => {
     minHeight: 720,
     backgroundColor: '#f5f2ea',
     titleBarStyle: 'hidden',
+    show: false, // Don't show the window until the UI is ready
     titleBarOverlay: {
       color: '#ffffff',
       symbolColor: '#1a1919',
@@ -98,6 +99,10 @@ const createMainWindow = async (): Promise<void> => {
       devTools: isDev,
     },
     ...(appIconPath ? { icon: appIconPath } : {}),
+  });
+
+  ipcMain.handleOnce('app:ui-ready', () => {
+    window.show();
   });
 
   window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
