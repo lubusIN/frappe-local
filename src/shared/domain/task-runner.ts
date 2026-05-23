@@ -3,6 +3,7 @@ export const taskStatuses = ['queued', 'running', 'success', 'failure'] as const
 export type TaskStatus = (typeof taskStatuses)[number];
 
 export const taskEventTypes = [
+  'task.queued',
   'task.started',
   'task.step.started',
   'task.step.completed',

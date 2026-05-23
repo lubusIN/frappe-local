@@ -84,6 +84,21 @@ export class TaskRunner {
 
     this.tasks.set(taskId, task);
     this.queue.push(taskId);
+
+    this.emit({
+      taskId,
+      taskName: task.name,
+      ...(task.resource ? { resource: task.resource } : {}),
+      type: 'task.queued',
+      status: 'queued',
+      stepId: null,
+      stepName: null,
+      message: `${task.name} was queued for execution.`,
+      timestamp: task.createdAt,
+      logLevel: null,
+      errorCode: null,
+    });
+
     void this.startNext();
     return taskId;
   }
