@@ -56,6 +56,15 @@
         <p class="mt-2 text-ink-gray-6">
           This may take a few moments. Please do not close the application.
         </p>
+        <div class="mt-6">
+          <TaskTimer
+            v-if="resetting"
+            :start-time="resetStartTime"
+            :running="resetting"
+            size-class="text-sm"
+            color-class="text-ink-gray-5"
+          />
+        </div>
       </div>
     </Teleport>
   </div>
@@ -68,6 +77,7 @@ import { Button, toast, LoadingIndicator } from 'frappe-ui';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import Logo from '../components/ui/Logo.vue';
+import TaskTimer from '../components/ui/TaskTimer.vue';
 import { useDiagnostics } from '../composables/system/useDiagnostics';
 import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 
@@ -76,6 +86,7 @@ const { setActions, clearActions } = usePageHeaderActions();
 
 const showResetConfirm = ref(false);
 const ResetTypedValue = ref('');
+const resetStartTime = ref(0);
 
 const onOpenResetConfirm = (): void => {
   showResetConfirm.value = true;
@@ -94,6 +105,7 @@ const onUpdateResetTypedValue = (value: string): void => {
 const onConfirmReset = async (): Promise<void> => {
   onCancelReset();
 
+  resetStartTime.value = Date.now();
   const ok = await Reset();
   if (!ok) {
     return;

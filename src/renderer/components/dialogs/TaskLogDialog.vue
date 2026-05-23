@@ -50,6 +50,18 @@
             :class="log.level === 'error' ? 'text-ink-red-2' : log.level === 'warning' ? 'text-ink-amber-3' : ''"
           >{{ log.message }}</span>
         </div>
+        <div
+          v-if="task.logs.length > 0"
+          class="mt-4 pt-4 border-t border-outline-gray-3 border-opacity-50"
+        >
+          <TaskTimer
+            :start-time="task.logs[0].timestamp"
+            :end-time="task.logs[task.logs.length - 1].timestamp"
+            :running="isBusy"
+            size-class="text-[12px]"
+            color-class="text-ink-gray-4"
+          />
+        </div>
       </div>
     </template>
 
@@ -57,7 +69,10 @@
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
           <Switch v-model="autoScroll" />
-          <span class="text-sm select-none cursor-pointer text-ink-gray-6" @click="autoScroll = !autoScroll">Auto-scroll</span>
+          <span
+            class="text-sm select-none cursor-pointer text-ink-gray-6"
+            @click="autoScroll = !autoScroll"
+          >Auto-scroll</span>
         </div>
         <div class="flex justify-end gap-2">
           <Button
@@ -88,6 +103,7 @@ import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-u
 import IconCopy from '~icons/lucide/copy';
 import type { ProgressTaskSummary } from '../../controllers/progress';
 import { statusTheme } from '../../utils/format';
+import TaskTimer from '../ui/TaskTimer.vue';
 
 const props = defineProps<{
   task: ProgressTaskSummary | null;
