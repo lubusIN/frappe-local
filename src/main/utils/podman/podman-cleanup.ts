@@ -11,10 +11,10 @@ export const listPodmanResources = async (
   podmanBinary: string,
   args: string[],
   runtimeEnv: NodeJS.ProcessEnv,
-  timeout: number
+  timeoutConfig: { idleTimeout?: number; maxTimeout?: number }
 ): Promise<string[]> => {
   try {
-    const { code, stdout } = await execPromise(podmanBinary, args, undefined, undefined, runtimeEnv, timeout);
+    const { code, stdout } = await execPromise(podmanBinary, args, undefined, undefined, runtimeEnv, timeoutConfig);
     if (code !== 0) return [];
     return stdout.split('\n').map((line) => line.trim()).filter(Boolean);
   } catch {
@@ -27,33 +27,33 @@ export const cleanupPodmanResources = async (
   podmanBinary: string,
   filterArgs: { containers: string[]; volumes: string[]; networks: string[] },
   runtimeEnv: NodeJS.ProcessEnv,
-  timeout: number,
+  timeoutConfig: { idleTimeout?: number; maxTimeout?: number },
   logger?: CleanupLogger
 ): Promise<void> => {
-  const containerIds = await listPodmanResources(podmanBinary, filterArgs.containers, runtimeEnv, timeout);
+  const containerIds = await listPodmanResources(podmanBinary, filterArgs.containers, runtimeEnv, timeoutConfig);
   if (containerIds.length > 0) {
     try {
-      await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, undefined, runtimeEnv, timeout);
+      await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, undefined, runtimeEnv, timeoutConfig);
       logger?.info(`Removed ${containerIds.length} lingering containers`);
     } catch (error) {
       logger?.warn(`Failed to remove lingering containers: ${errorMessage(error)}`);
     }
   }
 
-  const volumeNames = await listPodmanResources(podmanBinary, filterArgs.volumes, runtimeEnv, timeout);
+  const volumeNames = await listPodmanResources(podmanBinary, filterArgs.volumes, runtimeEnv, timeoutConfig);
   if (volumeNames.length > 0) {
     try {
-      await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, undefined, runtimeEnv, timeout);
+      await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, undefined, runtimeEnv, timeoutConfig);
       logger?.info(`Removed ${volumeNames.length} lingering volumes`);
     } catch (error) {
       logger?.warn(`Failed to remove lingering volumes: ${errorMessage(error)}`);
     }
   }
 
-  const networkNames = await listPodmanResources(podmanBinary, filterArgs.networks, runtimeEnv, timeout);
+  const networkNames = await listPodmanResources(podmanBinary, filterArgs.networks, runtimeEnv, timeoutConfig);
   if (networkNames.length > 0) {
     try {
-      await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, undefined, runtimeEnv, timeout);
+      await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, undefined, runtimeEnv, timeoutConfig);
       logger?.info(`Removed ${networkNames.length} lingering networks`);
     } catch (error) {
       logger?.warn(`Failed to remove lingering networks: ${errorMessage(error)}`);

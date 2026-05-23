@@ -8,6 +8,8 @@ import os from 'node:os';
 
 const logger = createMainLogger('runtime');
 
+export const LOCAL_BENCH_MACHINE_NAME = 'local-bench';
+
 export async function ensureRuntimeRunning(): Promise<boolean> {
   return ensurePodmanRunning();
 }
@@ -36,7 +38,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
   if (isPodmanMachineRequired()) {
     try {
       // Try machine inspect first (most reliable for machine-based podman)
-      const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'inspect', '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
+      const { stdout } = await execPromise(getBinaryPath('podman'), ['machine', 'inspect', LOCAL_BENCH_MACHINE_NAME, '--format', '{{.ConnectionInfo.PodmanSocket.Path}}']);
       let socketPath = stdout.trim();
       
       // If that fails, try podman info (works if the machine is already the default context)
@@ -81,18 +83,19 @@ async function ensurePodmanRunning(): Promise<boolean> {
     // 2. On Mac/Windows, check machine status
     if (isPodmanMachineRequired()) {
       const machines = await getPodmanMachines();
+      let machine = machines.find((m) => m.Name === LOCAL_BENCH_MACHINE_NAME);
       
-      if (machines.length === 0) {
-        logger.info('No podman machine found, initializing default...');
-        await execPromise(getBinaryPath('podman'), ['machine', 'init']);
+      if (!machine) {
+        logger.info(`No podman machine named ${LOCAL_BENCH_MACHINE_NAME} found, initializing...`);
+        await execPromise(getBinaryPath('podman'), ['machine', 'init', '--cpus', '4', '--memory', '4096', LOCAL_BENCH_MACHINE_NAME], undefined, undefined, undefined, { idleTimeout: 60000 });
       }
 
       // Check machine status
       const refreshedMachines = await getPodmanMachines();
-      const machineState = (refreshedMachines[0]?.State || refreshedMachines[0]?.Status || 'unknown').toLowerCase();
+      machine = refreshedMachines.find((m) => m.Name === LOCAL_BENCH_MACHINE_NAME);
       
-      const isRunning = machineState === 'running';
-      const isStarting = machineState === 'starting';
+      const isRunning = machine?.Running === true || machine?.CurrentlyRunning === true || (machine?.State || machine?.Status || '').toLowerCase() === 'running';
+      const isStarting = machine?.Starting === true || (machine?.State || machine?.Status || '').toLowerCase() === 'starting';
 
       if (isStarting) {
         logger.info('Podman machine is currently starting, waiting for it to be ready...');
@@ -100,7 +103,8 @@ async function ensurePodmanRunning(): Promise<boolean> {
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 1000));
           const pollMachines = await getPodmanMachines();
-          const pollState = (pollMachines[0]?.State || pollMachines[0]?.Status || '').toLowerCase();
+          const pollMachine = pollMachines.find((m) => m.Name === LOCAL_BENCH_MACHINE_NAME);
+          const pollState = (pollMachine?.State || pollMachine?.Status || '').toLowerCase();
           if (pollState === 'running') {
             logger.info('Podman machine is now running.');
             return true;
@@ -109,16 +113,20 @@ async function ensurePodmanRunning(): Promise<boolean> {
       }
 
       if (!isRunning) {
-        logger.info(`Podman machine state is ${machineState}, starting...`);
+        logger.info(`Podman machine is not running, starting ${LOCAL_BENCH_MACHINE_NAME}...`);
         try {
-          await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+          await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           if (message.includes('proxy already running')) {
             logger.warn('Podman proxy already running but machine state is not running. Cleaning up stale proxy...');
             await cleanupStaleMacPodmanProcesses(logger);
             logger.info('Retrying podman machine start after stale proxy cleanup...');
-            await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+            await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
+          } else if (message.includes('only one VM can be active')) {
+            logger.warn('Another Podman VM is active. Stopping default machine to allow local-bench to run...');
+            try { await execPromise(getBinaryPath('podman'), ['machine', 'stop', 'podman-machine-default']); } catch {}
+            await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
           } else {
             logger.error(`Failed to start podman machine: ${message}`);
             return false;
@@ -128,15 +136,15 @@ async function ensurePodmanRunning(): Promise<boolean> {
 
       // Health check with increased timeout (15s)
       try {
-        await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 15000);
+        await execPromise(getBinaryPath('podman'), ['--connection', `${LOCAL_BENCH_MACHINE_NAME}-root`, 'ps'], undefined, undefined, undefined, { idleTimeout: 15000 });
       } catch (err) {
         logger.warn(`Podman health check failed (timeout or error): ${err}. Auto-healing...`);
         await cleanupStaleMacPodmanProcesses(logger);
-        try { await execPromise(getBinaryPath('podman'), ['machine', 'stop']); } catch { logger.warn('Podman machine stop failed during auto-heal.'); }
+        try { await execPromise(getBinaryPath('podman'), ['machine', 'stop', LOCAL_BENCH_MACHINE_NAME]); } catch { logger.warn('Podman machine stop failed during auto-heal.'); }
         
         logger.info('Restarting podman machine after auto-heal...');
         try {
-          await execPromise(getBinaryPath('podman'), ['machine', 'start']);
+          await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
         } catch (startErr) {
           const msg = startErr instanceof Error ? startErr.message : String(startErr);
           if (msg.includes('proxy already running')) {

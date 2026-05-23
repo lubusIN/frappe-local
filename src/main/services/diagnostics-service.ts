@@ -9,7 +9,7 @@ import { createMainLogger } from '../logger';
 import { execPromise } from '../utils/exec';
 import { getBinaryPath } from '../utils/binaries';
 import { isPodmanMachineRequired, getPodmanMachines } from '../utils/podman/podman';
-import { getRuntimeEnv } from './runtime-service';
+import { getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './runtime-service';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
@@ -119,7 +119,7 @@ const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => 
   const checks: DiagnosticsCheckResult[] = [];
   
   try {
-    const { code } = await execPromise(getBinaryPath('docker-compose'), ['--version'], undefined, undefined, undefined, 10000);
+    const { code } = await execPromise(getBinaryPath('docker-compose'), ['--version'], undefined, undefined, undefined, { idleTimeout: 10000 });
     if (code === 0) {
       checks.push({
         type: 'runtime-health',
@@ -154,7 +154,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
 
   // Check 1: Podman Binary
   try {
-    const { code } = await execPromise(getBinaryPath('podman'), ['--version'], undefined, undefined, undefined, 10000);
+    const { code } = await execPromise(getBinaryPath('podman'), ['--version'], undefined, undefined, undefined, { idleTimeout: 10000 });
     if (code === 0) {
       podmanAvailable = true;
       checks.push({
@@ -195,14 +195,10 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
         const machines = await getPodmanMachines();
 
         if (machines.length > 0) {
-          const activeMachine = machines.find(
-            (machine) =>
-              machine.CurrentlyRunning === true ||
-              machine.Running === true ||
-              machine.State === 'running'
-          );
+          const activeMachine = machines.find((machine) => machine.Name === LOCAL_BENCH_MACHINE_NAME);
+          const isRunning = activeMachine && (activeMachine.CurrentlyRunning === true || activeMachine.Running === true || activeMachine.State === 'running');
 
-          if (activeMachine) {
+          if (isRunning) {
             checks.push({
               type: 'runtime-health',
               status: 'passed',
@@ -210,13 +206,22 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
               description: `Podman machine '${activeMachine.Name}' is running. On macOS and Windows, this virtual machine is required to run Linux containers.`,
               timestamp: new Date().toISOString(),
             });
+          } else if (activeMachine) {
+            checks.push({
+              type: 'runtime-health',
+              status: failureStatus,
+              title: 'Podman Machine',
+              description: `Podman machine '${activeMachine.Name}' exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.`,
+              remediation: 'Click "Attempt Fix" to start the Podman machine.',
+              timestamp: new Date().toISOString(),
+            });
           } else {
             checks.push({
               type: 'runtime-health',
               status: failureStatus,
               title: 'Podman Machine',
-              description: 'Podman machine exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.',
-              remediation: 'Click "Attempt Fix" to start the Podman machine.',
+              description: `Dedicated Podman machine '${LOCAL_BENCH_MACHINE_NAME}' not found`,
+              remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
               timestamp: new Date().toISOString(),
             });
           }
@@ -225,7 +230,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
             type: 'runtime-health',
             status: failureStatus,
             title: 'Podman Machine',
-            description: 'No Podman machine found',
+            description: `No Podman machines found. Dedicated machine '${LOCAL_BENCH_MACHINE_NAME}' is required.`,
             remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
             timestamp: new Date().toISOString(),
           });
@@ -254,7 +259,11 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   // Check 3: Podman Engine Connection
   if (podmanAvailable) {
     try {
-      const { code } = await execPromise(getBinaryPath('podman'), ['ps'], undefined, undefined, undefined, 10000);
+      const args = ['ps'];
+      if (isPodmanMachineRequired()) {
+        args.unshift('--connection', `${LOCAL_BENCH_MACHINE_NAME}-root`);
+      }
+      const { code } = await execPromise(getBinaryPath('podman'), args, undefined, undefined, undefined, { idleTimeout: 10000 });
       if (code === 0) {
         checks.push({
           type: 'runtime-health',
@@ -280,7 +289,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
     // Check 4: Orchestrator Engine Connection
     try {
       const runtimeEnv = await getRuntimeEnv();
-      const { code, stderr } = await execPromise(getBinaryPath('docker-compose'), ['version'], undefined, undefined, runtimeEnv, 10000);
+      const { code, stderr } = await execPromise(getBinaryPath('docker-compose'), ['version'], undefined, undefined, runtimeEnv, { idleTimeout: 10000 });
       if (code === 0) {
         checks.push({
           type: 'runtime-health',

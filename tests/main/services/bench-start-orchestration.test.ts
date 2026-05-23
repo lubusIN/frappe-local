@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Bench } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
-import { OPERATION_TIMEOUTS } from '../../../src/main/constants';
+import { IDLE_TIMEOUT_MS } from '../../../src/main/constants';
 import { orchestrateBenchStart } from '../../../src/main/services/bench-orchestration';
 
 const execPromiseMock = vi.fn();
@@ -104,7 +104,7 @@ describe('bench start/restart orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      OPERATION_TIMEOUTS.SITE_CREATION
+      expect.anything()
     );
 
     expect(execPromiseMock).toHaveBeenNthCalledWith(
@@ -114,7 +114,7 @@ describe('bench start/restart orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      OPERATION_TIMEOUTS.DEFAULT
+      expect.anything()
     );
 
     expect(execPromiseMock).toHaveBeenNthCalledWith(

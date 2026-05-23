@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import type { Bench, Site } from '../../shared/domain/models';
 import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
-import { DATABASE_CREDENTIALS, OPERATION_TIMEOUTS } from '../constants';
+import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from '../utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
 import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
@@ -66,7 +66,7 @@ const waitForBackend = async (
       benchPath,
       undefined,
       runtimeEnv,
-      5000
+      { idleTimeout: 5000 }
     ).catch(() => ({ stdout: '' })); // Fallback if format is not supported
 
     if (stdout.trim().toLowerCase().includes('healthy')) {
@@ -81,7 +81,7 @@ const waitForBackend = async (
       benchPath,
       undefined,
       runtimeEnv,
-      2000
+      { idleTimeout: 2000 }
     ).catch(() => ({ code: 1 }));
 
     if (checkCode === 0) {
@@ -186,45 +186,6 @@ const resolveCatalogBranch = (catalogItem: AppCatalogItem | null, benchFrappeVer
   return `version-${semverStyle[1]}`;
 };
 
-const isTimeoutError = (error: unknown): boolean => {
-  const message = errorMessage(error);
-  return message.toLowerCase().includes('timed out');
-};
-
-const resolveAppInstallTimeout = (totalApps: number): number => {
-  const extraBudget = Math.max(0, totalApps - 1) * 300000;
-  return Math.min(OPERATION_TIMEOUTS.APP_INSTALL_BASE + extraBudget, OPERATION_TIMEOUTS.APP_INSTALL);
-};
-
-
-
-const execWithTimeoutRetry = async (
-  command: string,
-  args: string[],
-  cwd: string,
-  onOutput: ((out: string) => void) | undefined,
-  env: NodeJS.ProcessEnv,
-  timeout: number,
-  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
-  stepId: string,
-  label: string
-): Promise<Awaited<ReturnType<typeof execPromise>>> => {
-  const maxAttempts = 2;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await execPromise(command, args, cwd, onOutput, env, timeout);
-    } catch (error) {
-      if (!isTimeoutError(error) || attempt === maxAttempts) {
-        throw error;
-      }
-
-      context.log('warning', `${label} timed out (attempt ${attempt}/${maxAttempts}). Retrying once...`, stepId);
-    }
-  }
-
-  throw new Error(`${label} failed unexpectedly.`);
-};
 
 const cleanupBenchAppArtifacts = (
   benchPath: string,
@@ -305,7 +266,7 @@ const fetchBenchApps = async (
   const { stepId, stepStartDesc, stepCompleteDesc, apps, bench, appCatalogRepo, projectName, runtimeCmd, runtimeEnv, onAttemptedInstall } = options;
 
   context.startStep(stepId, stepStartDesc);
-  const appInstallTimeout = resolveAppInstallTimeout(apps.length);
+  
   const benchBranch = resolveBenchBranch(bench.frappeVersion);
 
   for (const [index, app] of apps.entries()) {
@@ -315,16 +276,13 @@ const fetchBenchApps = async (
     const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
 
     context.log('info', `[${index + 1}/${apps.length}] Fetching app ${app} via bench get-app (${appBranch})`, stepId);
-    const { code, stderr } = await execWithTimeoutRetry(
+    const { code, stderr } = await execPromise(
       runtimeCmd,
       composeBenchArgs(projectName, ['get-app', '--overwrite', '--branch', appBranch, appSource]),
       bench.path,
       (out: string) => context.log('info', out, stepId),
       runtimeEnv,
-      appInstallTimeout,
-      context,
-      stepId,
-      `Fetching app ${app}`
+      { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
     );
 
     if (code !== 0) {
@@ -414,7 +372,7 @@ export const orchestrateBenchCreation = (
 
         context.startStep('pull', 'Pulling images');
         failingStepId = 'pull';
-        await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, OPERATION_TIMEOUTS.IMAGE_PULL);
+        await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
         context.completeStep('pull', 'Images pulled');
 
         context.startStep('start', 'Starting bench containers');
@@ -426,7 +384,7 @@ export const orchestrateBenchCreation = (
           bench.path,
           (out) => context.log('info', out, 'start'),
           runtimeEnv,
-          300000
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
         );
 
         if (code !== 0) {
@@ -495,8 +453,7 @@ export const orchestrateBenchCreation = (
               ['-p', getComposeProjectName(bench.id), 'down', '-v', '--remove-orphans'],
               bench.path,
               (out) => context.log('info', out, 'cleanup'),
-              runtimeEnv,
-              OPERATION_TIMEOUTS.DOCKER_CLEANUP
+              runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
             );
           } else {
             context.log('warning', 'Runtime unavailable. Skipping container cleanup after failed create.', 'cleanup');
@@ -578,8 +535,7 @@ export const orchestrateBenchAppChanges = (
               composeBenchArgs(projectName, ['remove-app', app]),
               bench.path,
               (out) => context.log('info', out, 'remove-apps'),
-              runtimeEnv,
-              OPERATION_TIMEOUTS.APP_INSTALL
+              runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
             );
 
             if (code !== 0) {
@@ -680,7 +636,7 @@ export const orchestrateBenchStart = (
 
         if (!isRestart) {
           context.startStep('pull', 'Checking for image updates');
-          await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, OPERATION_TIMEOUTS.IMAGE_PULL);
+          await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
           context.completeStep('pull', 'Images updated');
         }
 
@@ -701,8 +657,7 @@ export const orchestrateBenchStart = (
             upArgs,
             bench.path,
             (out) => context.log('info', out, 'start'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.SITE_CREATION
+            runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
           );
         } catch (error) {
           const message = errorMessage(error);
@@ -721,8 +676,7 @@ export const orchestrateBenchStart = (
             [...commonArgs, 'ps', '--services', '--status', 'running'],
             bench.path,
             (out) => context.log('info', out, 'start'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.DEFAULT
+            runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
           );
 
           const runningServices = parseRunningServices(psResult.stdout);
@@ -801,8 +755,7 @@ export const orchestrateBenchStop = (
             args,
             bench.path,
             (out) => context.log('info', out, 'stop'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.BENCH_STOP
+            runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
           );
         } catch (error) {
           const message = errorMessage(error);
@@ -816,8 +769,7 @@ export const orchestrateBenchStop = (
             ['-p', projectName, 'down', '--remove-orphans', '--timeout', '20'],
             bench.path,
             (out) => context.log('info', out, 'stop'),
-            runtimeEnv,
-            OPERATION_TIMEOUTS.BENCH_STOP
+            runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
           );
         }
 
@@ -909,7 +861,7 @@ export const orchestrateBenchCleaning = (
           try {
             // Only try to run bench command if the bench is running and site directory exists on disk
             // (or if we want to try anyway and ignore failure)
-            const { code, stderr } = await execPromise(runtimeCmd, args, bench.path, (out) => context.log('info', out, 'drop'), runtimeEnv, OPERATION_TIMEOUTS.BENCH_CLEANUP);
+            const { code, stderr } = await execPromise(runtimeCmd, args, bench.path, (out) => context.log('info', out, 'drop'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
             if (code !== 0) {
               context.log('warning', `Bench command failed for ${siteName} (it might not exist on disk): ${stderr}`);
             }
@@ -996,14 +948,13 @@ export const orchestrateBenchDeletion = (
             await cleanupPodmanResources(
               podmanCommand,
               projectFilterArgs(projectName),
-              runtimeEnv,
-              OPERATION_TIMEOUTS.DOCKER_CLEANUP,
+              runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS },
               { info: (msg) => context.log('info', msg, 'stop'), warn: (msg) => context.log('warning', msg, 'stop') }
             );
           };
 
           try {
-            const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
+            const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
             if (code !== 0) {
               throw new Error(`Docker cleanup failed with code ${code}: ${stderr}`);
             }
@@ -1019,7 +970,7 @@ export const orchestrateBenchDeletion = (
               if (runtimeRecovered) {
                 runtimeEnv = await getRuntimeEnv();
                 try {
-                  const retryResult = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, OPERATION_TIMEOUTS.DOCKER_CLEANUP);
+                  const retryResult = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
                   if (retryResult.code === 0) {
                     await runProjectCleanup();
                     context.completeStep('deleting', 'Docker cleanup finished after runtime recovery');
@@ -1091,8 +1042,7 @@ export const resetAllBenchContainers = async (
         ['-p', projectName, 'down', '-v', '--remove-orphans'],
         bench.path,
         undefined,
-        runtimeEnv,
-        OPERATION_TIMEOUTS.BENCH_STOP
+        runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
       );
     } catch (error) {
       logger.warn(`Failed to clean compose project ${projectName}: ${error}`);
@@ -1105,7 +1055,7 @@ export const resetAllBenchContainers = async (
     podmanBinary,
     nameFilterArgs('local-bench-'),
     runtimeEnv,
-    60000,
+    { idleTimeout: 60000 },
     { info: () => {}, warn: (msg) => logger.warn(msg) }
   );
 };

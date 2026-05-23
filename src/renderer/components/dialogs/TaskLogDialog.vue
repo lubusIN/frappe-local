@@ -52,7 +52,7 @@
         </div>
         <div
           v-if="task.logs.length > 0"
-          class="mt-4 pt-4 border-t border-outline-gray-3 border-opacity-50"
+          class="mt-4 pt-4 border-t border-outline-gray-5 border-opacity-50"
         >
           <TaskTimer
             :start-time="task.logs[0].timestamp"

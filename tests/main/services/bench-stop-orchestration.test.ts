@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bench } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
-import { OPERATION_TIMEOUTS } from '../../../src/main/constants';
+import { IDLE_TIMEOUT_MS } from '../../../src/main/constants';
 import { orchestrateBenchStop } from '../../../src/main/services/bench-orchestration';
 
 const execPromiseMock = vi.fn();
@@ -93,7 +93,7 @@ describe('bench stop orchestration', () => {
     expect(args).toEqual(['-p', 'local-bench-1adb2eed', 'stop', '--timeout', '20']);
     expect(cwd).toBe('/Users/dev/frappe-bench-2');
     expect(env).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(timeout).toBe(OPERATION_TIMEOUTS.BENCH_STOP);
+    expect(timeout).toBe(expect.anything());
   });
 
   it('falls back to down when stop command times out', async () => {

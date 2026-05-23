@@ -8,7 +8,7 @@ import type { SiteCreateInput } from '../../shared/core/ipc';
 import { canAttachSiteToBench } from '../../shared/domain/site-lifecycle';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import { getRuntimeEnv } from './runtime-service';
-import { DATABASE_CREDENTIALS, OPERATION_TIMEOUTS } from '../constants';
+import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
 import { getComposeProjectName, composeBenchArgs, composeBenchSiteArgs } from '../utils/podman/compose-args';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
 import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
@@ -30,7 +30,7 @@ const executeSiteCommand = async (
     commandName: string;
     siteName: string;
     env: SiteCommandEnv;
-    timeout: number;
+    timeout: { idleTimeout?: number; maxTimeout?: number };
   }
 ) => {
   context.startStep(options.stepId, options.description);
@@ -64,7 +64,7 @@ const clearSiteCaches = async (
     commandName: 'clear-cache',
     siteName,
     env,
-    timeout: OPERATION_TIMEOUTS.DEFAULT
+    timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
   });
 
   await executeSiteCommand(context, {
@@ -74,7 +74,7 @@ const clearSiteCaches = async (
     commandName: 'clear-website-cache',
     siteName,
     env,
-    timeout: OPERATION_TIMEOUTS.DEFAULT
+    timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
   });
 };
 
@@ -90,7 +90,7 @@ const migrateSite = async (
     commandName: 'migrate',
     siteName,
     env,
-    timeout: OPERATION_TIMEOUTS.APP_INSTALL
+    timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
   });
 };
 
@@ -113,7 +113,7 @@ const restartBenchServices = async (
     env.benchPath,
     (out) => context.log('info', out, 'restart'),
     env.runtimeEnv,
-    OPERATION_TIMEOUTS.SITE_STATUS_UPDATE
+    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
   );
 
   if (restartResult.code !== 0) {
@@ -130,7 +130,7 @@ const restartBenchServices = async (
       env.benchPath,
       undefined,
       env.runtimeEnv,
-      5000
+      { idleTimeout: 5000 }
     ).catch(() => ({ stdout: '' }));
 
     if (stdout.trim().toLowerCase().includes('healthy')) {
@@ -220,7 +220,7 @@ export const orchestrateSiteCreation = async (
             bench.path,
             (out) => context.log('info', out, 'cleanup'),
             runtimeEnv,
-            OPERATION_TIMEOUTS.BENCH_CLEANUP
+            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
           );
         } catch (cleanupError) {
           context.log('warning', `Database cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
@@ -270,7 +270,7 @@ export const orchestrateSiteCreation = async (
           bench.path,
           (out) => context.log('info', out, 'new-site'),
           runtimeEnv,
-          OPERATION_TIMEOUTS.SITE_CREATION
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
         );
 
         if (code !== 0) {
@@ -379,7 +379,7 @@ export const orchestrateSiteDeletion = async (
             bench.path,
             (out) => context.log('info', out, 'drop-site'),
             runtimeEnv,
-            OPERATION_TIMEOUTS.BENCH_CLEANUP
+            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
           );
 
           if (code !== 0) {
@@ -476,7 +476,7 @@ export const orchestrateSiteAppsUpdate = (
               bench.path,
               (out) => context.log('info', out, 'install-apps'),
               runtimeEnv,
-              OPERATION_TIMEOUTS.APP_INSTALL
+              { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
             );
 
             if (code !== 0) {
@@ -507,7 +507,7 @@ export const orchestrateSiteAppsUpdate = (
                 bench.path,
                 (out) => context.log('info', out, 'uninstall-apps'),
                 runtimeEnv,
-                OPERATION_TIMEOUTS.APP_INSTALL
+                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
               );
             } catch (err) {
               // Ignore failure of purge-jobs (e.g. if the command is not supported on older frappe versions)
@@ -522,7 +522,7 @@ export const orchestrateSiteAppsUpdate = (
               bench.path,
               (out) => context.log('info', out, 'uninstall-apps'),
               runtimeEnv,
-              OPERATION_TIMEOUTS.APP_INSTALL
+              { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
             );
 
             if (code !== 0) {

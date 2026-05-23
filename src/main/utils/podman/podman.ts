@@ -29,6 +29,7 @@ export const isPodmanMachineRequired = (): boolean => {
 export type PodmanMachineStatus = {
   CurrentlyRunning?: boolean;
   Running?: boolean;
+  Starting?: boolean;
   State?: string;
   Name?: string;
   Status?: string;
@@ -42,7 +43,7 @@ export const getPodmanMachines = async (): Promise<PodmanMachineStatus[]> => {
       undefined,
       undefined,
       undefined,
-      10000
+      { idleTimeout: 10000 }
     );
     if (code !== 0) return [];
     

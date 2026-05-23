@@ -14,7 +14,10 @@ import type {
 } from '../shared/core/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
-import { ensureRuntimeRunning, getRuntimeEnv } from './services/runtime-service';
+import { ensureRuntimeRunning, getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './services/runtime-service';
+import { isPodmanMachineRequired } from './utils/podman/podman';
+import { getBinaryPath } from './utils/binaries';
+import { execPromise } from './utils/exec';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './services/update-strategy-service';
 import { ipcChannels } from '../shared/core/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
@@ -347,6 +350,16 @@ export const registerIpcHandlers = (
          }
        } catch (error) {
          mainLogger.warn(`Failed to remove benches folder ${benchesDir}: ${error}`);
+       }
+     }
+
+     if (isPodmanMachineRequired()) {
+       try {
+         mainLogger.info(`Destroying dedicated podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
+         await execPromise(getBinaryPath('podman'), ['machine', 'rm', '--force', LOCAL_BENCH_MACHINE_NAME]);
+         mainLogger.info(`Successfully destroyed podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
+       } catch (error) {
+         mainLogger.warn(`Failed to destroy podman machine ${LOCAL_BENCH_MACHINE_NAME}: ${error}`);
        }
      }
 
