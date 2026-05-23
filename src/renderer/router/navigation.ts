@@ -19,16 +19,16 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     description: 'The control center for first-run setup, recent activity, and quick actions.',
   },
   {
-    path: '/benches',
-    name: 'benches',
-    title: 'Benches',
-    description: 'Track bench creation, runtime state, and the actions users will rely on most.',
-  },
-  {
     path: '/sites',
     name: 'sites',
     title: 'Sites',
     description: 'Prepare the management surface for site creation, assignment, and health visibility.',
+  },
+  {
+    path: '/benches',
+    name: 'benches',
+    title: 'Benches',
+    description: 'Track bench creation, runtime state, and the actions users will rely on most.',
   },
   {
     path: '/activity',
@@ -51,14 +51,14 @@ export const navigationItems: NavigationItem[] = [
     path: '/',
   },
   {
-    label: 'Benches',
-    description: 'Manage bench lifecycle, versions, and logs.',
-    path: '/benches',
-  },
-  {
     label: 'Sites',
     description: 'View and control the sites attached to each bench.',
     path: '/sites',
+  },
+  {
+    label: 'Benches',
+    description: 'Manage bench lifecycle, versions, and logs.',
+    path: '/benches',
   },
   {
     label: 'Activity',
