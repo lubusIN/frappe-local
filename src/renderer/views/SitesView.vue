@@ -618,7 +618,7 @@ onMounted(() => {
   }
 });
 
-watch([() => loading.value, () => creatableBenches.value.length], () => {
+watch([() => loading.value, () => creatableBenches.value.length, () => sites.value.length], () => {
   const actions: Array<{
     id: string;
     label: string;
@@ -627,7 +627,7 @@ watch([() => loading.value, () => creatableBenches.value.length], () => {
     icon?: Component;
     onClick: () => void;
   }> = [];
-  if (creatableBenches.value.length > 0) {
+  if (creatableBenches.value.length > 0 && sites.value.length > 0) {
     actions.push({
       id: 'sites-create',
       label: 'Create',

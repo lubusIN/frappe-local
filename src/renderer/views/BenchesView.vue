@@ -409,6 +409,10 @@ const showCreateBenchModal = ref(false);
 const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
 
 watchEffect(() => {
+  if (benches.value.length === 0) {
+    setPageHeaderActions([]);
+    return;
+  }
   setPageHeaderActions([
     {
       id: 'benches-create',
