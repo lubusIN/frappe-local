@@ -329,7 +329,7 @@ export const registerIpcHandlers = (
      for (const bench of benches) {
        try {
          if (fs.existsSync(bench.path)) {
-           fs.rmSync(bench.path, { recursive: true, force: true });
+           await fs.promises.rm(bench.path, { recursive: true, force: true });
            mainLogger.info(`Removed bench folder: ${bench.path}`);
          }
        } catch (error) {
@@ -337,9 +337,22 @@ export const registerIpcHandlers = (
        }
      }
 
-    fs.rmSync(runtimePaths.storagePath, { recursive: true, force: true });
-    fs.rmSync(runtimePaths.configPath, { recursive: true, force: true });
-    fs.mkdirSync(runtimePaths.storagePath, { recursive: true });
+     const settings = await getCurrentSettings(repositories.settings);
+     if (settings?.storagePath) {
+       const benchesDir = path.join(resolveUserPath(settings.storagePath), 'benches');
+       try {
+         if (fs.existsSync(benchesDir)) {
+           await fs.promises.rm(benchesDir, { recursive: true, force: true });
+           mainLogger.info(`Removed dormant benches folder: ${benchesDir}`);
+         }
+       } catch (error) {
+         mainLogger.warn(`Failed to remove benches folder ${benchesDir}: ${error}`);
+       }
+     }
+
+    await fs.promises.rm(runtimePaths.storagePath, { recursive: true, force: true });
+    await fs.promises.rm(runtimePaths.configPath, { recursive: true, force: true });
+    await fs.promises.mkdir(runtimePaths.storagePath, { recursive: true });
 
     const snapshot = createDefaultStorageSnapshot(getDefaultAppCatalogSeed(), APP_CATALOG_SEED_VERSION);
     const storageFilePath = path.join(runtimePaths.storagePath, 'storage.json');

@@ -229,7 +229,7 @@ export const orchestrateSiteCreation = async (
         try {
           const siteFolderPath = path.join(bench.path, 'sites', input.name);
           if (fs.existsSync(siteFolderPath)) {
-            fs.rmSync(siteFolderPath, { recursive: true, force: true });
+            await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
           }
         } catch (cleanupError) {
           context.log('warning', `Filesystem cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
@@ -396,7 +396,7 @@ export const orchestrateSiteDeletion = async (
         try {
           const siteFolderPath = path.join(bench.path, 'sites', site.name);
           if (fs.existsSync(siteFolderPath)) {
-            fs.rmSync(siteFolderPath, { recursive: true, force: true });
+            await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
           }
           context.completeStep('rm-dir', `Site directory removed`);
         } catch (fsError) {
