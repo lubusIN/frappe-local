@@ -18,6 +18,8 @@
             :loading-app-id="loadingAppId"
             @add-app="$emit('add-app', $event)"
             @remove-app="$emit('remove-app', $event)"
+            @install-app="$emit('add-app', $event)"
+            @uninstall-app="$emit('remove-app', $event)"
           />
         </div>
         <p

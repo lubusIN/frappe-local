@@ -7,6 +7,7 @@ import {
 import { useIpc } from './useIpc';
 
 export const ACTIVITIES_STORAGE_KEY = 'local-bench:activities';
+export const ACKNOWLEDGED_TASKS_KEY = 'local-bench:acknowledged-tasks';
 
 const loadSavedTasks = () => {
   try {
@@ -36,7 +37,30 @@ watch(() => globalState.tasks, (tasks) => {
   }
 }, { deep: true });
 
-const acknowledgedTasks = reactive(new Set<string>());
+const loadAcknowledgedTasks = () => {
+  try {
+    const saved = localStorage.getItem(ACKNOWLEDGED_TASKS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return new Set<string>(parsed);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to parse acknowledged tasks:', err);
+  }
+  return new Set<string>();
+};
+
+const acknowledgedTasks = reactive(loadAcknowledgedTasks());
+
+watch(acknowledgedTasks, (tasks) => {
+  try {
+    localStorage.setItem(ACKNOWLEDGED_TASKS_KEY, JSON.stringify(Array.from(tasks)));
+  } catch (err) {
+    console.error('Failed to save acknowledged tasks:', err);
+  }
+}, { deep: true });
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
 
@@ -68,7 +92,9 @@ export const useProgressCenter = () => {
 
   const clearTasks = () => {
     globalState.tasks = [];
+    acknowledgedTasks.clear();
     localStorage.removeItem(ACTIVITIES_STORAGE_KEY);
+    localStorage.removeItem(ACKNOWLEDGED_TASKS_KEY);
   };
 
   return {

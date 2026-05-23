@@ -1,7 +1,10 @@
 import type { StorageSnapshot } from './schema';
 
-const isInterruptedStatus = (status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'): boolean =>
-  status === 'queued' || status === 'running';
+const isBenchInterrupted = (status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'): boolean =>
+  status === 'queued';
+
+const isSiteInterrupted = (status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'): boolean =>
+  status === 'queued';
 
 export type ReconcileLifecycleResult = {
   readonly snapshot: StorageSnapshot;
@@ -16,27 +19,27 @@ export const reconcileLifecycleSnapshot = (snapshot: StorageSnapshot): Reconcile
   let reconciledSites = 0;
 
   const benches = snapshot.benches.map((bench) => {
-    if (!isInterruptedStatus(bench.status)) {
+    if (!isBenchInterrupted(bench.status)) {
       return bench;
     }
 
     reconciledBenches += 1;
     return {
       ...bench,
-      status: 'stopped' as const,
+      status: 'failure' as const,
       updated_at: now,
     };
   });
 
   const sites = snapshot.sites.map((site) => {
-    if (!isInterruptedStatus(site.status)) {
+    if (!isSiteInterrupted(site.status)) {
       return site;
     }
 
     reconciledSites += 1;
     return {
       ...site,
-      status: 'stopped' as const,
+      status: 'failure' as const,
       timestamps: {
         ...site.timestamps,
         updatedAt: now,

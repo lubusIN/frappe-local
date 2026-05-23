@@ -221,7 +221,6 @@ import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { useAppCatalog } from '../composables/data/useAppCatalog';
 import { useBenches } from '../composables/data/useBenches';
 import { filterSites } from '../utils/sites/site-filters';
-import { canStartSiteFromUi, canStopSiteFromUi } from '../utils/sites/site-action-guards';
 import { isCompletedSiteAppUpdateTask } from '../utils/sites/site-app-task-results';
 import type { SiteListItem } from '../../shared/core/ipc';
 
@@ -326,7 +325,7 @@ const getSiteActions = (site: SiteListItem) => {
     onClick: () => void | Promise<void>;
   }> = [];
 
-  if (site.status === 'running') {
+  if (site.status === 'running' || site.status === 'stopped') {
     actions.push({
       label: 'View',
       icon: IconExternalLink,
@@ -346,23 +345,9 @@ const getSiteActions = (site: SiteListItem) => {
   });
 
   actions.push({
-    label: 'Start',
-    icon: IconPlay,
-    disabled: updating.value || isBusy || !canStartSite(site.id),
-    onClick: () => onSetSiteStatus(site.id, 'running'),
-  });
-
-  actions.push({
-    label: 'Stop',
-    icon: IconSquare,
-    disabled: updating.value || site.status === 'stopped' || isBusy || !canStopSite(site.id),
-    onClick: () => onSetSiteStatus(site.id, 'stopped'),
-  });
-
-  actions.push({
     label: 'Apps',
     icon: IconPackage,
-    disabled: updating.value || isBusy || site.status !== 'running',
+    disabled: updating.value || isBusy || (site.status !== 'running' && site.status !== 'stopped'),
     onClick: () => onShowSiteApps(site),
   });
 
@@ -370,7 +355,7 @@ const getSiteActions = (site: SiteListItem) => {
     label: 'Delete',
     icon: IconTrash,
     theme: 'red' as const,
-    disabled: updating.value || deleting.value || site.status === 'running' || isResourceBusy(site.id),
+    disabled: updating.value || deleting.value || isResourceBusy(site.id),
     onClick: () => confirmDeleteSite(site.id, site.name),
   });
 
@@ -439,12 +424,15 @@ const siteActivatedAppSet = computed(() => new Set(selectedSiteForApps.value?.ap
 
 const canMutateSiteApps = computed(() => {
   if (!selectedSiteForApps.value) return false;
-  return selectedSiteForApps.value.status === 'running';
+  return selectedSiteForApps.value.status === 'running' || selectedSiteForApps.value.status === 'stopped';
 });
 
 const canActivateSelectedSiteApps = computed(() => {
   if (!selectedSiteForApps.value) return false;
-  return selectedSiteForApps.value.status === 'running' && !isResourceBusy(selectedSiteForApps.value.id, 'site');
+  const isSiteReady = selectedSiteForApps.value.status === 'running' || selectedSiteForApps.value.status === 'stopped';
+  const bench = allBenches.value.find((b) => b.id === selectedSiteForApps.value!.benchId);
+  const isBenchReady = bench && (bench.status === 'running' || bench.status === 'success');
+  return isSiteReady && isBenchReady && !isResourceBusy(selectedSiteForApps.value.id, 'site');
 });
 
 const appsToInstall = ref<string[]>([]);
@@ -473,8 +461,14 @@ const onActivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  if (site.status !== 'running') {
-    toast.error('Start the site before activating apps.');
+  if (site.status !== 'running' && site.status !== 'stopped') {
+    toast.error('Wait for site to be ready before activating apps.');
+    return;
+  }
+
+  const bench = allBenches.value.find((b) => b.id === site.benchId);
+  if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
+    toast.error('Bench must be running before modifying site apps.');
     return;
   }
 
@@ -534,8 +528,14 @@ const onDeactivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  if (site.status !== 'running') {
-    toast.error('Start the site before deactivating apps.');
+  if (site.status !== 'running' && site.status !== 'stopped') {
+    toast.error('Wait for site to be ready before deactivating apps.');
+    return;
+  }
+
+  const bench = allBenches.value.find((b) => b.id === site.benchId);
+  if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
+    toast.error('Bench must be running before modifying site apps.');
     return;
   }
 
@@ -557,34 +557,7 @@ const onDeactivateSiteApp = async (appId: string) => {
   }
 };
 
-const onSetSiteStatus = async (id: string, status: 'running' | 'stopped') => {
-  const site = sites.value.find(s => s.id === id);
-  const name = site ? site.name : '';
-  
-  if (status === 'running') {
-    toast.success(`Starting site ${name}...`);
-    setPendingSiteAction(id, 'starting');
-  } else {
-    toast.success(`Stopping site ${name}...`);
-    setPendingSiteAction(id, 'stopping');
-  }
 
-  try {
-    await update(id, { status });
-  } catch {
-    clearPendingSiteAction(id);
-  }
-};
-
-const canStartSite = (siteId: string): boolean => {
-  const site = sites.value.find((entry) => entry.id === siteId);
-  return site ? canStartSiteFromUi(site, allBenches.value) : false;
-};
-
-const canStopSite = (siteId: string): boolean => {
-  const site = sites.value.find((entry) => entry.id === siteId);
-  return site ? canStopSiteFromUi(site) : false;
-};
 
 const confirmDeleteSiteOpen = ref(false);
 const deleteSiteId = ref<string | null>(null);

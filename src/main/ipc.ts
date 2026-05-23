@@ -50,7 +50,7 @@ import {
 import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/catalog-provider';
 import { createDefaultStorageSnapshot } from './storage/schema';
 import type { LifecycleOperation } from './services/analytics';
-import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, orchestrateSiteStatusUpdate } from './services/site-orchestration';
+import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from './services/site-orchestration';
 import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './services/bench-orchestration';
 
 type IpcMainLike = {
@@ -679,24 +679,17 @@ export const registerIpcHandlers = (
 
     const { status: targetStatus, ...otherUpdates } = payload;
     if (!isBenchReadyForSiteStatus(bench.status, targetSiteStatus)) {
-      return null;
+      throw new Error(`Bench "${bench.name}" is not running. Please start the bench before updating its sites.`);
     }
 
-    if (
-      existing.status === 'queued' &&
-      targetStatus &&
-      (targetStatus === 'running' || targetStatus === 'stopped')
-    ) {
-      return toSiteListItem(existing);
-    }
 
     const requestedApps = Array.isArray(payload.apps)
       ? Array.from(new Set(payload.apps.map((app) => app.trim()).filter(Boolean)))
       : null;
 
     if (requestedApps) {
-      if (existing.status !== 'running') {
-        throw new Error('Site must be running before activating apps.');
+      if (existing.status !== 'running' && existing.status !== 'stopped') {
+        throw new Error('Site must be ready before activating apps.');
       }
 
       const unavailableApps = requestedApps.filter((app) => !bench.apps.includes(app));
@@ -726,14 +719,8 @@ export const registerIpcHandlers = (
       operations.trackSiteOperation?.(updated.id, 'update');
       await operations.refreshFrontDoorHosts?.();
 
-      if (targetStatus && (targetStatus !== existing?.status || targetStatus === 'running')) {
-        if (targetStatus === 'running' || targetStatus === 'stopped') {
-          // Set to queued in DB immediately so UI shows pending state
-          updated = (await repositories.sites.update(id, { status: 'queued' })) ?? updated;
-          orchestrateSiteStatusUpdate(repositories, updated!, targetStatus);
-        } else {
-          updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
-        }
+      if (targetStatus && targetStatus !== existing?.status) {
+        updated = (await repositories.sites.update(id, { status: targetStatus })) ?? updated;
       }
     }
     return updated ? toSiteListItem(updated) : null;
