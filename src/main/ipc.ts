@@ -593,7 +593,7 @@ export const registerIpcHandlers = (
 
     const benches = await repositories.benches.findAll();
     const bench = benches.find((entry) => entry.id === id);
-    if (!bench) {
+    if (!bench || bench.status !== 'running') {
       return false;
     }
 
@@ -677,6 +677,9 @@ export const registerIpcHandlers = (
     const bench = await repositories.benches.findById(payload.benchId);
     if (!bench) {
       throw new Error('Cannot create site: parent bench was not found.');
+    }
+    if (bench.status !== 'running') {
+      throw new Error(`Cannot create site. Bench "${bench.name}" is not running. Please start the bench first.`);
     }
 
     const unavailableApps = payload.apps.filter((app) => !bench.apps.includes(app));
@@ -786,8 +789,9 @@ export const registerIpcHandlers = (
     if (!site) {
       throw new Error('Site not found.');
     }
-    if (site.status === 'running') {
-      throw new Error('Cannot delete a running site. Please stop it first.');
+    const bench = await repositories.benches.findById(site.benchId);
+    if (bench && bench.status !== 'running') {
+      throw new Error(`Cannot delete site. Its parent bench "${bench.name}" is not running. Please start the bench first.`);
     }
 
     const result = await orchestrateSiteDeletion(repositories, id, {
