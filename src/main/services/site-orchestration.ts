@@ -172,7 +172,10 @@ export type SiteCreationDependencies = {
  */
 export const orchestrateSiteCreation = async (
   dependencies: SiteCreationDependencies,
-  input: SiteCreateInput
+  input: SiteCreateInput,
+  options?: {
+    onCompleted?: (site: Site) => Promise<void> | void;
+  }
 ): Promise<Site> => {
   const bench = await dependencies.benches.findById(input.benchId);
 
@@ -288,7 +291,15 @@ export const orchestrateSiteCreation = async (
         await clearSiteCaches(context, input.name, siteEnv);
         await restartBenchServices(context, siteEnv);
 
-        await dependencies.sites.update(createdSite.id, { status: 'running' });
+        const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'running' });
+        
+        if (options?.onCompleted && updatedSite) {
+          try {
+            await options.onCompleted(updatedSite);
+          } catch (error) {
+            context.log('warning', `Post-create site action failed: ${errorMessage(error)}`, 'new-site');
+          }
+        }
       } catch (error) {
         const rawMessage = errorMessage(error);
         const message = humanizeCreateFailure('site', rawMessage);
@@ -439,7 +450,10 @@ export const orchestrateSiteAppsUpdate = (
     };
   },
   site: Site,
-  targetApps: readonly string[]
+  targetApps: readonly string[],
+  options?: {
+    onCompleted?: (site: Site) => Promise<void> | void;
+  }
 ): void => {
   const taskRunner = getTaskRunner();
 
@@ -541,7 +555,16 @@ export const orchestrateSiteAppsUpdate = (
           await restartBenchServices(context, siteEnv);
         }
 
-        await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'running' });
+        const updatedSite = await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'running' });
+        
+        if (options?.onCompleted && updatedSite) {
+          try {
+            await options.onCompleted(updatedSite);
+          } catch (error) {
+            context.log('warning', `Post-update site action failed: ${errorMessage(error)}`, 'apps');
+          }
+        }
+        
         context.completeStep('apps', 'Site apps updated');
       } catch (error) {
         context.log('error', `Failed to update site apps: ${errorMessage(error)}`, 'apps');

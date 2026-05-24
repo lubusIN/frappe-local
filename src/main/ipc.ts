@@ -654,9 +654,12 @@ export const registerIpcHandlers = (
       throw new Error(`Cannot create site with apps not installed on bench: ${unavailableApps.join(', ')}`);
     }
 
-    const created = await orchestrateSiteCreation(repositories, payload);
+    const created = await orchestrateSiteCreation(repositories, payload, {
+      onCompleted: async () => {
+        await operations.refreshFrontDoorHosts?.();
+      },
+    });
     operations.trackSiteOperation?.(created.id, 'create');
-    await operations.refreshFrontDoorHosts?.();
     return toSiteListItem(created);
   });
 
@@ -720,7 +723,11 @@ export const registerIpcHandlers = (
       const queuedSite = (await repositories.sites.update(id, { status: 'queued' })) ?? existing;
       operations.trackSiteOperation?.(queuedSite.id, 'update');
 
-      orchestrateSiteAppsUpdate(repositories, existing, requestedApps);
+      orchestrateSiteAppsUpdate(repositories, existing, requestedApps, {
+        onCompleted: async () => {
+          await operations.refreshFrontDoorHosts?.();
+        },
+      });
       return toSiteListItem(queuedSite);
     }
 
