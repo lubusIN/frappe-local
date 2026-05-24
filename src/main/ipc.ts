@@ -556,6 +556,36 @@ export const registerIpcHandlers = (
     return opened;
   });
 
+  ipcMainLike.handle(ipcChannels.benchesOpenShell, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench || !fs.existsSync(bench.path)) {
+      return false;
+    }
+
+    if (bench.status !== 'running') {
+      mainLogger.warn(`Cannot open shell for bench ${bench.name}: bench is not running.`);
+      return false;
+    }
+
+    try {
+      const { getComposeProjectName } = await import('./utils/podman/compose-args');
+      const { openBenchShell } = await import('./utils/terminal');
+      const projectName = getComposeProjectName(bench.id);
+      const runtimeEnv = await getRuntimeEnv();
+      await openBenchShell(bench.path, projectName, runtimeEnv);
+      operations.trackBenchOperation?.(bench.id, 'open-folder'); // Optional: reuse this or add new 'open-shell'
+      return true;
+    } catch (error) {
+      mainLogger.error(`Failed to open shell for bench ${bench.name}:`, error);
+      return false;
+    }
+  });
+
   ipcMainLike.handle(ipcChannels.benchesCleanSites, async (_event: unknown, id: unknown) => {
     if (typeof id !== 'string') {
       return false;

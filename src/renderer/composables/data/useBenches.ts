@@ -174,6 +174,24 @@ export const useBenches = () => {
     }
   };
 
+  const openShell = async (id: string) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const opened = await ipc.openBenchShell(id);
+      if (!opened) {
+        error.value = 'Unable to open bench shell. Verify the bench is running.';
+        return;
+      }
+      const bench = benches.value.find((b) => b.id === id);
+      successMessage.value = bench ? `Shell opened for ${bench.name}.` : 'Bench shell opened.';
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+    }
+  };
+
   const cleanSites = async (id: string) => {
     updating.value = true;
     error.value = null;
@@ -211,6 +229,7 @@ export const useBenches = () => {
     remove,
     listLogs,
     openFolder,
+    openShell,
     cleanSites,
     refresh: load,
   };

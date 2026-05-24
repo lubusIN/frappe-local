@@ -26,6 +26,7 @@ const unavailableBridge: RendererBridge = {
   deleteBench: () => rejectUnavailable(),
   listBenchLogs: () => rejectUnavailable(),
   openBenchFolder: () => rejectUnavailable(),
+  openBenchShell: () => rejectUnavailable(),
   cleanBenchSites: () => rejectUnavailable(),
   listSites: () => rejectUnavailable(),
   createSite: () => rejectUnavailable(),

@@ -20,6 +20,7 @@ const rendererBridge: RendererBridge = {
 	deleteBench: async (id) => ipcRenderer.invoke(ipcChannels.benchesDelete, id),
 	listBenchLogs: async (id) => ipcRenderer.invoke(ipcChannels.benchesLogs, id),
 	openBenchFolder: async (id) => ipcRenderer.invoke(ipcChannels.benchesOpenFolder, id),
+	openBenchShell: async (id) => ipcRenderer.invoke(ipcChannels.benchesOpenShell, id),
 	cleanBenchSites: async (id) => ipcRenderer.invoke(ipcChannels.benchesCleanSites, id),
 	listSites: async () => ipcRenderer.invoke(ipcChannels.sitesList),
 	createSite: async (input) => ipcRenderer.invoke(ipcChannels.sitesCreate, input),

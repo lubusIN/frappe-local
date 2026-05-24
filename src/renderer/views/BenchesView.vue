@@ -165,6 +165,7 @@ import IconExternalLink from '~icons/lucide/external-link';
 import IconPlay from '~icons/lucide/play';
 import IconSquare from '~icons/lucide/square';
 import IconFolder from '~icons/lucide/folder';
+import IconTerminal from '~icons/lucide/terminal';
 import IconTrash from '~icons/lucide/trash-2';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
 import IconActivity from '~icons/lucide/activity';
@@ -199,6 +200,7 @@ const {
   update,
   remove: deleteBench,
   openFolder,
+  openShell,
   cleanSites: cleanBench,
   refresh,
 } = useBenches();
@@ -417,6 +419,12 @@ const getBenchActions = (bench: BenchListItem) => {
         onClick: () => onOpenBenchFolder(bench.id),
       },
       {
+        label: 'Open Shell',
+        icon: IconTerminal,
+        disabled: bench.status !== 'running',
+        onClick: () => onOpenBenchShell(bench.id),
+      },
+      {
         label: 'Clean Bench',
         icon: IconBrushCleaning,
         disabled: updating.value || (bench.status !== 'running' && bench.status !== 'success') || isBusy,
@@ -554,5 +562,9 @@ const onConfirmCleanBench = async () => {
 
 const onOpenBenchFolder = async (id: string) => {
   await openFolder(id);
+};
+
+const onOpenBenchShell = async (id: string) => {
+  await openShell(id);
 };
 </script>
