@@ -56,54 +56,9 @@ type FrontDoorRepositories = {
 type FrontDoorRoute = {
   readonly siteHost: string;
   readonly benchPort: number;
-  readonly assetAliases?: readonly FrontDoorAssetAlias[];
 };
 
-type FrontDoorAssetAlias = {
-  readonly requestPath: string;
-  readonly assetPath: string;
-};
 
-const getBenchAssetManifestCandidates = (benchPath: string): string[] => [
-  path.join(benchPath, '.local-bench', 'assets', 'assets.json'),
-  path.join(benchPath, 'sites', 'assets', 'assets.json'),
-];
-
-export const readBenchAssetAliasesFromPath = (benchPath: string): FrontDoorAssetAlias[] => {
-  const assetsJsonPath = getBenchAssetManifestCandidates(benchPath).find((candidate) => fs.existsSync(candidate));
-
-  try {
-    if (!assetsJsonPath) {
-      return [];
-    }
-
-    const parsed = JSON.parse(fs.readFileSync(assetsJsonPath, 'utf8')) as Record<string, unknown>;
-    const aliases: FrontDoorAssetAlias[] = [];
-
-    for (const [bundleName, targetPath] of Object.entries(parsed)) {
-      if (typeof targetPath !== 'string') {
-        continue;
-      }
-
-      const normalizedBundleName = bundleName.trim().replace(/^\/+/, '');
-      const normalizedTargetPath = targetPath.trim();
-      const isBundleAsset = normalizedBundleName.endsWith('.bundle.js') || normalizedBundleName.endsWith('.bundle.css');
-      if (!isBundleAsset || !normalizedTargetPath.startsWith('/assets/')) {
-        continue;
-      }
-
-      aliases.push({
-        requestPath: `/${normalizedBundleName}`,
-        assetPath: normalizedTargetPath,
-      });
-    }
-
-    return aliases.sort((left, right) => left.requestPath.localeCompare(right.requestPath));
-  } catch (error) {
-    logger.warn(`Failed to read bench asset aliases for ${benchPath}: ${error}`);
-    return [];
-  }
-};
 
 const listProcesses = (): Array<{ pid: number; command: string }> => {
   if (process.platform === 'win32') {
@@ -262,9 +217,7 @@ const stopPidFromFile = (): void => {
   }
 };
 
-const readBenchAssetAliases = (bench: Bench): FrontDoorAssetAlias[] => {
-  return readBenchAssetAliasesFromPath(bench.path);
-};
+
 
 const buildFrontDoorRoutes = async (repositories: FrontDoorRepositories): Promise<FrontDoorRoute[]> => {
   const [benches, sites] = await Promise.all([
@@ -273,7 +226,6 @@ const buildFrontDoorRoutes = async (repositories: FrontDoorRepositories): Promis
   ]);
 
   const benchesById = new Map(benches.map((bench) => [bench.id, bench]));
-  const aliasesByBenchId = new Map(benches.map((bench) => [bench.id, readBenchAssetAliases(bench)]));
   const routesByHost = new Map<string, FrontDoorRoute>();
 
   for (const site of sites) {
@@ -290,7 +242,6 @@ const buildFrontDoorRoutes = async (repositories: FrontDoorRepositories): Promis
     routesByHost.set(siteHost, {
       siteHost,
       benchPort: resolveBenchHttpPort(bench),
-      assetAliases: aliasesByBenchId.get(bench.id) ?? [],
     });
   }
 
@@ -352,16 +303,9 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
   }
 
   const routeBlocks = Array.from(uniqueRoutes.values())
-    .map(({ siteHost, benchPort, assetAliases = [] }) => {
-      const aliasRules = assetAliases
-        .map(({ requestPath, assetPath }) => `  rewrite ${requestPath} ${assetPath}`)
-        .join('\n');
-
-      const optionalAliasRules = aliasRules ? `${aliasRules}\n` : '';
-
+    .map(({ siteHost, benchPort }) => {
       return `https://${siteHost} {
   tls internal
-${optionalAliasRules}
   reverse_proxy 127.0.0.1:${benchPort} {
     header_up Host {host}
     header_up X-Forwarded-Proto {scheme}

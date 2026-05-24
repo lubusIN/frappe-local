@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildCaddyfile, pruneStaleCaddySiteCertificates, readBenchAssetAliasesFromPath } from '../../../src/main/services/caddy-front-door';
+import { buildCaddyfile, pruneStaleCaddySiteCertificates } from '../../../src/main/services/caddy-front-door';
 
 describe('caddy front door config', () => {
   it('proxies each site domain directly to its bench frontend over https', () => {
@@ -20,55 +20,6 @@ describe('caddy front door config', () => {
     expect(caddyfile).toContain('header_up Host {host}');
   });
 
-  it('rewrites root bundle URLs to hashed assets before proxying', () => {
-    const caddyfile = buildCaddyfile([
-      {
-        siteHost: 'siteonfirstbench.localhost',
-        benchPort: 18080,
-        assetAliases: [
-          {
-            requestPath: '/frappe-web.bundle.js',
-            assetPath: '/assets/frappe/dist/js/frappe-web.bundle.ABC123.js',
-          },
-          {
-            requestPath: '/website.bundle.css',
-            assetPath: '/assets/frappe/dist/css/website.bundle.DEF456.css',
-          },
-        ],
-      },
-    ]);
-
-    expect(caddyfile).toContain('rewrite /frappe-web.bundle.js /assets/frappe/dist/js/frappe-web.bundle.ABC123.js');
-    expect(caddyfile).toContain('rewrite /website.bundle.css /assets/frappe/dist/css/website.bundle.DEF456.css');
-  });
-
-  it('reads root bundle aliases from .local-bench assets manifest when host sites/assets is not usable', () => {
-    const benchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-assets-manifest-'));
-    const manifestDir = path.join(benchRoot, '.local-bench', 'assets');
-    fs.mkdirSync(manifestDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(manifestDir, 'assets.json'),
-      JSON.stringify({
-        'frappe-web.bundle.js': '/assets/frappe/dist/js/frappe-web.bundle.ABC123.js',
-        'website.bundle.css': '/assets/frappe/dist/css/website.bundle.DEF456.css',
-        'not-a-bundle.js': '/assets/frappe/dist/js/not-a-bundle.js',
-      }),
-      'utf8'
-    );
-
-    expect(readBenchAssetAliasesFromPath(benchRoot)).toEqual([
-      {
-        requestPath: '/frappe-web.bundle.js',
-        assetPath: '/assets/frappe/dist/js/frappe-web.bundle.ABC123.js',
-      },
-      {
-        requestPath: '/website.bundle.css',
-        assetPath: '/assets/frappe/dist/css/website.bundle.DEF456.css',
-      },
-    ]);
-
-    fs.rmSync(benchRoot, { recursive: true, force: true });
-  });
 
   it('removes stale local site certificate directories while keeping active hosts', () => {
     const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-certs-test-'));

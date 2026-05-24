@@ -41,6 +41,7 @@ const unavailableBridge: RendererBridge = {
   onTaskRunnerProgress: () => noopDispose,
   pathExists: () => rejectUnavailable(),
   openExternal: () => rejectUnavailable(),
+  uiReady: () => rejectUnavailable(),
 };
 
 export const isIpcBridgeAvailable = (): boolean => {
