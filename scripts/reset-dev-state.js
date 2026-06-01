@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import defaultCatalog from '../src/main/default-catalog.json' with { type: 'json' };
+import appsRegistry from '../src/main/services/apps-registry.json' with { type: 'json' };
 
 const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Local Bench');
 const storagePath = path.join(appSupportPath, 'storage');
@@ -131,7 +131,7 @@ const freshSnapshot = {
   benches: [],
   sites: [],
   settings: null,
-  appCatalog: defaultCatalog,
+  appCatalog: appsRegistry,
 };
 
 fs.writeFileSync(storageFilePath, JSON.stringify(freshSnapshot, null, 2), 'utf8');

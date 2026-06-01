@@ -1,7 +1,7 @@
 import { AppSchema, type AppCatalogItem } from '../../shared/domain/models';
-import defaultCatalog from './default-catalog.json';
+import appsRegistry from './apps-registry.json';
 
-export const APP_CATALOG_SEED_VERSION = 11;
+export const APP_CATALOG_SEED_VERSION = 12;
 
 type RawCatalogProviderItem = {
   readonly id: string;
@@ -46,4 +46,4 @@ export const normalizeCatalogProviderItem = (item: RawCatalogProviderItem): AppC
 };
 
 export const getDefaultAppCatalogSeed = (): AppCatalogItem[] =>
-  (defaultCatalog as RawCatalogProviderItem[]).map(normalizeCatalogProviderItem);
+  (appsRegistry as RawCatalogProviderItem[]).map(normalizeCatalogProviderItem);

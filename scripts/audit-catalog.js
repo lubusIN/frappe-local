@@ -3,7 +3,8 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
-const catalogPath = path.join(root, 'src/main/default-catalog.json');
+const appsSourcePath = path.join(root, 'apps.json');
+const registryPath = path.join(root, 'src/main/services/apps-registry.json');
 const outputPath = path.join(root, 'docs/app-catalog-audit.md');
 
 const trackedBenchVersions = ['version-15', 'version-16', 'develop'];
@@ -38,6 +39,26 @@ const compareVersions = (left, right) => {
 
 const run = (command) => {
   return execSync(command, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+};
+
+const parseRepoName = (repo) => {
+  const withoutGitSuffix = String(repo).trim().replace(/\.git$/i, '');
+  const repoName = withoutGitSuffix.split('/').filter(Boolean).at(-1);
+  return repoName || withoutGitSuffix;
+};
+
+const normalizeSourceApp = (entry) => {
+  const app = typeof entry === 'string' ? { repo: entry } : { ...entry };
+  const source = app.repo ?? app.source;
+
+  if (typeof source !== 'string' || source.trim().length === 0) {
+    throw new Error('Each app in apps.json must be a repository URL string or an object with repo.');
+  }
+
+  return {
+    id: String(app.id ?? parseRepoName(source)).trim().toLowerCase(),
+    source: source.trim(),
+  };
 };
 
 const getRemoteHeads = (source) => {
@@ -89,7 +110,12 @@ const normalizeExpectedBranchMap = (app) => {
   return expected;
 };
 
-const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+const sourceApps = JSON.parse(fs.readFileSync(appsSourcePath, 'utf8')).map(normalizeSourceApp);
+const sourceById = new Map(sourceApps.map((app) => [app.id, app]));
+const catalog = JSON.parse(fs.readFileSync(registryPath, 'utf8')).map((app) => ({
+  ...app,
+  source: sourceById.get(String(app.id).trim().toLowerCase())?.source ?? app.source,
+}));
 
 const rows = [];
 const checklist = [];
@@ -179,8 +205,8 @@ const markdown = [
   '',
   '## Workflow',
   '',
-  '- Add or edit app entries in src/main/default-catalog.json when introducing new catalog apps.',
-  '- Run npm run catalog:build to normalize versions/branches from upstream metadata.',
+  '- Add or edit app entries in apps.json when introducing catalog apps.',
+  '- Run npm run catalog:build to rebuild src/main/services/apps-registry.json from apps.json and upstream metadata.',
   '- Run npm run catalog:build:check in CI or pre-commit to ensure catalog stays in sync.',
   '- Run node scripts/audit-catalog.js whenever catalog entries are edited.',
   '- Resolve all `Needs review` items before bumping `APP_CATALOG_SEED_VERSION`.',

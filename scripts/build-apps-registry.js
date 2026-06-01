@@ -3,7 +3,8 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 
 const root = process.cwd();
-const catalogPath = path.join(root, 'src/main/default-catalog.json');
+const appsSourcePath = path.join(root, 'apps.json');
+const registryPath = path.join(root, 'src/main/services/apps-registry.json');
 const trackedBenchVersions = ['version-15', 'version-16', 'develop'];
 
 const args = new Set(process.argv.slice(2));
@@ -11,6 +12,46 @@ const writeMode = args.has('--write');
 const checkMode = args.has('--check');
 
 const run = (command) => execSync(command, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+const parseRepoName = (repo) => {
+  const withoutGitSuffix = String(repo).trim().replace(/\.git$/i, '');
+  const repoName = withoutGitSuffix.split('/').filter(Boolean).at(-1);
+  return repoName || withoutGitSuffix;
+};
+
+const titleizeAppName = (id) =>
+  String(id)
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
+const normalizeSourceApp = (entry) => {
+  const app = typeof entry === 'string' ? { repo: entry } : { ...entry };
+  const source = app.repo ?? app.source;
+
+  if (typeof source !== 'string' || source.trim().length === 0) {
+    throw new Error('Each app in apps.json must be a repository URL string or an object with repo.');
+  }
+
+  const id = String(app.id ?? parseRepoName(source)).trim().toLowerCase();
+  const { repo: _repo, source: _source, ...rest } = app;
+  void _repo;
+  void _source;
+
+  return {
+    ...rest,
+    id,
+    name: String(app.name ?? titleizeAppName(id)).trim(),
+    description: String(app.description ?? `Frappe app from ${source}`).trim(),
+    source: source.trim(),
+    version: String(app.version ?? '0.0.0').trim(),
+    category: app.category ?? 'other',
+    compatibility: app.compatibility ?? {
+      supportedBenchVersions: trackedBenchVersions,
+    },
+  };
+};
 
 const parseSemverTagParts = (value) => {
   const normalized = String(value).trim().replace(/^v/i, '');
@@ -208,28 +249,29 @@ const normalizeCatalogApp = (app) => {
   return next;
 };
 
-const sourceCatalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+const sourceApps = JSON.parse(fs.readFileSync(appsSourcePath, 'utf8'));
+const sourceCatalog = sourceApps.map(normalizeSourceApp);
 const nextCatalog = sourceCatalog.map(normalizeCatalogApp);
 
-const currentContent = JSON.stringify(sourceCatalog, null, 2) + '\n';
+const currentContent = fs.existsSync(registryPath) ? fs.readFileSync(registryPath, 'utf8') : '';
 const nextContent = JSON.stringify(nextCatalog, null, 2) + '\n';
 const changed = currentContent !== nextContent;
 
 if (checkMode) {
   if (changed) {
-    console.error('default-catalog.json is out of date. Run: npm run catalog:build');
+    console.error('src/main/services/apps-registry.json is out of date. Run: npm run catalog:build');
     process.exit(1);
   }
 
-  console.log('default-catalog.json is up to date.');
+  console.log('src/main/services/apps-registry.json is up to date.');
   process.exit(0);
 }
 
 if (!writeMode) {
   console.log('Preview mode: no files written. Use --write to persist changes.');
-  console.log(`Would ${changed ? '' : 'not '}update ${catalogPath}`);
+  console.log(`Would ${changed ? '' : 'not '}update ${registryPath}`);
   process.exit(0);
 }
 
-fs.writeFileSync(catalogPath, nextContent, 'utf8');
-console.log(`${changed ? 'Updated' : 'No changes in'} ${catalogPath}`);
+fs.writeFileSync(registryPath, nextContent, 'utf8');
+console.log(`${changed ? 'Updated' : 'No changes in'} ${registryPath}`);
