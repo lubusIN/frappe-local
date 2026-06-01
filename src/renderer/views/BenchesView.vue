@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col gap-6">
     <StatePanel
-      v-if="error && !benches.length"
+      v-if="error && benches.length === 0"
       kind="error"
       title="Unable to load benches"
       :body="error"
@@ -17,7 +17,7 @@
     />
 
     <ListView
-      v-if="!error && (!loading || benches.length > 0) && benches.length"
+      v-if="!error && benches.length > 0"
       :columns="benchColumns"
       :rows="benches"
       row-key="id"
@@ -52,7 +52,7 @@
         <template v-else-if="column.key === 'status'">
           <div class="flex items-center">
             <Badge
-              :variant="'subtle'"
+              variant="subtle"
               :theme="getStatusTheme(row)"
               class="inline-flex cursor-pointer items-center gap-1.5"
               @click.stop="onStatusClick(row.id)"
@@ -76,7 +76,7 @@
                 <Button
                   size="md"
                   variant="subtle"
-                  :icon="IconMoreHorizontal"
+                  icon="more-horizontal"
                 />
               </template>
             </Dropdown>
@@ -86,7 +86,7 @@
     </ListView>
 
     <EmptyState
-      v-if="!error && (!loading || benches.length > 0) && !benches.length"
+      v-if="!error && !loading && benches.length === 0"
       title="No benches found"
       description="Create a new bench to get started."
     >
@@ -126,8 +126,6 @@
       :task="selectedTask"
       @close="selectedTaskId = null"
     />
-
-
 
     <ManageAppsDialog
       v-model:open="showAppsDialog"
@@ -170,7 +168,6 @@ import IconTrash from '~icons/lucide/trash-2';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
 import IconActivity from '~icons/lucide/activity';
 import IconRotateCw from '~icons/lucide/rotate-cw';
-import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';
 
 import StatePanel from '../components/ui/StatePanel.vue';
@@ -364,9 +361,6 @@ const {
   cancel: cancelCleanBench,
 } = useConfirmAction();
 
-
-
-
 const benchListOptions = {
   selectable: false,
   showTooltip: true,
@@ -450,7 +444,6 @@ const selectedTask = computed(() => {
   return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
 });
 
-
 const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
@@ -509,8 +502,6 @@ watchEffect(() => {
 onBeforeUnmount(() => {
   clearPageHeaderActions();
 });
-
-
 
 const onStopBench = async (id: string) => {
   await onSetBenchStatus(id, 'stopped');
