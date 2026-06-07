@@ -266,7 +266,7 @@ const onAddBenchApp = async (appId: string) => {
 
   const nextApps = normalizeSelection([...bench.apps, appId]);
   pendingRemoveBenchAppId.value = appId;
-  toast.success(`Installing app ${appId} to bench ${bench.name}...`);
+  toast.success(`Getting app ${appId} for bench ${bench.name}...`);
   await queueBenchAppsUpdate(nextApps);
   closeAppsDialog();
 };

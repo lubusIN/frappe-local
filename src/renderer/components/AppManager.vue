@@ -153,7 +153,7 @@
                   :loading="loadingAppId === row.appId"
                   @click="emit('add-app', row.appId)"
                 >
-                  Add
+                  Get
                 </Button>
               </template>
               <template v-else-if="context === 'site'">
