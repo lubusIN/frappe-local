@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgressTaskSummary } from '../../../src/renderer/controllers/progress';
-import { isCompletedSiteAppUpdateTask } from '../../../src/renderer/utils/sites/site-app-task-results';
+import {
+  isCompletedSiteAppUpdateTask,
+  isCompletedSiteCreationTask,
+} from '../../../src/renderer/utils/sites/site-app-task-results';
 
 const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSummary => ({
   taskId: overrides.taskId ?? 'task-1',
@@ -16,6 +19,29 @@ const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSum
 });
 
 describe('site app task results', () => {
+  it('detects completed site creation tasks only', () => {
+    expect(isCompletedSiteCreationTask(makeTask({
+      taskName: 'Create Site: alpha.localhost',
+      status: 'success',
+      type: 'task.completed',
+    }))).toBe(true);
+    expect(isCompletedSiteCreationTask(makeTask({
+      taskName: 'Create Site: alpha.localhost',
+      status: 'failure',
+      type: 'task.failed',
+    }))).toBe(true);
+    expect(isCompletedSiteCreationTask(makeTask({
+      taskName: 'Create Site: alpha.localhost',
+      status: 'running',
+      type: 'task.started',
+    }))).toBe(false);
+    expect(isCompletedSiteCreationTask(makeTask({
+      taskName: 'Create Site: alpha.localhost',
+      resource: 'bench',
+      status: 'success',
+    }))).toBe(false);
+  });
+
   it('detects completed site app update tasks only', () => {
     expect(isCompletedSiteAppUpdateTask(makeTask({ status: 'success', type: 'task.completed' }))).toBe(true);
     expect(isCompletedSiteAppUpdateTask(makeTask({ status: 'failure', type: 'task.failed' }))).toBe(true);

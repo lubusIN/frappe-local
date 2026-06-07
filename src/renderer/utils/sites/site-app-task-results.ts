@@ -1,11 +1,23 @@
 import type { ProgressTaskSummary } from '../../controllers/progress';
 
 const SITE_APPS_TASK_NAME_PATTERN = 'update site apps';
+const SITE_CREATION_TASK_NAME_PATTERN = 'create site:';
+
+const isCompletedTask = (task: ProgressTaskSummary): boolean =>
+  task.status === 'success' || task.status === 'failure';
+
+export const isCompletedSiteCreationTask = (task: ProgressTaskSummary): boolean => {
+  return (
+    task.resource === 'site' &&
+    task.taskName.toLowerCase().startsWith(SITE_CREATION_TASK_NAME_PATTERN) &&
+    isCompletedTask(task)
+  );
+};
 
 export const isCompletedSiteAppUpdateTask = (task: ProgressTaskSummary): boolean => {
   return (
     task.resource === 'site' &&
     task.taskName.toLowerCase().includes(SITE_APPS_TASK_NAME_PATTERN) &&
-    (task.status === 'success' || task.status === 'failure')
+    isCompletedTask(task)
   );
 };

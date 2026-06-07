@@ -219,7 +219,10 @@ import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { useAppCatalog } from '../composables/data/useAppCatalog';
 import { useBenches } from '../composables/data/useBenches';
 import { filterSites } from '../utils/sites/site-filters';
-import { isCompletedSiteAppUpdateTask } from '../utils/sites/site-app-task-results';
+import {
+  isCompletedSiteAppUpdateTask,
+  isCompletedSiteCreationTask,
+} from '../utils/sites/site-app-task-results';
 import type { SiteListItem } from '../../shared/core/ipc';
 
 const ipc = useIpc();
@@ -270,6 +273,39 @@ watch(
   tasks,
   (items) => {
     for (const task of items) {
+      if (
+        isCompletedSiteCreationTask(task) &&
+        !acknowledgedTasks.has(task.taskId)
+      ) {
+        acknowledgedTasks.add(task.taskId);
+        const siteName = sites.value.find((site) => site.id === task.resourceId)?.name
+          ?? task.taskName.replace(/^Create Site:\s*/i, '').trim();
+
+        void refresh();
+
+        if (task.status === 'success' && task.resourceId) {
+          toast.success(`Site ${siteName} created.`, {
+            duration: 10,
+            action: {
+              label: 'View site',
+              altText: `Open ${siteName}`,
+              onClick: () => {
+                void ipc.openSiteExternal(task.resourceId!).then((opened) => {
+                  if (!opened) {
+                    toast.error(`Unable to open ${siteName}.`);
+                  }
+                });
+              },
+            },
+          });
+        } else if (task.status === 'failure') {
+          toast.error(`Site creation failed for ${siteName}. Check progress logs.`);
+          selectedTaskId.value = task.taskId;
+        }
+
+        continue;
+      }
+
       if (
         isCompletedSiteAppUpdateTask(task) &&
         !acknowledgedTasks.has(task.taskId)
