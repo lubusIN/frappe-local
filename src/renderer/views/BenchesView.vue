@@ -86,6 +86,7 @@
       v-if="!error && !loading && benches.length === 0"
       title="No benches found"
       description="Create a new bench to get started."
+      :icon="IconPackage"
     >
       <Button
         variant="solid"

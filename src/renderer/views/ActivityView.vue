@@ -30,6 +30,13 @@
       @action="retryProgressSubscription"
     />
 
+    <EmptyState
+      v-else-if="activityRows.length === 0"
+      title="No activity"
+      description="No background tasks or recent activity match the current filters."
+      :icon="IconActivity"
+    />
+
     <ResourceListView
       v-else
       :columns="activityColumns"
@@ -105,7 +112,9 @@
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { Badge, LoadingIndicator, Select } from 'frappe-ui';
 import IconTrash from '~icons/lucide/trash-2';
+import IconActivity from '~icons/lucide/activity';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
+import EmptyState from '../components/ui/EmptyState.vue';
 import ErrorNotice from '../components/ui/ErrorNotice.vue';
 import ResourceListView from '../components/ui/ResourceListView.vue';
 import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';

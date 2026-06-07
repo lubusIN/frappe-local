@@ -34,6 +34,7 @@
       v-if="!error && (!loading || sites.length > 0) && sites.length === 0"
       title="No sites yet"
       description="Create your first site to manage runtime status, inspect logs, and access dashboards."
+      :icon="IconGlobe"
     >
       <div
         v-if="creatableBenches.length > 0"
@@ -46,10 +47,7 @@
           Create site
         </Button>
       </div>
-      <div
-        v-else
-        class="mt-6"
-      >
+      <div v-else>
         <Button
           variant="subtle"
           @click="$router.push('/benches')"
@@ -67,13 +65,13 @@
       <div class="flex flex-wrap items-center gap-3">
         <Select
           v-model="benchFilterSelection"
-          class="min-w-36 flex-none"
+          class="flex-none min-w-36"
           :options="benchFilterOptions"
           variant="outline"
         />
         <Select
           v-model="statusFilterSelection"
-          class="min-w-36 flex-none"
+          class="flex-none min-w-36"
           :options="statusFilterOptions"
           variant="outline"
         />
@@ -102,18 +100,18 @@
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
-          <div class="flex h-full min-w-0 items-center">
-            <div class="truncate text-sm font-medium text-ink-gray-9">
+          <div class="flex items-center h-full min-w-0">
+            <div class="text-sm font-medium truncate text-ink-gray-9">
               {{ row.name }}
             </div>
           </div>
         </template>
         <template v-else-if="column.key === 'benchId'">
-          <span class="block truncate text-sm text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
+          <span class="block text-sm truncate text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
         </template>
 
         <template v-else-if="column.key === 'status'">
-          <div class="flex h-full items-center">
+          <div class="flex items-center h-full">
             <Badge
               variant="subtle"
               :theme="getStatusTheme(row)"
@@ -130,7 +128,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <div
-            class="flex h-full items-center justify-end"
+            class="flex items-center justify-end h-full"
             @click.stop
           >
             <Dropdown :options="getSiteActions(row)">
@@ -201,6 +199,7 @@ import IconActivity from '~icons/lucide/activity';
 import IconSearch from '~icons/lucide/search';
 import IconTrash from '~icons/lucide/trash-2';
 import IconPackage from '~icons/lucide/package';
+import IconGlobe from '~icons/lucide/globe';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 
 
