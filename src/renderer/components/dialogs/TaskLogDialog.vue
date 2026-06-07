@@ -5,60 +5,98 @@
     :options="{ size: '5xl' }"
   >
     <template #body-title>
-      <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center min-w-0 gap-3">
+        <div class="flex items-center justify-center rounded-lg size-9 shrink-0 bg-surface-gray-2 text-ink-gray-6">
+          <IconTerminal class="size-[18px]" />
+        </div>
         <div class="min-w-0">
-          <h3 class="m-0 text-base font-semibold truncate text-ink-gray-9">
-            {{ task.taskName }}
-
+          <div class="flex items-center min-w-0 gap-2">
+            <h3 class="m-0 text-base font-semibold truncate text-ink-gray-9">
+              {{ task.taskName }}
+            </h3>
             <Badge
+              class="shrink-0"
               variant="subtle"
               :theme="statusThemeValue"
             >
               {{ formattedStatus }}
               <LoadingIndicator
                 v-if="isBusy"
-                class="h-2.5 w-2.5"
+                class="size-2.5"
               />
             </Badge>
-          </h3>
-          <p class="mt-1 text-[11px] text-ink-gray-5">
-            Verbose logs from background orchestration tasks.
+          </div>
+          <p class="mt-1 text-xs truncate text-ink-gray-5">
+            logs from background tasks
           </p>
         </div>
       </div>
     </template>
 
     <template #body-content>
-      <div
-        ref="logsContainer"
-        class="select-text max-h-[58vh] overflow-y-auto rounded-lg border border-outline-gray-3 bg-surface-gray-7 p-4 font-mono text-[13px] leading-relaxed text-ink-gray-5"
-      >
-        <div
-          v-if="task.logs.length === 0"
-          class="py-10 text-center text-ink-gray-4"
-        >
-          No log entries yet...
+      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-gray-7">
+        <div class="flex items-center justify-between border-b border-outline-gray-5 px-4 py-2.5">
+          <div class="flex items-center gap-2">
+            <span class="rounded-full size-2 bg-surface-red-5" />
+            <span class="rounded-full size-2 bg-surface-amber-5" />
+            <span class="rounded-full size-2 bg-surface-green-5" />
+            <span class="ml-1 text-xs font-medium text-ink-gray-4">Output</span>
+          </div>
+          <span class="text-xs tabular-nums text-ink-gray-4">
+            {{ task.logs.length }} {{ task.logs.length === 1 ? 'entry' : 'entries' }}
+          </span>
         </div>
+
         <div
-          v-for="(log, index) in task.logs"
-          :key="index"
-          class="flex gap-3 mb-1"
+          ref="logsContainer"
+          class="task-log-output max-h-[58vh] min-h-52 cursor-text select-text overflow-auto py-2 font-mono text-xs leading-5"
+          tabindex="0"
+          @mousedown.stop
+          @click.stop
         >
-          <time class="min-w-[74px] shrink-0 text-ink-gray-4">{{ formatTime(log.timestamp) }}</time>
-          <span
-            class="break-words whitespace-pre-wrap"
-            :class="log.level === 'error' ? 'text-ink-red-2' : log.level === 'warning' ? 'text-ink-amber-3' : ''"
-          >{{ log.message }}</span>
+          <div
+            v-if="task.logs.length === 0"
+            class="flex items-center justify-center min-h-48 text-ink-gray-4"
+          >
+            Waiting for log output...
+          </div>
+          <div
+            v-for="(log, index) in task.logs"
+            :key="`${log.timestamp}-${index}`"
+            class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-6"
+          >
+            <time
+              class="tabular-nums text-ink-gray-4"
+              :datetime="log.timestamp"
+              :title="formatFullTime(log.timestamp)"
+            >
+              {{ formatTime(log.timestamp) }}
+            </time>
+            <span
+              class="font-semibold"
+              :class="levelClass(log.level)"
+            >
+              {{ formatLevel(log.level) }}
+            </span>
+            <span
+              class="min-w-0 break-words whitespace-pre-wrap text-ink-gray-3"
+              :class="messageClass(log.level)"
+            >{{ log.message }}</span>
+          </div>
         </div>
+
         <div
           v-if="task.logs.length > 0"
-          class="mt-4 pt-4 border-t border-outline-gray-5 border-opacity-50"
+          class="flex items-center justify-between border-t border-outline-gray-5 px-4 py-2.5"
         >
+          <span class="text-xs text-ink-gray-4">
+            {{ isBusy ? 'Task is still running' : 'Task finished' }}
+          </span>
           <TaskTimer
             :start-time="task.logs[0].timestamp"
             :end-time="task.logs[task.logs.length - 1].timestamp"
             :running="isBusy"
-            size-class="text-[12px]"
+            size-class="text-xs"
             color-class="text-ink-gray-4"
           />
         </div>
@@ -69,10 +107,13 @@
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
           <Switch v-model="autoScroll" />
-          <span
-            class="text-sm select-none cursor-pointer text-ink-gray-6"
+          <button
+            type="button"
+            class="text-sm text-ink-gray-6"
             @click="autoScroll = !autoScroll"
-          >Auto-scroll</span>
+          >
+            Auto-scroll
+          </button>
         </div>
         <div class="flex justify-end gap-2">
           <Button
@@ -101,7 +142,9 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import IconCopy from '~icons/lucide/copy';
+import IconTerminal from '~icons/lucide/terminal';
 import type { ProgressTaskSummary } from '../../controllers/progress';
+import type { TaskProgressEvent } from '../../../shared/domain/task-runner';
 import { statusTheme } from '../../utils/format';
 import TaskTimer from '../ui/TaskTimer.vue';
 
@@ -173,6 +216,28 @@ const formatTime = (timestamp: string) =>
     second: '2-digit',
   });
 
+const formatFullTime = (timestamp: string) => new Date(timestamp).toLocaleString();
+
+const formatLevel = (level: TaskProgressEvent['logLevel']) => {
+  if (level === 'error') return 'ERROR';
+  if (level === 'warning') return 'WARN';
+  if (level === 'info') return 'INFO';
+  return 'EVENT';
+};
+
+const levelClass = (level: TaskProgressEvent['logLevel']) => {
+  if (level === 'error') return 'text-ink-red-2';
+  if (level === 'warning') return 'text-ink-amber-3';
+  if (level === 'info') return 'text-ink-blue-2';
+  return 'text-ink-gray-4';
+};
+
+const messageClass = (level: TaskProgressEvent['logLevel']) => {
+  if (level === 'error') return 'text-ink-red-2';
+  if (level === 'warning') return 'text-ink-amber-2';
+  return '';
+};
+
 const scrollToBottom = () => {
   if (logsContainer.value) {
     logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
@@ -205,7 +270,7 @@ const onCopyLogs = async () => {
   if (!props.task?.logs.length || copied.value) return;
 
   const text = props.task.logs
-    .map((log) => `[${formatTime(log.timestamp)}] ${log.message}`)
+    .map((log) => `[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`)
     .join('\n');
 
   try {
@@ -220,3 +285,12 @@ const onCopyLogs = async () => {
   }
 };
 </script>
+
+<style scoped>
+.task-log-output,
+.task-log-output * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -webkit-app-region: no-drag;
+}
+</style>
