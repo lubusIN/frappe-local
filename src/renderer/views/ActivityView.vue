@@ -1,45 +1,43 @@
 <template>
-  <div class="flex flex-col">
-    <div class="mb-6 flex items-center gap-4 justify-start">
+  <section class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center gap-3">
       <Select
         v-model="statusFilterModel"
-        class="!w-auto"
+        class="min-w-36 flex-none"
         :options="statusOptions"
         variant="outline"
       />
       <Select
         v-model="resourceFilterModel"
-        class="!w-auto"
+        class="min-w-36 flex-none"
         :options="resourceOptions"
         variant="outline"
       />
     </div>
 
-    <!-- Loading state -->
     <div
       v-if="progressLoading"
-      class="flex items-center justify-center p-12 text-ink-gray-5 text-sm"
+      class="flex items-center justify-center p-12 text-sm text-ink-gray-5"
     >
-      <LoadingIndicator class="mr-2 w-4 h-4" />
+      <LoadingIndicator class="mr-2 h-4 w-4" />
       <span>Subscribing to task stream…</span>
     </div>
 
-    <!-- Error state -->
     <ErrorNotice
       v-else-if="errorNotice"
       :notice="errorNotice"
       tone="warning"
-      class="mb-4"
       @action="retryProgressSubscription"
     />
 
-    <!-- ListView -->
-    <ListView
+    <ResourceListView
       v-else
       :columns="activityColumns"
       :rows="activityRows"
       row-key="taskId"
-      :options="activityListOptions"
+      empty-title="No activity"
+      empty-description="No background tasks or recent activity found."
+      :on-row-click="onActivityRowClick"
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'status'">
@@ -62,7 +60,7 @@
           </Badge>
         </template>
         <template v-else-if="column.key === 'timestamp'">
-          <span class="text-xs text-ink-gray-5 tabular-nums">{{ formatTime(row.timestamp) }}</span>
+          <span class="block truncate text-xs tabular-nums text-ink-gray-5">{{ formatTime(row.timestamp) }}</span>
         </template>
         <template v-else-if="column.key === 'elapsed'">
           <TaskTimer
@@ -73,16 +71,19 @@
             size-class="text-xs"
             color-class="text-ink-gray-5 tabular-nums"
           />
-          <span v-else class="text-xs text-ink-gray-5">-</span>
+          <span
+            v-else
+            class="text-xs text-ink-gray-5"
+          >-</span>
         </template>
         <template v-else-if="column.key === 'taskName'">
-          <span class="text-sm font-medium text-ink-gray-9 truncate">{{ row.taskName }}</span>
+          <span class="block truncate text-sm font-medium text-ink-gray-9">{{ row.taskName }}</span>
         </template>
         <template v-else-if="column.key === 'message'">
-          <span class="text-sm text-ink-gray-6 truncate">{{ row.message }}</span>
+          <span class="block truncate text-sm text-ink-gray-6">{{ row.message }}</span>
         </template>
       </template>
-    </ListView>
+    </ResourceListView>
 
     <TaskLogDialog
       v-if="selectedTask"
@@ -97,15 +98,16 @@
       @confirm="onConfirmClear"
       @cancel="showClearConfirm = false"
     />
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, onBeforeUnmount } from 'vue';
-import { Badge, ListView, LoadingIndicator, Select } from 'frappe-ui';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
+import { Badge, LoadingIndicator, Select } from 'frappe-ui';
 import IconTrash from '~icons/lucide/trash-2';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import ErrorNotice from '../components/ui/ErrorNotice.vue';
+import ResourceListView from '../components/ui/ResourceListView.vue';
 import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
 import TaskTimer from '../components/ui/TaskTimer.vue';
 import { useProgressCenter } from '../composables/system/useProgressCenter';
@@ -187,36 +189,24 @@ const resourceOptions = [
   { label: 'System', value: 'system' },
 ];
 
-
-
 const retryProgressSubscription = async (): Promise<void> => {
   await reconnect();
 };
 
-const activityColumns = reactive([
+const activityColumns = [
   { key: 'status', label: 'Status', width: '120px' },
   { key: 'resource', label: 'Resource', width: '120px' },
   { key: 'taskName', label: 'Task', width: 'minmax(160px, 1fr)' },
   { key: 'message', label: 'Message', width: 'minmax(240px, 2fr)' },
   { key: 'timestamp', label: 'Updated', width: '100px' },
   { key: 'elapsed', label: 'Elapsed', width: '120px' },
-]);
+] satisfies object[];
 
 const activityRows = computed(() => filteredTasks.value);
 
-const activityListOptions = computed(() => ({
-  selectable: false,
-  showTooltip: true,
-  resizeColumn: true,
-  rowHeight: '46px',
-  onRowClick: (row: ProgressTaskSummary) => {
-    selectedTask.value = row;
-  },
-  emptyState: {
-    title: 'No Activity',
-    description: 'No background tasks or recent activity found.',
-  },
-}));
+const onActivityRowClick = (row: object) => {
+  selectedTask.value = row as ProgressTaskSummary;
+};
 
 const errorNotice = computed(() =>
   progressError.value ? buildErrorRemediationNotice('progress', progressError.value) : null

@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-col">
+  <section class="flex flex-col gap-6">
     <StatePanel
       v-if="error"
       kind="error"
@@ -62,61 +62,60 @@
     <!-- Filters -->
     <div
       v-if="!error && sites.length > 0"
-      class="flex items-center gap-3 mb-6"
+      class="flex flex-col gap-3 sm:flex-row sm:items-center"
     >
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <Select
           v-model="benchFilterSelection"
-          class="flex-none w-auto"
+          class="min-w-36 flex-none"
           :options="benchFilterOptions"
           variant="outline"
         />
         <Select
           v-model="statusFilterSelection"
-          class="flex-none w-auto"
+          class="min-w-36 flex-none"
           :options="statusFilterOptions"
           variant="outline"
         />
       </div>
-      <div class="ml-auto w-[200px]">
-        <div class="w-full">
-          <TextInput
-            v-model="siteFilters.search"
-            type="search"
-            placeholder="Search..."
-            variant="outline"
-          >
-            <template #prefix>
-              <IconSearch class="w-4" />
-            </template>
-          </TextInput>
-        </div>
+      <div class="w-full sm:ml-auto sm:w-64">
+        <TextInput
+          v-model="siteFilters.search"
+          type="search"
+          placeholder="Search sites"
+          variant="outline"
+        >
+          <template #prefix>
+            <IconSearch class="w-4 text-ink-gray-5" />
+          </template>
+        </TextInput>
       </div>
     </div>
 
-    <ListView
-      v-if="!error && (!loading || sites.length > 0) && filteredSites.length > 0"
+    <ResourceListView
+      v-if="!error && (!loading || sites.length > 0) && sites.length > 0"
       :columns="siteColumns"
       :rows="filteredSites"
       row-key="id"
-      :options="siteListOptions"
+      empty-title="No matching sites"
+      empty-description="Try changing the bench, status, or search filters."
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
-          <div class="py-3">
-            <div class="font-medium text-md text-ink-gray-9">
+          <div class="flex h-full min-w-0 items-center">
+            <div class="truncate text-sm font-medium text-ink-gray-9">
               {{ row.name }}
             </div>
           </div>
         </template>
         <template v-else-if="column.key === 'benchId'">
-          <span class="text-sm text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
+          <span class="block truncate text-sm text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
         </template>
 
         <template v-else-if="column.key === 'status'">
-          <div class="flex items-center">
+          <div class="flex h-full items-center">
             <Badge
-              :variant="'subtle'"
+              variant="subtle"
               :theme="getStatusTheme(row)"
               class="inline-flex cursor-pointer items-center gap-1.5"
               @click.stop="onStatusClick(row.id)"
@@ -131,10 +130,10 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <div
-            class="flex justify-end"
+            class="flex h-full items-center justify-end"
             @click.stop
           >
-            <Dropdown :options="getSiteActions(row).filter((a) => !a.hidden)">
+            <Dropdown :options="getSiteActions(row)">
               <template #default>
                 <Button
                   size="md"
@@ -146,7 +145,7 @@
           </div>
         </template>
       </template>
-    </ListView>
+    </ResourceListView>
 
     <ConfirmationDialog
       :open="confirmDeleteSiteOpen"
@@ -192,16 +191,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dropdown, ListView, Select, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconFolderOpen from '~icons/lucide/folder-open';
 import IconActivity from '~icons/lucide/activity';
 
-import IconPlay from '~icons/lucide/play';
 import IconSearch from '~icons/lucide/search';
-import IconSquare from '~icons/lucide/square';
 import IconTrash from '~icons/lucide/trash-2';
 import IconPackage from '~icons/lucide/package';
 import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
@@ -211,6 +208,7 @@ import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import FirstRunGuide from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/ui/StatePanel.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
+import ResourceListView from '../components/ui/ResourceListView.vue';
 import ManageAppsDialog from '../components/dialogs/ManageAppsDialog.vue';
 import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
 import SiteWizardDialog from '../components/dialogs/SiteWizardDialog.vue';
@@ -258,9 +256,7 @@ const selectedTask = computed(() => {
 });
 
 const {
-  setPendingAction: setPendingSiteAction,
   getPendingAction: getPendingSiteAction,
-  clearPendingAction: clearPendingSiteAction,
   isResourceBusy,
   formatStatusLabel,
   getStatusTheme,
@@ -299,23 +295,12 @@ watch(
 
 const SELECT_ALL = '__all__';
 
-const siteColumns = reactive([
+const siteColumns = [
   { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
-  { key: 'benchId', label: 'Bench', width: '120px' },
-  { key: 'status', label: 'Status', width: '120px' },
-  { key: 'actions', label: '', width: '60px' },
-]);
-
-const siteListOptions = computed(() => ({
-  selectable: false,
-  showTooltip: true,
-  resizeColumn: true,
-  rowHeight: '52px',
-  emptyState: {
-    title: 'No Sites',
-    description: 'No matching sites found for current filters.',
-  },
-}));
+  { key: 'benchId', label: 'Bench', width: 'minmax(140px, 1fr)' },
+  { key: 'status', label: 'Status', width: '140px' },
+  { key: 'actions', label: '', width: '48px', align: 'right' },
+] satisfies object[];
 
 const getSiteActions = (site: SiteListItem) => {
   const actions: Array<{
@@ -367,7 +352,7 @@ const getSiteActions = (site: SiteListItem) => {
     onClick: () => confirmDeleteSite(site.id, site.name),
   });
 
-  return actions;
+  return actions.filter((action) => !action.hidden);
 };
 
 const showCreateSiteModal = ref(false);

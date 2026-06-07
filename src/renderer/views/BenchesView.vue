@@ -16,24 +16,25 @@
       body="Fetching the latest bench list and lifecycle state."
     />
 
-    <ListView
+    <ResourceListView
       v-if="!error && benches.length > 0"
       :columns="benchColumns"
       :rows="benches"
       row-key="id"
-      :options="benchListOptions"
+      empty-title="No benches"
+      empty-description="No benches are available."
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
           <div
-            class="py-3 cursor-pointer group"
+            class="flex h-full min-w-0 cursor-pointer flex-col justify-center gap-0.5 group"
             @click="onManageBench(row.id)"
           >
-            <div class="font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
+            <div class="truncate text-sm font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
               {{ row.name }}
             </div>
             <div
-              class="text-xs truncate text-ink-gray-5"
+              class="truncate text-xs text-ink-gray-5"
               :title="row.path"
             >
               {{ formatPath(row.path) }}
@@ -42,15 +43,11 @@
         </template>
 
         <template v-else-if="column.key === 'frappeVersion'">
-          <span class="text-sm text-ink-gray-6">{{ row.frappeVersion }}</span>
-        </template>
-
-        <template v-else-if="column.key === 'appCount'">
-          <span class="text-sm text-ink-gray-6">{{ row.appCount }}</span>
+          <span class="block truncate text-sm text-ink-gray-6">{{ row.frappeVersion }}</span>
         </template>
 
         <template v-else-if="column.key === 'status'">
-          <div class="flex items-center">
+          <div class="flex h-full items-center">
             <Badge
               variant="subtle"
               :theme="getStatusTheme(row)"
@@ -68,7 +65,7 @@
 
         <template v-else-if="column.key === 'actions'">
           <div
-            class="flex justify-end"
+            class="flex h-full items-center justify-end"
             @click.stop
           >
             <Dropdown :options="getBenchActions(row)">
@@ -83,7 +80,7 @@
           </div>
         </template>
       </template>
-    </ListView>
+    </ResourceListView>
 
     <EmptyState
       v-if="!error && !loading && benches.length === 0"
@@ -153,9 +150,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch, watchEffect, type Component } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, watchEffect, type Component } from 'vue';
 import { useRouter } from 'vue-router';
-import { Badge, Button, Dropdown, ListView, toast } from 'frappe-ui';
+import { Badge, Button, Dropdown, toast } from 'frappe-ui';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import IconPlus from '~icons/lucide/plus';
 import IconExternalLink from '~icons/lucide/external-link';
@@ -172,6 +169,7 @@ import IconPackage from '~icons/lucide/package';
 
 import StatePanel from '../components/ui/StatePanel.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
+import ResourceListView from '../components/ui/ResourceListView.vue';
 import ManageAppsDialog from '../components/dialogs/ManageAppsDialog.vue';
 import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
 
@@ -326,12 +324,12 @@ const formatPath = (path: string) => {
   return path.replace(/^\/Users\/[^/]+/, '~');
 };
 
-const benchColumns = reactive([
-  { label: 'Name', key: 'name', width: 2 },
-  { label: 'Frappe', key: 'frappeVersion', width: 1.2 },
-  { label: 'Status', key: 'status', width: 1 },
-  { label: '', key: 'actions', width: 0.5 },
-]);
+const benchColumns = [
+  { label: 'Bench', key: 'name', width: 'minmax(240px, 2fr)' },
+  { label: 'Frappe version', key: 'frappeVersion', width: 'minmax(140px, 1fr)' },
+  { label: 'Status', key: 'status', width: '140px' },
+  { label: '', key: 'actions', width: '48px', align: 'right' },
+] satisfies object[];
 
 const { tasks, acknowledgedTasks } = useProgressCenter();
 
@@ -360,12 +358,6 @@ const {
   open: confirmCleanBench,
   cancel: cancelCleanBench,
 } = useConfirmAction();
-
-const benchListOptions = {
-  selectable: false,
-  showTooltip: true,
-  resizeColumn: true,
-};
 
 const getBenchActions = (bench: BenchListItem) => {
   const isBusy = isResourceBusy(bench.id) || Boolean(getPendingBenchAction(bench.id));
