@@ -58,6 +58,55 @@
                 </Button>
               </div>
             </div>
+
+            <div
+              v-if="systemResources.podmanMachineRequired"
+              class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
+            >
+              <div class="flex items-start justify-between gap-6">
+                <div class="min-w-0">
+                  <FormLabel label="Podman Memory" />
+                  <p class="mt-1 text-xs leading-5 text-ink-gray-6">
+                    Set the memory available to local benches and sites.
+                  </p>
+                </div>
+                <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-white px-2.5 py-1 text-sm font-semibold text-ink-gray-8">
+                  {{ formatMemory(form.podmanMemoryMb) }}
+                </span>
+              </div>
+
+              <div class="mt-5">
+                <Slider
+                  v-model="memorySliderValue"
+                  :min="MIN_PODMAN_MEMORY_MB"
+                  :max="systemResources.totalMemoryMb"
+                  :step="1024"
+                />
+                <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
+                  <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
+                  <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
+                </div>
+              </div>
+
+              <div class="mt-4 flex flex-col gap-3 border-t border-outline-gray-2 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-xs leading-5">
+                  <p class="font-medium text-ink-gray-7">
+                    Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
+                  </p>
+                  <p class="text-ink-gray-5">
+                    Saving a change briefly restarts Podman.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  class="shrink-0"
+                  @click="useRecommendedMemory"
+                >
+                  Use recommended
+                </Button>
+              </div>
+            </div>
           </form>
         </div>
       </div>
@@ -85,12 +134,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Dialog, Button, FormLabel, TextInput, toast } from 'frappe-ui';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { Dialog, Button, FormLabel, Slider, TextInput, toast } from 'frappe-ui';
 import StatePanel from '../ui/StatePanel.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
 import { useSettings } from '../../composables/data/useSettings';
 import { useIpc } from '../../composables/system/useIpc';
+import { MIN_PODMAN_MEMORY_MB } from '../../../shared/domain/models';
 
 const props = defineProps<{
   open: boolean;
@@ -102,6 +152,21 @@ const emit = defineEmits<{
 
 const { form, loading, saving, error, refresh, save } = useSettings();
 const ipc = useIpc();
+const systemResources = reactive({
+  totalMemoryMb: MIN_PODMAN_MEMORY_MB,
+  recommendedPodmanMemoryMb: MIN_PODMAN_MEMORY_MB,
+  podmanMachineRequired: false,
+});
+const systemResourcesLoaded = ref(false);
+
+const memorySliderValue = computed<number[]>({
+  get: () => [form.value.podmanMemoryMb],
+  set: ([memoryMb]) => {
+    if (typeof memoryMb === 'number') {
+      form.value.podmanMemoryMb = memoryMb;
+    }
+  },
+});
 
 const isShowing = computed({
   get: () => props.open,
@@ -118,10 +183,42 @@ const onPickStoragePath = async () => {
   }
 };
 
+const formatMemory = (memoryMb: number): string => {
+  const memoryGb = memoryMb / 1024;
+  return `${Number.isInteger(memoryGb) ? memoryGb : memoryGb.toFixed(1)} GB`;
+};
+
+const useRecommendedMemory = (): void => {
+  form.value.podmanMemoryMb = systemResources.recommendedPodmanMemoryMb;
+};
+
 const onSave = async () => {
   await save();
   if (!error.value) {
     toast.success('Settings saved successfully.');
   }
 };
+
+onMounted(async () => {
+  try {
+    Object.assign(systemResources, await ipc.getSystemResources());
+    systemResourcesLoaded.value = true;
+  } catch {
+    // Keep the safe 4 GB fallback when host resource detection is unavailable.
+  }
+});
+
+watch(
+  [systemResourcesLoaded, loading],
+  ([resourcesReady, settingsLoading]) => {
+    if (!resourcesReady || settingsLoading) {
+      return;
+    }
+    form.value.podmanMemoryMb = Math.min(
+      Math.max(form.value.podmanMemoryMb, MIN_PODMAN_MEMORY_MB),
+      systemResources.totalMemoryMb
+    );
+  },
+  { immediate: true }
+);
 </script>

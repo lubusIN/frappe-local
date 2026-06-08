@@ -32,6 +32,7 @@ export const ipcChannels = {
   sitesOpenExternal: 'sites:open-external',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  systemResourcesGet: 'system:resources:get',
 
   taskRunnerSubscribe: 'task-runner:subscribe',
   taskRunnerUnsubscribe: 'task-runner:unsubscribe',
@@ -145,8 +146,14 @@ export type SettingsItem = {
   readonly updateChannel: 'stable' | 'beta';
   readonly autoUpdateEnabled: boolean;
   readonly sidebarCompact: boolean;
+  readonly podmanMemoryMb: number;
 };
 
+export type SystemResources = {
+  readonly totalMemoryMb: number;
+  readonly recommendedPodmanMemoryMb: number;
+  readonly podmanMachineRequired: boolean;
+};
 
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
@@ -178,6 +185,7 @@ export type RendererBridge = {
   readonly openSiteExternal: (id: string) => Promise<boolean>;
   readonly getSettings: () => Promise<SettingsItem | null>;
   readonly setSettings: (settings: SettingsItem) => Promise<SettingsItem>;
+  readonly getSystemResources: () => Promise<SystemResources>;
 
   readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;

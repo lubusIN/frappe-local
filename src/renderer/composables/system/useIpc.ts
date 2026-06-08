@@ -37,6 +37,7 @@ const unavailableBridge: RendererBridge = {
   openSiteExternal: () => rejectUnavailable(),
   getSettings: () => rejectUnavailable(),
   setSettings: () => rejectUnavailable(),
+  getSystemResources: () => rejectUnavailable(),
   subscribeTaskRunnerEvents: () => rejectUnavailable(),
   unsubscribeTaskRunnerEvents: () => rejectUnavailable(),
   onTaskRunnerProgress: () => noopDispose,

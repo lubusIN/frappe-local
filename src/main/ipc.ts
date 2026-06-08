@@ -6,6 +6,7 @@ import type {
   CatalogAppItem,
   LifecycleLogItem,
   SettingsItem,
+  SystemResources,
   SiteCreateInput,
   SiteListItem,
   SiteUpdateInput,
@@ -43,6 +44,7 @@ import {
 
   UpdateSiteInputSchema,
   type Bench,
+  MIN_PODMAN_MEMORY_MB,
   type Settings,
   type Site,
 } from '../shared/domain/models';
@@ -122,6 +124,7 @@ export type IpcOperations = {
   pathExists: (targetPath: string) => boolean;
   isFrontDoorAvailable?: () => boolean;
   refreshFrontDoorHosts?: () => Promise<void>;
+  applyRuntimeMemory?: (memoryMb: number) => Promise<void>;
   trackBenchOperation?: (benchId: string, operation: LifecycleOperation) => void;
   trackSiteOperation?: (siteId: string, operation: LifecycleOperation) => void;
 };
@@ -182,6 +185,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   updateChannel: settings.updateChannel,
   autoUpdateEnabled: settings.autoUpdateEnabled,
   sidebarCompact: settings.sidebarCompact,
+  podmanMemoryMb: settings.podmanMemoryMb,
 });
 
 
@@ -881,8 +885,39 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.settingsSet, async (_event: unknown, input: unknown) => {
     const payload = SettingsSchema.partial().parse(input ?? {});
+    const totalMemoryMb = Math.max(
+      MIN_PODMAN_MEMORY_MB,
+      Math.floor(os.totalmem() / (1024 * 1024))
+    );
+    if (payload.podmanMemoryMb && payload.podmanMemoryMb > totalMemoryMb) {
+      throw new Error(`Podman memory cannot exceed system memory (${totalMemoryMb} MB).`);
+    }
+    const current = await getCurrentSettings(repositories.settings);
+    if (
+      operations.applyRuntimeMemory &&
+      payload.podmanMemoryMb !== undefined &&
+      payload.podmanMemoryMb !== current?.podmanMemoryMb
+    ) {
+      await operations.applyRuntimeMemory(payload.podmanMemoryMb);
+    }
     const updated = await updateSettings(repositories.settings, payload);
     return toSettingsItem(updated);
+  });
+
+  ipcMainLike.handle(ipcChannels.systemResourcesGet, (): SystemResources => {
+    const totalMemoryMb = Math.max(
+      MIN_PODMAN_MEMORY_MB,
+      Math.floor(os.totalmem() / (1024 * 1024))
+    );
+    const recommendedPodmanMemoryMb = Math.max(
+      MIN_PODMAN_MEMORY_MB,
+      Math.floor((totalMemoryMb * 0.75) / 1024) * 1024
+    );
+    return {
+      totalMemoryMb,
+      recommendedPodmanMemoryMb: Math.min(recommendedPodmanMemoryMb, totalMemoryMb),
+      podmanMachineRequired: isPodmanMachineRequired(),
+    };
   });
 
 

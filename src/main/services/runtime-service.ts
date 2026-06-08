@@ -5,10 +5,36 @@ import { createMainLogger } from '../logger';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import { MIN_PODMAN_MEMORY_MB } from '../../shared/domain/models';
 
 const logger = createMainLogger('runtime');
 
 export const LOCAL_BENCH_MACHINE_NAME = 'local-bench';
+
+let podmanMemoryProvider = async (): Promise<number> => MIN_PODMAN_MEMORY_MB;
+
+export const configurePodmanMemoryProvider = (
+  provider: () => Promise<number>
+): void => {
+  podmanMemoryProvider = provider;
+};
+
+const normalizePodmanMemoryMb = (memoryMb: number): number => {
+  const systemMemoryMb = Math.floor(os.totalmem() / (1024 * 1024));
+  return Math.min(
+    Math.max(Math.round(memoryMb), MIN_PODMAN_MEMORY_MB),
+    Math.max(systemMemoryMb, MIN_PODMAN_MEMORY_MB)
+  );
+};
+
+const getConfiguredPodmanMemoryMb = async (): Promise<number> => {
+  try {
+    return normalizePodmanMemoryMb(await podmanMemoryProvider());
+  } catch (error) {
+    logger.warn(`Failed to read Podman memory setting: ${error}`);
+    return MIN_PODMAN_MEMORY_MB;
+  }
+};
 
 export async function ensureRuntimeRunning(): Promise<boolean> {
   return ensurePodmanRunning();
@@ -65,14 +91,91 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
 // Mutex to ensure only one machine operation happens at a time
 let machineOperationLock = Promise.resolve();
 
-async function ensurePodmanRunning(): Promise<boolean> {
+const acquireMachineOperationLock = async (): Promise<() => void> => {
   const previousLock = machineOperationLock;
-  let release: () => void;
+  let release: () => void = () => undefined;
   machineOperationLock = new Promise((resolve) => {
     release = resolve;
   });
-
   await previousLock;
+  return release;
+};
+
+const isMachineRunning = (machine: {
+  Running?: boolean;
+  CurrentlyRunning?: boolean;
+  State?: string;
+  Status?: string;
+} | undefined): boolean => {
+  return machine?.Running === true ||
+    machine?.CurrentlyRunning === true ||
+    (machine?.State || machine?.Status || '').toLowerCase() === 'running';
+};
+
+const readMachineMemoryMb = async (): Promise<number | null> => {
+  try {
+    const { stdout } = await execPromise(
+      getBinaryPath('podman'),
+      ['machine', 'inspect', LOCAL_BENCH_MACHINE_NAME, '--format', '{{.Resources.Memory}}'],
+      undefined,
+      undefined,
+      undefined,
+      { idleTimeout: 10000 }
+    );
+    const memoryMb = Number.parseInt(stdout.trim(), 10);
+    return Number.isInteger(memoryMb) ? memoryMb : null;
+  } catch {
+    return null;
+  }
+};
+
+const applyPodmanMachineMemoryUnlocked = async (memoryMb: number): Promise<void> => {
+  if (!isPodmanMachineRequired()) {
+    return;
+  }
+
+  const machines = await getPodmanMachines();
+  const machine = machines.find((entry) => entry.Name === LOCAL_BENCH_MACHINE_NAME);
+  if (!machine) {
+    return;
+  }
+
+  const normalizedMemoryMb = normalizePodmanMemoryMb(memoryMb);
+  const currentMemoryMb = await readMachineMemoryMb();
+  if (currentMemoryMb === normalizedMemoryMb) {
+    return;
+  }
+
+  const wasRunning = isMachineRunning(machine);
+  if (wasRunning) {
+    logger.info(`Stopping ${LOCAL_BENCH_MACHINE_NAME} to update memory allocation...`);
+    await execPromise(getBinaryPath('podman'), ['machine', 'stop', LOCAL_BENCH_MACHINE_NAME]);
+  }
+
+  try {
+    logger.info(`Setting ${LOCAL_BENCH_MACHINE_NAME} memory to ${normalizedMemoryMb} MiB...`);
+    await execPromise(
+      getBinaryPath('podman'),
+      ['machine', 'set', '--memory', String(normalizedMemoryMb), LOCAL_BENCH_MACHINE_NAME]
+    );
+  } finally {
+    if (wasRunning) {
+      await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
+    }
+  }
+};
+
+export const applyPodmanMachineMemory = async (memoryMb: number): Promise<void> => {
+  const release = await acquireMachineOperationLock();
+  try {
+    await applyPodmanMachineMemoryUnlocked(memoryMb);
+  } finally {
+    release();
+  }
+};
+
+async function ensurePodmanRunning(): Promise<boolean> {
+  const release = await acquireMachineOperationLock();
 
   try {
     logger.info('Acquired machine operation lock');
@@ -86,15 +189,18 @@ async function ensurePodmanRunning(): Promise<boolean> {
       let machine = machines.find((m) => m.Name === LOCAL_BENCH_MACHINE_NAME);
       
       if (!machine) {
+        const memoryMb = await getConfiguredPodmanMemoryMb();
         logger.info(`No podman machine named ${LOCAL_BENCH_MACHINE_NAME} found, initializing...`);
-        await execPromise(getBinaryPath('podman'), ['machine', 'init', '--cpus', '4', '--memory', '4096', LOCAL_BENCH_MACHINE_NAME], undefined, undefined, undefined, { idleTimeout: 60000 });
+        await execPromise(getBinaryPath('podman'), ['machine', 'init', '--cpus', '4', '--memory', String(memoryMb), LOCAL_BENCH_MACHINE_NAME], undefined, undefined, undefined, { idleTimeout: 60000 });
+      } else {
+        await applyPodmanMachineMemoryUnlocked(await getConfiguredPodmanMemoryMb());
       }
 
       // Check machine status
       const refreshedMachines = await getPodmanMachines();
       machine = refreshedMachines.find((m) => m.Name === LOCAL_BENCH_MACHINE_NAME);
       
-      const isRunning = machine?.Running === true || machine?.CurrentlyRunning === true || (machine?.State || machine?.Status || '').toLowerCase() === 'running';
+      const isRunning = isMachineRunning(machine);
       const isStarting = machine?.Starting === true || (machine?.State || machine?.Status || '').toLowerCase() === 'starting';
 
       if (isStarting) {
@@ -125,7 +231,11 @@ async function ensurePodmanRunning(): Promise<boolean> {
             await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
           } else if (message.includes('only one VM can be active')) {
             logger.warn('Another Podman VM is active. Stopping default machine to allow local-bench to run...');
-            try { await execPromise(getBinaryPath('podman'), ['machine', 'stop', 'podman-machine-default']); } catch {}
+            try {
+              await execPromise(getBinaryPath('podman'), ['machine', 'stop', 'podman-machine-default']);
+            } catch {
+              logger.warn('Default Podman machine could not be stopped.');
+            }
             await execPromise(getBinaryPath('podman'), ['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
           } else {
             logger.error(`Failed to start podman machine: ${message}`);
@@ -163,6 +273,6 @@ async function ensurePodmanRunning(): Promise<boolean> {
     return false;
   } finally {
     logger.info('Releasing machine operation lock');
-    release!();
+    release();
   }
 }

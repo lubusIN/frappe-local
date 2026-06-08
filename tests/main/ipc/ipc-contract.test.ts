@@ -51,6 +51,7 @@ describe('ipc contract', () => {
   it('uses stable channel names for settings operations', () => {
     expect(ipcChannels.settingsGet).toBe('settings:get');
     expect(ipcChannels.settingsSet).toBe('settings:set');
+    expect(ipcChannels.systemResourcesGet).toBe('system:resources:get');
   });
 
   it('uses stable task runner channel names', () => {

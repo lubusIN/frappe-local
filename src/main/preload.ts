@@ -30,6 +30,7 @@ const rendererBridge: RendererBridge = {
 	openSiteFolder: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenFolder, id),
 	getSettings: async () => ipcRenderer.invoke(ipcChannels.settingsGet),
 	setSettings: async (settings) => ipcRenderer.invoke(ipcChannels.settingsSet, settings),
+	getSystemResources: async () => ipcRenderer.invoke(ipcChannels.systemResourcesGet),
 	syncCatalog: async (apps) => ipcRenderer.invoke(ipcChannels.catalogSync, apps),
 	openSiteExternal: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenExternal, id),
 

@@ -20,6 +20,11 @@ import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/c
 import { runDiagnostics } from './services/diagnostics-service';
 import { getAppIconPath } from './utils/app-icon';
 import { initializeCaddyFrontDoor, isCaddyFrontDoorRunning } from './services/caddy-front-door';
+import {
+  applyPodmanMachineMemory,
+  configurePodmanMemoryProvider,
+} from './services/runtime-service';
+import { DEFAULT_SETTINGS } from '../shared/domain/models';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
@@ -114,6 +119,10 @@ export const runApplicationBootstrap = async (
     });
 
     const settingsRepository = new SettingsRepository(adapter);
+    configurePodmanMemoryProvider(async () => {
+      const settings = await settingsRepository.get();
+      return settings?.podmanMemoryMb ?? DEFAULT_SETTINGS.podmanMemoryMb;
+    });
     const repositories = {
       appCatalog: new AppCatalogRepository(adapter),
       benches: new BenchRepository(adapter),
@@ -160,6 +169,7 @@ export const runApplicationBootstrap = async (
           bootstrapLogger.warn(`Failed to refresh Caddy front door hosts: ${error}`);
         }
       },
+      applyRuntimeMemory: applyPodmanMachineMemory,
       trackBenchOperation: (id, op) => analytics.trackOperation(id, op),
       trackSiteOperation: (id, op) => analytics.trackOperation(id, op),
     }, undefined, context.appVersion, context.runtimePaths);

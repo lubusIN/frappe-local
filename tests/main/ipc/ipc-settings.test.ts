@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Settings } from '../../../src/shared/domain/models';
@@ -154,6 +154,80 @@ describe('settings IPC handlers', () => {
     await expect(
       saveHandler?.(undefined, { ...seedSettings, updateChannel: 'nightly' })
     ).rejects.toThrow();
+  });
+
+  it('reports host memory limits and a 75 percent recommendation', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(seedSettings),
+      }
+    );
+
+    const resources = await handlers.get(ipcChannels.systemResourcesGet)?.() as {
+      totalMemoryMb: number;
+      recommendedPodmanMemoryMb: number;
+      podmanMachineRequired: boolean;
+    };
+
+    expect(resources.totalMemoryMb).toBeGreaterThanOrEqual(4096);
+    expect(resources.recommendedPodmanMemoryMb).toBeGreaterThanOrEqual(4096);
+    expect(resources.recommendedPodmanMemoryMb).toBeLessThanOrEqual(resources.totalMemoryMb);
+    expect(typeof resources.podmanMachineRequired).toBe('boolean');
+  });
+
+  it('rejects Podman memory above host RAM', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(seedSettings),
+      }
+    );
+
+    await expect(
+      handlers.get(ipcChannels.settingsSet)?.(undefined, {
+        ...seedSettings,
+        podmanMemoryMb: Number.MAX_SAFE_INTEGER,
+      })
+    ).rejects.toThrow('Podman memory cannot exceed system memory');
+  });
+
+  it('applies a changed Podman memory allocation before persisting it', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const applyRuntimeMemory = vi.fn(async () => undefined);
+    const settings = makeStubSettingsRepo(null);
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings,
+      },
+      {
+        openPath: async () => false,
+        openInEditor: async () => false,
+        openExternal: async () => false,
+        pathExists: () => false,
+        applyRuntimeMemory,
+      }
+    );
+
+    await handlers.get(ipcChannels.settingsSet)?.(undefined, seedSettings);
+
+    expect(applyRuntimeMemory).toHaveBeenCalledWith(seedSettings.podmanMemoryMb);
+    expect(await settings.get()).toMatchObject(seedSettings);
   });
 
   it('update:get-status returns deferred update strategy', async () => {

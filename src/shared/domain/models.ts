@@ -64,6 +64,8 @@ export const AppSchema = z.object({
   compatibility: AppCompatibilitySchema,
 });
 
+export const MIN_PODMAN_MEMORY_MB = 4096;
+
 export const SettingsSchema = z.object({
   defaultFrappeVersion: nonEmptyString,
   storagePath: nonEmptyString,
@@ -71,6 +73,7 @@ export const SettingsSchema = z.object({
   updateChannel: z.enum(['stable', 'beta']).default('stable'),
   autoUpdateEnabled: z.boolean(),
   sidebarCompact: z.boolean().default(false),
+  podmanMemoryMb: z.number().int().min(MIN_PODMAN_MEMORY_MB).default(MIN_PODMAN_MEMORY_MB),
 });
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -80,6 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   updateChannel: 'stable',
   autoUpdateEnabled: true,
   sidebarCompact: false,
+  podmanMemoryMb: MIN_PODMAN_MEMORY_MB,
 };
 
 export const CreateBenchInputSchema = BenchSchema.omit({
