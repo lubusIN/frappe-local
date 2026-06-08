@@ -78,6 +78,7 @@
               <div class="mt-5">
                 <Slider
                   v-model="memorySliderValue"
+                  class="cursor-pointer [&_[role=slider]]:cursor-pointer"
                   :min="MIN_PODMAN_MEMORY_MB"
                   :max="systemResources.totalMemoryMb"
                   :step="1024"
