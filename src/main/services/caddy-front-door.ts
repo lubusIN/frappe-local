@@ -8,6 +8,7 @@ import { createMainLogger } from '../logger';
 import { getBinaryPath } from '../utils/binaries';
 import { resolveBenchHttpPort } from '../utils/bench-http-port';
 import { normalizeSiteHost } from '../../shared/utils/site-hostname';
+import { BAD_GATEWAY_ERROR_PAGE } from '../pages/bad-gateway/page';
 
 const logger = createMainLogger('caddy-front-door');
 
@@ -58,7 +59,17 @@ type FrontDoorRoute = {
   readonly benchPort: number;
 };
 
-
+const buildBadGatewayErrorHandler = (): string => `(local_bench_bad_gateway) {
+  handle_errors {
+    @bad_gateway expression {err.status_code} == 502
+    handle @bad_gateway {
+      header Content-Type "text/html; charset=utf-8"
+      respond <<LOCAL_BENCH_502_PAGE
+${BAD_GATEWAY_ERROR_PAGE}
+LOCAL_BENCH_502_PAGE 502
+    }
+  }
+}`;
 
 const listProcesses = (): Array<{ pid: number; command: string }> => {
   if (process.platform === 'win32') {
@@ -306,6 +317,7 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
     .map(({ siteHost, benchPort }) => {
       return `https://${siteHost} {
   tls internal
+  import local_bench_bad_gateway
   reverse_proxy 127.0.0.1:${benchPort} {
     header_up Host {host}
     header_up X-Forwarded-Proto {scheme}
@@ -325,6 +337,8 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
 http://localhost, http://*.localhost {
   redir https://{host}{uri} permanent
 }
+
+${buildBadGatewayErrorHandler()}
 
 ${routeBlocks}
 `;

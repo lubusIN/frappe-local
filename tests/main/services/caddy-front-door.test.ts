@@ -20,6 +20,22 @@ describe('caddy front door config', () => {
     expect(caddyfile).toContain('header_up Host {host}');
   });
 
+  it('shows restart guidance when a bench frontend returns a bad gateway error', () => {
+    const caddyfile = buildCaddyfile([
+      { siteHost: 'unavailable.localhost', benchPort: 18080 },
+    ]);
+
+    expect(caddyfile).toContain('(local_bench_bad_gateway)');
+    expect(caddyfile).toContain('@bad_gateway expression {err.status_code} == 502');
+    expect(caddyfile).toContain('import local_bench_bad_gateway');
+    expect(caddyfile).toContain('Site temporarily unavailable');
+    expect(caddyfile).toContain('Restart the bench hosting this site.');
+    expect(caddyfile).toContain('https://github.com/lubusIN/local-bench/issues/new');
+    expect(caddyfile).toContain('LOCAL_BENCH_502_PAGE 502');
+    expect(caddyfile).toContain('class="grid min-h-screen');
+    expect(caddyfile).not.toContain('@tailwind');
+    expect(caddyfile).not.toContain('LOCAL_BENCH_TAILWIND_CSS');
+  });
 
   it('removes stale local site certificate directories while keeping active hosts', () => {
     const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-certs-test-'));
