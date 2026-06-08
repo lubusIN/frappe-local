@@ -74,53 +74,52 @@
         </template>
 
         <template #cell="{ column, row }">
-          <template v-if="column.key === 'icon'">
-            <div class="flex items-center justify-start w-12">
+          <template v-if="column.key === 'details'">
+            <div
+              class="flex min-w-0 items-center gap-4"
+              :class="{ 'opacity-60': row.disabled }"
+            >
               <img
                 v-if="row.icon && !imageErrors[row.appId]"
                 :src="row.icon"
-                class="object-cover w-12 h-12 rounded-lg"
+                class="size-12 shrink-0 rounded-lg object-cover"
                 @error="imageErrors[row.appId] = true"
               >
               <div
                 v-else
-                class="flex items-center justify-center w-6 h-6 text-sm font-semibold rounded bg-surface-gray-3 text-ink-gray-5"
+                class="flex size-12 shrink-0 items-center justify-center rounded-lg bg-surface-gray-3 text-sm font-semibold text-ink-gray-5"
               >
                 {{ row.appName.charAt(0).toUpperCase() }}
               </div>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'name'">
-            <div
-              class="grid min-w-0 gap-1"
-              :class="{ 'opacity-60': row.disabled }"
-            >
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="text-sm font-semibold truncate text-ink-gray-9">{{ row.appName }}</span>
-                <Badge
-                  v-if="mode === 'select' && row.isPreinstalledCoreApp"
-                  theme="gray"
-                  variant="subtle"
-                  size="sm"
-                >
-                  Pre-bundled
-                </Badge>
-              </div>
-              <p class="m-0 text-xs leading-snug text-wrap text-ink-gray-6">
-                {{ row.description }}
-              </p>
-              <div class="flex flex-wrap items-center gap-2.5">
-                <span class="text-[10px] font-medium text-ink-gray-5">{{ row.version }}</span>
-                <span
-                  class="text-[10px] font-medium"
-                  :class="{
-                    'text-ink-amber-3': row.compatibilityStatus === 'warning',
-                    'text-ink-red-4': row.compatibilityStatus === 'blocked',
-                    'text-ink-gray-6': row.compatibilityStatus !== 'warning' && row.compatibilityStatus !== 'blocked',
-                  }"
-                >
-                  {{ row.supportText }}
-                </span>
+
+              <div class="grid min-w-0 flex-1 gap-1">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span class="truncate text-sm font-semibold text-ink-gray-9">{{ row.appName }}</span>
+                  <Badge
+                    v-if="mode === 'select' && row.isPreinstalledCoreApp"
+                    theme="gray"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    Pre-bundled
+                  </Badge>
+                </div>
+                <p class="m-0 text-wrap text-xs leading-snug text-ink-gray-6">
+                  {{ row.description }}
+                </p>
+                <div class="flex flex-wrap items-center gap-2.5">
+                  <span class="text-[10px] font-medium text-ink-gray-5">{{ row.version }}</span>
+                  <span
+                    class="text-[10px] font-medium"
+                    :class="{
+                      'text-ink-amber-3': row.compatibilityStatus === 'warning',
+                      'text-ink-red-4': row.compatibilityStatus === 'blocked',
+                      'text-ink-gray-6': row.compatibilityStatus !== 'warning' && row.compatibilityStatus !== 'blocked',
+                    }"
+                  >
+                    {{ row.supportText }}
+                  </span>
+                </div>
               </div>
             </div>
           </template>
@@ -235,13 +234,11 @@ const emit = defineEmits<{
 const appColumns = computed(() => {
   if (props.mode === 'select') {
     return [
-      { key: 'icon', label: '', width: '46px' },
-      { key: 'name', label: 'Name', width: 'minmax(85%, 500px)' },
+      { key: 'details', label: 'App', width: 'minmax(0, 1fr)' },
     ];
   }
   return [
-    { key: 'icon', label: '', width: '46px' },
-    { key: 'name', label: 'Name', width: 'minmax(70%, 450px)' },
+    { key: 'details', label: 'App', width: 'minmax(0, 1fr)' },
     { key: 'actions', label: '', width: '120px' },
   ];
 });
