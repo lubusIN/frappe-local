@@ -90,13 +90,25 @@
       </div>
     </div>
 
+    <EmptyState
+      v-if="!error && sites.length > 0 && filteredSites.length === 0"
+      title="No matching sites"
+      description="No sites match the current bench, status, or search filters."
+      :icon="IconSearch"
+    >
+      <Button
+        variant="subtle"
+        @click="clearSiteFilters"
+      >
+        Clear filters
+      </Button>
+    </EmptyState>
+
     <ResourceListView
-      v-if="!error && (!loading || sites.length > 0) && sites.length > 0"
+      v-if="!error && (!loading || sites.length > 0) && filteredSites.length > 0"
       :columns="siteColumns"
       :rows="filteredSites"
       row-key="id"
-      empty-title="No matching sites"
-      empty-description="Try changing the bench, status, or search filters."
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
@@ -423,6 +435,11 @@ const statusFilterOptions = [
   { label: 'Failure', value: 'failure' },
 ];
 const filteredSites = computed(() => filterSites(sites.value, siteFilters));
+const clearSiteFilters = (): void => {
+  siteFilters.benchId = '';
+  siteFilters.status = '';
+  siteFilters.search = '';
+};
 const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Go to Benches', to: '/benches' },
   { label: 'Review runtime', to: '/diagnostics' },
