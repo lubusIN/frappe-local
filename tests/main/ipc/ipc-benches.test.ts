@@ -14,6 +14,19 @@ vi.mock('../../../src/main/services/bench-orchestration', async () => {
   };
 });
 
+vi.mock('../../../src/main/utils/ports', () => ({
+  findNextAvailableTcpPort: vi.fn(async (
+    startPort: number,
+    reservedPorts: Set<number> = new Set()
+  ) => {
+    let candidate = startPort;
+    while (reservedPorts.has(candidate)) {
+      candidate += 1;
+    }
+    return candidate;
+  }),
+}));
+
 const benches: Bench[] = [
   {
     id: 'bench-001',

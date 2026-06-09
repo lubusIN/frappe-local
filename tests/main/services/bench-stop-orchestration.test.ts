@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bench } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
-import { IDLE_TIMEOUT_MS } from '../../../src/main/constants';
 import { orchestrateBenchStop } from '../../../src/main/services/bench-orchestration';
 
 const execPromiseMock = vi.fn();
@@ -87,14 +86,14 @@ describe('bench stop orchestration', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
 
     expect(command).toBe('/mock/docker-compose');
     expect(args).toEqual(['-p', 'local-bench-1adb2eed', 'stop', '--timeout', '20']);
     expect(cwd).toBe('/Users/dev/frappe-bench-2');
     expect(env).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(timeout).toBe(expect.anything());
+    expect(timeout).toMatchObject({ idleTimeout: expect.any(Number) });
   });
 
   it('falls back to down when stop command times out', async () => {

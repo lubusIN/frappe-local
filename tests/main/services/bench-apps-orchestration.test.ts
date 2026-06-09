@@ -108,7 +108,7 @@ describe('bench app orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(appCatalogRepo.findById).toHaveBeenCalledWith('payments');
@@ -167,7 +167,7 @@ describe('bench app orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
   });
@@ -229,7 +229,7 @@ describe('bench app orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
   });
 
@@ -281,11 +281,11 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--branch', 'develop', 'https://github.com/frappe/wiki']),
+      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--branch', 'master', 'https://github.com/frappe/wiki']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
   });
 
@@ -323,7 +323,7 @@ describe('bench app orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe', 'erpnext'] });
@@ -406,7 +406,7 @@ describe('bench app orchestration', () => {
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe'] });

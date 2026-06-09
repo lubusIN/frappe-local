@@ -56,8 +56,10 @@ describe('TaskRunner', () => {
     expect(runner.getTask(firstTaskId)?.status).toBe('success');
     expect(runner.getTask(secondTaskId)?.status).toBe('success');
     expect(events.map((event) => `${event.taskName}:${event.type}`)).toEqual([
+      'First task:task.queued',
       'First task:task.started',
       'First task:task.step.started',
+      'Second task:task.queued',
       'First task:task.step.completed',
       'First task:task.completed',
       'Second task:task.started',
@@ -96,8 +98,12 @@ describe('TaskRunner', () => {
     await flushPromises();
 
     const cancelledEvents = events.filter((event) => event.taskId === cancelledTaskId);
-    expect(cancelledEvents).toHaveLength(1);
+    expect(cancelledEvents).toHaveLength(2);
     expect(cancelledEvents[0]).toMatchObject({
+      type: 'task.queued',
+      status: 'queued',
+    });
+    expect(cancelledEvents[1]).toMatchObject({
       type: 'task.failed',
       status: 'failure',
       errorCode: 'cancelled',
@@ -130,12 +136,13 @@ describe('TaskRunner', () => {
 
     const taskEvents = events.filter((event) => event.taskId === taskId);
     expect(taskEvents.map((event) => event.type)).toEqual([
+      'task.queued',
       'task.started',
       'task.step.started',
       'task.failed',
     ]);
     expect(runner.getTask(taskId)?.status).toBe('failure');
-    expect(taskEvents[2]).toMatchObject({
+    expect(taskEvents[3]).toMatchObject({
       errorCode: 'cancelled',
       status: 'failure',
     });
@@ -162,16 +169,17 @@ describe('TaskRunner', () => {
     await flushPromises();
 
     expect(events.map((event) => event.type)).toEqual([
+      'task.queued',
       'task.started',
       'task.step.started',
       'task.log',
       'task.failed',
     ]);
-    expect(events[2]).toMatchObject({
+    expect(events[3]).toMatchObject({
       logLevel: 'warning',
       message: 'Probe is taking longer than expected.',
     });
-    expect(events[3]).toMatchObject({
+    expect(events[4]).toMatchObject({
       message: 'Probe command failed.',
       errorCode: 'task-failed',
     });

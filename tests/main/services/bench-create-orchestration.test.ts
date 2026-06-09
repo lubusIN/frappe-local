@@ -32,6 +32,11 @@ vi.mock('../../../src/main/services/task-runner', () => ({
   }),
 }));
 
+vi.mock('../../../src/main/utils/ports', () => ({
+  findNextAvailableTcpPort: vi.fn(async (startPort: number) => startPort),
+  isTcpPortFree: vi.fn(async () => true),
+}));
+
 describe('bench creation orchestration app install', () => {
   let queuedRun: ((context: TaskExecutionContext) => Promise<void>) | null = null;
   let benchPath = '';
@@ -343,7 +348,7 @@ describe('bench creation orchestration app install', () => {
         'bench',
         'get-app',
         '--branch',
-        'develop',
+        'master',
         'https://github.com/frappe/wiki',
       ])
     );

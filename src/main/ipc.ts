@@ -739,6 +739,9 @@ export const registerIpcHandlers = (
     if (!existing) {
       return null;
     }
+    if (existing.status === 'queued' && payload.status) {
+      return toSiteListItem(existing);
+    }
 
     const targetSiteName = payload.name ?? existing.name;
     if (hasDuplicateSiteHost(sites, targetSiteName, existing.id)) {
@@ -819,6 +822,9 @@ export const registerIpcHandlers = (
     const site = sites.find((entry) => entry.id === id);
     if (!site) {
       throw new Error('Site not found.');
+    }
+    if (site.status === 'running') {
+      throw new Error('Cannot delete a running site. Please stop it first.');
     }
     const bench = await repositories.benches.findById(site.benchId);
     if (bench && bench.status !== 'running') {

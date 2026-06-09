@@ -276,17 +276,38 @@ const fetchBenchApps = async (
     const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
 
     context.log('info', `[${index + 1}/${apps.length}] Fetching app ${app} via bench get-app (${appBranch})`, stepId);
-    const { code, stderr } = await execPromise(
-      runtimeCmd,
-      composeBenchArgs(projectName, ['get-app', '--overwrite', '--branch', appBranch, appSource]),
-      bench.path,
-      (out: string) => context.log('info', out, stepId),
-      runtimeEnv,
-      { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+    const args = composeBenchArgs(
+      projectName,
+      ['get-app', '--overwrite', '--branch', appBranch, appSource]
     );
+    let result;
+    try {
+      result = await execPromise(
+        runtimeCmd,
+        args,
+        bench.path,
+        (out: string) => context.log('info', out, stepId),
+        runtimeEnv,
+        { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+      );
+    } catch (error) {
+      if (!errorMessage(error).includes('Command timed out')) {
+        throw error;
+      }
 
-    if (code !== 0) {
-      throw new Error(`Failed to fetch app ${app}: ${stderr}`);
+      context.log('warning', `Fetching app ${app} timed out. Retrying once.`, stepId);
+      result = await execPromise(
+        runtimeCmd,
+        args,
+        bench.path,
+        (out: string) => context.log('info', out, stepId),
+        runtimeEnv,
+        { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+      );
+    }
+
+    if (result.code !== 0) {
+      throw new Error(`Failed to fetch app ${app}: ${result.stderr}`);
     }
   }
 

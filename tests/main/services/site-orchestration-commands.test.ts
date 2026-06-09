@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bench, Site } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
-import { IDLE_TIMEOUT_MS } from '../../../src/main/constants';
 import { orchestrateSiteAppsUpdate, orchestrateSiteCreation } from '../../../src/main/services/site-orchestration';
 
 const execPromiseMock = vi.fn();
@@ -111,13 +110,13 @@ describe('site orchestration command execution', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
     
     expect(command).toBe('/mock/docker-compose');
     expect(cwd).toBe('/Users/dev/bench-two');
     expect(env).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(timeout).toBe(expect.anything());
+    expect(timeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(args).toEqual([
       '-p',
       'local-bench-1adb2eed',
@@ -219,13 +218,13 @@ describe('site orchestration command execution', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
 
     expect(installCommand).toBe('/mock/docker-compose');
     expect(installCwd).toBe('/Users/dev/bench-two');
     expect(installEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(installTimeout).toBe(expect.anything());
+    expect(installTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(installArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',
@@ -245,13 +244,13 @@ describe('site orchestration command execution', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
 
     expect(migrateCommand).toBe('/mock/docker-compose');
     expect(migrateCwd).toBe('/Users/dev/bench-two');
     expect(migrateEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(migrateTimeout).toBe(expect.anything());
+    expect(migrateTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(migrateArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',
@@ -270,13 +269,13 @@ describe('site orchestration command execution', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
 
     expect(clearCacheCommand).toBe('/mock/docker-compose');
     expect(clearCacheCwd).toBe('/Users/dev/bench-two');
     expect(clearCacheEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(clearCacheTimeout).toBe(expect.anything());
+    expect(clearCacheTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(clearCacheArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',
@@ -295,13 +294,13 @@ describe('site orchestration command execution', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
 
     expect(clearWebsiteCacheCommand).toBe('/mock/docker-compose');
     expect(clearWebsiteCacheCwd).toBe('/Users/dev/bench-two');
     expect(clearWebsiteCacheEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(clearWebsiteCacheTimeout).toBe(expect.anything());
+    expect(clearWebsiteCacheTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(clearWebsiteCacheArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',
@@ -320,13 +319,13 @@ describe('site orchestration command execution', () => {
       string,
       unknown,
       NodeJS.ProcessEnv,
-      number,
+      { idleTimeout: number; maxTimeout?: number },
     ];
 
     expect(restartCommand).toBe('/mock/docker-compose');
     expect(restartCwd).toBe('/Users/dev/bench-two');
     expect(restartEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(restartTimeout).toBe(expect.anything());
+    expect(restartTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(restartArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',

@@ -16,7 +16,7 @@ const makeSnapshot = (): StorageSnapshot => ({
       name: 'alpha-bench',
       path: '/tmp/alpha-bench',
       frappe_version: '15.0.0',
-      status: 'running',
+      status: 'queued',
       apps: ['frappe'],
       created_at: new Date('2026-04-01T00:00:00.000Z').toISOString(),
       updated_at: new Date('2026-04-01T00:00:00.000Z').toISOString(),
@@ -51,7 +51,7 @@ const makeSnapshot = (): StorageSnapshot => ({
 });
 
 describe('storage reconcile', () => {
-  it('reconciles interrupted bench and site states to stopped', () => {
+  it('reconciles interrupted bench and site states to failure', () => {
     const snapshot = makeSnapshot();
 
     const result = reconcileLifecycleSnapshot(snapshot);
@@ -59,8 +59,8 @@ describe('storage reconcile', () => {
     expect(result.wasChanged).toBe(true);
     expect(result.reconciledBenches).toBe(1);
     expect(result.reconciledSites).toBe(1);
-    expect(result.snapshot.benches[0]?.status).toBe('stopped');
-    expect(result.snapshot.sites[0]?.status).toBe('stopped');
+    expect(result.snapshot.benches[0]?.status).toBe('failure');
+    expect(result.snapshot.sites[0]?.status).toBe('failure');
     expect(result.snapshot.benches[1]?.status).toBe('success');
   });
 

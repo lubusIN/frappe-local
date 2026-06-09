@@ -9,7 +9,7 @@ import { vi } from 'vitest';
 vi.mock('../../../src/main/utils/exec', () => ({
   execPromise: vi.fn().mockImplementation((command, args) => {
     if (command === 'podman' && args.includes('ls')) {
-      return Promise.resolve({ code: 0, stdout: '[{"Name": "podman-machine-default", "Running": true}]' });
+      return Promise.resolve({ code: 0, stdout: '[{"Name": "local-bench", "Running": true}]' });
     }
     return Promise.resolve({ code: 0, stdout: '[]' });
   }),
@@ -59,7 +59,7 @@ describe('diagnostics service', () => {
       },
 
       settingsRepository: {
-        get: async () => seedSettings,
+        get: async () => ({ ...seedSettings, storagePath }),
       },
       appVersion: '0.1.0',
     });
@@ -85,7 +85,10 @@ describe('diagnostics service', () => {
       },
 
       settingsRepository: {
-        get: async () => seedSettings,
+        get: async () => ({
+          ...seedSettings,
+          storagePath: path.join(userDataPath, 'missing-storage'),
+        }),
       },
       appVersion: '0.1.0',
     });

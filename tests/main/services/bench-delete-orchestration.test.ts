@@ -142,7 +142,7 @@ describe('bench delete orchestration cleanup', () => {
       '/Users/dev/frappe-bench-2',
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -151,7 +151,7 @@ describe('bench delete orchestration cleanup', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -160,7 +160,7 @@ describe('bench delete orchestration cleanup', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -169,7 +169,7 @@ describe('bench delete orchestration cleanup', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -178,7 +178,7 @@ describe('bench delete orchestration cleanup', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
   });

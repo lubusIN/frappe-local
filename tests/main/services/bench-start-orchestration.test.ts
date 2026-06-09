@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Bench } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
-import { IDLE_TIMEOUT_MS } from '../../../src/main/constants';
 import { orchestrateBenchStart } from '../../../src/main/services/bench-orchestration';
 
 const execPromiseMock = vi.fn();
@@ -125,7 +124,7 @@ describe('bench start/restart orchestration', () => {
       benchPath,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      5000
+      { idleTimeout: 5000 }
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });

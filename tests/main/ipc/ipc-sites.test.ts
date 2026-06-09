@@ -612,7 +612,7 @@ describe('sites IPC handlers', () => {
     expect(openExternal).toHaveBeenCalledWith('http://my-site.localhost:8080');
   });
 
-  it('refreshes front door hosts after site create and update', async () => {
+  it('refreshes front door hosts after a direct site update', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
     const refreshFrontDoorHosts = vi.fn(async () => undefined);
 
@@ -649,6 +649,6 @@ describe('sites IPC handlers', () => {
     const updateHandler = handlers.get(ipcChannels.sitesUpdate);
     await updateHandler?.(undefined, 'site-001', { name: 'renamed.localhost' });
 
-    expect(refreshFrontDoorHosts).toHaveBeenCalledTimes(2);
+    expect(refreshFrontDoorHosts).toHaveBeenCalledTimes(1);
   });
 });

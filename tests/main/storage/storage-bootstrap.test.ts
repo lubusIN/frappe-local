@@ -119,7 +119,7 @@ describe('storage bootstrap', () => {
             name: 'alpha-bench',
             path: '/tmp/alpha-bench',
             frappe_version: '15.0.0',
-            status: 'running',
+            status: 'queued',
             apps: ['frappe'],
             created_at: new Date('2026-04-10T00:00:00.000Z').toISOString(),
             updated_at: new Date('2026-04-10T00:00:00.000Z').toISOString(),
@@ -148,8 +148,8 @@ describe('storage bootstrap', () => {
       appCatalogSeedVersion: 1,
     });
 
-    expect(reconciled.benches[0]?.status).toBe('stopped');
-    expect(reconciled.sites[0]?.status).toBe('stopped');
+    expect(reconciled.benches[0]?.status).toBe('failure');
+    expect(reconciled.sites[0]?.status).toBe('failure');
   });
 
   it('migrates a version 1 snapshot to the current schema version during bootstrap', async () => {
