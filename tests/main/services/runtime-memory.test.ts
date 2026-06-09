@@ -3,6 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const execPromiseMock = vi.fn();
 const getPodmanMachinesMock = vi.fn();
 
+vi.mock('node:os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:os')>();
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      totalmem: () => 16 * 1024 * 1024 * 1024,
+    },
+    totalmem: () => 16 * 1024 * 1024 * 1024,
+  };
+});
+
 vi.mock('../../../src/main/utils/exec', () => ({
   execPromise: (...args: unknown[]) => execPromiseMock(...args),
 }));
