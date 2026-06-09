@@ -7,18 +7,29 @@ import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Settings } from '../../../src/shared/domain/models';
 
 const ensureRuntimeRunningMock = vi.fn(async () => false);
+const getLastRuntimeErrorMock = vi.fn(() => 'Podman machine image download failed.');
 const getRuntimeEnvMock = vi.fn(async () => ({}));
 const getBinaryPathMock = vi.fn((name: string) => `/mock/${name}`);
+const getPodmanMachinesMock = vi.fn<
+  () => Promise<Array<{ Name?: string; State?: string }>>
+>(async () => []);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const execPromiseMock = vi.fn(async (...args: unknown[]) => ({ code: 0, stdout: '', stderr: '' }));
 
 vi.mock('../../../src/main/services/runtime-service', () => ({
   ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
+  getLastRuntimeError: () => getLastRuntimeErrorMock(),
   getRuntimeEnv: () => getRuntimeEnvMock(),
+  LOCAL_BENCH_MACHINE_NAME: 'local-bench',
 }));
 
 vi.mock('../../../src/main/utils/binaries', () => ({
   getBinaryPath: (name: string) => getBinaryPathMock(name),
+}));
+
+vi.mock('../../../src/main/utils/podman/podman', () => ({
+  getPodmanMachines: () => getPodmanMachinesMock(),
+  isPodmanMachineRequired: () => true,
 }));
 
 vi.mock('../../../src/main/utils/exec', () => ({
@@ -101,8 +112,10 @@ describe('diagnostics IPC handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     ensureRuntimeRunningMock.mockResolvedValue(false);
+    getLastRuntimeErrorMock.mockReturnValue('Podman machine image download failed.');
     getRuntimeEnvMock.mockResolvedValue({});
     getBinaryPathMock.mockImplementation((name: string) => `/mock/${name}`);
+    getPodmanMachinesMock.mockResolvedValue([]);
     execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
   });
 
@@ -133,6 +146,24 @@ describe('diagnostics IPC handlers', () => {
 
     expect(report).toMatchObject({ appVersion: '0.1.0' });
     expect(cached).toEqual(report);
+  });
+
+  it('surfaces the concrete runtime failure when fix cannot start Podman', async () => {
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      }
+    );
+
+    await expect(
+      handlers.get(ipcChannels.runtimeFix)?.(undefined, 'runtime-health')
+    ).rejects.toThrow('Podman machine image download failed.');
   });
 
   it('resets development state and recreates fresh storage snapshot', async () => {
@@ -193,6 +224,7 @@ describe('diagnostics IPC handlers', () => {
   it('reset performs compose and podman teardown for local-bench resources', async () => {
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
+    getPodmanMachinesMock.mockResolvedValue([{ Name: 'local-bench', State: 'running' }]);
 
     const bench = {
       id: '1adb2eedabcdef',
@@ -260,7 +292,7 @@ describe('diagnostics IPC handlers', () => {
       '/Users/dev/frappe-bench-2',
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -269,7 +301,7 @@ describe('diagnostics IPC handlers', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -278,7 +310,7 @@ describe('diagnostics IPC handlers', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -287,7 +319,7 @@ describe('diagnostics IPC handlers', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
     expect(execPromiseMock).toHaveBeenCalledWith(
@@ -296,8 +328,56 @@ describe('diagnostics IPC handlers', () => {
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
-      expect.any(Number)
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/podman',
+      ['machine', 'rm', '--force', 'local-bench']
+    );
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  it('reports a Podman machine removal failure after resetting local data', async () => {
+    getPodmanMachinesMock.mockResolvedValue([{ Name: 'local-bench', State: 'stopped' }]);
+    execPromiseMock.mockImplementation(async (...allArgs: unknown[]) => {
+      const args = (allArgs[1] as string[]) ?? [];
+      if (args.join(' ') === 'machine rm --force local-bench') {
+        return { code: 125, stdout: '', stderr: 'machine is locked' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-vm-test-'));
+    const storagePath = path.join(tempRoot, 'storage');
+    const configPath = path.join(tempRoot, 'config');
+    fs.mkdirSync(storagePath, { recursive: true });
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      },
+      undefined,
+      undefined,
+      '0.1.0',
+      {
+        userDataPath: tempRoot,
+        logsPath: path.join(tempRoot, 'logs'),
+        configPath,
+        storagePath,
+      }
+    );
+
+    await expect(
+      handlers.get(ipcChannels.diagnosticsResetDevState)?.()
+    ).rejects.toThrow("Failed to destroy Podman machine 'local-bench': machine is locked");
+    expect(fs.existsSync(path.join(storagePath, 'storage.json'))).toBe(true);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });

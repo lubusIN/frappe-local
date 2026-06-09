@@ -15,8 +15,8 @@ import type {
 } from '../shared/core/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
-import { ensureRuntimeRunning, getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './services/runtime-service';
-import { isPodmanMachineRequired } from './utils/podman/podman';
+import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './services/runtime-service';
+import { getPodmanMachines, isPodmanMachineRequired } from './utils/podman/podman';
 import { getBinaryPath } from './utils/binaries';
 import { execPromise } from './utils/exec';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './services/update-strategy-service';
@@ -279,7 +279,11 @@ export const registerIpcHandlers = (
     if (typeof checkType !== 'string' || checkType !== 'runtime-health') return false;
 
     mainLogger.info('Attempting to fix runtime issues via unified service...');
-    return await ensureRuntimeRunning();
+    const fixed = await ensureRuntimeRunning();
+    if (!fixed) {
+      throw new Error(getLastRuntimeError() || 'Podman could not be initialized or started.');
+    }
+    return true;
   });
 
   ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
@@ -317,6 +321,7 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.diagnosticsResetDevState, async (): Promise<boolean> => {
     const benches = await repositories.benches.findAll();
+    let podmanMachineRemovalError: Error | null = null;
 
     let runtimeEnv: NodeJS.ProcessEnv | undefined;
     try {
@@ -357,15 +362,33 @@ export const registerIpcHandlers = (
        }
      }
 
-     if (isPodmanMachineRequired()) {
-       try {
-         mainLogger.info(`Destroying dedicated podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
-         await execPromise(getBinaryPath('podman'), ['machine', 'rm', '--force', LOCAL_BENCH_MACHINE_NAME]);
-         mainLogger.info(`Successfully destroyed podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
-       } catch (error) {
-         mainLogger.warn(`Failed to destroy podman machine ${LOCAL_BENCH_MACHINE_NAME}: ${error}`);
-       }
-     }
+    if (isPodmanMachineRequired()) {
+      try {
+        const machines = await getPodmanMachines();
+        const machineExists = machines.some(
+          (machine) => machine.Name === LOCAL_BENCH_MACHINE_NAME
+        );
+
+        if (machineExists) {
+          mainLogger.info(`Destroying dedicated podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
+          const result = await execPromise(
+            getBinaryPath('podman'),
+            ['machine', 'rm', '--force', LOCAL_BENCH_MACHINE_NAME]
+          );
+          if (result.code !== 0) {
+            const reason = (result.stderr || result.stdout).trim() || `exit code ${result.code}`;
+            throw new Error(reason);
+          }
+          mainLogger.info(`Successfully destroyed podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
+        }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        podmanMachineRemovalError = new Error(
+          `Failed to destroy Podman machine '${LOCAL_BENCH_MACHINE_NAME}': ${reason}`
+        );
+        mainLogger.warn(podmanMachineRemovalError.message);
+      }
+    }
 
     await fs.promises.rm(runtimePaths.storagePath, { recursive: true, force: true });
     await fs.promises.rm(runtimePaths.configPath, { recursive: true, force: true });
@@ -379,6 +402,10 @@ export const registerIpcHandlers = (
       await operations.refreshFrontDoorHosts?.();
     } catch (error) {
       mainLogger.warn(`Failed to refresh front door hosts after reset: ${error}`);
+    }
+
+    if (podmanMachineRemovalError) {
+      throw podmanMachineRemovalError;
     }
 
     return true;

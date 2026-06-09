@@ -36,22 +36,20 @@ export type PodmanMachineStatus = {
 };
 
 export const getPodmanMachines = async (): Promise<PodmanMachineStatus[]> => {
-  try {
-    const { stdout, code } = await execPromise(
-      getBinaryPath('podman'),
-      ['machine', 'ls', '--format', 'json'],
-      undefined,
-      undefined,
-      undefined,
-      { idleTimeout: 10000 }
-    );
-    if (code !== 0) return [];
-    
-    const parsed = parsePodmanJson(stdout);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  const { stdout, stderr, code } = await execPromise(
+    getBinaryPath('podman'),
+    ['machine', 'ls', '--format', 'json'],
+    undefined,
+    undefined,
+    undefined,
+    { idleTimeout: 10000 }
+  );
+  if (code !== 0) {
+    throw new Error(stderr.trim() || `podman machine ls exited with code ${code}`);
   }
+
+  const parsed = parsePodmanJson(stdout);
+  return Array.isArray(parsed) ? parsed : [];
 };
 
 export const cleanupStaleMacPodmanProcesses = async (logger?: { warn: (msg: string) => void }): Promise<void> => {

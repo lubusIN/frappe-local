@@ -16,7 +16,7 @@
             Danger Zone
           </h3>
           <p class="mt-1 text-sm text-ink-gray-6">
-            Remove all local Local Bench storage and teardown all local-bench containers to start from a clean slate.
+            Remove all Local Bench data, containers, and the dedicated Podman VM to start from a clean slate.
           </p>
         </div>
         <Button
@@ -34,7 +34,7 @@
     <ConfirmationDialog
       :open="showResetConfirm"
       title="Reset"
-      message="This will permanently remove all local benches/sites data and tear down local-bench containers. Type RESET to continue."
+      message="This will permanently remove all local benches/sites data, containers, and the dedicated Podman VM. Type RESET to continue."
       confirm-label="Reset"
       confirmation-phrase="RESET"
       :typed-value="ResetTypedValue"

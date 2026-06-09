@@ -19,6 +19,7 @@ vi.mock('../../../src/main/utils/binaries', () => ({
 
 vi.mock('../../../src/main/services/runtime-service', () => ({
   ensureRuntimeRunning: vi.fn(async () => true),
+  getLastRuntimeError: () => null,
   getRuntimeEnv: () => getRuntimeEnvMock(),
 }));
 

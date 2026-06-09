@@ -20,9 +20,15 @@ Download the latest release .dmg directly from the from [releases](https://githu
 Apple blocks apps not from Mac App Store or signed by trusted developers. Open terminal and run the following command:
 
 ```shell
-xattr -rd com.apple.quarantine /Applications/Local\ bench.app
+xattr -rd com.apple.quarantine /Applications/Local\ Bench.app
 ```
 this will remove the quarantine attribute from the app and you can open it normally.
+
+## First Bench Creation
+
+The first bench creation on MaCOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`. Depending on the connection, this can take several minutes. Keep Local Bench open until setup completes.
+
+If setup fails, open **Diagnostics**, run the checks, and use **Fix**. The diagnostic error includes the underlying Podman output, such as blocked downloads, Gatekeeper restrictions, or missing VM helpers.
 
 ## Development
 
@@ -57,6 +63,8 @@ npm start
 - `npm run typecheck` - run TypeScript checks
 - `npm run test` - run Vitest suite
 - `npm run build` - package app with Electron Forge
+- `npm run make` - create platform distributables
+- `npm run artifacts:validate` - validate packaged archives and runtime binaries
 - `npm run precommit:check` - run lint, typecheck, and tests
 
 ## Project Structure

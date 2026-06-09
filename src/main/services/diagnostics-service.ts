@@ -167,13 +167,14 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
     } else {
       throw new Error('Non-zero exit code');
     }
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     checks.push({
       type: 'runtime-health',
       status: failureStatus,
       title: 'Podman Binary',
-      description: 'Podman binary not found or not executable',
-      remediation: 'Install Podman from https://podman.io/ and ensure it is in your PATH.',
+      description: `Bundled Podman could not run: ${message}`,
+      remediation: 'Reinstall Local Bench. On macOS, also verify the app was allowed by Gatekeeper.',
       timestamp: new Date().toISOString(),
     });
     return checks; // Cannot proceed with further podman checks
@@ -282,8 +283,15 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
           timestamp: new Date().toISOString(),
         });
       }
-    } catch {
-      // Already handled by binary availability check
+    } catch (error) {
+      checks.push({
+        type: 'runtime-health',
+        status: failureStatus,
+        title: 'Podman Engine',
+        description: `Podman engine check failed: ${error instanceof Error ? error.message : String(error)}`,
+        remediation: 'Click "Fix" to initialize or restart the dedicated Podman machine.',
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // Check 4: Orchestrator Engine Connection

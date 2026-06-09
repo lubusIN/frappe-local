@@ -21,6 +21,7 @@ import {
   applyPodmanMachineMemory,
   configurePodmanMemoryProvider,
   ensureRuntimeRunning,
+  getLastRuntimeError,
   LOCAL_BENCH_MACHINE_NAME,
 } from '../../../src/main/services/runtime-service';
 
@@ -42,11 +43,14 @@ describe('Podman machine memory configuration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['machine', 'init', '--cpus', '4', '--memory', '8192', LOCAL_BENCH_MACHINE_NAME],
+      ['machine', 'init', '--now', '--cpus', '4', '--memory', '8192', LOCAL_BENCH_MACHINE_NAME],
       undefined,
+      expect.any(Function),
       undefined,
-      undefined,
-      { idleTimeout: 60000 }
+      {
+        idleTimeout: 300000,
+        maxTimeout: 1800000,
+      }
     );
   });
 
@@ -73,5 +77,16 @@ describe('Podman machine memory configuration', () => {
       LOCAL_BENCH_MACHINE_NAME,
     ]);
     expect(commands).toContainEqual(['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
+  });
+
+  it('retains stderr from non-zero Podman commands', async () => {
+    execPromiseMock.mockResolvedValueOnce({
+      stdout: '',
+      stderr: 'helper binary vfkit was not found',
+      code: 125,
+    });
+
+    await expect(ensureRuntimeRunning()).resolves.toBe(false);
+    expect(getLastRuntimeError()).toContain('helper binary vfkit was not found');
   });
 });

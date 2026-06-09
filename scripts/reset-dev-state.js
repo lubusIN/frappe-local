@@ -11,6 +11,7 @@ const configPath = path.join(appSupportPath, 'config');
 const benchesPath = path.join(appSupportPath, 'benches');
 const storageFilePath = path.join(storagePath, 'storage.json');
 const APP_CATALOG_SEED_VERSION = 5;
+const LOCAL_BENCH_MACHINE_NAME = 'local-bench';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,6 +103,15 @@ if (volumeNames.length > 0) {
 const networkNames = listPodmanNames(['network', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
 if (networkNames.length > 0) {
   runBestEffort('remove local-bench networks', podmanBinary, ['network', 'rm', ...networkNames]);
+}
+
+const machineNames = listPodmanNames(['machine', 'list', '--format', '{{.Name}}']);
+if (machineNames.includes(LOCAL_BENCH_MACHINE_NAME)) {
+  runBestEffort(
+    `destroy Podman machine ${LOCAL_BENCH_MACHINE_NAME}`,
+    podmanBinary,
+    ['machine', 'rm', '--force', LOCAL_BENCH_MACHINE_NAME]
+  );
 }
 
 const targets = [storagePath, configPath, benchesPath];

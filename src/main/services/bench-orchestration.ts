@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import type { Bench, Site } from '../../shared/domain/models';
-import { ensureRuntimeRunning, getRuntimeEnv } from './runtime-service';
+import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv } from './runtime-service';
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from '../utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
@@ -317,14 +317,20 @@ export const orchestrateBenchCreation = (
     run: async (context) => {
       let attemptedCreateAppInstalls: string[] = [];
       let failingStepId = 'start';
+      let runtimeReadyForCleanup = false;
       try {
         await benchesRepo.update(bench.id, { status: 'queued' });
 
+        failingStepId = 'runtime';
         context.startStep('runtime', `Checking podman status`);
         const isRuntimeReady = await ensureRuntimeRunning();
         if (!isRuntimeReady) {
-          throw new Error(`Podman is not running and could not be started automatically. Please start it manually.`);
+          throw new Error(
+            getLastRuntimeError() ||
+            'Podman is not running and could not be started automatically. Please start it manually.'
+          );
         }
+        runtimeReadyForCleanup = true;
         context.completeStep('runtime', `Podman is ready`);
 
         // Ensure bench directory exists
@@ -445,8 +451,7 @@ export const orchestrateBenchCreation = (
             cleanupBenchAppArtifacts(bench.path, attemptedCreateAppInstalls, context, 'cleanup');
           }
 
-          const runtimeReady = await ensureRuntimeRunning();
-          if (runtimeReady) {
+          if (runtimeReadyForCleanup) {
             const runtimeEnv = await getRuntimeEnv();
             await execPromise(
               getBinaryPath('docker-compose'),
@@ -456,7 +461,7 @@ export const orchestrateBenchCreation = (
               runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
             );
           } else {
-            context.log('warning', 'Runtime unavailable. Skipping container cleanup after failed create.', 'cleanup');
+            context.log('warning', 'Runtime setup did not complete. Skipping container cleanup.', 'cleanup');
           }
           context.completeStep('cleanup', 'Partial resources cleaned up');
         } catch (cleanupError) {
@@ -619,7 +624,10 @@ export const orchestrateBenchStart = (
         context.startStep('runtime', 'Checking podman status');
         const isRuntimeReady = await ensureRuntimeRunning();
         if (!isRuntimeReady) {
-          throw new Error('Podman is not running and could not be started automatically.');
+          throw new Error(
+            getLastRuntimeError() ||
+            'Podman is not running and could not be started automatically.'
+          );
         }
         context.completeStep('runtime', 'Podman is ready');
 

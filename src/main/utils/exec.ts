@@ -30,6 +30,23 @@ export const execPromise = (
 
     let idleTimer: NodeJS.Timeout | null = null;
     let maxTimer: NodeJS.Timeout | null = null;
+    let settled = false;
+
+    const outputTail = (): string => {
+      const output = `${stdout}\n${stderr}`.trim();
+      if (!output) {
+        return '';
+      }
+      return `\nLast output:\n${output.slice(-2000)}`;
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      child.kill();
+      reject(error);
+    };
 
     const clearTimers = () => {
       if (idleTimer) clearTimeout(idleTimer);
@@ -40,16 +57,18 @@ export const execPromise = (
       if (idleTimer) clearTimeout(idleTimer);
       if (timeoutConfig?.idleTimeout && timeoutConfig.idleTimeout > 0) {
         idleTimer = setTimeout(() => {
-          child.kill();
-          reject(new Error(`Command timed out after ${timeoutConfig.idleTimeout}ms of no output: ${command} ${args.join(' ')}`));
+          rejectOnce(new Error(
+            `Command timed out after ${timeoutConfig.idleTimeout}ms of no output: ${command} ${args.join(' ')}${outputTail()}`
+          ));
         }, timeoutConfig.idleTimeout);
       }
     };
 
     if (timeoutConfig?.maxTimeout && timeoutConfig.maxTimeout > 0) {
       maxTimer = setTimeout(() => {
-        child.kill();
-        reject(new Error(`Command timed out after reaching maximum wall clock limit of ${timeoutConfig.maxTimeout}ms: ${command} ${args.join(' ')}`));
+        rejectOnce(new Error(
+          `Command timed out after reaching maximum wall clock limit of ${timeoutConfig.maxTimeout}ms: ${command} ${args.join(' ')}${outputTail()}`
+        ));
       }, timeoutConfig.maxTimeout);
     }
 
@@ -70,11 +89,12 @@ export const execPromise = (
     });
 
     child.on('error', (err) => {
-      clearTimers();
-      reject(err);
+      rejectOnce(err);
     });
 
     child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
       clearTimers();
       resolve({ stdout, stderr, code });
     });

@@ -31,8 +31,8 @@ if [ -z "$ARTIFACT_DIR" ]; then
   echo "❌ No artifacts found. Run 'npm run make' first."
   echo ""
   echo "Build commands:"
-  echo "  npm run build   - Package the app"
-  echo "  npm run make    - Create distributable archives"
+  echo "  npm run build   - Package the app locally"
+  echo "  npm run make    - Create platform distributables"
   exit 1
 fi
 
@@ -61,7 +61,26 @@ while IFS= read -r ZIP_FILE; do
     # Check for expected app directory
     if unzip -l "$ZIP_FILE" | grep -q "Local Bench"; then
       echo "   ✅ App structure: OK"
-      VALID_COUNT=$((VALID_COUNT + 1))
+
+      REQUIRED_BINARIES=("Resources/bin/podman" "Resources/bin/docker-compose" "Resources/bin/caddy")
+      if [[ "$FILENAME" == *"darwin"* ]]; then
+        REQUIRED_BINARIES+=("Resources/bin/podman-real" "Resources/bin/gvproxy" "Resources/bin/vfkit")
+      fi
+
+      MISSING_BINARY=0
+      for binary in "${REQUIRED_BINARIES[@]}"; do
+        if ! unzip -l "$ZIP_FILE" | grep -q "$binary"; then
+          echo "   ❌ Missing packaged runtime binary: $binary"
+          MISSING_BINARY=1
+        fi
+      done
+
+      if [ "$MISSING_BINARY" -eq 0 ]; then
+        echo "   ✅ Runtime binaries: OK"
+        VALID_COUNT=$((VALID_COUNT + 1))
+      else
+        INVALID_COUNT=$((INVALID_COUNT + 1))
+      fi
     else
       echo "   ⚠️  App structure: Unexpected (no 'Local Bench' directory)"
       INVALID_COUNT=$((INVALID_COUNT + 1))
