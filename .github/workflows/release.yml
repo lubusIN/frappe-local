@@ -51,20 +51,25 @@ jobs:
       - name: Install dependencies
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+          ELECTRON_SKIP_DOWNLOAD: ''
           npm_config_ignore_scripts: 'false'
         run: npm ci --foreground-scripts
 
       - name: Install Electron binary
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
-        run: node node_modules/electron/install.js
+        run: >-
+          node -e "delete process.env.ELECTRON_SKIP_BINARY_DOWNLOAD;
+          delete process.env.ELECTRON_SKIP_DOWNLOAD;
+          require('./node_modules/electron/install.js')"
 
       - name: Verify Electron installation
+        env:
+          WORKFLOW_COMMIT: ${{ github.sha }}
         run: >-
           node -e "const fs = require('fs'); const path = require('path');
+          console.log('Workflow commit:', process.env.WORKFLOW_COMMIT);
           const root = path.dirname(require.resolve('electron/package.json'));
           const pathFile = path.join(root, 'path.txt');
-          if (!fs.existsSync(pathFile)) throw new Error('Electron path.txt is missing after npm ci');
+          if (!fs.existsSync(pathFile)) throw new Error('Electron path.txt is missing after explicit Electron install');
           const executable = fs.readFileSync(pathFile, 'utf8').trim();
           const binary = path.join(root, 'dist', executable);
           if (!fs.existsSync(binary)) throw new Error('Electron executable is missing: ' + binary);
