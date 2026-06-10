@@ -66,7 +66,7 @@ npm start
 - `npm run lint:fix` - auto-fix lint issues where possible
 - `npm run typecheck` - run TypeScript checks
 - `npm run test` - run Vitest suite
-- `npm run build` - package app with Electron Forge
+- `npm run package` - package the app without creating installers
 - `npm run make` - create platform distributables
 - `npm run release:make` - build and validate platform release artifacts
 - `npm run precommit:check` - run lint, typecheck, and tests

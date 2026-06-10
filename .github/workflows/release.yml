@@ -67,6 +67,8 @@ jobs:
         run: npm run test
 
       - name: Build and Package App
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: npm run release:make
 
       - name: Upload Build Artifacts
@@ -87,16 +89,13 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
-          path: artifacts
-
-      - name: Organize artifacts
-        run: |
-          mkdir -p release-assets
-          find artifacts -type f -exec cp {} release-assets/ \;
-          ls -R release-assets
+          pattern: local-bench-*
+          path: release-assets
+          merge-multiple: true
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          tag_name: ${{ github.event.release.tag_name }}
