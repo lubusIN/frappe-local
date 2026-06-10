@@ -1,18 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import forge from '@electron-forge/core';
 
 const require = createRequire(import.meta.url);
-const forgePackagePath = require.resolve('@electron-forge/cli/package.json');
-const forgePackage = require(forgePackagePath);
-const forgeCli = path.resolve(
-  path.dirname(forgePackagePath),
-  forgePackage.bin['electron-forge']
-);
 const appPackage = require('../package.json');
-const makeDirectory = path.resolve('out/make');
 const releaseDirectory = path.resolve('release-artifacts');
 const supportedExtensions = new Set(['.zip', '.dmg', '.exe', '.deb', '.rpm']);
 const requiredExtensions = {
@@ -33,42 +26,18 @@ if (releaseVersion && releaseVersion !== appPackage.version) {
   );
 }
 
-const collectFiles = (directory) => {
-  if (!fs.existsSync(directory)) return [];
-
-  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const entryPath = path.join(directory, entry.name);
-    return entry.isDirectory() ? collectFiles(entryPath) : [entryPath];
-  });
-};
-
-fs.rmSync(makeDirectory, { recursive: true, force: true });
 fs.rmSync(releaseDirectory, { recursive: true, force: true });
 fs.mkdirSync(releaseDirectory, { recursive: true });
 
 console.log(`Building release artifacts for ${process.platform}-${process.arch}`);
-const makeResult = spawnSync(process.execPath, [forgeCli, 'make'], {
-  cwd: process.cwd(),
-  env: process.env,
-  stdio: 'inherit',
-});
-
-if (makeResult.error) {
-  throw makeResult.error;
-}
-if (makeResult.signal) {
-  throw new Error(`Electron Forge was terminated by ${makeResult.signal}`);
-}
-if (makeResult.status !== 0) {
-  process.exit(makeResult.status ?? 1);
-}
-
-const artifacts = collectFiles(makeDirectory)
+const results = await forge.api.make({ interactive: false });
+const artifacts = results
+  .flatMap((result) => result.artifacts)
   .filter((artifact) => supportedExtensions.has(path.extname(artifact).toLowerCase()))
   .sort();
 
 if (artifacts.length === 0) {
-  throw new Error(`Electron Forge completed without producing artifacts in ${makeDirectory}`);
+  throw new Error('Electron Forge completed without producing release artifacts');
 }
 
 for (const extension of expectedExtensions) {
