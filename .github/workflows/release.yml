@@ -54,6 +54,12 @@ jobs:
           npm_config_ignore_scripts: 'false'
         run: npm ci --foreground-scripts
 
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fakeroot rpm
+
       - name: Run Typecheck
         run: npm run typecheck
 
@@ -61,21 +67,14 @@ jobs:
         run: npm run test
 
       - name: Build and Package App
-        run: npm run make
-
-      - name: Validate Artifacts
-        run: npm run artifacts:validate
+        run: npm run release:make
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: local-bench-${{ matrix.artifact }}
-          path: |
-            out/make/**/*.zip
-            out/make/**/*.dmg
-            out/make/**/*.exe
-            out/make/**/*.deb
-            out/make/**/*.rpm
+          path: release-artifacts/*
+          if-no-files-found: error
           retention-days: 1
 
   release:

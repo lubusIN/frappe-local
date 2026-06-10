@@ -68,7 +68,7 @@ npm start
 - `npm run test` - run Vitest suite
 - `npm run build` - package app with Electron Forge
 - `npm run make` - create platform distributables
-- `npm run artifacts:validate` - validate platform release artifacts
+- `npm run release:make` - build and validate platform release artifacts
 - `npm run precommit:check` - run lint, typecheck, and tests
 
 ## Project Structure
