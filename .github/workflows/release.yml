@@ -52,7 +52,12 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: ''
           npm_config_ignore_scripts: 'false'
-        run: npm ci
+        run: npm ci --foreground-scripts
+
+      - name: Install Electron binary
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: node node_modules/electron/install.js
 
       - name: Verify Electron installation
         run: >-
