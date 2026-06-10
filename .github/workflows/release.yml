@@ -51,8 +51,7 @@ jobs:
       - name: Install dependencies
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-          npm_config_ignore_scripts: 'false'
-        run: npm ci --foreground-scripts
+        run: npm ci
 
       - name: Install Linux packaging tools
         if: runner.os == 'Linux'
