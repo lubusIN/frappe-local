@@ -49,7 +49,21 @@ jobs:
         run: node -e "const expected = process.env.EXPECTED_ARCH; if (process.arch !== expected) throw new Error('Expected ' + expected + ', got ' + process.arch); console.log(process.platform + '-' + process.arch)"
 
       - name: Install dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+          npm_config_ignore_scripts: 'false'
         run: npm ci
+
+      - name: Verify Electron installation
+        run: >-
+          node -e "const fs = require('fs'); const path = require('path');
+          const root = path.dirname(require.resolve('electron/package.json'));
+          const pathFile = path.join(root, 'path.txt');
+          if (!fs.existsSync(pathFile)) throw new Error('Electron path.txt is missing after npm ci');
+          const executable = fs.readFileSync(pathFile, 'utf8').trim();
+          const binary = path.join(root, 'dist', executable);
+          if (!fs.existsSync(binary)) throw new Error('Electron executable is missing: ' + binary);
+          console.log('Electron executable:', binary)"
 
       - name: Run Typecheck
         run: npm run typecheck

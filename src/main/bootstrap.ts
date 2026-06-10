@@ -19,7 +19,11 @@ import { analytics } from './services/analytics';
 import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/catalog-provider';
 import { runDiagnostics } from './services/diagnostics-service';
 import { getAppIconPath } from './utils/app-icon';
-import { initializeCaddyFrontDoor, isCaddyFrontDoorRunning } from './services/caddy-front-door';
+import {
+  initializeCaddyFrontDoor,
+  isCaddyFrontDoorRunning,
+  isCaddyFrontDoorSecure,
+} from './services/caddy-front-door';
 import {
   applyPodmanMachineMemory,
   configurePodmanMemoryProvider,
@@ -162,6 +166,7 @@ export const runApplicationBootstrap = async (
       },
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
       isFrontDoorAvailable: () => isCaddyFrontDoorRunning(),
+      isFrontDoorSecure: () => isCaddyFrontDoorSecure(),
       refreshFrontDoorHosts: async () => {
         try {
           await refreshCaddyFrontDoorHosts();

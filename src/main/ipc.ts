@@ -123,6 +123,7 @@ export type IpcOperations = {
   openExternal: (url: string) => Promise<boolean>;
   pathExists: (targetPath: string) => boolean;
   isFrontDoorAvailable?: () => boolean;
+  isFrontDoorSecure?: () => boolean;
   refreshFrontDoorHosts?: () => Promise<void>;
   applyRuntimeMemory?: (memoryMb: number) => Promise<void>;
   trackBenchOperation?: (benchId: string, operation: LifecycleOperation) => void;
@@ -251,6 +252,7 @@ export const registerIpcHandlers = (
     openExternal: async () => false,
     pathExists: (targetPath) => fs.existsSync(targetPath),
     isFrontDoorAvailable: () => false,
+    isFrontDoorSecure: () => false,
     refreshFrontDoorHosts: async () => undefined,
     trackBenchOperation: () => undefined,
     trackSiteOperation: () => undefined,
@@ -897,7 +899,8 @@ export const registerIpcHandlers = (
     const preferredHost = normalizeSiteHost(site.name);
     const frontDoorAvailable = operations.isFrontDoorAvailable?.() ?? false;
     if (frontDoorAvailable) {
-      return operations.openExternal(`https://${preferredHost}`);
+      const protocol = operations.isFrontDoorSecure?.() ? 'https' : 'http';
+      return operations.openExternal(`${protocol}://${preferredHost}`);
     }
 
     const benches = await repositories.benches.findAll();

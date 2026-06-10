@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { createHash, X509Certificate } from 'node:crypto';
+import { execFile, execFileSync } from 'node:child_process';
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { Bench, Site } from '../../shared/domain/models';
 import { createMainLogger } from '../logger';
@@ -15,32 +16,34 @@ const logger = createMainLogger('caddy-front-door');
 const CADDY_RUNTIME_DIR = path.join(os.tmpdir(), 'local-bench-caddy');
 const CADDY_CONFIG_PATH = path.join(CADDY_RUNTIME_DIR, 'Caddyfile');
 const CADDY_PID_PATH = path.join(CADDY_RUNTIME_DIR, 'caddy.pid');
-const getCaddyCertificatesLocalDir = (): string => {
+const CADDY_ADMIN_ADDRESS = 'localhost:29919';
+const CADDY_TRUST_TIMEOUT_MS = 60_000;
+const CADDY_ROOT_WAIT_TIMEOUT_MS = 10_000;
+const getCaddyDataDir = (): string => {
   if (process.platform === 'win32') {
     return path.join(
       process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
-      'Caddy',
-      'certificates',
-      'local'
+      'Caddy'
     );
   }
   if (process.platform === 'darwin') {
-    return path.join(
-      os.homedir(),
-      'Library',
-      'Application Support',
-      'Caddy',
-      'certificates',
-      'local'
-    );
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Caddy');
   }
-  // Linux & others
   return path.join(
     process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'),
-    'caddy',
-    'certificates',
-    'local'
+    'caddy'
   );
+};
+const CADDY_DATA_DIR = getCaddyDataDir();
+const CADDY_ROOT_CERT_PATH = path.join(
+  CADDY_DATA_DIR,
+  'pki',
+  'authorities',
+  'local',
+  'root.crt'
+);
+const getCaddyCertificatesLocalDir = (): string => {
+  return path.join(CADDY_DATA_DIR, 'certificates', 'local');
 };
 const CADDY_CERTIFICATES_LOCAL_DIR = getCaddyCertificatesLocalDir();
 const LEGACY_WILDCARD_CERT_DIR = 'wildcard_.localhost';
@@ -57,6 +60,133 @@ type FrontDoorRepositories = {
 type FrontDoorRoute = {
   readonly siteHost: string;
   readonly benchPort: number;
+};
+
+type CommandResult = {
+  readonly code: number;
+  readonly stdout: string;
+  readonly stderr: string;
+};
+
+const runCommand = (
+  command: string,
+  args: string[],
+  timeout = CADDY_TRUST_TIMEOUT_MS
+): Promise<CommandResult> => {
+  return new Promise((resolve) => {
+    execFile(
+      command,
+      args,
+      { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, timeout },
+      (error, stdout, stderr) => {
+        resolve({
+          code: typeof error?.code === 'number' ? error.code : error ? 1 : 0,
+          stdout: stdout || '',
+          stderr: stderr || error?.message || '',
+        });
+      }
+    );
+  });
+};
+
+const waitForFile = async (targetPath: string, timeoutMs: number): Promise<boolean> => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(targetPath)) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return fs.existsSync(targetPath);
+};
+
+const certificateFingerprint = (certificate: Buffer | string): string => {
+  return createHash('sha256').update(new X509Certificate(certificate).raw).digest('hex');
+};
+
+const pemCertificates = (value: string): string[] => {
+  return value.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? [];
+};
+
+const isMacRootTrusted = async (rootFingerprint: string): Promise<boolean> => {
+  const keychains = [
+    path.join(os.homedir(), 'Library', 'Keychains', 'login.keychain-db'),
+    '/Library/Keychains/System.keychain',
+  ];
+
+  for (const keychain of keychains) {
+    const result = await runCommand('security', ['find-certificate', '-a', '-p', keychain], 15_000);
+    if (result.code !== 0) {
+      continue;
+    }
+
+    for (const certificate of pemCertificates(result.stdout)) {
+      try {
+        if (certificateFingerprint(certificate) === rootFingerprint) {
+          return true;
+        }
+      } catch {
+        // Ignore malformed or unsupported certificates from the keychain listing.
+      }
+    }
+  }
+
+  return false;
+};
+
+const ensureCaddyRootTrusted = async (): Promise<boolean> => {
+  if (!await waitForFile(CADDY_ROOT_CERT_PATH, CADDY_ROOT_WAIT_TIMEOUT_MS)) {
+    logger.warn(`Caddy root certificate was not generated at ${CADDY_ROOT_CERT_PATH}.`);
+    return false;
+  }
+
+  if (process.platform === 'darwin') {
+    const rootFingerprint = certificateFingerprint(fs.readFileSync(CADDY_ROOT_CERT_PATH));
+    if (await isMacRootTrusted(rootFingerprint)) {
+      return true;
+    }
+
+    const loginKeychain = path.join(os.homedir(), 'Library', 'Keychains', 'login.keychain-db');
+    const result = await runCommand('security', [
+      'add-trusted-cert',
+      '-r',
+      'trustRoot',
+      '-k',
+      loginKeychain,
+      CADDY_ROOT_CERT_PATH,
+    ]);
+    if (result.code === 0 && await isMacRootTrusted(rootFingerprint)) {
+      return true;
+    }
+    logger.warn(`Unable to trust Caddy root certificate in the macOS login keychain: ${result.stderr.trim()}`);
+    return false;
+  }
+
+  if (process.platform === 'win32') {
+    const result = await runCommand('certutil.exe', [
+      '-user',
+      '-addstore',
+      '-f',
+      'Root',
+      CADDY_ROOT_CERT_PATH,
+    ]);
+    if (result.code === 0) {
+      return true;
+    }
+    logger.warn(`Unable to trust Caddy root certificate in the Windows user store: ${result.stderr.trim()}`);
+    return false;
+  }
+
+  const result = await runCommand(getBinaryPath('caddy'), [
+    'trust',
+    '--address',
+    CADDY_ADMIN_ADDRESS,
+  ]);
+  if (result.code === 0) {
+    return true;
+  }
+  logger.warn(`Unable to trust Caddy root certificate: ${result.stderr.trim()}`);
+  return false;
 };
 
 const buildBadGatewayErrorHandler = (): string => `(local_bench_bad_gateway) {
@@ -315,27 +445,29 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
 
   const routeBlocks = Array.from(uniqueRoutes.values())
     .map(({ siteHost, benchPort }) => {
-      return `https://${siteHost} {
-  tls internal
-  import local_bench_bad_gateway
+      const proxy = `  import local_bench_bad_gateway
   reverse_proxy 127.0.0.1:${benchPort} {
     header_up Host {host}
     header_up X-Forwarded-Proto {scheme}
     header_up X-Forwarded-Port {server_port}
-  }
+  }`;
+      return `http://${siteHost} {
+${proxy}
+}
+
+https://${siteHost} {
+  tls internal
+${proxy}
 }`;
     })
     .join('\n\n');
 
   return `{
-  admin off
+  admin ${CADDY_ADMIN_ADDRESS}
+  skip_install_trust
   servers {
     protocols h1 h2
   }
-}
-
-http://localhost, http://*.localhost {
-  redir https://{host}{uri} permanent
 }
 
 ${buildBadGatewayErrorHandler()}
@@ -347,10 +479,15 @@ ${routeBlocks}
 class CaddyFrontDoor {
   private process: ChildProcess | null = null;
   private running = false;
+  private secure = false;
   private configKey = '';
 
   public isRunning(): boolean {
     return this.running;
+  }
+
+  public isSecure(): boolean {
+    return this.running && this.secure;
   }
 
   public async start(repositories: FrontDoorRepositories): Promise<boolean> {
@@ -363,12 +500,14 @@ class CaddyFrontDoor {
     const siteHostsKey = routes.map((route) => `${route.siteHost}:${route.benchPort}`).join('|');
     const desiredConfig = buildCaddyfile(routes);
     if (this.running && this.configKey === siteHostsKey && canReuseManagedFrontDoor(desiredConfig)) {
+      this.secure = await ensureCaddyRootTrusted();
       return true;
     }
 
     if (canReuseManagedFrontDoor(desiredConfig)) {
       this.process = null;
       this.running = true;
+      this.secure = await ensureCaddyRootTrusted();
       this.configKey = siteHostsKey;
       logger.info('Reusing existing managed Caddy front door process with unchanged config.');
       return true;
@@ -403,7 +542,13 @@ class CaddyFrontDoor {
         resolve(value);
       };
 
-      const readyTimer = setTimeout(() => {
+      const readyTimer = setTimeout(async () => {
+        const secure = await ensureCaddyRootTrusted();
+        if (this.process !== child) {
+          settle(false);
+          return;
+        }
+        this.secure = secure;
         this.running = true;
         this.configKey = siteHostsKey;
         settle(true);
@@ -421,6 +566,7 @@ class CaddyFrontDoor {
         clearTimeout(readyTimer);
         this.process = null;
         this.running = false;
+        this.secure = false;
         this.configKey = '';
         stopPidFromFile();
         logger.error(`Caddy front door failed to start: ${error}`);
@@ -431,6 +577,7 @@ class CaddyFrontDoor {
         clearTimeout(readyTimer);
         this.process = null;
         this.running = false;
+        this.secure = false;
         this.configKey = '';
         stopPidFromFile();
 
@@ -449,6 +596,7 @@ class CaddyFrontDoor {
     const child = this.process;
     this.process = null;
     this.running = false;
+    this.secure = false;
     this.configKey = '';
     stopPidFromFile();
 
@@ -483,3 +631,4 @@ export const stopCaddyFrontDoor = async (): Promise<void> => {
 };
 
 export const isCaddyFrontDoorRunning = (): boolean => caddyFrontDoor.isRunning();
+export const isCaddyFrontDoorSecure = (): boolean => caddyFrontDoor.isSecure();

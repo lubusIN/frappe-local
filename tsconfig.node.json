@@ -7,6 +7,7 @@
   },
   "include": [
     "forge.config.ts",
+    "vitest.config.ts",
     "node_modules/@electron-forge/plugin-vite/forge-vite-env.d.ts",
     "vite.*.config.ts",
     "src/main/**/*.ts",

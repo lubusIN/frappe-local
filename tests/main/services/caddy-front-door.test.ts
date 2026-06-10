@@ -11,13 +11,17 @@ describe('caddy front door config', () => {
     ]);
 
     expect(caddyfile).toContain('protocols h1 h2');
-    expect(caddyfile).toContain('http://localhost, http://*.localhost');
+    expect(caddyfile).toContain('admin localhost:29919');
+    expect(caddyfile).toContain('skip_install_trust');
+    expect(caddyfile).toContain('http://localhost');
+    expect(caddyfile).toContain('http://siteonfirstbench.localhost');
     expect(caddyfile).toContain('https://localhost');
     expect(caddyfile).toContain('https://siteonfirstbench.localhost');
     expect(caddyfile).not.toContain('https://*.localhost');
     expect(caddyfile).toContain('tls internal');
     expect(caddyfile).toContain('reverse_proxy 127.0.0.1:18080');
     expect(caddyfile).toContain('header_up Host {host}');
+    expect(caddyfile).not.toContain('redir https://');
   });
 
   it('shows restart guidance when a bench frontend returns a bad gateway error', () => {

@@ -570,6 +570,7 @@ describe('sites IPC handlers', () => {
         openExternal,
         pathExists: () => true,
         isFrontDoorAvailable: () => true,
+        isFrontDoorSecure: () => true,
       }
     );
 
@@ -578,6 +579,34 @@ describe('sites IPC handlers', () => {
 
     expect(opened).toBe(true);
     expect(openExternal).toHaveBeenCalledWith('https://demo.localhost');
+  });
+
+  it('uses HTTP when the Caddy root certificate is not trusted', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const openExternal = vi.fn(async () => true);
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      },
+      {
+        openPath: async () => false,
+        openInEditor: async () => false,
+        openExternal,
+        pathExists: () => true,
+        isFrontDoorAvailable: () => true,
+        isFrontDoorSecure: () => false,
+      }
+    );
+
+    const opened = await handlers.get(ipcChannels.sitesOpenExternal)?.(undefined, 'site-001');
+
+    expect(opened).toBe(true);
+    expect(openExternal).toHaveBeenCalledWith('http://demo.localhost');
   });
 
   it('sites:open-external normalizes .local host and falls back to bench port', async () => {

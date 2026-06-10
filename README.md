@@ -30,6 +30,10 @@ The first bench creation on MaCOS or Windows initializes a dedicated Podman virt
 
 If setup fails, open **Diagnostics**, run the checks, and use **Fix**. The diagnostic error includes the underlying Podman output, such as blocked downloads, Gatekeeper restrictions, or missing VM helpers.
 
+## Local HTTPS
+
+Local Bench uses Caddy to provide HTTPS for `*.localhost` sites. On first use, macOS or Windows may ask for permission to trust the Local Bench certificate authority. If permission is denied or the trust store is unavailable, Local Bench uses HTTP automatically instead of opening a site with an invalid certificate.
+
 ## Development
 
 ### Tech stack:
