@@ -17,8 +17,6 @@ import type { AppCatalogItem } from '../../shared/domain/models';
 import { getDefaultAppCatalogSeed } from './catalog-provider';
 import { DEFAULT_HTTP_PORT } from '../utils/bench-http-port';
 
-const DEFAULT_CATALOG_BY_APP_ID = new Map(getDefaultAppCatalogSeed().map((item) => [item.id, item]));
-
 const resolveAndPersistBenchPort = async (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
@@ -125,7 +123,8 @@ const resolveCatalogBranch = (catalogItem: AppCatalogItem | null, benchFrappeVer
   }
 
   const benchBranch = resolveBenchBranch(benchFrappeVersion);
-  const fallbackCatalogItem = DEFAULT_CATALOG_BY_APP_ID.get(catalogItem.id);
+  const defaultCatalogByAppId = new Map(getDefaultAppCatalogSeed().map((item) => [item.id, item]));
+  const fallbackCatalogItem = defaultCatalogByAppId.get(catalogItem.id);
   const catalogInstallBranches = catalogItem.installBranches;
   const catalogMappedBranch = catalogInstallBranches?.[benchBranch]
     ?? catalogInstallBranches?.[benchFrappeVersion.trim().toLowerCase()];

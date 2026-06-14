@@ -60,6 +60,9 @@ export const AppSchema = z.object({
   installBranches: z.record(nonEmptyString).optional(),
   version: nonEmptyString,
   category: AppCategorySchema.default('other'),
+  categories: z.array(z.string()).optional(),
+  license: z.string().optional(),
+  verified: z.boolean().optional(),
   icon: nonEmptyString.optional(),
   compatibility: AppCompatibilitySchema,
 });

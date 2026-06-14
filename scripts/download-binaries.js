@@ -319,6 +319,57 @@ async function main() {
     fs.rmSync(caddyArchiveTarget, { force: true });
 
     console.log('Successfully bundled podman and docker-compose!');
+
+function fetchImageBuffer(url) {
+  return new Promise((resolve, reject) => {
+    const download = (targetUrl) => {
+      https.get(targetUrl, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          download(res.headers.location);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          reject(new Error(`Failed to fetch image ${targetUrl}: ${res.statusCode}`));
+          return;
+        }
+        
+        const chunks = [];
+        res.on('data', chunk => chunks.push(chunk));
+        res.on('end', () => resolve({ buffer: Buffer.concat(chunks), contentType: res.headers['content-type'] }));
+        res.on('error', reject);
+      }).on('error', reject);
+    };
+    download(url);
+  });
+}
+
+    // Download apps.json catalog
+    const appsJsonUrl = 'https://frappe-brewery.pages.dev/index/apps.json';
+    const appsJsonTarget = path.join(BIN_DIR, 'apps.json');
+    await downloadFile(appsJsonUrl, appsJsonTarget);
+    console.log('Successfully downloaded apps.json catalog!');
+
+    // Cache images
+    const appsData = JSON.parse(fs.readFileSync(appsJsonTarget, 'utf8'));
+    let imagesCached = 0;
+    for (const app of appsData.apps) {
+      if (app.media && app.media.icon && app.media.icon.startsWith('http')) {
+        try {
+          const { buffer, contentType } = await fetchImageBuffer(app.media.icon);
+          const base64 = buffer.toString('base64');
+          const mimeType = contentType || (app.media.icon.endsWith('.svg') ? 'image/svg+xml' : 'image/png');
+          app.media.icon = `data:${mimeType};base64,${base64}`;
+          imagesCached++;
+        } catch (err) {
+          console.warn(`Failed to cache image for ${app.slug}:`, err.message);
+        }
+      }
+    }
+    
+    if (imagesCached > 0) {
+      fs.writeFileSync(appsJsonTarget, JSON.stringify(appsData, null, 2));
+      console.log(`Successfully cached ${imagesCached} app icons!`);
+    }
   } catch (error) {
     console.error('Failed to bundle dependencies:', error);
     process.exit(1);

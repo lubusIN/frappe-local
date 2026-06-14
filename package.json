@@ -15,9 +15,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json",
     "test": "vitest run",
     "precommit:check": "bash scripts/precommit-check.sh",
-    "catalog:audit": "node scripts/audit-catalog.js",
-    "catalog:build": "node scripts/build-apps-registry.js --write",
-    "catalog:build:check": "node scripts/build-apps-registry.js --check",
     "icons:generate": "node scripts/generate-icons.js",
     "dev:reset-state": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"

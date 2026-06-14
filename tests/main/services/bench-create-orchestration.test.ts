@@ -58,7 +58,10 @@ describe('bench creation orchestration app install', () => {
 
     benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-create-'));
 
-    getBinaryPathMock.mockReturnValue('/mock/docker-compose');
+    getBinaryPathMock.mockImplementation((name: string) => {
+      if (name === 'apps.json') return path.resolve(__dirname, '../../../bin/apps.json');
+      return `/mock/${name}`;
+    });
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
 
@@ -141,6 +144,9 @@ describe('bench creation orchestration app install', () => {
           source: 'https://github.com/frappe/ecommerce_integrations',
           version: '15.0.0',
           category: 'business' as const,
+          installBranches: {
+            'version-16': 'version-16',
+          },
           compatibility: {
             minimumFrappeVersion: '15.0.0',
             maximumFrappeVersion: '15.999.999',

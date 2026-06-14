@@ -59,6 +59,10 @@ npm install
 npm start
 ```
 
+### App Catalog
+
+Local Bench dynamically fetches its list of available Frappe apps from the [Frappe Brewery](https://frappe-brewery.pages.dev/) (`https://frappe-brewery.pages.dev/index/apps.json`). The registry is automatically downloaded into the `bin/` directory as a build asset during `npm install` and is parsed at runtime. It is excluded from version control.
+
 ## Scripts
 
 - `npm start` - launch Electron app in development mode

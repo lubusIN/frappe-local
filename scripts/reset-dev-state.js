@@ -3,14 +3,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import appsRegistry from '../src/main/services/apps-registry.json' with { type: 'json' };
 
 const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Local Bench');
 const storagePath = path.join(appSupportPath, 'storage');
 const configPath = path.join(appSupportPath, 'config');
 const benchesPath = path.join(appSupportPath, 'benches');
 const storageFilePath = path.join(storagePath, 'storage.json');
-const APP_CATALOG_SEED_VERSION = 5;
+const APP_CATALOG_SEED_VERSION = 13;
 const LOCAL_BENCH_MACHINE_NAME = 'local-bench';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -141,7 +140,7 @@ const freshSnapshot = {
   benches: [],
   sites: [],
   settings: null,
-  appCatalog: appsRegistry,
+  appCatalog: [],
 };
 
 fs.writeFileSync(storageFilePath, JSON.stringify(freshSnapshot, null, 2), 'utf8');

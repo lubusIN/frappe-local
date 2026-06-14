@@ -14,7 +14,7 @@ export function getBinaryPath(name: string): string {
   const devPath = path.join(app.getAppPath(), 'bin', binaryName);
   
   // In production, Electron forge usually puts extra resources in the resources path
-  const prodPath = path.join(process.resourcesPath, 'bin', binaryName);
+  const prodPath = process.resourcesPath ? path.join(process.resourcesPath, 'bin', binaryName) : devPath;
   
   // Return prod path if packaged, otherwise dev path
   return app.isPackaged ? prodPath : devPath;

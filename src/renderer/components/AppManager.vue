@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-col h-full gap-1">
+  <section class="flex flex-col h-[60vh] gap-1">
     <header class="flex items-center gap-2.5 mb-3">
       <div class="min-w-[140px] flex-1">
         <TextInput 
@@ -45,141 +45,160 @@
 
     <div
       v-else
-      class="flex-1 min-h-0 mb-2 overflow-hidden"
+      class="flex-1 min-h-0 mb-2 overflow-y-auto"
     >
-      <ListView
-        ref="listViewRef"
-        class="h-[50vh]"
-        :columns="appColumns"
-        :rows="rows"
-        row-key="name"
-        :options="{
-          selectable: mode === 'select',
-          showTooltip: false,
-          rowHeight: '80px',
-          emptyState: {
-            title: 'No Apps',
-            description: 'No apps found in the catalog.',
-          },
-        }"
-        @update:selections="onSelectionsChange"
-      >
-        <template #default="{ selectable }">
-          <ListHeader
-            v-if="selectable"
-            class="sticky top-0 z-[3]"
-          />
-          <ListRows class="flex-1 min-h-0 pr-1 overflow-y-auto" />
-          <ListSelectBanner v-if="selectable" />
-        </template>
-
-        <template #cell="{ column, row }">
-          <template v-if="column.key === 'details'">
-            <div
-              class="flex min-w-0 items-center gap-4"
-              :class="{ 'opacity-60': row.disabled }"
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 px-1">
+        <div
+          v-for="row in rows"
+          :key="row.appId"
+          class="flex flex-col relative bg-white border rounded-xl p-4 transition-all duration-200 h-[190px]"
+          :class="[
+            row.disabled ? 'opacity-60 cursor-not-allowed border-outline-gray-2' : 'border-outline-gray-2 hover:border-outline-gray-4',
+            mode === 'select' && !row.disabled ? 'cursor-pointer' : '',
+            mode === 'select' && isSelected(row.appId) ? 'ring-2 ring-surface-gray-7 border-transparent' : ''
+          ]"
+          @click="onCardClick(row)"
+        >
+          <!-- Header: Icon & Verified Badge -->
+          <div class="flex items-start justify-between mb-3">
+            <img
+              v-if="row.icon && !imageErrors[row.appId]"
+              :src="row.icon"
+              class="w-10 h-10 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-outline-gray-2"
+              @error="imageErrors[row.appId] = true"
             >
-              <img
-                v-if="row.icon && !imageErrors[row.appId]"
-                :src="row.icon"
-                class="size-12 shrink-0 rounded-lg object-cover"
-                @error="imageErrors[row.appId] = true"
-              >
-              <div
-                v-else
-                class="flex size-12 shrink-0 items-center justify-center rounded-lg bg-surface-gray-3 text-sm font-semibold text-ink-gray-5"
-              >
-                {{ row.appName.charAt(0).toUpperCase() }}
-              </div>
+            <div
+              v-else
+              class="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 text-sm font-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
+            >
+              {{ row.appName.charAt(0).toUpperCase() }}
+            </div>
 
-              <div class="grid min-w-0 flex-1 gap-1">
-                <div class="flex min-w-0 items-center gap-2">
-                  <span class="truncate text-sm font-semibold text-ink-gray-9">{{ row.appName }}</span>
-                  <Badge
-                    v-if="mode === 'select' && row.isPreinstalledCoreApp"
-                    theme="gray"
+            <!-- Top Right area -->
+            <div class="flex items-center gap-2">
+              <Badge
+                v-if="mode === 'select' && row.isPreinstalledCoreApp"
+                theme="gray"
+                variant="subtle"
+              >
+                Pre-bundled
+              </Badge>
+              <Badge
+                v-if="row.verified"
+                theme="green"
+                variant="subtle"
+                class="flex items-center gap-1"
+              >
+                <IconCheck class="w-3 h-3" />
+                Verified
+              </Badge>
+              <!-- Action Buttons for Manage Mode -->
+              <template v-if="mode === 'manage'">
+                <template v-if="row.appId === 'frappe'">
+                  <Badge theme="gray" variant="subtle">Core App</Badge>
+                </template>
+                <template v-else-if="context === 'bench'">
+                  <Button
+                    v-if="row.isActive"
+                    variant="subtle"
+                    theme="red"
+                    size="sm"
+                    :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
+                    :loading="loadingAppId === row.appId"
+                    @click.stop="emit('remove-app', row.appId)"
+                  >
+                    Remove
+                  </Button>
+                  <Button
+                    v-else
                     variant="subtle"
                     size="sm"
+                    :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
+                    :loading="loadingAppId === row.appId"
+                    @click.stop="emit('add-app', row.appId)"
                   >
-                    Pre-bundled
-                  </Badge>
-                </div>
-                <p class="m-0 text-wrap text-xs leading-snug text-ink-gray-6">
-                  {{ row.description }}
-                </p>
-                <div class="flex flex-wrap items-center gap-2.5">
-                  <span class="text-[10px] font-medium text-ink-gray-5">{{ row.version }}</span>
-                  <span
-                    class="text-[10px] font-medium"
-                    :class="{
-                      'text-ink-amber-3': row.compatibilityStatus === 'warning',
-                      'text-ink-red-4': row.compatibilityStatus === 'blocked',
-                      'text-ink-gray-6': row.compatibilityStatus !== 'warning' && row.compatibilityStatus !== 'blocked',
-                    }"
+                    Get
+                  </Button>
+                </template>
+                <template v-else-if="context === 'site'">
+                  <Button
+                    v-if="row.isActive"
+                    variant="subtle"
+                    theme="red"
+                    size="sm"
+                    :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
+                    :loading="loadingAppId === row.appId"
+                    @click.stop="emit('uninstall-app', row.appId)"
                   >
-                    {{ row.supportText }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="flex items-center justify-end h-full pr-1 text-right">
-              <template v-if="row.appId === 'frappe'">
-                <Badge
-                  theme="gray"
-                  variant="subtle"
-                  size="sm"
-                >
-                  Core App
-                </Badge>
-              </template>
-              <template v-else-if="context === 'bench'">
-                <Button
-                  v-if="row.isActive"
-                  variant="subtle"
-                  theme="red"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click="emit('remove-app', row.appId)"
-                >
-                  Remove
-                </Button>
-                <Button
-                  v-else
-                  variant="subtle"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click="emit('add-app', row.appId)"
-                >
-                  Get
-                </Button>
-              </template>
-              <template v-else-if="context === 'site'">
-                <Button
-                  v-if="row.isActive"
-                  variant="subtle"
-                  theme="red"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click="emit('uninstall-app', row.appId)"
-                >
-                  Uninstall
-                </Button>
-                <Button
-                  v-else
-                  variant="subtle"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click="emit('install-app', row.appId)"
-                >
-                  Install
-                </Button>
+                    Uninstall
+                  </Button>
+                  <Button
+                    v-else
+                    variant="subtle"
+                    size="sm"
+                    :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
+                    :loading="loadingAppId === row.appId"
+                    @click.stop="emit('install-app', row.appId)"
+                  >
+                    Install
+                  </Button>
+                </template>
               </template>
             </div>
-          </template>
-        </template>
-      </ListView>
+          </div>
+
+          <!-- Title & Description -->
+          <div class="flex flex-col min-h-0 flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-sm font-semibold text-ink-gray-9 truncate">
+                {{ row.appName }}
+              </h3>
+            </div>
+            <p class="text-xs text-ink-gray-5 leading-relaxed line-clamp-2" :title="row.description">
+              {{ row.description }}
+            </p>
+            
+            <div v-if="row.supportText" class="mt-1">
+              <span
+                class="text-[10px] font-medium"
+                :class="{
+                  'text-ink-amber-3': row.compatibilityStatus === 'warning',
+                  'text-ink-red-4': row.compatibilityStatus === 'blocked',
+                  'text-ink-gray-6': row.compatibilityStatus !== 'warning' && row.compatibilityStatus !== 'blocked',
+                }"
+              >
+                {{ row.supportText }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Divider removed as requested -->
+
+          <!-- Footer: Categories & Actions/License -->
+          <div class="flex items-center justify-between shrink-0 mt-auto">
+            <!-- Categories -->
+            <div class="flex items-center gap-1.5 flex-wrap overflow-hidden h-5">
+              <span
+                v-for="(cat, i) in (row.categories || []).slice(0, 2)"
+                :key="i"
+                class="px-2 py-0.5 rounded-full bg-surface-gray-2 text-ink-gray-6 text-[10px] font-medium whitespace-nowrap"
+              >
+                {{ cat }}
+              </span>
+              <span v-if="(row.categories || []).length > 2" class="text-ink-gray-4 text-[10px] px-1 font-medium">
+                +{{ row.categories.length - 2 }}
+              </span>
+            </div>
+
+            <!-- Bottom Right -->
+            <div class="flex items-center gap-2 shrink-0">
+               <span class="text-[10px] uppercase text-ink-gray-4 font-medium tracking-wide">
+                 {{ row.license || 'Unknown' }}
+               </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -187,7 +206,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import IconSearch from '~icons/lucide/search';
-import { Badge, Button, ListHeader, ListRows, ListSelectBanner, ListView, Select, TextInput } from 'frappe-ui';
+import IconCheck from '~icons/lucide/check';
+import { Badge, Button, Select, TextInput } from 'frappe-ui';
 import type { CatalogAppItem } from '../../shared/core/ipc';
 import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
 import { normalizeSelection } from '../controllers/app-picker';
@@ -231,18 +251,6 @@ const emit = defineEmits<{
   (e: 'uninstall-app', appId: string): void;
 }>();
 
-const appColumns = computed(() => {
-  if (props.mode === 'select') {
-    return [
-      { key: 'details', label: 'App', width: 'minmax(0, 1fr)' },
-    ];
-  }
-  return [
-    { key: 'details', label: 'App', width: 'minmax(0, 1fr)' },
-    { key: 'actions', label: '', width: '120px' },
-  ];
-});
-
 const frappeVersionRef = computed(() => props.frappeVersion);
 
 const {
@@ -256,7 +264,6 @@ const {
 } = useAppCatalogFilters({ frappeVersion: frappeVersionRef });
 
 const imageErrors = ref<Record<string, boolean>>({});
-const listViewRef = ref<{ selections: Set<string> } | null>(null);
 const syncingFromUser = ref(false);
 const syncingFromModel = ref(false);
 
@@ -328,26 +335,39 @@ const rows = computed(() =>
   })
 );
 
-const syncSelectionsFromModel = () => {
-  if (props.mode !== 'select') return;
-  const selectionSet = listViewRef.value?.selections;
-  if (!selectionSet) return;
+// Selection State for custom cards
+const selectedAppIds = ref<Set<string>>(new Set());
 
-  syncingFromModel.value = true;
-  selectionSet.clear();
-  rows.value.forEach((row) => {
-    if (!row.disabled && props.modelValue.includes(row.appId)) {
-      selectionSet.add(row.name);
-    }
-  });
-  nextTick(() => { syncingFromModel.value = false; });
+const isSelected = (appId: string) => selectedAppIds.value.has(appId);
+
+const onCardClick = (row: any) => {
+  if (props.mode !== 'select' || row.disabled) return;
+  
+  const newSet = new Set(selectedAppIds.value);
+  if (newSet.has(row.appId)) {
+    newSet.delete(row.appId);
+  } else {
+    newSet.add(row.appId);
+  }
+  selectedAppIds.value = newSet;
+  syncingFromUser.value = true;
+  emit('update:modelValue', normalizeSelection(Array.from(newSet)));
+  nextTick(() => { syncingFromUser.value = false; });
 };
 
-const onSelectionsChange = (value: Set<string>) => {
-  if (props.mode !== 'select' || syncingFromModel.value) return;
-  syncingFromUser.value = true;
-  emit('update:modelValue', normalizeSelection(Array.from(value)));
-  nextTick(() => { syncingFromUser.value = false; });
+const syncSelectionsFromModel = () => {
+  if (props.mode !== 'select') return;
+  syncingFromModel.value = true;
+  
+  const newSet = new Set<string>();
+  rows.value.forEach((row) => {
+    if (!row.disabled && props.modelValue.includes(row.appId)) {
+      newSet.add(row.appId);
+    }
+  });
+  selectedAppIds.value = newSet;
+  
+  nextTick(() => { syncingFromModel.value = false; });
 };
 
 watch([() => props.modelValue, rows], () => {

@@ -114,7 +114,10 @@ describe('diagnostics IPC handlers', () => {
     ensureRuntimeRunningMock.mockResolvedValue(false);
     getLastRuntimeErrorMock.mockReturnValue('Podman machine image download failed.');
     getRuntimeEnvMock.mockResolvedValue({});
-    getBinaryPathMock.mockImplementation((name: string) => `/mock/${name}`);
+    getBinaryPathMock.mockImplementation((name: string) => {
+      if (name === 'apps.json') return path.resolve(__dirname, '../../../bin/apps.json');
+      return `/mock/${name}`;
+    });
     getPodmanMachinesMock.mockResolvedValue([]);
     execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
   });

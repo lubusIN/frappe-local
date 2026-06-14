@@ -50,7 +50,10 @@ describe('bench app orchestration', () => {
 
     benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-apps-'));
 
-    getBinaryPathMock.mockReturnValue('/mock/docker-compose');
+    getBinaryPathMock.mockImplementation((name: string) => {
+      if (name === 'apps.json') return path.resolve(__dirname, '../../../bin/apps.json');
+      return `/mock/${name}`;
+    });
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
     execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     enqueueMock.mockImplementation((definition: { run: (ctx: TaskExecutionContext) => Promise<void> }) => {
@@ -84,6 +87,9 @@ describe('bench app orchestration', () => {
           source: 'https://github.com/frappe/payments',
           version: '15.0.0',
           category: 'business' as const,
+          installBranches: {
+            'version-16': 'version-16',
+          },
           compatibility: {},
         };
       }),
