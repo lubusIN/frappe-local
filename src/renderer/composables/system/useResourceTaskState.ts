@@ -53,7 +53,7 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
   /**
    * Status label priority:
    * 1. Manual pending action (optimistic UI before task is registered)
-   * 2. Latest background task (shows active progress or a current app failure)
+   * 2. Latest active background task
    * 3. Static resource status from the data model
    */
   const formatStatusLabel = (row: TrackableResource) => {
@@ -84,13 +84,6 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
         : 'Processing';
     }
 
-    if (task?.status === 'failure' && isAppsTask(task)) {
-      const failureMessage = String(task.message ?? '').toLowerCase();
-      if (failureMessage.includes('cancelled')) return 'Install cancelled';
-      if (failureMessage.includes('timed out')) return 'Install timed out';
-      return 'Install failed';
-    }
-
     if (row.status === 'running') return 'Running';
     if (row.status === 'stopped') return 'Stopped';
     if (row.status === 'queued') return 'In Progress';
@@ -103,9 +96,6 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
 
     const task = getLatestTask(row.id);
     if (task && isActive(task)) return 'blue';
-    if (task?.status === 'failure' && isAppsTask(task)) {
-      return String(task.message ?? '').toLowerCase().includes('cancelled') ? 'gray' : 'red';
-    }
     
     const status = row.status;
     if (status === 'running') return 'green';

@@ -88,13 +88,19 @@
       :open="isSettingsOpen"
       @close="closeSettings"
     />
+
+    <TaskLogDialog
+      v-if="selectedFailedTask"
+      :task="selectedFailedTask"
+      @close="selectedFailedTaskId = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, type Component } from 'vue';
+import { computed, onMounted, ref, watch, type Component } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
-import { Sidebar, SidebarItem, Button } from 'frappe-ui';
+import { Sidebar, SidebarItem, Button, toast } from 'frappe-ui';
 import IconHome from '~icons/lucide/home';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
@@ -103,17 +109,54 @@ import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
 import Logo from './ui/Logo.vue';
 import SettingsDialog from './dialogs/SettingsDialog.vue';
+import TaskLogDialog from './dialogs/TaskLogDialog.vue';
 import ErrorNotice from './ui/ErrorNotice.vue';
 import { isIpcBridgeAvailable } from '../composables/system/useIpc';
 import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { useSettingsDialog } from '../composables/ui/useSettingsDialog';
 import { navigationItems } from '../router/routes';
+import { useProgressCenter } from '../composables/system/useProgressCenter';
+import { findUnhandledFailedTask } from '../controllers/progress';
 
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { actions: headerActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
+const { tasks } = useProgressCenter();
+const handledFailureTaskIds = new Set(
+  tasks.value
+    .filter((task) => task.type === 'task.failed')
+    .map((task) => task.taskId)
+);
+const selectedFailedTaskId = ref<string | null>(null);
+
+const selectedFailedTask = computed(() => {
+  if (!selectedFailedTaskId.value) return null;
+  return tasks.value.find((task) => task.taskId === selectedFailedTaskId.value) ?? null;
+});
+
+watch(
+  tasks,
+  (items) => {
+    const task = findUnhandledFailedTask(items, handledFailureTaskIds);
+
+    if (!task) return;
+
+    handledFailureTaskIds.add(task.taskId);
+    toast.error(`${task.taskName} failed.`, {
+      duration: 10,
+      action: {
+        label: 'View logs',
+        altText: `View logs for ${task.taskName}`,
+        onClick: () => {
+          selectedFailedTaskId.value = task.taskId;
+        },
+      },
+    });
+  },
+  { deep: true }
+);
 
 const iconComponentMap: Record<string, Component> = {
   '/': IconHome,

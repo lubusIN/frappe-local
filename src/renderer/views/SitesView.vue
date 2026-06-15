@@ -310,9 +310,6 @@ watch(
               },
             },
           });
-        } else if (task.status === 'failure') {
-          toast.error(`Site creation failed for ${siteName}. Check progress logs.`);
-          selectedTaskId.value = task.taskId;
         }
 
         continue;
@@ -330,9 +327,6 @@ watch(
 
         if (task.status === 'success') {
           toast.success(`Site apps updated for ${siteName}.`);
-        } else {
-          toast.error(`App activation failed for ${siteName}. Check progress logs.`);
-          selectedTaskId.value = task.taskId;
         }
       }
     }

@@ -496,7 +496,8 @@ export const orchestrateBenchCreation = (
               ['-p', getComposeProjectName(bench.id), 'down', '-v', '--remove-orphans'],
               bench.path,
               (out) => context.log('info', out, 'cleanup'),
-              runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+              runtimeEnv,
+              { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
             );
           } else {
             context.log('warning', 'Runtime setup did not complete. Skipping container cleanup.', 'cleanup');
@@ -797,7 +798,9 @@ export const orchestrateBenchStart = (
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
         context.log('error', errorMessage(error));
-        await benchesRepo.update(bench.id, { status: 'failure' });
+        await benchesRepo.update(bench.id, {
+          status: bench.status === 'running' ? 'running' : 'stopped',
+        });
         throw error;
       }
     }
@@ -871,7 +874,7 @@ export const orchestrateBenchStop = (
         context.completeStep('stop', 'Containers stopped successfully');
         await benchesRepo.update(bench.id, { status: 'stopped' });
       } catch (error) {
-        await benchesRepo.update(bench.id, { status: 'failure' });
+        await benchesRepo.update(bench.id, { status: bench.status });
         throw error;
       }
     }
@@ -1106,8 +1109,7 @@ export const orchestrateBenchDeletion = (
       } catch (error) {
         removeBenchDirectoryBestEffort();
         context.log('error', `Force deletion failed: ${errorMessage(error)}`);
-        // If it fails, at least ensure it's not stuck in 'queued'
-        await benchesRepo.update(bench.id, { status: 'failure' });
+        await benchesRepo.update(bench.id, { status: bench.status });
         throw error;
       }
     }

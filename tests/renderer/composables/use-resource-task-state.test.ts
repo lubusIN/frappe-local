@@ -12,6 +12,7 @@ const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSum
   logs: overrides.logs ?? [],
   stepName: overrides.stepName ?? null,
   timestamp: overrides.timestamp ?? '2026-06-07T08:00:00.000Z',
+  errorCode: overrides.errorCode ?? null,
   resource: overrides.resource ?? 'bench',
   resourceId: overrides.resourceId ?? 'bench-1',
 });
@@ -58,7 +59,7 @@ describe('useResourceTaskState', () => {
     expect(state.getStatusTheme(bench)).toBe('green');
   });
 
-  it('still shows an app failure when it is the latest task', () => {
+  it('returns to the resource status after an app task fails', () => {
     const tasks = ref<ProgressTaskSummary[]>([
       makeTask({ taskId: 'failed-install', message: 'Command timed out' }),
       makeTask({
@@ -73,7 +74,7 @@ describe('useResourceTaskState', () => {
     const state = useResourceTaskState('bench', tasks);
     const bench = { id: 'bench-1', status: 'running' };
 
-    expect(state.formatStatusLabel(bench)).toBe('Install timed out');
-    expect(state.getStatusTheme(bench)).toBe('red');
+    expect(state.formatStatusLabel(bench)).toBe('Running');
+    expect(state.getStatusTheme(bench)).toBe('green');
   });
 });

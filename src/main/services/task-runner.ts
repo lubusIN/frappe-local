@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type {
   TaskProgressEvent,
   TaskSnapshot,
@@ -39,6 +40,9 @@ export type TaskDefinition = {
 type TaskRunnerListener = (event: TaskProgressEvent) => void;
 
 const cancellationErrorCode = 'cancelled';
+const taskSignalStorage = new AsyncLocalStorage<AbortSignal>();
+
+export const getActiveTaskSignal = (): AbortSignal | undefined => taskSignalStorage.getStore();
 
 const now = (): string => new Date().toISOString();
 
@@ -171,16 +175,21 @@ export class TaskRunner {
     });
 
     try {
-      await task.run(this.createExecutionContext(nextTaskId));
+      await taskSignalStorage.run(
+        task.controller.signal,
+        () => task.run(this.createExecutionContext(nextTaskId))
+      );
       this.finishTask(nextTaskId, 'success', `${task.name} completed successfully.`);
     } catch (error) {
-      const errorCode = task.controller.signal.aborted ? cancellationErrorCode : 'task-failed';
-      const message = task.controller.signal.aborted
+      const wasCancelled = task.controller.signal.aborted;
+      const errorCode = wasCancelled ? cancellationErrorCode : 'task-failed';
+      const message = wasCancelled
         ? 'Task was cancelled.'
         : error instanceof Error
           ? error.message
           : 'Task failed due to an unknown error.';
 
+      task.controller.abort();
       this.finishTask(nextTaskId, 'failure', message, error instanceof Error ? error : null, errorCode);
     } finally {
       this.activeTaskId = null;

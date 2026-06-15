@@ -12,6 +12,7 @@ export type ProgressTaskSummary = {
   readonly logs: Array<{ message: string; timestamp: string; level: TaskProgressEvent['logLevel'] }>;
   readonly stepName: string | null;
   readonly timestamp: string;
+  readonly errorCode: string | null;
   readonly resource: ProgressTaskResource;
   readonly resourceId: string | null;
 };
@@ -82,6 +83,7 @@ export const upsertProgressTask = (
     logs: existing ? [...existing.logs, newLogEntry] : [newLogEntry],
     stepName: event.stepName,
     timestamp: event.timestamp,
+    errorCode: event.errorCode ?? existing?.errorCode ?? null,
     resource: payloadResource ?? detectProgressTaskResource(event.taskName),
     resourceId: event.resource?.id ?? null,
   };
@@ -112,6 +114,17 @@ export const filterProgressTasks = (
 
     return now - Date.parse(task.timestamp) <= RECENT_WINDOW_MS;
   });
+};
+
+export const findUnhandledFailedTask = (
+  tasks: readonly ProgressTaskSummary[],
+  handledTaskIds: ReadonlySet<string>
+): ProgressTaskSummary | null => {
+  return tasks.find((task) =>
+    task.type === 'task.failed'
+    && task.errorCode !== 'cancelled'
+    && !handledTaskIds.has(task.taskId)
+  ) ?? null;
 };
 
 export const createProgressCenterController = (

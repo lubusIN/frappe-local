@@ -151,6 +151,7 @@ describe('TaskRunner', () => {
   it('emits task logs and failure transitions deterministically', async () => {
     const runner = new TaskRunner();
     const events: TaskProgressEvent[] = [];
+    let taskSignalAborted = false;
 
     runner.onEvent((event) => {
       events.push(event);
@@ -159,6 +160,9 @@ describe('TaskRunner', () => {
     runner.enqueue({
       name: 'Failure task',
       run: async (context) => {
+        context.signal.addEventListener('abort', () => {
+          taskSignalAborted = true;
+        });
         context.startStep('probe', 'Probe dependency');
         context.log('warning', 'Probe is taking longer than expected.');
         throw new Error('Probe command failed.');
@@ -183,6 +187,7 @@ describe('TaskRunner', () => {
       message: 'Probe command failed.',
       errorCode: 'task-failed',
     });
+    expect(taskSignalAborted).toBe(true);
   });
 
   it('preserves resource metadata on task completion events', async () => {

@@ -14,6 +14,7 @@ const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSum
   logs: overrides.logs ?? [],
   stepName: overrides.stepName ?? null,
   timestamp: overrides.timestamp ?? new Date('2026-05-17T00:00:00.000Z').toISOString(),
+  errorCode: overrides.errorCode ?? null,
   resource: overrides.resource ?? 'site',
   resourceId: overrides.resourceId ?? 'site-1',
 });
