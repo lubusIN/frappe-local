@@ -15,7 +15,7 @@ export const composeExecArgs = (projectName: string, containerName: string, comm
 
 /** Arguments to execute a `bench` CLI command inside the backend container. */
 export const composeBenchArgs = (projectName: string, commandArgs: string[]): string[] => {
-  return composeExecArgs(projectName, 'backend', ['bench', ...commandArgs]);
+  return composeExecArgs(projectName, 'frappe', ['bench', ...commandArgs]);
 };
 
 /** Arguments to execute a `bench` CLI command targeting a specific site. */

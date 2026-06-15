@@ -98,18 +98,22 @@ const restartBenchServices = async (
   context: TaskExecutionContext,
   env: SiteCommandEnv
 ) => {
-  context.startStep('restart', 'Restarting bench services');
-  const restartArgs = [
-    '-p', env.projectName,
-    'restart',
-    'backend',
-    'frontend',
-    'websocket',
-  ];
+  context.startStep('restart', 'Restarting bench processes');
+  
+  // Kill existing honcho/bench start process
+  await execPromise(
+    env.runtimeCmd,
+    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', 'honcho'],
+    env.benchPath,
+    undefined,
+    env.runtimeEnv,
+    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+  ).catch(() => ({ code: 0 })); // Ignore error if it's not running
 
+  // Start it again
   const restartResult = await execPromise(
     env.runtimeCmd,
-    restartArgs,
+    ['-p', env.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
     env.benchPath,
     (out) => context.log('info', out, 'restart'),
     env.runtimeEnv,
@@ -117,35 +121,11 @@ const restartBenchServices = async (
   );
 
   if (restartResult.code !== 0) {
-    throw new Error(`Failed to restart bench services: ${restartResult.stderr}`);
+    throw new Error(`Failed to restart bench processes: ${restartResult.stderr}`);
   }
 
-  // Poll for backend container health to ensure Gunicorn is ready before proceeding
-  context.startStep('wait', 'Waiting for backend to become healthy');
-  let backendReady = false;
-  for (let i = 0; i < 40; i++) {
-    const { stdout } = await execPromise(
-      env.runtimeCmd,
-      ['-p', env.projectName, 'ps', 'backend', '--format', '{{.Health}}'],
-      env.benchPath,
-      undefined,
-      env.runtimeEnv,
-      { idleTimeout: 5000 }
-    ).catch(() => ({ stdout: '' }));
-
-    if (stdout.trim().toLowerCase().includes('healthy')) {
-      backendReady = true;
-      break;
-    }
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-
-  if (!backendReady) {
-    throw new Error('Backend failed to become healthy after restart');
-  }
-
-  context.completeStep('wait', 'Backend is ready');
-  context.completeStep('restart', 'Bench services restarted');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  context.completeStep('restart', 'Bench processes restarted');
 };
 export type SiteCreationDependencies = {
   readonly benches: {
@@ -257,7 +237,7 @@ export const orchestrateSiteCreation = async (
           'new-site',
           input.force ? '--force' : '',
           '--mariadb-user-host-login-scope', '%',
-          '--db-host', 'db',
+          '--db-host', 'mariadb',
           '--admin-password', adminPassword,
           '--db-root-password', dbPassword,
           '--install-app', 'frappe',

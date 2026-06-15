@@ -110,7 +110,7 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'https://github.com/frappe/payments']),
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'https://github.com/frappe/payments']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -169,7 +169,7 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', 'develop', 'https://github.com/frappe/builder']),
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--overwrite', '--branch', 'develop', 'https://github.com/frappe/builder']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -231,7 +231,7 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--branch', 'main', 'https://github.com/frappe/helpdesk']),
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--branch', 'main', 'https://github.com/frappe/helpdesk']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -287,7 +287,7 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--branch', 'master', 'https://github.com/frappe/wiki']),
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--branch', 'master', 'https://github.com/frappe/wiki']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -325,7 +325,7 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'remove-app', 'payments']),
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'remove-app', 'payments']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -408,7 +408,7 @@ describe('bench app orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'remove-app', 'erpnext']),
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'remove-app', 'erpnext']),
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

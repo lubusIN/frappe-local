@@ -10,7 +10,7 @@ const execAsync = promisify(exec);
 
 export const openBenchShell = async (benchPath: string, projectName: string, env: NodeJS.ProcessEnv): Promise<void> => {
   const composePath = getBinaryPath('docker-compose');
-  const command = `cd "${benchPath}" && DOCKER_HOST="${env.DOCKER_HOST || ''}" "${composePath}" -p ${projectName} exec backend /bin/bash`;
+  const command = `cd "${benchPath}" && DOCKER_HOST="${env.DOCKER_HOST || ''}" "${composePath}" -p ${projectName} exec frappe /bin/bash`;
 
   if (process.platform === 'darwin') {
     // On macOS, creating a .command file and opening it automatically uses the user's 
