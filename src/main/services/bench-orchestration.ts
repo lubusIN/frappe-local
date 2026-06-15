@@ -11,7 +11,7 @@ import { findNextAvailableTcpPort, isTcpPortFree } from '../utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
 import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
 import { ensureBenchComposeWritten, getBenchComposePath } from '../utils/podman/bench-compose';
-import { benchComposeArgs, getComposeProjectName, composeBenchArgs } from '../utils/podman/compose-args';
+import { benchComposeArgs, getComposeProjectName, composeBenchArgs, composeExecArgs } from '../utils/podman/compose-args';
 import { cleanupPodmanResources, projectFilterArgs, nameFilterArgs } from '../utils/podman/podman-cleanup';
 import type { AppCatalogItem } from '../../shared/domain/models';
 import { getDefaultAppCatalogSeed } from './catalog-provider';
@@ -543,29 +543,78 @@ export const orchestrateBenchAppChanges = (
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       let attemptedInstallAppIds: string[] = [];
+      let recoveryEnv: {
+        command: string;
+        projectName: string;
+        runtimeEnv: NodeJS.ProcessEnv;
+      } | null = null;
       try {
         if (bench.status !== 'running') {
           throw new Error(`Bench ${bench.name} must be running before installed apps can be changed.`);
         }
 
+        context.startStep('runtime', 'Checking podman status');
+        const runtimeReady = await ensureRuntimeRunning();
+        if (!runtimeReady) {
+          throw new Error(
+            getLastRuntimeError() ||
+            'Podman is not running and could not be started automatically.'
+          );
+        }
+        context.completeStep('runtime', 'Podman is ready');
+
         const command = getBinaryPath('docker-compose');
         const projectName = getComposeProjectName(bench.id);
+        const composePath = ensureBenchComposeWritten(
+          bench.path,
+          bench.frappeVersion,
+          bench.httpPort ?? DEFAULT_HTTP_PORT
+        );
+        const commonArgs = benchComposeArgs(projectName, composePath);
         const runtimeEnv = await getRuntimeEnv();
+
+        context.startStep('bench-service', 'Ensuring bench containers are running');
+        const serviceResult = await execPromise(
+          command,
+          [...commonArgs, 'up', '-d', '--remove-orphans', 'frappe'],
+          bench.path,
+          (out) => context.log('info', out, 'bench-service'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        if (serviceResult.code !== 0) {
+          throw new Error(
+            `Could not start bench containers for ${bench.name}: ${serviceResult.stderr || serviceResult.stdout}`
+          );
+        }
+        context.completeStep('bench-service', 'Bench containers are running');
+        recoveryEnv = { command, projectName, runtimeEnv };
 
         // Temporarily pause background bench processes (watch, workers, web) to free up the 4GB VM memory
         // and avoid file lock collisions during yarn install and bench build.
         try {
           context.startStep('pause-bench', 'Pausing background processes to free memory');
-          await execPromise(
+          const pauseResult = await execPromise(
             command,
-            composeBenchArgs(projectName, ['exec', '-T', 'frappe', 'pkill', '-f', 'honcho']),
+            composeExecArgs(projectName, 'frappe', ['pkill', '-f', 'honcho']),
             bench.path,
             (out) => context.log('info', out, 'pause-bench'),
             runtimeEnv,
             { idleTimeout: 30000, maxTimeout: 60000 }
           );
-          context.completeStep('pause-bench', 'Background processes paused');
-        } catch {
+
+          if (pauseResult.code === 0) {
+            context.completeStep('pause-bench', 'Background processes paused');
+          } else {
+            context.log(
+              'warning',
+              `Could not pause background processes: ${pauseResult.stderr || pauseResult.stdout}`,
+              'pause-bench'
+            );
+            context.completeStep('pause-bench', 'Background processes were not running');
+          }
+        } catch (error) {
+          context.log('warning', `Could not pause background processes: ${errorMessage(error)}`, 'pause-bench');
           context.completeStep('pause-bench', 'No background processes to pause');
         }
 
@@ -612,22 +661,6 @@ export const orchestrateBenchAppChanges = (
           throw new Error(`Failed to persist updated apps for bench ${bench.name}.`);
         }
 
-        // Restart the background bench processes after app changes are complete
-        try {
-          context.startStep('resume-bench', 'Restarting background bench processes');
-          await execPromise(
-            command,
-            composeBenchArgs(projectName, ['exec', '-d', 'frappe', 'bench', 'start']),
-            bench.path,
-            (out) => context.log('info', out, 'resume-bench'),
-            runtimeEnv,
-            { idleTimeout: 30000, maxTimeout: 60000 }
-          );
-          context.completeStep('resume-bench', 'Bench processes restarted');
-        } catch (err) {
-          context.log('warning', `Failed to automatically restart bench processes: ${errorMessage(err)}`, 'resume-bench');
-        }
-
         context.completeStep('apps', 'Bench apps updated');
       } catch (error) {
         if (attemptedInstallAppIds.length > 0) {
@@ -642,6 +675,44 @@ export const orchestrateBenchAppChanges = (
 
         context.log('error', errorMessage(error), 'apps');
         throw error;
+      } finally {
+        if (recoveryEnv) {
+          try {
+            if (!context.signal.aborted) {
+              context.startStep('resume-bench', 'Restarting background bench processes');
+            }
+            const restartResult = await execPromise(
+              recoveryEnv.command,
+              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+              bench.path,
+              context.signal.aborted
+                ? undefined
+                : (out) => context.log('info', out, 'resume-bench'),
+              recoveryEnv.runtimeEnv,
+              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
+            );
+
+            if (restartResult.code !== 0 && !context.signal.aborted) {
+              context.log(
+                'warning',
+                `Failed to automatically restart bench processes: ${
+                  restartResult.stderr || restartResult.stdout || `exit code ${restartResult.code}`
+                }`,
+                'resume-bench'
+              );
+            } else if (!context.signal.aborted) {
+              context.completeStep('resume-bench', 'Bench processes restarted');
+            }
+          } catch (recoveryError) {
+            if (!context.signal.aborted) {
+              context.log(
+                'warning',
+                `Failed to automatically restart bench processes: ${errorMessage(recoveryError)}`,
+                'resume-bench'
+              );
+            }
+          }
+        }
       }
     }
   });
