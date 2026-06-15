@@ -4,3 +4,4 @@ out/
 release-artifacts/
 bin/
 .DS_Store
+scratch

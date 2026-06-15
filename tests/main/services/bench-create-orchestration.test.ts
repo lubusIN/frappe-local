@@ -87,7 +87,7 @@ describe('bench creation orchestration app install', () => {
       name: 'custom-bench',
       path: benchPath,
       frappeVersion: 'version-16',
-      apps: ['frappe', 'erpnext', 'payments', 'hrms'],
+      apps: ['frappe', 'payments', 'hrms'],
       status: 'queued',
       httpPort: 8080,
       timestamps: {
@@ -110,10 +110,10 @@ describe('bench creation orchestration app install', () => {
 
     const getAppArgs = getAppCalls.map((call) => call[1] as string[]);
     expect(getAppArgs[0]).toEqual(
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'payments'])
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'payments'])
     );
     expect(getAppArgs[1]).toEqual(
-      expect.arrayContaining(['exec', '-T', 'backend', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'hrms'])
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'hrms'])
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
@@ -125,7 +125,7 @@ describe('bench creation orchestration app install', () => {
       name: 'catalog-bench',
       path: benchPath,
       frappeVersion: 'version-16',
-      apps: ['frappe', 'erpnext', 'ecommerce_integrations'],
+      apps: ['frappe', 'ecommerce_integrations'],
       status: 'queued',
       httpPort: 8080,
       timestamps: {
@@ -170,7 +170,7 @@ describe('bench creation orchestration app install', () => {
       expect.arrayContaining([
         'exec',
         '-T',
-        'backend',
+        'frappe',
         'bench',
         'get-app',
         '--branch',
@@ -187,7 +187,7 @@ describe('bench creation orchestration app install', () => {
       name: 'catalog-bench-branch',
       path: benchPath,
       frappeVersion: 'version-16',
-      apps: ['frappe', 'erpnext', 'builder'],
+      apps: ['frappe', 'builder'],
       status: 'queued',
       httpPort: 8080,
       timestamps: {
@@ -229,7 +229,7 @@ describe('bench creation orchestration app install', () => {
       expect.arrayContaining([
         'exec',
         '-T',
-        'backend',
+        'frappe',
         'bench',
         'get-app',
         '--branch',
@@ -245,7 +245,7 @@ describe('bench creation orchestration app install', () => {
       name: 'catalog-bench-helpdesk',
       path: benchPath,
       frappeVersion: 'version-16',
-      apps: ['frappe', 'erpnext', 'helpdesk'],
+      apps: ['frappe', 'helpdesk'],
       status: 'queued',
       httpPort: 8080,
       timestamps: {
@@ -292,7 +292,7 @@ describe('bench creation orchestration app install', () => {
       expect.arrayContaining([
         'exec',
         '-T',
-        'backend',
+        'frappe',
         'bench',
         'get-app',
         '--branch',
@@ -308,7 +308,7 @@ describe('bench creation orchestration app install', () => {
       name: 'catalog-bench-wiki',
       path: benchPath,
       frappeVersion: 'version-16',
-      apps: ['frappe', 'erpnext', 'wiki'],
+      apps: ['frappe', 'wiki'],
       status: 'queued',
       httpPort: 8080,
       timestamps: {
@@ -350,7 +350,7 @@ describe('bench creation orchestration app install', () => {
       expect.arrayContaining([
         'exec',
         '-T',
-        'backend',
+        'frappe',
         'bench',
         'get-app',
         '--branch',

@@ -35,7 +35,7 @@ const benches: Bench[] = [
     frappeVersion: '15.0.0',
     httpPort: 8080,
     status: 'running',
-    apps: ['frappe', 'erpnext'],
+    apps: ['frappe'],
     timestamps: {
       createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
       updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
@@ -166,21 +166,21 @@ describe('benches IPC handlers', () => {
     );
 
     const updateHandler = handlers.get(ipcChannels.benchesUpdate);
-    const updated = await updateHandler?.(undefined, 'bench-001', { apps: ['frappe', 'erpnext', 'payments'] });
+    const updated = await updateHandler?.(undefined, 'bench-001', { apps: ['frappe', 'payments'] });
 
     expect(updated).toMatchObject({
       id: 'bench-001',
-      apps: ['frappe', 'erpnext'],
-      appCount: 2,
+      apps: ['frappe'],
+      appCount: 1,
     });
 
     expect(orchestrateBenchAppChangesMock).toHaveBeenCalledTimes(1);
     expect(orchestrateBenchAppChangesMock).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'bench-001', apps: ['frappe', 'erpnext'] }),
+      expect.objectContaining({ id: 'bench-001', apps: ['frappe'] }),
       expect.any(Object),
       expect.any(Object),
-      ['frappe', 'erpnext'],
-      ['frappe', 'erpnext', 'payments']
+      ['frappe'],
+      ['frappe', 'payments']
     );
   });
 
@@ -210,8 +210,8 @@ describe('benches IPC handlers', () => {
         path: '/Users/dev/frappe-bench',
         frappeVersion: '15.0.0',
         status: 'running',
-        appCount: 2,
-        apps: ['frappe', 'erpnext'],
+        appCount: 1,
+        apps: ['frappe'],
         httpPort: 8080,
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
@@ -300,8 +300,8 @@ describe('benches IPC handlers', () => {
       path: path.resolve('/Users/dev/new-bench'),
       frappeVersion: '15.0.0',
       status: 'queued',
-      appCount: 2,
-      apps: ['frappe', 'erpnext'],
+      appCount: 1,
+      apps: ['frappe'],
     });
     expect((created as { httpPort?: number }).httpPort).toBeGreaterThanOrEqual(8080);
   });

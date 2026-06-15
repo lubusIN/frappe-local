@@ -17,7 +17,7 @@ export const DATABASE_CREDENTIALS = {
  * Docker service names used in the generated bench docker-compose template.
  */
 export const DOCKER_SERVICES = {
-  BACKEND: 'backend', // Main backend service for running bench commands
+  FRAPPE: 'frappe', // Main frappe service for running bench commands and processes
 } as const;
 
 /**

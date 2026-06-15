@@ -46,57 +46,6 @@ const resolveAndPersistBenchPort = async (
 };
 
 
-const waitForBackend = async (
-  command: string,
-  commonArgs: string[],
-  benchPath: string,
-  runtimeEnv: NodeJS.ProcessEnv,
-  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void; startStep: (id: string, name: string) => void; completeStep: (id: string, name: string) => void }
-): Promise<void> => {
-  context.startStep('wait', 'Waiting for backend to become healthy (copying assets/apps)');
-  let backendReady = false;
-  const maxRetries = 60; // 5 minutes (5s intervals)
-  for (let i = 0; i < maxRetries; i++) {
-    // Check service health status via docker-compose ps
-    const { stdout } = await execPromise(
-      command,
-      [...commonArgs, 'ps', 'backend', '--format', '{{.Health}}'],
-      benchPath,
-      undefined,
-      runtimeEnv,
-      { idleTimeout: 5000 }
-    ).catch(() => ({ stdout: '' })); // Fallback if format is not supported
-
-    if (stdout.trim().toLowerCase().includes('healthy')) {
-      backendReady = true;
-      break;
-    }
-
-    // Fallback for older compose/podman: check if service is running and files exist
-    const { code: checkCode } = await execPromise(
-      command,
-      [...commonArgs, 'exec', '-T', 'backend', 'ls', 'sites/apps.txt'],
-      benchPath,
-      undefined,
-      runtimeEnv,
-      { idleTimeout: 2000 }
-    ).catch(() => ({ code: 1 }));
-
-    if (checkCode === 0) {
-      backendReady = true;
-      break;
-    }
-
-    // Small delay before next check
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  }
-
-  if (!backendReady) {
-    throw new Error('Backend failed to initialize within the expected time. The asset/app copy might still be running or failed.');
-  }
-  context.completeStep('wait', 'Backend is ready');
-};
-
 const resolveBenchBranch = (frappeVersion: string): string => {
   const normalized = frappeVersion.trim().toLowerCase();
 
@@ -287,7 +236,7 @@ const fetchBenchApps = async (
         bench.path,
         (out: string) => context.log('info', out, stepId),
         runtimeEnv,
-        { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS }
       );
     } catch (error) {
       if (!errorMessage(error).includes('Command timed out')) {
@@ -301,7 +250,7 @@ const fetchBenchApps = async (
         bench.path,
         (out: string) => context.log('info', out, stepId),
         runtimeEnv,
-        { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS }
       );
     }
 
@@ -358,31 +307,6 @@ export const orchestrateBenchCreation = (
         if (!fs.existsSync(bench.path)) {
           fs.mkdirSync(bench.path, { recursive: true });
         }
-        // Create sites and apps directories so volume mounts are happy
-        const sitesDir = path.join(bench.path, 'sites');
-        const appsDir = path.join(bench.path, 'apps');
-        if (!fs.existsSync(sitesDir)) fs.mkdirSync(sitesDir, { recursive: true });
-        if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
-
-        // Initialize essential bench files if missing
-        const appsTxtPath = path.join(sitesDir, 'apps.txt');
-        if (!fs.existsSync(appsTxtPath)) {
-          fs.writeFileSync(appsTxtPath, 'frappe\n', 'utf8');
-        }
-
-        const commonConfigPath = path.join(sitesDir, 'common_site_config.json');
-        if (!fs.existsSync(commonConfigPath)) {
-          const config = {
-            db_host: 'db',
-            db_port: '3306',
-            redis_cache: 'redis://redis:6379',
-            redis_queue: 'redis://redis:6379',
-            redis_socketio: 'redis://redis:6379',
-            socketio_port: 9000,
-          };
-          fs.writeFileSync(commonConfigPath, JSON.stringify(config, null, 1), 'utf8');
-        }
-
         context.completeStep('init', 'Bench directory initialized');
 
         context.startStep('env', 'Generating docker-compose configuration');
@@ -423,14 +347,96 @@ export const orchestrateBenchCreation = (
 
         context.completeStep('start', 'Containers started');
 
-        failingStepId = 'wait';
-        await waitForBackend(command, commonArgs, bench.path, runtimeEnv, context);
+        context.startStep('setup', 'Setting up Frappe bench');
+        failingStepId = 'setup';
+
+        const branch = resolveBenchBranch(bench.frappeVersion);
+        const initArgs = composeBenchArgs(projectName, ['init', '--frappe-branch', branch, '--skip-redis-config-generation', '--ignore-exist', '.']);
+        
+        await execPromise(
+          command,
+          initArgs,
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+
+        // Configure redis services
+        await execPromise(
+          command,
+          composeBenchArgs(projectName, ['set-config', '-g', 'db_host', 'mariadb']),
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        await execPromise(
+          command,
+          composeBenchArgs(projectName, ['set-config', '-g', 'redis_cache', 'redis://redis:6379']),
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        await execPromise(
+          command,
+          composeBenchArgs(projectName, ['set-config', '-g', 'redis_queue', 'redis://redis:6379']),
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        await execPromise(
+          command,
+          composeBenchArgs(projectName, ['set-config', '-g', 'redis_socketio', 'redis://redis:6379']),
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+
+        // Bind web server and socketio to 0.0.0.0 so they are accessible from the host
+        await execPromise(
+          command,
+          composeBenchArgs(projectName, ['set-config', '-g', 'host', '0.0.0.0']),
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+
+        // Enable developer mode so that Werkzeug serves static assets correctly
+        await execPromise(
+          command,
+          composeBenchArgs(projectName, ['set-config', '-g', 'developer_mode', '1']),
+          bench.path,
+          (out) => context.log('info', out, 'setup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+
+        // Remove socketio_port from common_site_config.json so the Frappe frontend connects
+        // via the Caddy reverse proxy port instead of trying to hit 9000 directly.
+        try {
+          const configPath = path.join(bench.path, 'sites', 'common_site_config.json');
+          if (fs.existsSync(configPath)) {
+            const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if ('socketio_port' in configData) {
+              delete configData['socketio_port'];
+              fs.writeFileSync(configPath, JSON.stringify(configData, null, 1), 'utf8');
+            }
+          }
+        } catch (err) {
+          context.log('warning', `Failed to patch common_site_config.json for socketio: ${errorMessage(err)}`, 'setup');
+        }
+        
+        context.completeStep('setup', 'Bench initialized and configured');
 
         const appsToInstall = (bench.apps ?? [])
           .map((app) => app.trim())
           .filter(Boolean)
           .filter((app) => !CORE_BENCH_APPS_SET.has(app));
-
 
         if (appsToInstall.length > 0) {
           failingStepId = 'apps';
@@ -449,6 +455,18 @@ export const orchestrateBenchCreation = (
             }
           });
         }
+
+        context.startStep('run', 'Starting bench processes');
+        failingStepId = 'run';
+        await execPromise(
+          command,
+          [...commonArgs, 'exec', '-d', 'frappe', 'bench', 'start'],
+          bench.path,
+          (out) => context.log('info', out, 'run'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        context.completeStep('run', 'Bench processes started');
 
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
@@ -533,6 +551,23 @@ export const orchestrateBenchAppChanges = (
         const projectName = getComposeProjectName(bench.id);
         const runtimeEnv = await getRuntimeEnv();
 
+        // Temporarily pause background bench processes (watch, workers, web) to free up the 4GB VM memory
+        // and avoid file lock collisions during yarn install and bench build.
+        try {
+          context.startStep('pause-bench', 'Pausing background processes to free memory');
+          await execPromise(
+            command,
+            composeBenchArgs(projectName, ['exec', '-T', 'frappe', 'pkill', '-f', 'honcho']),
+            bench.path,
+            (out) => context.log('info', out, 'pause-bench'),
+            runtimeEnv,
+            { idleTimeout: 30000, maxTimeout: 60000 }
+          );
+          context.completeStep('pause-bench', 'Background processes paused');
+        } catch {
+          context.completeStep('pause-bench', 'No background processes to pause');
+        }
+
         if (delta.install.length > 0) {
           await fetchBenchApps(context, {
             stepId: 'install-apps',
@@ -576,6 +611,22 @@ export const orchestrateBenchAppChanges = (
           throw new Error(`Failed to persist updated apps for bench ${bench.name}.`);
         }
 
+        // Restart the background bench processes after app changes are complete
+        try {
+          context.startStep('resume-bench', 'Restarting background bench processes');
+          await execPromise(
+            command,
+            composeBenchArgs(projectName, ['exec', '-d', 'frappe', 'bench', 'start']),
+            bench.path,
+            (out) => context.log('info', out, 'resume-bench'),
+            runtimeEnv,
+            { idleTimeout: 30000, maxTimeout: 60000 }
+          );
+          context.completeStep('resume-bench', 'Bench processes restarted');
+        } catch (err) {
+          context.log('warning', `Failed to automatically restart bench processes: ${errorMessage(err)}`, 'resume-bench');
+        }
+
         context.completeStep('apps', 'Bench apps updated');
       } catch (error) {
         if (attemptedInstallAppIds.length > 0) {
@@ -606,7 +657,7 @@ export const orchestrateBenchStart = (
 ): void => {
   const taskRunner = getTaskRunner();
 
-  const CORE_BENCH_SERVICES = ['db', 'backend'] as const;
+  const CORE_BENCH_SERVICES = ['frappe'] as const;
 
   const parseRunningServices = (stdout: string): Set<string> => {
     return new Set(
@@ -733,8 +784,16 @@ export const orchestrateBenchStart = (
 
         context.completeStep('start', 'Containers are running');
 
-        await waitForBackend(command, commonArgs, bench.path, runtimeEnv, context);
-
+        context.startStep('run', 'Starting bench processes');
+        await execPromise(
+          command,
+          [...commonArgs, 'exec', '-d', 'frappe', 'bench', 'start'],
+          bench.path,
+          (out) => context.log('info', out, 'run'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        context.completeStep('run', 'Bench processes started');
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
         context.log('error', errorMessage(error));

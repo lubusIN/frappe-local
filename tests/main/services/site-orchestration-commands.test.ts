@@ -122,13 +122,13 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       'new-site',
       '--mariadb-user-host-login-scope',
       '%',
       '--db-host',
-      'db',
+      'mariadb',
       '--admin-password',
       'admin',
       '--db-root-password',
@@ -144,7 +144,7 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
@@ -157,7 +157,7 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
@@ -170,21 +170,33 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
       'clear-website-cache',
     ]);
 
-    const [, restartArgs] = execPromiseMock.mock.calls[4] as [string, string[]];
-    expect(restartArgs).toEqual([
+    const [, pkillArgs] = execPromiseMock.mock.calls[4] as [string, string[]];
+    expect(pkillArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',
-      'restart',
-      'backend',
-      'frontend',
-      'websocket',
+      'exec',
+      '-T',
+      'frappe',
+      'pkill',
+      'honcho',
+    ]);
+
+    const [, startArgs] = execPromiseMock.mock.calls[5] as [string, string[]];
+    expect(startArgs).toEqual([
+      '-p',
+      'local-bench-1adb2eed',
+      'exec',
+      '-d',
+      'frappe',
+      'bench',
+      'start',
     ]);
 
     const calledCommands = execPromiseMock.mock.calls.map((call) => (call[1] as string[]).join(' '));
@@ -230,7 +242,7 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
@@ -256,7 +268,7 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
@@ -281,7 +293,7 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
@@ -306,14 +318,14 @@ describe('site orchestration command execution', () => {
       'local-bench-1adb2eed',
       'exec',
       '-T',
-      'backend',
+      'frappe',
       'bench',
       '--site',
       'frappevault.localhost',
       'clear-website-cache',
     ]);
 
-    const [restartCommand, restartArgs, restartCwd, , restartEnv, restartTimeout] = execPromiseMock.mock.calls[4] as [
+    const [pkillCommand, pkillArgs, pkillCwd, , pkillEnv, pkillTimeout] = execPromiseMock.mock.calls[4] as [
       string,
       string[],
       string,
@@ -322,17 +334,41 @@ describe('site orchestration command execution', () => {
       { idleTimeout: number; maxTimeout?: number },
     ];
 
-    expect(restartCommand).toBe('/mock/docker-compose');
-    expect(restartCwd).toBe('/Users/dev/bench-two');
-    expect(restartEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    expect(restartTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
-    expect(restartArgs).toEqual([
+    expect(pkillCommand).toBe('/mock/docker-compose');
+    expect(pkillCwd).toBe('/Users/dev/bench-two');
+    expect(pkillEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
+    expect(pkillTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
+    expect(pkillArgs).toEqual([
       '-p',
       'local-bench-1adb2eed',
-      'restart',
-      'backend',
-      'frontend',
-      'websocket',
+      'exec',
+      '-T',
+      'frappe',
+      'pkill',
+      'honcho',
+    ]);
+
+    const [startCommand, startArgs, startCwd, , startEnv, startTimeout] = execPromiseMock.mock.calls[5] as [
+      string,
+      string[],
+      string,
+      unknown,
+      NodeJS.ProcessEnv,
+      { idleTimeout: number; maxTimeout?: number },
+    ];
+
+    expect(startCommand).toBe('/mock/docker-compose');
+    expect(startCwd).toBe('/Users/dev/bench-two');
+    expect(startEnv).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
+    expect(startTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
+    expect(startArgs).toEqual([
+      '-p',
+      'local-bench-1adb2eed',
+      'exec',
+      '-d',
+      'frappe',
+      'bench',
+      'start',
     ]);
 
     expect(updateSiteMock).toHaveBeenCalledWith('site-001', {

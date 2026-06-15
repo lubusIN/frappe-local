@@ -31,7 +31,7 @@ describe('bench wizard helpers', () => {
       name: '  frappe-bench  ',
       path: '  /Users/dev/frappe-bench  ',
       frappeVersion: '  version-16  ',
-      appsSelected: [' payments ', 'erpnext', '  '],
+      appsSelected: [' payments ', '  '],
     };
 
     const result = buildBenchCreatePayload(draft);
@@ -41,7 +41,7 @@ describe('bench wizard helpers', () => {
       name: 'frappe-bench',
       path: '/Users/dev/frappe-bench',
       frappeVersion: 'version-16',
-      apps: ['frappe', 'erpnext', 'payments'],
+      apps: ['frappe', 'payments'],
     });
   });
 
@@ -53,7 +53,7 @@ describe('bench wizard helpers', () => {
       appsSelected: [],
     });
 
-    expect(result.payload?.apps).toEqual(['frappe', 'erpnext']);
+    expect(result.payload?.apps).toEqual(['frappe']);
   });
 
   it('deduplicates selected apps against core defaults', () => {
@@ -61,9 +61,9 @@ describe('bench wizard helpers', () => {
       name: 'frappe-bench',
       path: '/Users/dev/frappe-bench',
       frappeVersion: 'version-16',
-      appsSelected: ['frappe', 'erpnext', 'payments', 'payments'],
+      appsSelected: ['frappe', 'payments', 'payments'],
     });
 
-    expect(result.payload?.apps).toEqual(['frappe', 'erpnext', 'payments']);
+    expect(result.payload?.apps).toEqual(['frappe', 'payments']);
   });
 });

@@ -1,4 +1,4 @@
-export const CORE_BENCH_APPS = ['frappe', 'erpnext'] as const;
+export const CORE_BENCH_APPS = ['frappe'] as const;
 
 export const CORE_BENCH_APPS_SET = new Set<string>(CORE_BENCH_APPS);
 
