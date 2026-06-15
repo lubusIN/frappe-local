@@ -224,6 +224,49 @@ describe('diagnostics IPC handlers', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
+  it('removes dormant bench folders from managed storage locations', async () => {
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-dormant-test-'));
+    const storagePath = path.join(tempRoot, 'storage');
+    const configPath = path.join(tempRoot, 'config');
+    const customStoragePath = path.join(tempRoot, 'custom-storage');
+    const defaultBenchesPath = path.join(tempRoot, 'benches');
+    const customBenchesPath = path.join(customStoragePath, 'benches');
+
+    fs.mkdirSync(path.join(defaultBenchesPath, 'orphan-default'), { recursive: true });
+    fs.mkdirSync(path.join(customBenchesPath, 'orphan-custom'), { recursive: true });
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo({
+          ...seedSettings,
+          storagePath: customStoragePath,
+        }),
+      },
+      undefined,
+      undefined,
+      '0.1.0',
+      {
+        userDataPath: tempRoot,
+        logsPath: path.join(tempRoot, 'logs'),
+        configPath,
+        storagePath,
+      }
+    );
+
+    const resetResult = await handlers.get(ipcChannels.diagnosticsResetDevState)?.();
+
+    expect(resetResult).toBe(true);
+    expect(fs.existsSync(defaultBenchesPath)).toBe(false);
+    expect(fs.existsSync(customBenchesPath)).toBe(false);
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  });
+
   it('reset performs compose and podman teardown for local-bench resources', async () => {
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
