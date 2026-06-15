@@ -354,6 +354,7 @@ describe('bench app orchestration', () => {
     const timeoutError = new Error('Command timed out after 1200000ms: docker-compose exec -T backend bench get-app ...');
 
     execPromiseMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockRejectedValueOnce(timeoutError)
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' });

@@ -459,9 +459,6 @@ watch(
 
         if (task.status === 'success') {
           toast.success(`Bench apps updated for ${benchName}.`);
-        } else {
-          toast.error(`App update failed for ${benchName}. Check progress logs.`);
-          selectedTaskId.value = task.taskId;
         }
       }
     }

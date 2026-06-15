@@ -3,6 +3,7 @@ import {
   createDefaultProgressCenterState,
   detectProgressTaskResource,
   filterProgressTasks,
+  findUnhandledFailedTask,
   upsertProgressTask,
 } from '../../../src/renderer/controllers/progress';
 import type { TaskProgressEvent } from '../../../src/shared/domain/task-runner';
@@ -45,6 +46,7 @@ describe('progress', () => {
     expect(afterSecond).toHaveLength(1);
     expect(afterSecond[0]?.status).toBe('success');
     expect(afterSecond[0]?.message).toBe('Completed');
+    expect(afterSecond[0]?.errorCode).toBeNull();
     expect(afterSecond[0]?.resourceId).toBeNull();
   });
 
@@ -62,6 +64,34 @@ describe('progress', () => {
     expect(tasks[0]?.resourceId).toBe('site-007');
   });
 
+  it('preserves task failure codes for global failure handling', () => {
+    const tasks = upsertProgressTask([], makeEvent({
+      status: 'failure',
+      type: 'task.failed',
+      errorCode: 'task-failed',
+    }));
+
+    expect(tasks[0]?.errorCode).toBe('task-failed');
+  });
+
+  it('selects only unhandled non-cancelled failures when logs are closed', () => {
+    const failed = upsertProgressTask([], makeEvent({
+      taskId: 'failed',
+      status: 'failure',
+      type: 'task.failed',
+      errorCode: 'task-failed',
+    }))[0]!;
+    const cancelled = upsertProgressTask([], makeEvent({
+      taskId: 'cancelled',
+      status: 'failure',
+      type: 'task.failed',
+      errorCode: 'cancelled',
+    }))[0]!;
+
+    expect(findUnhandledFailedTask([cancelled, failed], new Set())).toBe(failed);
+    expect(findUnhandledFailedTask([failed], new Set(['failed']))).toBeNull();
+  });
+
   it('filters task summaries by status, resource, and time window', () => {
     const now = new Date('2026-04-19T09:00:00.000Z').valueOf();
     const state = createDefaultProgressCenterState();
@@ -75,6 +105,7 @@ describe('progress', () => {
         logs: [],
         stepName: null,
         timestamp: new Date('2026-04-19T08:45:00.000Z').toISOString(),
+        errorCode: null,
         resource: 'runtime',
         resourceId: 'podman',
       },
@@ -87,6 +118,7 @@ describe('progress', () => {
         logs: [],
         stepName: null,
         timestamp: new Date('2026-04-17T08:00:00.000Z').toISOString(),
+        errorCode: null,
         resource: 'site',
         resourceId: 'site-old',
       },

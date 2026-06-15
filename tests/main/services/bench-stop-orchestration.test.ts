@@ -134,4 +134,16 @@ describe('bench stop orchestration', () => {
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'stopped' });
     expect(context.log).toHaveBeenCalledWith('warning', expect.stringContaining('already stopped'), 'stop');
   });
+
+  it('restores the previous running status when stopping fails', async () => {
+    execPromiseMock.mockRejectedValueOnce(new Error('stop failed'));
+
+    orchestrateBenchStop(bench, {
+      update: updateMock,
+    });
+
+    expect(queuedRun).not.toBeNull();
+    await expect(queuedRun?.(context)).rejects.toThrow('stop failed');
+    expect(updateMock).toHaveBeenLastCalledWith(bench.id, { status: 'running' });
+  });
 });

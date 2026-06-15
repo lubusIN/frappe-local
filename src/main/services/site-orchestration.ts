@@ -11,7 +11,6 @@ import { getRuntimeEnv } from './runtime-service';
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
 import { getComposeProjectName, composeBenchArgs, composeBenchSiteArgs } from '../utils/podman/compose-args';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
-import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
 
 /** Shared execution context for running bench commands against a site. */
 export type SiteCommandEnv = {
@@ -203,7 +202,7 @@ export const orchestrateSiteCreation = async (
             bench.path,
             (out) => context.log('info', out, 'cleanup'),
             runtimeEnv,
-            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
           );
         } catch (cleanupError) {
           context.log('warning', `Database cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
@@ -405,7 +404,7 @@ export const orchestrateSiteDeletion = async (
       } catch (error) {
         const message = errorMessage(error);
         context.log('error', message, 'drop-site');
-        await dependencies.sites.update(siteId, { status: 'failure' });
+        await dependencies.sites.update(siteId, { status: site.status });
         throw error;
       }
     }
@@ -548,7 +547,7 @@ export const orchestrateSiteAppsUpdate = (
         context.completeStep('apps', 'Site apps updated');
       } catch (error) {
         context.log('error', `Failed to update site apps: ${errorMessage(error)}`, 'apps');
-        await dependencies.sites.update(site.id, { status: 'failure' });
+        await dependencies.sites.update(site.id, { status: site.status });
         throw error;
       }
     },

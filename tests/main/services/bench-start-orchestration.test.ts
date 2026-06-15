@@ -150,6 +150,6 @@ describe('bench start/restart orchestration', () => {
 
     expect(queuedRun).not.toBeNull();
     await expect(queuedRun?.(context)).rejects.toThrow('core services did not come up');
-    expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'failure' });
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
   });
 });
