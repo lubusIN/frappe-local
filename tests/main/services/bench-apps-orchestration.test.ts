@@ -9,6 +9,8 @@ import { orchestrateBenchAppChanges } from '../../../src/main/services/bench-orc
 const execPromiseMock = vi.fn();
 const getBinaryPathMock = vi.fn();
 const getRuntimeEnvMock = vi.fn();
+const ensureRuntimeRunningMock = vi.fn();
+const getLastRuntimeErrorMock = vi.fn();
 const enqueueMock = vi.fn();
 
 vi.mock('../../../src/main/utils/exec', () => ({
@@ -21,8 +23,8 @@ vi.mock('../../../src/main/utils/binaries', () => ({
 
 vi.mock('../../../src/main/services/runtime-service', () => ({
   getRuntimeEnv: () => getRuntimeEnvMock(),
-  ensureRuntimeRunning: async () => true,
-  getLastRuntimeError: () => null,
+  ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
+  getLastRuntimeError: () => getLastRuntimeErrorMock(),
 }));
 
 vi.mock('../../../src/main/services/task-runner', () => ({
@@ -55,6 +57,8 @@ describe('bench app orchestration', () => {
       return `/mock/${name}`;
     });
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
+    ensureRuntimeRunningMock.mockResolvedValue(true);
+    getLastRuntimeErrorMock.mockReturnValue(null);
     execPromiseMock.mockResolvedValue({ code: 0, stdout: '', stderr: '' });
     enqueueMock.mockImplementation((definition: { run: (ctx: TaskExecutionContext) => Promise<void> }) => {
       queuedRun = definition.run;
@@ -116,9 +120,148 @@ describe('bench app orchestration', () => {
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      expect.arrayContaining(['up', '-d', '--remove-orphans', 'frappe']),
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
+    );
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      ['-p', 'local-bench-bench-ap', 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
+    );
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      ['-p', 'local-bench-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
+    );
 
     expect(appCatalogRepo.findById).toHaveBeenCalledWith('payments');
     expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe', 'erpnext', 'payments'] });
+  });
+
+  it('fails before app commands when podman cannot be started', async () => {
+    const bench: Bench = {
+      id: 'bench-apps-runtime',
+      name: 'bench-apps',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe'],
+      status: 'running',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+
+    ensureRuntimeRunningMock.mockResolvedValue(false);
+    getLastRuntimeErrorMock.mockReturnValue('Podman socket is unavailable.');
+
+    orchestrateBenchAppChanges(
+      bench,
+      { update: vi.fn(async () => bench) },
+      undefined,
+      bench.apps,
+      ['frappe', 'builder']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await expect(queuedRun?.(context)).rejects.toThrow('Podman socket is unavailable.');
+    expect(execPromiseMock).not.toHaveBeenCalled();
+    expect(getRuntimeEnvMock).not.toHaveBeenCalled();
+  });
+
+  it('fails before app commands when bench containers cannot be started', async () => {
+    const bench: Bench = {
+      id: 'bench-apps-service',
+      name: 'bench-apps',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe'],
+      status: 'running',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+    const updateMock = vi.fn(async () => bench);
+
+    execPromiseMock.mockResolvedValueOnce({
+      code: 1,
+      stdout: '',
+      stderr: 'service frappe failed to start',
+    });
+
+    orchestrateBenchAppChanges(
+      bench,
+      { update: updateMock },
+      undefined,
+      bench.apps,
+      ['frappe', 'builder']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await expect(queuedRun?.(context)).rejects.toThrow('Could not start bench containers');
+    expect(execPromiseMock).toHaveBeenCalledTimes(1);
+    expect(execPromiseMock.mock.calls[0]?.[1]).toEqual(
+      expect.arrayContaining(['up', '-d', '--remove-orphans', 'frappe'])
+    );
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it('restarts bench processes and preserves apps when app download fails', async () => {
+    const bench: Bench = {
+      id: 'bench-apps-recovery',
+      name: 'bench-apps',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe'],
+      status: 'running',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+    const updateMock = vi.fn(async () => bench);
+
+    execPromiseMock.mockImplementation(async (_command: string, args: string[]) => {
+      if (args.includes('get-app')) {
+        return { code: 1, stdout: '', stderr: 'clone failed' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+
+    orchestrateBenchAppChanges(
+      bench,
+      { update: updateMock },
+      undefined,
+      bench.apps,
+      ['frappe', 'builder']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await expect(queuedRun?.(context)).rejects.toThrow('Failed to fetch app builder');
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      ['-p', 'local-bench-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ signal: null })
+    );
   });
 
   it('prefers explicit catalog install branch over version-derived branch', async () => {
@@ -354,6 +497,7 @@ describe('bench app orchestration', () => {
     const timeoutError = new Error('Command timed out after 1200000ms: docker-compose exec -T backend bench get-app ...');
 
     execPromiseMock
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
       .mockRejectedValueOnce(timeoutError)
       .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })

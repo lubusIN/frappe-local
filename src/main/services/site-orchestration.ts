@@ -440,6 +440,9 @@ export const orchestrateSiteAppsUpdate = (
     name: `Update Site Apps ${site.name}`,
     resource: { type: 'site', id: site.id },
     run: async (context) => {
+      let recoveryEnv: SiteCommandEnv | null = null;
+      const attemptedInstalls: string[] = [];
+      const attemptedUninstalls: string[] = [];
       try {
         context.startStep('apps', 'Updating site apps');
         const bench = await dependencies.benches.findById(site.benchId);
@@ -453,12 +456,14 @@ export const orchestrateSiteAppsUpdate = (
         const projectName = getComposeProjectName(site.benchId);
         const runtimeEnv = await getRuntimeEnv();
         const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
+        recoveryEnv = siteEnv;
 
         if (installDelta.length > 0) {
           context.startStep('install-apps', `Installing ${installDelta.length} app${installDelta.length === 1 ? '' : 's'} on ${site.name}`);
 
           for (const app of installDelta) {
             context.throwIfCancelled();
+            attemptedInstalls.push(app);
             context.log('info', `Installing app ${app} on ${site.name}`, 'install-apps');
 
             const args = composeBenchSiteArgs(projectName, site.name, ['install-app', app]);
@@ -487,6 +492,7 @@ export const orchestrateSiteAppsUpdate = (
 
           for (const app of uninstallDelta) {
             context.throwIfCancelled();
+            attemptedUninstalls.push(app);
             context.log('info', `Uninstalling app ${app} from ${site.name}`, 'uninstall-apps');
 
             // Proactively purge pending jobs to avoid QueueOverloaded errors in local dev environments
@@ -546,7 +552,99 @@ export const orchestrateSiteAppsUpdate = (
         
         context.completeStep('apps', 'Site apps updated');
       } catch (error) {
-        context.log('error', `Failed to update site apps: ${errorMessage(error)}`, 'apps');
+        if (recoveryEnv && (attemptedInstalls.length > 0 || attemptedUninstalls.length > 0)) {
+          const logRecovery = (level: 'info' | 'warning', message: string) => {
+            if (!context.signal.aborted) {
+              context.log(level, message, 'rollback-apps');
+            }
+          };
+
+          try {
+            if (!context.signal.aborted) {
+              context.startStep('rollback-apps', 'Restoring previous site apps');
+            }
+
+            for (const app of [...attemptedInstalls].reverse()) {
+              const rollbackResult = await execPromise(
+                recoveryEnv.runtimeCmd,
+                composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['uninstall-app', app, '--yes']),
+                recoveryEnv.benchPath,
+                undefined,
+                recoveryEnv.runtimeEnv,
+                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+              );
+              if (rollbackResult.code !== 0) {
+                logRecovery('warning', `Could not rollback app ${app}: ${rollbackResult.stderr || rollbackResult.stdout}`);
+              }
+            }
+
+            for (const app of [...attemptedUninstalls].reverse()) {
+              const rollbackResult = await execPromise(
+                recoveryEnv.runtimeCmd,
+                composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['install-app', app]),
+                recoveryEnv.benchPath,
+                undefined,
+                recoveryEnv.runtimeEnv,
+                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+              );
+              if (rollbackResult.code !== 0) {
+                logRecovery('warning', `Could not restore app ${app}: ${rollbackResult.stderr || rollbackResult.stdout}`);
+              }
+            }
+
+            const recoveryCommands = ['migrate', 'clear-cache', 'clear-website-cache'];
+            for (const commandName of recoveryCommands) {
+              const recoveryResult = await execPromise(
+                recoveryEnv.runtimeCmd,
+                composeBenchSiteArgs(recoveryEnv.projectName, site.name, [commandName]),
+                recoveryEnv.benchPath,
+                undefined,
+                recoveryEnv.runtimeEnv,
+                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+              );
+              if (recoveryResult.code !== 0) {
+                logRecovery(
+                  'warning',
+                  `Site recovery command ${commandName} failed: ${recoveryResult.stderr || recoveryResult.stdout}`
+                );
+              }
+            }
+
+            await execPromise(
+              recoveryEnv.runtimeCmd,
+              ['-p', recoveryEnv.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
+              recoveryEnv.benchPath,
+              undefined,
+              recoveryEnv.runtimeEnv,
+              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
+            ).catch(() => ({ code: 0, stdout: '', stderr: '' }));
+
+            const restartResult = await execPromise(
+              recoveryEnv.runtimeCmd,
+              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+              recoveryEnv.benchPath,
+              undefined,
+              recoveryEnv.runtimeEnv,
+              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
+            );
+            if (restartResult.code !== 0) {
+              logRecovery(
+                'warning',
+                `Could not restart bench processes after rollback: ${restartResult.stderr || restartResult.stdout}`
+              );
+            }
+
+            if (!context.signal.aborted) {
+              context.completeStep('rollback-apps', 'Previous site apps restored');
+            }
+          } catch (rollbackError) {
+            logRecovery('warning', `Site app rollback did not complete: ${errorMessage(rollbackError)}`);
+          }
+        }
+
+        if (!context.signal.aborted) {
+          context.log('error', `Failed to update site apps: ${errorMessage(error)}`, 'apps');
+        }
         await dependencies.sites.update(site.id, { status: site.status });
         throw error;
       }

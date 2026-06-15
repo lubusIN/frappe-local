@@ -376,4 +376,61 @@ describe('site orchestration command execution', () => {
       status: 'running',
     });
   });
+
+  it('rolls back a failed site app activation and restores the running site', async () => {
+    execPromiseMock.mockImplementation(async (_command: string, args: string[]) => {
+      if (args.includes('install-app') && args.includes('erpnext')) {
+        return { code: 1, stdout: '', stderr: 'install failed' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
+
+    orchestrateSiteAppsUpdate(
+      {
+        benches: {
+          findById: async () => bench,
+        },
+        sites: {
+          update: updateSiteMock,
+        },
+      },
+      {
+        ...createdSite,
+        status: 'running',
+      },
+      ['frappe', 'erpnext']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await expect(queuedRun?.(context)).rejects.toThrow('Failed to install app erpnext');
+
+    const calledArgs = execPromiseMock.mock.calls.map((call) => call[1] as string[]);
+    expect(calledArgs).toContainEqual([
+      '-p',
+      'local-bench-1adb2eed',
+      'exec',
+      '-T',
+      'frappe',
+      'bench',
+      '--site',
+      'frappevault.localhost',
+      'uninstall-app',
+      'erpnext',
+      '--yes',
+    ]);
+    expect(calledArgs).toContainEqual([
+      '-p',
+      'local-bench-1adb2eed',
+      'exec',
+      '-d',
+      'frappe',
+      'bench',
+      'start',
+    ]);
+    expect(updateSiteMock).toHaveBeenLastCalledWith('site-001', { status: 'running' });
+    expect(updateSiteMock).not.toHaveBeenCalledWith(
+      'site-001',
+      expect.objectContaining({ apps: ['frappe', 'erpnext'] })
+    );
+  });
 });
