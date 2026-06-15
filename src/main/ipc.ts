@@ -351,18 +351,24 @@ export const registerIpcHandlers = (
        }
      }
 
-     const settings = await getCurrentSettings(repositories.settings);
-     if (settings?.storagePath) {
-       const benchesDir = path.join(resolveUserPath(settings.storagePath), 'benches');
-       try {
-         if (fs.existsSync(benchesDir)) {
-           await fs.promises.rm(benchesDir, { recursive: true, force: true });
-           mainLogger.info(`Removed dormant benches folder: ${benchesDir}`);
-         }
-       } catch (error) {
-         mainLogger.warn(`Failed to remove benches folder ${benchesDir}: ${error}`);
-       }
-     }
+    const settings = await getCurrentSettings(repositories.settings);
+    const managedBenchesDirectories = new Set([
+      path.join(runtimePaths.userDataPath, 'benches'),
+      ...(settings?.storagePath
+        ? [path.join(resolveUserPath(settings.storagePath), 'benches')]
+        : []),
+    ]);
+
+    for (const benchesDir of managedBenchesDirectories) {
+      try {
+        if (fs.existsSync(benchesDir)) {
+          await fs.promises.rm(benchesDir, { recursive: true, force: true });
+          mainLogger.info(`Removed dormant benches folder: ${benchesDir}`);
+        }
+      } catch (error) {
+        mainLogger.warn(`Failed to remove benches folder ${benchesDir}: ${error}`);
+      }
+    }
 
     if (isPodmanMachineRequired()) {
       try {
