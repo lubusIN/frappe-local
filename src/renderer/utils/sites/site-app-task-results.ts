@@ -1,6 +1,6 @@
 import type { ProgressTaskSummary } from '../../controllers/progress';
 
-const SITE_APPS_TASK_NAME_PATTERN = 'update site apps';
+const SITE_APPS_TASK_NAME_PATTERN = /^app .* (installation|uninstallation) on /i;
 const SITE_CREATION_TASK_NAME_PATTERN = 'create site:';
 
 const isCompletedTask = (task: ProgressTaskSummary): boolean =>
@@ -17,7 +17,7 @@ export const isCompletedSiteCreationTask = (task: ProgressTaskSummary): boolean 
 export const isCompletedSiteAppUpdateTask = (task: ProgressTaskSummary): boolean => {
   return (
     task.resource === 'site' &&
-    task.taskName.toLowerCase().includes(SITE_APPS_TASK_NAME_PATTERN) &&
+    SITE_APPS_TASK_NAME_PATTERN.test(task.taskName) &&
     isCompletedTask(task)
   );
 };

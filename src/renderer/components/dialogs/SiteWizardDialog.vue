@@ -2,7 +2,7 @@
   <WizardDialog
     :open="open"
     title="New site"
-    :steps="['Bench', 'Details', 'Apps', 'Confirm']"
+    :steps="['Bench', 'Details', 'Confirm']"
     :current-step="wizardStep"
     :errors="wizardErrors"
     :creating="creating"
@@ -57,24 +57,6 @@
 
     <div
       v-if="wizardStep === 3"
-      class="grid gap-4"
-    >
-      <label class="flex flex-col gap-1.5">
-        <FormLabel label="Apps" />
-        <AppManager
-          v-model="createForm.appsSelected"
-          mode="select"
-          class="w-full"
-          :disabled="creating || loading"
-          :frappe-version="selectedBench?.frappeVersion"
-          :allowed-app-ids="selectedBenchAppIds"
-          :disabled-app-ids="defaultInstalledSiteApps"
-        />
-      </label>
-    </div>
-
-    <div
-      v-if="wizardStep === 4"
       class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px]"
     >
       <div class="flex justify-between mb-2">
@@ -89,9 +71,6 @@
       >
         <span>Force</span><strong class="font-semibold">Yes</strong>
       </div>
-      <div class="flex justify-between">
-        <span>Apps</span><strong class="font-semibold">{{ selectedApps.length > 0 ? selectedApps.join(', ') : 'None' }}</strong>
-      </div>
     </div>
   </WizardDialog>
 </template>
@@ -100,7 +79,6 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { FormLabel, Select, Switch, TextInput } from 'frappe-ui';
 import WizardDialog from './WizardDialog.vue';
-import AppManager from '../AppManager.vue';
 import { useSites } from '../../composables/data/useSites';
 import { useBenches } from '../../composables/data/useBenches';
 import { useIpc } from '../../composables/system/useIpc';
@@ -112,14 +90,16 @@ import {
   type SiteWizardStep,
 } from '../../controllers/site-wizard';
 
+import type { SiteListItem } from '../../../shared/domain/domain-models';
+
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
-  'created': [];
+  'created': [site: SiteListItem];
 }>();
 
 const ipc = useIpc();
-const { sites, loading, creating, create } = useSites();
+const { sites, loading, creating, create, refresh } = useSites();
 const { benches: allBenches, loading: benchLoading } = useBenches();
 
 const SELECT_NONE = '__none__';
@@ -129,14 +109,11 @@ const createForm = reactive({
   benchId: '',
   path: '',
 
-  appsSelected: [] as string[],
   force: false,
 });
 
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<string[]>([]);
-const defaultInstalledSiteApps = ['frappe'];
-const selectedApps = computed(() => createForm.appsSelected);
 
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 const createBenchSelection = computed({
@@ -154,15 +131,12 @@ const createBenchOptions = computed(() => [
 ]);
 
 const selectedBench = computed(() => allBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
-const selectedBenchAppIds = computed(() => {
-  const apps = selectedBench.value?.apps ?? [];
-  return [...new Set(apps.map((app) => app.trim()).filter(Boolean))];
-});
 
 watch(
   () => props.open,
   (isOpen) => {
     if (isOpen) {
+      refresh();
       if (!createForm.benchId && creatableBenches.value.length === 1) {
         createForm.benchId = creatableBenches.value[0].id;
       }
@@ -186,7 +160,11 @@ const onNextStep = async () => {
     const siteDomain = toSiteDomain(createForm.name);
     const duplicateInDb = sites.value.find(s => s.name === siteDomain);
     if (duplicateInDb && !createForm.force) {
-      errors.push(`A site named "${siteDomain}" already exists in the database. Enable "Force create" to overwrite.`);
+      if (duplicateInDb.status === 'queued') {
+        errors.push(`Site "${siteDomain}" is currently being processed (e.g. deleted). Please wait a moment before recreating.`);
+      } else {
+        errors.push(`A site named "${siteDomain}" already exists in the database. Enable "Force create" to overwrite.`);
+      }
     }
     if (!createForm.force && createForm.path) {
       const exists = await ipc.pathExists(createForm.path);
@@ -197,7 +175,7 @@ const onNextStep = async () => {
   }
   wizardErrors.value = errors;
   if (errors.length > 0) return;
-  if (wizardStep.value < 4) wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
+  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
 };
 
 const onPreviousStep = () => {
@@ -212,7 +190,6 @@ const onCloseSiteWizard = () => {
   createForm.benchId = '';
   createForm.path = '';
 
-  createForm.appsSelected = [];
   createForm.force = false;
   emit('update:open', false);
 };
@@ -223,9 +200,11 @@ const onCreateSite = async () => {
   if (!result.payload) return;
 
   try {
-    await create(result.payload);
-    emit('created');
-    onCloseSiteWizard();
+    const createdSite = await create(result.payload);
+    if (createdSite) {
+      emit('created', createdSite);
+      onCloseSiteWizard();
+    }
   } catch (err) {
     wizardErrors.value = [String(err)];
   }

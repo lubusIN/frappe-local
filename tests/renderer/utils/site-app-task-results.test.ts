@@ -7,7 +7,7 @@ import {
 
 const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSummary => ({
   taskId: overrides.taskId ?? 'task-1',
-  taskName: overrides.taskName ?? 'Update Site Apps alpha.localhost',
+  taskName: overrides.taskName ?? 'App frappe_builder installation on alpha.localhost',
   status: overrides.status ?? 'running',
   type: overrides.type ?? 'task.started',
   message: overrides.message ?? 'Updating',

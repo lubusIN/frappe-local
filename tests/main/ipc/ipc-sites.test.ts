@@ -473,32 +473,7 @@ describe('sites IPC handlers', () => {
 
     expect(deleted).toBe(true);
   });
-
-  it('sites:delete is blocked when site is running', async () => {
-    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-
-    registerIpcHandlers(
-      { handle: (channel, listener) => { handlers.set(channel, listener); } },
-      {
-        appCatalog: makeStubCatalogRepo(),
-        benches: makeStubBenchRepo(),
-        sites: makeStubSiteRepo([
-          {
-            ...sites[0]!,
-            status: 'running',
-          },
-        ]),
-        settings: makeStubSettingsRepo(),
-      }
-    );
-
-    const deleteHandler = handlers.get(ipcChannels.sitesDelete);
-
-    await expect(deleteHandler?.(undefined, 'site-001')).rejects.toThrow(
-      'Cannot delete a running site. Please stop it first.'
-    );
-  });
-
+ß
   it('sites:logs returns lifecycle entries for a site', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 

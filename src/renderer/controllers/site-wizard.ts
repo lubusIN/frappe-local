@@ -1,13 +1,12 @@
 import type { SiteCreateInput } from '../../shared/core/ipc';
 
-export type SiteWizardStep = 1 | 2 | 3 | 4;
+export type SiteWizardStep = 1 | 2 | 3;
 
 export type SiteWizardDraft = {
   readonly benchId: string;
   readonly name: string;
   readonly path: string;
 
-  readonly appsSelected?: string[];
   readonly force?: boolean;
 };
 
@@ -72,7 +71,6 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
     };
   }
 
-  const selectedApps = (draft.appsSelected ?? []).map((item) => item.trim()).filter(Boolean);
   const normalizedName = toSiteDomain(draft.name);
   const trimmedPath = draft.path.trim();
   const normalizedPath = trimmedPath.endsWith(`/${draft.name.trim()}`)
@@ -85,7 +83,7 @@ export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildR
       name: normalizedName,
       path: normalizedPath,
 
-      apps: selectedApps,
+      apps: ['frappe'],
       force: draft.force ?? false,
     },
     errors: [],

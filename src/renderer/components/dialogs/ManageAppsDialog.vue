@@ -7,9 +7,21 @@
   >
     <template #body-content>
       <div class="flex flex-col gap-4">
-        <div class="flex flex-col min-h-0 gap-3 pt-6">
+        <div
+          v-if="warningMessage"
+          class="pt-6"
+        >
+          <Alert 
+            theme="yellow" 
+            :title="warningMessage" 
+            :dismissable="false" 
+          />
+        </div>
+        <div
+          class="flex flex-col min-h-0 gap-3"
+          :class="warningMessage ? 'pt-0' : 'pt-6'"
+        >
           <AppManager
-            mode="manage"
             :context="context"
             :active-app-ids="activeAppIds"
             :allowed-app-ids="allowedAppIds"
@@ -22,12 +34,6 @@
             @uninstall-app="$emit('remove-app', $event)"
           />
         </div>
-        <p
-          v-if="!canMutate"
-          class="text-sm text-ink-amber-4"
-        >
-          Start the {{ context }} before managing apps.
-        </p>
       </div>
     </template>
     <template #actions>
@@ -45,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog } from 'frappe-ui';
+import { Alert, Button, Dialog } from 'frappe-ui';
 import AppManager from '../AppManager.vue';
 
 defineProps<{
@@ -55,7 +61,7 @@ defineProps<{
   activeAppIds: string[];
   allowedAppIds?: string[];
   disabled: boolean;
-  canMutate: boolean;
+  warningMessage: string | null;
   frappeVersion?: string;
   loadingAppId: string | null;
 }>();

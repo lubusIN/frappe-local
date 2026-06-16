@@ -27,7 +27,6 @@ import { getTaskRunner, type TaskExecutionContext } from './services/task-runner
 import { createMainLogger } from './logger';
 import { findNextAvailableTcpPort } from './utils/ports';
 import { normalizeSiteHost } from '../shared/utils/site-hostname';
-import { withCoreBenchApps } from '../shared/utils/bench-apps';
 import { resolveBenchHttpPort, DEFAULT_HTTP_PORT } from './utils/bench-http-port';
 
 const mainLogger = createMainLogger('ipc');
@@ -467,7 +466,7 @@ export const registerIpcHandlers = (
       ...rawInput,
       path: resolveUserPath(rawInput.path),
     });
-    const normalizedApps = withCoreBenchApps(payload.apps);
+    const normalizedApps = Array.from(new Set(['frappe', ...payload.apps.map(a => a.trim()).filter(Boolean)]));
 
     const existingBenches = await repositories.benches.findAll();
     const usedPorts = deriveUsedBenchPorts(existingBenches);
@@ -505,7 +504,9 @@ export const registerIpcHandlers = (
       return null;
     }
 
-    const requestedApps = Array.isArray(payload.apps) ? payload.apps : undefined;
+    const requestedApps = Array.isArray(payload.apps)
+      ? Array.from(new Set(['frappe', ...payload.apps]))
+      : undefined;
     const appsChanged = Array.isArray(requestedApps) && requestedApps.join('\u0000') !== existing.apps.join('\u0000');
     const deferAppsPersistence = appsChanged && existing.status === 'running' && !payload.status;
 
@@ -733,8 +734,13 @@ export const registerIpcHandlers = (
   ipcMainLike.handle(ipcChannels.sitesCreate, async (_event: unknown, input: unknown) => {
     const payload = CreateSiteInputSchema.parse(input as SiteCreateInput);
     const existingSites = await repositories.sites.findAll();
-    if (hasDuplicateSiteHost(existingSites, payload.name)) {
-      throw new Error(`A site host "${normalizeSiteHost(payload.name)}" already exists. Use a unique site name.`);
+    const duplicateSite = existingSites.find(s => normalizeSiteHost(s.name) === normalizeSiteHost(payload.name));
+    if (duplicateSite) {
+      if (payload.force) {
+        await repositories.sites.delete(duplicateSite.id);
+      } else {
+        throw new Error(`A site host "${normalizeSiteHost(payload.name)}" already exists. Use a unique site name.`);
+      }
     }
 
     const bench = await repositories.benches.findById(payload.benchId);
@@ -745,7 +751,7 @@ export const registerIpcHandlers = (
       throw new Error(`Cannot create site. Bench "${bench.name}" is not running. Please start the bench first.`);
     }
 
-    const unavailableApps = payload.apps.filter((app) => !bench.apps.includes(app));
+    const unavailableApps = payload.apps.filter((app) => app !== 'frappe' && !bench.apps.includes(app));
     if (unavailableApps.length > 0) {
       throw new Error(`Cannot create site with apps not installed on bench: ${unavailableApps.join(', ')}`);
     }
@@ -807,7 +813,7 @@ export const registerIpcHandlers = (
         throw new Error('Site must be ready before activating apps.');
       }
 
-      const unavailableApps = requestedApps.filter((app) => !bench.apps.includes(app));
+      const unavailableApps = requestedApps.filter((app) => app !== 'frappe' && !bench.apps.includes(app));
       if (unavailableApps.length > 0) {
         throw new Error(`Cannot activate apps not installed on bench: ${unavailableApps.join(', ')}`);
       }
@@ -855,9 +861,7 @@ export const registerIpcHandlers = (
     if (!site) {
       throw new Error('Site not found.');
     }
-    if (site.status === 'running') {
-      throw new Error('Cannot delete a running site. Please stop it first.');
-    }
+
     const bench = await repositories.benches.findById(site.benchId);
     if (bench && bench.status !== 'running') {
       throw new Error(`Cannot delete site. Its parent bench "${bench.name}" is not running. Please start the bench first.`);

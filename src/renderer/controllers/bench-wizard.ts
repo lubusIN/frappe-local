@@ -1,13 +1,10 @@
 import type { BenchCreateInput } from '../../shared/core/ipc';
-import { withCoreBenchApps } from '../../shared/utils/bench-apps';
-
-export type BenchWizardStep = 1 | 2 | 3;
+export type BenchWizardStep = 1 | 2;
 
 export type BenchWizardDraft = {
   readonly name: string;
   readonly path: string;
   readonly frappeVersion: string;
-  readonly appsSelected?: string[];
 };
 
 export type BenchWizardBuildResult = {
@@ -51,14 +48,12 @@ export const buildBenchCreatePayload = (draft: BenchWizardDraft): BenchWizardBui
     };
   }
 
-  const selectedApps = (draft.appsSelected ?? []).map((item) => item.trim()).filter(Boolean);
-
   return {
     payload: {
       name: draft.name.trim(),
       path: draft.path.trim(),
       frappeVersion: draft.frappeVersion.trim(),
-      apps: withCoreBenchApps(selectedApps),
+      apps: ['frappe'],
     },
     errors: [],
   };

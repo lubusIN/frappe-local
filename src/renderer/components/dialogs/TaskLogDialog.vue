@@ -49,7 +49,7 @@
 
         <div
           ref="logsContainer"
-          class="task-log-output max-h-[58vh] min-h-52 cursor-text select-text overflow-auto py-2 font-mono text-xs leading-5"
+          class="task-log-output max-h-[45vh] min-h-52 cursor-text select-text overflow-auto py-2 font-mono text-xs leading-5"
           tabindex="0"
           @mousedown.stop
           @click.stop

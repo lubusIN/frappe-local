@@ -20,7 +20,7 @@
     <!-- Creation Dialog -->
     <SiteWizardDialog
       v-model:open="showCreateSiteModal"
-      @created="refresh"
+      @created="onSiteCreated"
     />
 
     <StatePanel
@@ -181,7 +181,7 @@
       :active-app-ids="Array.from(siteActivatedAppSet)"
       :allowed-app-ids="benchInstalledAppRows"
       :disabled="updating || !canActivateSelectedSiteApps"
-      :can-mutate="canMutateSiteApps"
+      :warning-message="siteAppsWarningMessage"
       :frappe-version="selectedBenchForSiteApps?.frappeVersion"
       :loading-app-id="activatingSiteAppId"
       @close="closeSiteAppsDialog"
@@ -191,9 +191,9 @@
 
     <ConfirmationDialog
       :open="removeSiteAppConfirmOpen"
-      title="Deactivate app"
-      :message="`Are you sure you want to deactivate and uninstall &quot;${pendingRemoveSiteAppName}&quot; from site &quot;${selectedSiteForApps?.name}&quot;? This will drop the app's database tables and delete all associated data.`"
-      confirm-label="Deactivate"
+      title="Uninstall app"
+      :message="`Are you sure you want to uninstall &quot;${pendingRemoveSiteAppName}&quot; from site &quot;${selectedSiteForApps?.name}&quot;? This will drop the app's database tables and delete all associated data.`"
+      confirm-label="Uninstall"
       @cancel="onCancelDeactivateSiteApp"
       @confirm="onConfirmDeactivateSiteApp"
     />
@@ -248,9 +248,10 @@ const {
   updating,
   deleting,
   error,
+  successMessage,
   update,
   remove,
-  refresh,
+  refresh: load,
   openFolder,
 } = useSites();
 
@@ -265,6 +266,34 @@ const selectedTaskId = ref<string | null>(null);
 const showSiteAppsDialog = ref(false);
 const selectedSiteForAppsId = ref<string | null>(null);
 const activatingSiteAppId = ref<string | null>(null);
+
+const refresh = async (force = false) => {
+  await load(force);
+};
+
+const onSiteCreated = async (site: SiteListItem) => {
+  toast.info(`Creating site ${site.name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(site.id); }
+    }
+  });
+  await refresh(true);
+};
+
+watch(successMessage, (msg) => {
+  if (msg) {
+    toast.success(msg);
+    successMessage.value = null;
+  }
+});
+
+watch(error, (err) => {
+  if (err) {
+    toast.error(err);
+    error.value = null;
+  }
+});
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null;
@@ -322,13 +351,12 @@ watch(
         !acknowledgedTasks.has(task.taskId)
       ) {
         acknowledgedTasks.add(task.taskId);
-        const siteName = sites.value.find((site) => site.id === task.resourceId)?.name
-          ?? task.taskName.replace(/^Update Site Apps\s+/i, '').trim();
-
         void refresh();
 
         if (task.status === 'success') {
-          toast.success(`Site apps updated for ${siteName}.`);
+          const actionVerb = task.taskName.includes('installation') ? 'installed' : 'uninstalled';
+          const msg = task.taskName.replace('installation', actionVerb).replace('uninstallation', actionVerb);
+          toast.success(msg);
         }
       }
     }
@@ -463,18 +491,26 @@ const benchInstalledAppRows = computed(() => {
 
 const siteActivatedAppSet = computed(() => new Set(selectedSiteForApps.value?.apps ?? []));
 
-const canMutateSiteApps = computed(() => {
-  if (!selectedSiteForApps.value) return false;
-  return selectedSiteForApps.value.status === 'running' || selectedSiteForApps.value.status === 'stopped';
+const siteAppsWarningMessage = computed(() => {
+  const site = selectedSiteForApps.value;
+  if (!site) return null;
+  
+  const siteReady = site.status === 'running' || site.status === 'stopped';
+  if (!siteReady) return 'Wait for site to be ready before managing apps.';
+  
+  if (isResourceBusy(site.id)) return 'Site app management is currently in progress. Please wait.';
+  
+  const bench = allBenches.value.find((b) => b.id === site.benchId);
+  const isBenchReady = bench && (bench.status === 'running' || bench.status === 'success');
+  if (!isBenchReady) return 'Start the bench before managing site apps.';
+  
+  const isBenchBusy = tasks.value.some(t => t.resource === 'bench' && t.resourceId === site.benchId && (t.status === 'pending' || t.status === 'running'));
+  if (isBenchBusy) return 'Wait for bench app management to finish before managing site apps.';
+  
+  return null;
 });
 
-const canActivateSelectedSiteApps = computed(() => {
-  if (!selectedSiteForApps.value) return false;
-  const isSiteReady = selectedSiteForApps.value.status === 'running' || selectedSiteForApps.value.status === 'stopped';
-  const bench = allBenches.value.find((b) => b.id === selectedSiteForApps.value!.benchId);
-  const isBenchReady = bench && (bench.status === 'running' || bench.status === 'success');
-  return isSiteReady && isBenchReady && !isResourceBusy(selectedSiteForApps.value.id, 'site');
-});
+const canActivateSelectedSiteApps = computed(() => siteAppsWarningMessage.value === null);
 
 const appsToInstall = ref<string[]>([]);
 const { getAppInfo } = useAppCatalog();
@@ -503,13 +539,13 @@ const onActivateSiteApp = async (appId: string) => {
   if (!site) return;
 
   if (site.status !== 'running' && site.status !== 'stopped') {
-    toast.error('Wait for site to be ready before activating apps.');
+    toast.error('Wait for site to be ready before installing apps.');
     return;
   }
 
   const bench = allBenches.value.find((b) => b.id === site.benchId);
   if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
-    toast.error('Bench must be running before modifying site apps.');
+    toast.error('Bench must be running before managing site apps.');
     return;
   }
 
@@ -526,7 +562,12 @@ const onActivateSiteApp = async (appId: string) => {
 
   activatingSiteAppId.value = appId;
   const nextApps = Array.from(new Set([...existingApps, appId]));
-  toast.success(`Activating app ${appId} on ${site.name}...`);
+  toast.info(`Installing app ${appId} on ${site.name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(site.id); },
+    },
+  });
 
   try {
     await update(site.id, { apps: nextApps });
@@ -570,13 +611,13 @@ const onDeactivateSiteApp = async (appId: string) => {
   if (!site) return;
 
   if (site.status !== 'running' && site.status !== 'stopped') {
-    toast.error('Wait for site to be ready before deactivating apps.');
+    toast.error('Wait for site to be ready before uninstalling apps.');
     return;
   }
 
   const bench = allBenches.value.find((b) => b.id === site.benchId);
   if (!bench || (bench.status !== 'running' && bench.status !== 'success')) {
-    toast.error('Bench must be running before modifying site apps.');
+    toast.error('Bench must be running before managing site apps.');
     return;
   }
 
@@ -587,7 +628,12 @@ const onDeactivateSiteApp = async (appId: string) => {
 
   activatingSiteAppId.value = appId;
   const nextApps = existingApps.filter((x) => x !== appId);
-  toast.success(`Deactivating app ${appId} from ${site.name}...`);
+  toast.info(`Uninstalling app ${appId} from ${site.name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(site.id); },
+    },
+  });
 
   try {
     await update(site.id, { apps: nextApps });
@@ -624,7 +670,12 @@ const onConfirmDeleteSite = async (): Promise<void> => {
     return;
   }
   confirmDeleteSiteOpen.value = false;
-  toast.success(`Deleting site ${name}...`);
+  toast.info(`Deleting site ${name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); },
+    },
+  });
   await remove(id);
   cancelDeleteSite();
 };

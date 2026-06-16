@@ -38,7 +38,7 @@ describe('site wizard helpers', () => {
     ]);
   });
 
-  it('treats apps and confirm steps as non-blocking validation steps', () => {
+  it('treats confirm step as non-blocking validation step', () => {
     const draft = {
       benchId: 'bench-001',
       name: 'demo-site',
@@ -46,7 +46,6 @@ describe('site wizard helpers', () => {
     };
 
     expect(getSiteWizardStepErrors(3, draft)).toEqual([]);
-    expect(getSiteWizardStepErrors(4, draft)).toEqual([]);
   });
 
   it('builds create payload when draft is valid', () => {
@@ -54,7 +53,6 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo-site',
       path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
-      appsSelected: ['frappe', 'erpnext'],
     };
 
     const result = buildSiteCreatePayload(draft);
@@ -64,7 +62,7 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'demo-site.localhost',
       path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
-      apps: ['frappe', 'erpnext'],
+      apps: ['frappe'],
       force: false,
     });
   });
@@ -74,7 +72,6 @@ describe('site wizard helpers', () => {
       benchId: 'bench-001',
       name: 'my-site',
       path: '/Users/dev/frappe-bench/sites/my-site',
-      appsSelected: ['frappe'],
     });
 
     expect(result.payload).toEqual({

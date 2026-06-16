@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDefaultAppCatalogSeed, normalizeCatalogProviderItem } from '../../../src/main/services/catalog-provider';
+import { normalizeCatalogProviderItem } from '../../../src/main/services/catalog-provider';
 
 describe('catalog provider normalization', () => {
   it('normalizes id casing and maps categories properly', () => {

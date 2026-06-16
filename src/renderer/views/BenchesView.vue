@@ -116,7 +116,7 @@
 
     <BenchWizardDialog
       v-model:open="showCreateBenchModal"
-      @created="refresh(true)"
+      @created="onBenchCreated"
     />
 
     <TaskLogDialog
@@ -131,7 +131,7 @@
       context="bench"
       :active-app-ids="selectedBenchForApps?.apps ?? []"
       :disabled="!canMutateApps || updating"
-      :can-mutate="canMutateApps"
+      :warning-message="benchAppsWarningMessage"
       :frappe-version="selectedBenchForApps?.frappeVersion"
       :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
       @close="closeAppsDialog"
@@ -183,7 +183,6 @@ import { useBenches } from '../composables/data/useBenches';
 import BenchWizardDialog from '../components/dialogs/BenchWizardDialog.vue';
 import type { BenchListItem } from '../../shared/core/ipc';
 
-import { normalizeSelection } from '../controllers/app-picker';
 
 const {
   benches,
@@ -239,7 +238,18 @@ const closeAppsDialog = () => {
   pendingRemoveBenchAppName.value = '';
 };
 
-const canMutateApps = computed(() => selectedBenchForApps.value?.status === 'running');
+const benchAppsWarningMessage = computed(() => {
+  const bench = selectedBenchForApps.value;
+  if (!bench) return null;
+  if (bench.status !== 'running') return 'Start the bench before managing apps.';
+  if (isResourceBusy(bench.id)) return 'App orchestration is currently in progress. Please wait.';
+  return null;
+});
+
+const canMutateApps = computed(() => benchAppsWarningMessage.value === null);
+
+const normalizeSelection = (selectedIds: readonly string[]): string[] =>
+  Array.from(new Set(selectedIds.map((id) => id.trim()).filter(Boolean)));
 
 const queueBenchAppsUpdate = async (nextApps: readonly string[]) => {
   const bench = selectedBenchForApps.value;
@@ -265,7 +275,12 @@ const onAddBenchApp = async (appId: string) => {
 
   const nextApps = normalizeSelection([...bench.apps, appId]);
   pendingRemoveBenchAppId.value = appId;
-  toast.success(`Getting app ${appId} for bench ${bench.name}...`);
+  toast.info(`Getting app ${appId} for bench ${bench.name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(bench.id); },
+    },
+  });
   await queueBenchAppsUpdate(nextApps);
   closeAppsDialog();
 };
@@ -308,7 +323,12 @@ const onConfirmRemoveBenchApp = async () => {
   removeAppConfirmOpen.value = false;
 
   const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
-  toast.success(`Removing app from bench ${bench.name}...`);
+  toast.info(`Removing app from bench ${bench.name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(bench.id); },
+    },
+  });
   await queueBenchAppsUpdate(nextApps);
   closeAppsDialog();
 };
@@ -447,18 +467,17 @@ watch(
     for (const task of items) {
       if (
         task.resource === 'bench' &&
-        task.taskName.toLowerCase().includes('update bench apps') &&
+        task.taskName.match(/^App .* (installation|uninstallation) on /i) &&
         (task.status === 'success' || task.status === 'failure') &&
         !acknowledgedTasks.has(task.taskId)
       ) {
         acknowledgedTasks.add(task.taskId);
-        const benchName = benches.value.find((bench) => bench.id === task.resourceId)?.name
-          ?? task.taskName.replace(/^Update Bench Apps\s+/i, '').trim();
-
         void refresh(true);
 
         if (task.status === 'success') {
-          toast.success(`Bench apps updated for ${benchName}.`);
+          const actionVerb = task.taskName.includes('installation') ? 'installed' : 'uninstalled';
+          const msg = task.taskName.replace('installation', actionVerb).replace('uninstallation', actionVerb);
+          toast.success(msg);
         }
       }
     }
@@ -503,13 +522,19 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
 
   if (status === 'running') {
     if (currentStatus === 'running') {
-      toast.success(`Restarting bench ${name}...`);
+      toast.info(`Restarting bench ${name}`, {
+        action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); } },
+      });
     } else {
-      toast.success(`Starting bench ${name}...`);
+      toast.info(`Starting bench ${name}`, {
+        action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); } },
+      });
     }
     setPendingBenchAction(id, currentStatus === 'running' ? 'restarting' : 'starting');
   } else {
-    toast.success(`Stopping bench ${name}...`);
+    toast.info(`Stopping bench ${name}`, {
+      action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); } },
+    });
     setPendingBenchAction(id, 'stopping');
   }
 
@@ -523,7 +548,9 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
 const onConfirmDeleteBench = async () => {
   if (!deleteBenchId.value) return;
   try {
-    toast.success(`Deleting bench ${deleteBenchName.value}...`);
+    toast.info(`Deleting bench ${deleteBenchName.value}`, {
+      action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(deleteBenchId.value!); } },
+    });
     await deleteBench(deleteBenchId.value);
     cancelDeleteBench();
   } catch (err) {
@@ -543,6 +570,16 @@ const onConfirmCleanBench = async () => {
 
 const onOpenBenchFolder = async (id: string) => {
   await openFolder(id);
+};
+
+const onBenchCreated = async (bench: BenchListItem) => {
+  toast.info(`Creating bench ${bench.name}`, {
+    action: {
+      label: 'View progress',
+      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(bench.id); }
+    }
+  });
+  await refresh(true);
 };
 
 const onOpenBenchShell = async (id: string) => {

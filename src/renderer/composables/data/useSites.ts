@@ -36,19 +36,8 @@ export const useSites = () => {
         }
       }
 
-      // Check for completed background tasks (queued -> running/stopped)
-      if (sites.value.length > 0) {
-        for (const newSite of newList) {
-          const oldSite = sites.value.find((s) => s.id === newSite.id);
-          if (oldSite && oldSite.status === 'queued' && newSite.status !== 'queued') {
-            if (newSite.status === 'running') {
-              successMessage.value = `Site ${newSite.name} is running.`;
-            } else if (newSite.status === 'stopped') {
-              successMessage.value = `Site ${newSite.name} is stopped.`;
-            }
-          }
-        }
-      }
+      // Remove the queued status transition checks, as the UI already shows specific
+      // task completion toasts (like "Site created" or "App installed") via task watchers.
 
       sites.value = newList;
       if (!isInitialLoad) {
@@ -76,8 +65,10 @@ export const useSites = () => {
     try {
       const ipc = useIpc();
       const created = await ipc.createSite(input);
-      sites.value = [created, ...sites.value];
-      // Toast will be shown when status changes from queued to running
+      if (created) {
+        sites.value = [created, ...sites.value];
+        return created;
+      }
     } catch (err) {
       error.value = humanizeCreateFailure('site', stripIpcPrefix(String(err)));
     } finally {
@@ -100,7 +91,14 @@ export const useSites = () => {
       }
 
       sites.value = sites.value.map((site) => (site.id === id ? updated : site));
-      if (input.status !== 'running' && input.status !== 'stopped') {
+      const isAppsOnlyUpdate =
+        Array.isArray(input.apps) &&
+        input.status === undefined &&
+        input.name === undefined &&
+        input.path === undefined &&
+        input.benchId === undefined;
+
+      if (!isAppsOnlyUpdate && input.status !== 'running' && input.status !== 'stopped') {
         successMessage.value = `Updated site ${updated.name}.`;
       }
     } catch (err) {

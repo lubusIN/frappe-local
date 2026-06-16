@@ -436,8 +436,16 @@ export const orchestrateSiteAppsUpdate = (
 ): void => {
   const taskRunner = getTaskRunner();
 
+  const installDelta = targetApps.filter((app) => !site.apps.includes(app));
+  const uninstallDelta = site.apps.filter((app) => !targetApps.includes(app));
+  
+  if (installDelta.length === 0 && uninstallDelta.length === 0) return;
+
+  const appName = installDelta[0] || uninstallDelta[0] || 'apps';
+  const actionNoun = installDelta.length > 0 ? 'installation' : 'uninstallation';
+  
   taskRunner.enqueue({
-    name: `Update Site Apps ${site.name}`,
+    name: `App ${appName} ${actionNoun} on ${site.name}`,
     resource: { type: 'site', id: site.id },
     run: async (context) => {
       let recoveryEnv: SiteCommandEnv | null = null;
@@ -450,8 +458,6 @@ export const orchestrateSiteAppsUpdate = (
           throw new Error('Cannot update site apps: parent bench was not found.');
         }
 
-        const installDelta = targetApps.filter((app) => !site.apps.includes(app));
-        const uninstallDelta = site.apps.filter((app) => !targetApps.includes(app));
         const runtimeCmd = getBinaryPath('docker-compose');
         const projectName = getComposeProjectName(site.benchId);
         const runtimeEnv = await getRuntimeEnv();

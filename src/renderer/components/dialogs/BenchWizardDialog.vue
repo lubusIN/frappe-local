@@ -2,7 +2,7 @@
   <WizardDialog
     :open="open"
     title="New bench"
-    :steps="['Details', 'Apps', 'Confirm']"
+    :steps="['Details', 'Confirm']"
     :current-step="wizardStep"
     :errors="wizardErrors"
     :creating="creating"
@@ -63,22 +63,6 @@
 
     <div
       v-if="wizardStep === 2"
-      class="grid gap-4"
-    >
-      <label class="flex flex-col gap-1.5">
-        <AppManager
-          v-model="createForm.appsSelected"
-          mode="select"
-          class="w-full"
-          :disabled="creating || loading"
-          :frappe-version="createForm.frappeVersion"
-          :disable-core-bench-apps="true"
-        />
-      </label>
-    </div>
-
-    <div
-      v-if="wizardStep === 3"
       class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2"
     >
       <div class="mb-2 flex justify-between text-[13px]">
@@ -87,11 +71,8 @@
       <div class="mb-2 flex justify-between text-[13px]">
         <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
       </div>
-      <div class="mb-2 flex justify-between text-[13px]">
-        <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
-      </div>
       <div class="flex justify-between text-[13px]">
-        <span>Apps</span><strong class="font-semibold">{{ createForm.appsSelected.length > 0 ? `${CORE_BENCH_APPS_LABEL}, ${createForm.appsSelected.join(', ')}` : CORE_BENCH_APPS_LABEL }}</strong>
+        <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
       </div>
     </div>
   </WizardDialog>
@@ -101,7 +82,6 @@
 import { reactive, ref, watch } from 'vue';
 import { Button, FormLabel, TextInput } from 'frappe-ui';
 import WizardDialog from './WizardDialog.vue';
-import AppManager from '../AppManager.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
 import { useBenches } from '../../composables/data/useBenches';
 import { useIpc } from '../../composables/system/useIpc';
@@ -111,13 +91,14 @@ import {
   getBenchWizardStepErrors,
   type BenchWizardStep,
 } from '../../controllers/bench-wizard';
-import { CORE_BENCH_APPS_LABEL } from '../../../shared/utils/bench-apps';
 import { toSelectorFrappeVersion } from '../../utils/frappe-version';
+
+import type { BenchListItem } from '../../../shared/domain/domain-models';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
-  'created': [];
+  'created': [bench: BenchListItem];
 }>();
 
 const ipc = useIpc();
@@ -132,8 +113,6 @@ const createForm = reactive({
   name: '',
   path: '',
   frappeVersion: getDefaultFrappeVersion(),
-
-  appsSelected: [] as string[],
 });
 
 watch(() => [createForm.name, settingsForm.value.storagePath], ([newName, storagePath], [oldName]) => {
@@ -175,7 +154,7 @@ const onNextStep = () => {
   const errors = getBenchWizardStepErrors(wizardStep.value, createForm);
   wizardErrors.value = errors;
   if (errors.length > 0) return;
-  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
+  if (wizardStep.value < 2) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
 };
 
 const onPreviousStep = () => {
@@ -189,7 +168,6 @@ const onCloseBenchWizard = () => {
   createForm.name = '';
   createForm.path = '';
   createForm.frappeVersion = getDefaultFrappeVersion();
-  createForm.appsSelected = [];
   emit('update:open', false);
 };
 
@@ -199,9 +177,11 @@ const onCreateBench = async () => {
   if (!result.payload) return;
 
   try {
-    await create(result.payload);
-    emit('created');
-    onCloseBenchWizard();
+    const createdBench = await create(result.payload);
+    if (createdBench) {
+      emit('created', createdBench);
+      onCloseBenchWizard();
+    }
   } catch (err) {
     wizardErrors.value = [String(err)];
   }

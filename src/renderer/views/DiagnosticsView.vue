@@ -113,7 +113,7 @@ const onConfirmReset = async (): Promise<void> => {
   }
 
   localStorage.removeItem(ACTIVITIES_STORAGE_KEY);
-  toast.success('Development state reset. Reloading app...');
+  toast.success('Development state reset. Reloading app');
   window.location.reload();
 };
 

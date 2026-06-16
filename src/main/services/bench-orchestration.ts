@@ -9,7 +9,6 @@ import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv } from './runt
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from '../utils/ports';
 import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
-import { CORE_BENCH_APPS_SET } from '../../shared/utils/bench-apps';
 import { ensureBenchComposeWritten, getBenchComposePath } from '../utils/podman/bench-compose';
 import { benchComposeArgs, getComposeProjectName, composeBenchArgs, composeExecArgs } from '../utils/podman/compose-args';
 import { cleanupPodmanResources, projectFilterArgs, nameFilterArgs } from '../utils/podman/podman-cleanup';
@@ -135,12 +134,12 @@ const resolveCatalogBranch = (catalogItem: AppCatalogItem | null, benchFrappeVer
 };
 
 
-const cleanupBenchAppArtifacts = (
+const cleanupBenchAppArtifacts = async (
   benchPath: string,
   appIds: readonly string[],
   context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
   stepId: string
-): void => {
+): Promise<void> => {
   if (appIds.length === 0) {
     return;
   }
@@ -156,13 +155,13 @@ const cleanupBenchAppArtifacts = (
 
   for (const app of uniqueAppIds) {
     try {
-      fs.rmSync(path.join(appsDir, app), { recursive: true, force: true });
+      await fs.promises.rm(path.join(appsDir, app), { recursive: true, force: true });
     } catch (error) {
       context.log('warning', `Failed to cleanup app directory for ${app}: ${errorMessage(error)}`, stepId);
     }
 
     try {
-      fs.rmSync(path.join(assetsDir, app), { recursive: true, force: true });
+      await fs.promises.rm(path.join(assetsDir, app), { recursive: true, force: true });
     } catch (error) {
       context.log('warning', `Failed to cleanup app assets for ${app}: ${errorMessage(error)}`, stepId);
     }
@@ -511,7 +510,7 @@ export const orchestrateBenchCreation = (
         const appsToInstall = (bench.apps ?? [])
           .map((app) => app.trim())
           .filter(Boolean)
-          .filter((app) => !CORE_BENCH_APPS_SET.has(app));
+          .filter((app) => app !== 'frappe');
 
         if (appsToInstall.length > 0) {
           failingStepId = 'apps';
@@ -561,7 +560,7 @@ export const orchestrateBenchCreation = (
           context.startStep('cleanup', 'Cleaning up partial bench resources');
 
           if (attemptedCreateAppInstalls.length > 0) {
-            cleanupBenchAppArtifacts(bench.path, attemptedCreateAppInstalls, context, 'cleanup');
+            await cleanupBenchAppArtifacts(bench.path, attemptedCreateAppInstalls, context, 'cleanup');
           }
 
           if (runtimeReadyForCleanup) {
@@ -613,8 +612,11 @@ export const orchestrateBenchAppChanges = (
     return;
   }
 
+  const appName = delta.install[0] || delta.remove[0] || 'apps';
+  const actionNoun = delta.install.length > 0 ? 'installation' : 'uninstallation';
+
   taskRunner.enqueue({
-    name: `Update Bench Apps ${bench.name}`,
+    name: `App ${appName} ${actionNoun} on ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       let attemptedInstallAppIds: string[] = [];
@@ -771,7 +773,7 @@ export const orchestrateBenchAppChanges = (
               }
             }
 
-            cleanupBenchAppArtifacts(
+            await cleanupBenchAppArtifacts(
               bench.path,
               attemptedInstallAppIds,
               context.signal.aborted ? { log: () => undefined } : context,
@@ -1210,11 +1212,11 @@ export const orchestrateBenchDeletion = (
     name: `Delete Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
-      const removeBenchDirectoryBestEffort = () => {
+      const removeBenchDirectoryBestEffort = async () => {
         context.startStep('fs', 'Removing bench directory');
         try {
           if (fs.existsSync(bench.path)) {
-            fs.rmSync(bench.path, { recursive: true, force: true });
+            await fs.promises.rm(bench.path, { recursive: true, force: true });
           }
           context.completeStep('fs', 'Bench directory removed');
         } catch (fsErr) {
@@ -1310,7 +1312,7 @@ export const orchestrateBenchDeletion = (
         await benchesRepo.delete(bench.id);
         context.completeStep('db', 'Database records removed');
 
-        removeBenchDirectoryBestEffort();
+        await removeBenchDirectoryBestEffort();
 
         if (options?.onDeleted) {
           try {
@@ -1320,7 +1322,7 @@ export const orchestrateBenchDeletion = (
           }
         }
       } catch (error) {
-        removeBenchDirectoryBestEffort();
+        await removeBenchDirectoryBestEffort();
         context.log('error', `Force deletion failed: ${errorMessage(error)}`);
         await benchesRepo.update(bench.id, { status: bench.status });
         throw error;
