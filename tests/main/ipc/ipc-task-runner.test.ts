@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
@@ -72,6 +75,7 @@ function makeStubTaskRunner() {
           listener = null;
         };
       },
+      configureLogDirectory: () => undefined,
       enqueue: () => 'task-stub',
     },
     emit: (event: TaskProgressEvent) => {
@@ -100,5 +104,42 @@ describe('task runner IPC handlers', () => {
     expect(await handlers.get(ipcChannels.taskRunnerSubscribe)?.()).toBe(true);
     expect(await handlers.get(ipcChannels.taskRunnerUnsubscribe)?.()).toBe(true);
     expect(await handlers.get(ipcChannels.taskRunnerUnsubscribe)?.()).toBe(true);
+  });
+
+  it('reads full task logs from the configured log directory', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const taskRunner = makeStubTaskRunner();
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-task-log-ipc-'));
+    const logsPath = path.join(tempDir, 'logs');
+    const tasksPath = path.join(logsPath, 'tasks');
+    fs.mkdirSync(tasksPath, { recursive: true });
+    fs.writeFileSync(
+      path.join(tasksPath, 'task-123.log'),
+      '[2026-06-16T08:20:00.000Z] [INFO] first line\n[2026-06-16T08:20:01.000Z] [ERROR] second line\n',
+      'utf8'
+    );
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+      },
+      undefined,
+      taskRunner.runner,
+      '0.1.0',
+      {
+        userDataPath: tempDir,
+        logsPath,
+        storagePath: path.join(tempDir, 'storage.json'),
+        configPath: path.join(tempDir, 'config.json'),
+      }
+    );
+
+    await expect(handlers.get(ipcChannels.taskRunnerReadLog)?.({}, 'unsafe/task')).rejects.toThrow('Invalid task id.');
+    await expect(handlers.get(ipcChannels.taskRunnerReadLog)?.({}, 'missing-task')).resolves.toBe('');
+    await expect(handlers.get(ipcChannels.taskRunnerReadLog)?.({}, 'task-123')).resolves.toContain('first line');
   });
 });

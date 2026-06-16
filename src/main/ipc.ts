@@ -300,6 +300,26 @@ export const registerIpcHandlers = (
     return true;
   });
 
+  ipcMainLike.handle(ipcChannels.taskRunnerReadLog, async (_event: unknown, taskId: unknown): Promise<string> => {
+    if (typeof taskId !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(taskId)) {
+      throw new Error('Invalid task id.');
+    }
+
+    if (!runtimePaths.logsPath) {
+      return '';
+    }
+
+    const logPath = path.join(runtimePaths.logsPath, 'tasks', `${taskId}.log`);
+    try {
+      return await fs.promises.readFile(logPath, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return '';
+      }
+      throw error;
+    }
+  });
+
   // Event Forwarding for TaskRunner
   taskRunner.onEvent?.((event) => {
     const windows = BrowserWindow?.getAllWindows?.() ?? [];

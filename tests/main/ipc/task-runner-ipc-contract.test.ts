@@ -5,6 +5,7 @@ describe('task runner IPC channels', () => {
   it('defines the required task runner channels', () => {
     expect(ipcChannels.taskRunnerSubscribe).toBe('task-runner:subscribe');
     expect(ipcChannels.taskRunnerUnsubscribe).toBe('task-runner:unsubscribe');
+    expect(ipcChannels.taskRunnerReadLog).toBe('task-runner:read-log');
     expect(ipcChannels.taskRunnerProgressEvent).toBe('task-runner:progress-event');
   });
 
@@ -12,6 +13,7 @@ describe('task runner IPC channels', () => {
     const channels = [
       ipcChannels.taskRunnerSubscribe,
       ipcChannels.taskRunnerUnsubscribe,
+      ipcChannels.taskRunnerReadLog,
       ipcChannels.taskRunnerProgressEvent,
     ];
 
