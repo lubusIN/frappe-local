@@ -235,6 +235,11 @@ describe('bench app orchestration', () => {
       },
     };
     const updateMock = vi.fn(async () => bench);
+    fs.mkdirSync(path.join(benchPath, 'apps', 'builder'), { recursive: true });
+    fs.mkdirSync(path.join(benchPath, 'sites', 'frappe.localhost'), { recursive: true });
+    fs.mkdirSync(path.join(benchPath, 'sites', 'assets', 'builder'), { recursive: true });
+    fs.writeFileSync(path.join(benchPath, 'sites', 'apps.txt'), 'frappe\nbuilder\n', 'utf8');
+    fs.writeFileSync(path.join(benchPath, 'sites', 'common_site_config.json'), '{}', 'utf8');
 
     execPromiseMock.mockImplementation(async (_command: string, args: string[]) => {
       if (args.includes('get-app')) {
@@ -254,6 +259,31 @@ describe('bench app orchestration', () => {
     expect(queuedRun).not.toBeNull();
     await expect(queuedRun?.(context)).rejects.toThrow('Failed to fetch app builder');
     expect(updateMock).not.toHaveBeenCalled();
+    expect(fs.existsSync(path.join(benchPath, 'apps', 'builder'))).toBe(false);
+    expect(fs.existsSync(path.join(benchPath, 'sites', 'assets', 'builder'))).toBe(false);
+    expect(fs.readFileSync(path.join(benchPath, 'sites', 'apps.txt'), 'utf8')).toBe('frappe\n');
+    expect(
+      JSON.parse(fs.readFileSync(path.join(benchPath, 'sites', 'common_site_config.json'), 'utf8'))
+    ).toMatchObject({ default_site: 'frappe.localhost', socketio_port: 443 });
+    expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
+      'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js'
+    );
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'pip', 'uninstall', '-y', 'builder']),
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ signal: null })
+    );
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'build']),
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ signal: null })
+    );
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
       ['-p', 'local-bench-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
@@ -262,6 +292,17 @@ describe('bench app orchestration', () => {
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.objectContaining({ signal: null })
     );
+
+    const rebuildCallIndex = execPromiseMock.mock.calls.findIndex((call) => {
+      const args = call[1] as string[];
+      return args.includes('build');
+    });
+    const restartCallIndex = execPromiseMock.mock.calls.findIndex((call) => {
+      const args = call[1] as string[];
+      return args.includes('start');
+    });
+    expect(rebuildCallIndex).toBeGreaterThan(-1);
+    expect(restartCallIndex).toBeGreaterThan(rebuildCallIndex);
   });
 
   it('prefers explicit catalog install branch over version-derived branch', async () => {

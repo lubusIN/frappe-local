@@ -448,15 +448,14 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
       const proxy = `  import local_bench_bad_gateway
   handle /socket.io/* {
     reverse_proxy 127.0.0.1:${benchPort + 1000} {
-      header_up Host {host}
-      header_up X-Forwarded-Proto {scheme}
-      header_up X-Forwarded-Port {server_port}
+      header_up Host 127.0.0.1
+      header_up Origin http://127.0.0.1
+      header_up X-Frappe-Site-Name {host}
+      header_down Access-Control-Allow-Origin {scheme}://{host}
     }
   }
   reverse_proxy 127.0.0.1:${benchPort} {
     header_up Host {host}
-    header_up X-Forwarded-Proto {scheme}
-    header_up X-Forwarded-Port {server_port}
   }`;
       return `http://${siteHost} {
 ${proxy}

@@ -61,7 +61,14 @@
             Waiting for log output...
           </div>
           <div
-            v-for="(log, index) in task.logs"
+            v-else-if="hiddenLogCount > 0"
+            class="px-4 py-2 text-ink-gray-5"
+          >
+            Showing latest {{ visibleLogs.length }} entries. {{ hiddenLogCount }} older
+            {{ hiddenLogCount === 1 ? 'entry is' : 'entries are' }} kept out of view to keep the app responsive.
+          </div>
+          <div
+            v-for="(log, index) in visibleLogs"
             :key="`${log.timestamp}-${index}`"
             class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-6"
           >
@@ -158,6 +165,7 @@ const emit = defineEmits<{
 
 const logsContainer = ref<HTMLElement | null>(null);
 const copied = ref(false);
+const MAX_RENDERED_LOGS = 400;
 
 const LOCAL_STORAGE_KEY = 'local-bench:task-log-auto-scroll';
 const savedAutoScroll = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -177,6 +185,9 @@ const isOpen = computed({
 });
 
 const isBusy = computed(() => props.task?.status === 'running' || props.task?.status === 'queued');
+
+const visibleLogs = computed(() => props.task?.logs.slice(-MAX_RENDERED_LOGS) ?? []);
+const hiddenLogCount = computed(() => Math.max(0, (props.task?.logs.length ?? 0) - visibleLogs.value.length));
 
 const formattedStatus = computed(() => {
   if (!props.task) return '';

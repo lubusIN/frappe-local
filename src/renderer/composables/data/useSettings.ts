@@ -10,6 +10,7 @@ export const useSettings = () => {
   const loading = ref(false);
   const saving = ref(false);
   const error = ref<string | null>(null);
+  const configured = ref(false);
 
   const load = async () => {
     loading.value = true;
@@ -18,6 +19,7 @@ export const useSettings = () => {
     try {
       const ipc = useIpc();
       const settings = await ipc.getSettings();
+      configured.value = settings !== null;
       form.value = settings ?? defaultSettings();
     } catch (err) {
       error.value = String(err);
@@ -50,6 +52,7 @@ export const useSettings = () => {
     loading,
     saving,
     error,
+    configured,
     refresh: load,
     save,
   };

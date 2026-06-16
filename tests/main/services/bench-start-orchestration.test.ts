@@ -69,6 +69,7 @@ describe('bench start/restart orchestration', () => {
     benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-bench-start-'));
 
     bench.path = benchPath;
+    fs.mkdirSync(path.join(benchPath, 'sites'), { recursive: true });
 
     getBinaryPathMock.mockReturnValue('/mock/docker-compose');
     ensureRuntimeRunningMock.mockResolvedValue(true);
@@ -81,6 +82,12 @@ describe('bench start/restart orchestration', () => {
   });
 
   it('falls back to service verification on compose timeout and marks restart successful', async () => {
+    fs.writeFileSync(
+      path.join(benchPath, 'sites', 'common_site_config.json'),
+      JSON.stringify({ socketio_port: 9080 }),
+      'utf8'
+    );
+    fs.mkdirSync(path.join(benchPath, 'sites', 'frappe.localhost'), { recursive: true });
     execPromiseMock
       .mockRejectedValueOnce(new Error('Command timed out after 300000ms: /mock/docker-compose ...'))
       .mockResolvedValueOnce({ code: 0, stdout: 'frappe\n', stderr: '' })
@@ -128,6 +135,15 @@ describe('bench start/restart orchestration', () => {
     );
 
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
+    expect(
+      JSON.parse(fs.readFileSync(path.join(benchPath, 'sites', 'common_site_config.json'), 'utf8'))
+    ).toMatchObject({ default_site: 'frappe.localhost', socketio_port: 443 });
+    expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
+      'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js'
+    );
+    expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
+      'web: DEV_SERVER=0 bench serve --port 8000 --proxy'
+    );
     expect(context.log).toHaveBeenCalledWith(
       'warning',
       expect.stringContaining('Compose timed out, but core services are running'),

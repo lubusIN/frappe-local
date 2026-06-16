@@ -4,6 +4,7 @@ import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Settings } from '../../../src/shared/domain/models';
 
 import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
+import { getRecommendedPodmanMemoryMb } from '../../../src/shared/core/system-resources';
 
 const seedSettings: Settings = {
   ...DEFAULT_SETTINGS,
@@ -176,8 +177,9 @@ describe('settings IPC handlers', () => {
     };
 
     expect(resources.totalMemoryMb).toBeGreaterThanOrEqual(4096);
-    expect(resources.recommendedPodmanMemoryMb).toBeGreaterThanOrEqual(4096);
-    expect(resources.recommendedPodmanMemoryMb).toBeLessThanOrEqual(resources.totalMemoryMb);
+    expect(resources.recommendedPodmanMemoryMb).toBe(
+      getRecommendedPodmanMemoryMb(resources.totalMemoryMb)
+    );
     expect(typeof resources.podmanMachineRequired).toBe('boolean');
   });
 

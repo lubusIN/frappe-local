@@ -17,6 +17,7 @@ import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
 import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './services/runtime-service';
 import { getPodmanMachines, isPodmanMachineRequired } from './utils/podman/podman';
+import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
 import { getBinaryPath } from './utils/binaries';
 import { execPromise } from './utils/exec';
 import { buildUpdateStrategyStatus, runManualUpdateCheck } from './services/update-strategy-service';
@@ -951,13 +952,9 @@ export const registerIpcHandlers = (
       MIN_PODMAN_MEMORY_MB,
       Math.floor(os.totalmem() / (1024 * 1024))
     );
-    const recommendedPodmanMemoryMb = Math.max(
-      MIN_PODMAN_MEMORY_MB,
-      Math.floor((totalMemoryMb * 0.75) / 1024) * 1024
-    );
     return {
       totalMemoryMb,
-      recommendedPodmanMemoryMb: Math.min(recommendedPodmanMemoryMb, totalMemoryMb),
+      recommendedPodmanMemoryMb: getRecommendedPodmanMemoryMb(totalMemoryMb),
       podmanMachineRequired: isPodmanMachineRequired(),
     };
   });

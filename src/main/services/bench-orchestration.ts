@@ -151,6 +151,7 @@ const cleanupBenchAppArtifacts = (
   }
 
   const appsDir = path.join(benchPath, 'apps');
+  const assetsDir = path.join(benchPath, 'sites', 'assets');
   const appsTxtPath = path.join(benchPath, 'sites', 'apps.txt');
 
   for (const app of uniqueAppIds) {
@@ -158,6 +159,12 @@ const cleanupBenchAppArtifacts = (
       fs.rmSync(path.join(appsDir, app), { recursive: true, force: true });
     } catch (error) {
       context.log('warning', `Failed to cleanup app directory for ${app}: ${errorMessage(error)}`, stepId);
+    }
+
+    try {
+      fs.rmSync(path.join(assetsDir, app), { recursive: true, force: true });
+    } catch (error) {
+      context.log('warning', `Failed to cleanup app assets for ${app}: ${errorMessage(error)}`, stepId);
     }
   }
 
@@ -175,6 +182,84 @@ const cleanupBenchAppArtifacts = (
     fs.writeFileSync(appsTxtPath, content, 'utf8');
   } catch (error) {
     context.log('warning', `Failed to cleanup apps.txt after install failure: ${errorMessage(error)}`, stepId);
+  }
+};
+
+const ensureBenchProcfile = (
+  benchPath: string,
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
+  stepId: string
+): void => {
+  const procfilePath = path.join(benchPath, 'Procfile');
+  const content = [
+    'web: DEV_SERVER=0 bench serve --port 8000 --proxy',
+    'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js',
+    'watch: bench watch',
+    'schedule: bench schedule',
+    'worker: bench worker 1>> logs/worker.log 2>> logs/worker.error.log',
+    '',
+  ].join('\n');
+
+  try {
+    fs.writeFileSync(procfilePath, content, 'utf8');
+  } catch (error) {
+    context.log('warning', `Failed to write managed Procfile: ${errorMessage(error)}`, stepId);
+  }
+};
+
+const getFirstBenchSiteName = (benchPath: string): string | null => {
+  const sitesPath = path.join(benchPath, 'sites');
+  if (!fs.existsSync(sitesPath)) {
+    return null;
+  }
+
+  try {
+    const siteNames = fs.readdirSync(sitesPath, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => !['assets', 'common_site_config.json'].includes(name))
+      .sort((left, right) => left.localeCompare(right));
+
+    return siteNames[0] ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const ensureBenchSocketioPort = (
+  benchPath: string,
+  _httpPort: number,
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
+  stepId: string
+): void => {
+  try {
+    const configPath = path.join(benchPath, 'sites', 'common_site_config.json');
+    if (!fs.existsSync(configPath)) {
+      return;
+    }
+
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    // Keep the key present for apps that import common_site_config.json at build
+    // time, but point browser clients back at the Caddy HTTPS front door instead
+    // of the raw Socket.IO container port.
+    let changed = false;
+    const socketioPort = 443;
+    if (configData.socketio_port !== socketioPort) {
+      configData.socketio_port = socketioPort;
+      changed = true;
+    }
+
+    const defaultSite = getFirstBenchSiteName(benchPath);
+    if (defaultSite && configData.default_site !== defaultSite) {
+      configData.default_site = defaultSite;
+      changed = true;
+    }
+
+    if (changed) {
+      fs.writeFileSync(configPath, JSON.stringify(configData, null, 1), 'utf8');
+    }
+  } catch (error) {
+    context.log('warning', `Failed to configure socketio port: ${errorMessage(error)}`, stepId);
   }
 };
 
@@ -416,20 +501,10 @@ export const orchestrateBenchCreation = (
           { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
         );
 
-        // Remove socketio_port from common_site_config.json so the Frappe frontend connects
-        // via the Caddy reverse proxy port instead of trying to hit 9000 directly.
-        try {
-          const configPath = path.join(bench.path, 'sites', 'common_site_config.json');
-          if (fs.existsSync(configPath)) {
-            const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            if ('socketio_port' in configData) {
-              delete configData['socketio_port'];
-              fs.writeFileSync(configPath, JSON.stringify(configData, null, 1), 'utf8');
-            }
-          }
-        } catch (err) {
-          context.log('warning', `Failed to patch common_site_config.json for socketio: ${errorMessage(err)}`, 'setup');
-        }
+        // Some app frontends import this key at build time. The value keeps browser
+        // socket traffic on the Caddy HTTPS front door, which proxies /socket.io.
+        ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'setup');
+        ensureBenchProcfile(bench.path, context, 'setup');
         
         context.completeStep('setup', 'Bench initialized and configured');
 
@@ -589,6 +664,8 @@ export const orchestrateBenchAppChanges = (
         }
         context.completeStep('bench-service', 'Bench containers are running');
         recoveryEnv = { command, projectName, runtimeEnv };
+        ensureBenchSocketioPort(bench.path, bench.httpPort ?? DEFAULT_HTTP_PORT, context, 'bench-service');
+        ensureBenchProcfile(bench.path, context, 'bench-service');
 
         // Temporarily pause background bench processes (watch, workers, web) to free up the 4GB VM memory
         // and avoid file lock collisions during yarn install and bench build.
@@ -665,15 +742,78 @@ export const orchestrateBenchAppChanges = (
       } catch (error) {
         if (attemptedInstallAppIds.length > 0) {
           try {
-            context.startStep('rollback-apps', 'Cleaning up partial app installation');
-            cleanupBenchAppArtifacts(bench.path, attemptedInstallAppIds, context, 'rollback-apps');
-            context.completeStep('rollback-apps', 'Partial app artifacts cleaned');
+            if (!context.signal.aborted) {
+              context.startStep('rollback-apps', 'Restoring bench after failed app installation');
+            }
+
+            if (recoveryEnv) {
+              for (const app of attemptedInstallAppIds) {
+                const uninstallResult = await execPromise(
+                  recoveryEnv.command,
+                  composeBenchArgs(recoveryEnv.projectName, ['pip', 'uninstall', '-y', app]),
+                  bench.path,
+                  context.signal.aborted
+                    ? undefined
+                    : (out) => context.log('info', out, 'rollback-apps'),
+                  recoveryEnv.runtimeEnv,
+                  { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+                );
+
+                if (uninstallResult.code !== 0 && !context.signal.aborted) {
+                  context.log(
+                    'warning',
+                    `Could not uninstall partial Python package ${app}: ${
+                      uninstallResult.stderr || uninstallResult.stdout || `exit code ${uninstallResult.code}`
+                    }`,
+                    'rollback-apps'
+                  );
+                }
+              }
+            }
+
+            cleanupBenchAppArtifacts(
+              bench.path,
+              attemptedInstallAppIds,
+              context.signal.aborted ? { log: () => undefined } : context,
+              'rollback-apps'
+            );
+
+            if (recoveryEnv) {
+              const rebuildResult = await execPromise(
+                recoveryEnv.command,
+                composeBenchArgs(recoveryEnv.projectName, ['build']),
+                bench.path,
+                context.signal.aborted
+                  ? undefined
+                  : (out) => context.log('info', out, 'rollback-apps'),
+                recoveryEnv.runtimeEnv,
+                { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+              );
+
+              if (rebuildResult.code !== 0 && !context.signal.aborted) {
+                context.log(
+                  'warning',
+                  `Could not rebuild remaining bench assets: ${
+                    rebuildResult.stderr || rebuildResult.stdout || `exit code ${rebuildResult.code}`
+                  }`,
+                  'rollback-apps'
+                );
+              }
+            }
+
+            if (!context.signal.aborted) {
+              context.completeStep('rollback-apps', 'Bench restored after failed app installation');
+            }
           } catch (cleanupError) {
-            context.log('warning', `Rollback cleanup failed: ${errorMessage(cleanupError)}`, 'rollback-apps');
+            if (!context.signal.aborted) {
+              context.log('warning', `Rollback cleanup failed: ${errorMessage(cleanupError)}`, 'rollback-apps');
+            }
           }
         }
 
-        context.log('error', errorMessage(error), 'apps');
+        if (!context.signal.aborted) {
+          context.log('error', errorMessage(error), 'apps');
+        }
         throw error;
       } finally {
         if (recoveryEnv) {
@@ -777,6 +917,8 @@ export const orchestrateBenchStart = (
         context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveAndPersistBenchPort(bench, benchesRepo, context, !isRestart);
         ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT);
+        ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
+        ensureBenchProcfile(bench.path, context, 'env');
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
