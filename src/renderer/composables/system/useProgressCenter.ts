@@ -3,6 +3,8 @@ import {
   createDefaultProgressCenterState,
   createProgressCenterController,
   filterProgressTasks,
+  reconcileSavedProgressTasks,
+  type ProgressTaskSummary,
 } from '../../controllers/progress';
 import { useIpc } from './useIpc';
 
@@ -15,7 +17,7 @@ const loadSavedTasks = () => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        return parsed;
+        return reconcileSavedProgressTasks(parsed as ProgressTaskSummary[]);
       }
     }
   } catch (err) {

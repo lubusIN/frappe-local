@@ -1,4 +1,5 @@
 import path from 'node:path';
+import os from 'node:os';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import type { IpcMain } from 'electron';
@@ -28,7 +29,7 @@ import {
   applyPodmanMachineMemory,
   configurePodmanMemoryProvider,
 } from './services/runtime-service';
-import { DEFAULT_SETTINGS } from '../shared/domain/models';
+import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
@@ -125,7 +126,8 @@ export const runApplicationBootstrap = async (
     const settingsRepository = new SettingsRepository(adapter);
     configurePodmanMemoryProvider(async () => {
       const settings = await settingsRepository.get();
-      return settings?.podmanMemoryMb ?? DEFAULT_SETTINGS.podmanMemoryMb;
+      return settings?.podmanMemoryMb
+        ?? getRecommendedPodmanMemoryMb(os.totalmem() / (1024 * 1024));
     });
     const repositories = {
       appCatalog: new AppCatalogRepository(adapter),

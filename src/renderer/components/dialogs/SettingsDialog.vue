@@ -151,7 +151,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { form, loading, saving, error, refresh, save } = useSettings();
+const { form, loading, saving, error, configured, refresh, save } = useSettings();
 const ipc = useIpc();
 const systemResources = reactive({
   totalMemoryMb: MIN_PODMAN_MEMORY_MB,
@@ -215,10 +215,12 @@ watch(
     if (!resourcesReady || settingsLoading) {
       return;
     }
-    form.value.podmanMemoryMb = Math.min(
-      Math.max(form.value.podmanMemoryMb, MIN_PODMAN_MEMORY_MB),
-      systemResources.totalMemoryMb
-    );
+    form.value.podmanMemoryMb = configured.value
+      ? Math.min(
+        Math.max(form.value.podmanMemoryMb, MIN_PODMAN_MEMORY_MB),
+        systemResources.totalMemoryMb
+      )
+      : systemResources.recommendedPodmanMemoryMb;
   },
   { immediate: true }
 );

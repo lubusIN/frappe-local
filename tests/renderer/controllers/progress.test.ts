@@ -4,8 +4,11 @@ import {
   detectProgressTaskResource,
   filterProgressTasks,
   findUnhandledFailedTask,
+  MAX_LOGS_PER_TASK,
+  reconcileSavedProgressTasks,
   upsertProgressTask,
 } from '../../../src/renderer/controllers/progress';
+import type { ProgressTaskSummary } from '../../../src/renderer/controllers/progress';
 import type { TaskProgressEvent } from '../../../src/shared/domain/task-runner';
 
 const makeEvent = (overrides: Partial<TaskProgressEvent> = {}): TaskProgressEvent => ({
@@ -72,6 +75,42 @@ describe('progress', () => {
     }));
 
     expect(tasks[0]?.errorCode).toBe('task-failed');
+  });
+
+  it('keeps only the latest log entries for long-running tasks', () => {
+    let tasks: ProgressTaskSummary[] = [];
+
+    for (let index = 0; index < MAX_LOGS_PER_TASK + 25; index++) {
+      tasks = upsertProgressTask(tasks, makeEvent({
+        message: `line ${index}`,
+        timestamp: new Date(Date.UTC(2026, 3, 19, 8, 0, index)).toISOString(),
+        logLevel: 'info',
+      }));
+    }
+
+    expect(tasks[0]?.logs).toHaveLength(MAX_LOGS_PER_TASK);
+    expect(tasks[0]?.logs[0]?.message).toBe('line 25');
+    expect(tasks[0]?.logs.at(-1)?.message).toBe(`line ${MAX_LOGS_PER_TASK + 24}`);
+  });
+
+  it('marks saved active tasks as interrupted on startup', () => {
+    const saved = upsertProgressTask([], makeEvent({
+      taskId: 'stale-migrate',
+      taskName: 'Update Site Apps frappe.localhost',
+      status: 'running',
+      type: 'task.log',
+      message: 'Running migrate for frappe.localhost',
+      stepName: 'Running migrate for frappe.localhost',
+      logLevel: 'info',
+    }));
+
+    const reconciled = reconcileSavedProgressTasks(saved);
+
+    expect(reconciled[0]?.status).toBe('failure');
+    expect(reconciled[0]?.type).toBe('task.failed');
+    expect(reconciled[0]?.message).toBe('Task was interrupted when the app closed.');
+    expect(reconciled[0]?.errorCode).toBe('task-interrupted');
+    expect(reconciled[0]?.logs.at(-1)?.level).toBe('warning');
   });
 
   it('selects only unhandled non-cancelled failures when logs are closed', () => {

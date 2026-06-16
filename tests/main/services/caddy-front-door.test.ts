@@ -20,7 +20,12 @@ describe('caddy front door config', () => {
     expect(caddyfile).not.toContain('https://*.localhost');
     expect(caddyfile).toContain('tls internal');
     expect(caddyfile).toContain('reverse_proxy 127.0.0.1:18080');
-    expect(caddyfile).toContain('header_up Host {host}');
+    expect(caddyfile).toContain('header_up Host 127.0.0.1');
+    expect(caddyfile).toContain('header_up Origin http://127.0.0.1');
+    expect(caddyfile).toContain('header_up X-Frappe-Site-Name {host}');
+    expect(caddyfile).toContain('header_down Access-Control-Allow-Origin {scheme}://{host}');
+    expect(caddyfile).not.toContain('X-Forwarded-Proto');
+    expect(caddyfile).not.toContain('X-Forwarded-Port');
     expect(caddyfile).not.toContain('redir https://');
   });
 

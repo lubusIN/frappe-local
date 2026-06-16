@@ -109,6 +109,8 @@
       :columns="siteColumns"
       :rows="filteredSites"
       row-key="id"
+      empty-title="No sites"
+      empty-description="No sites are available."
     >
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">

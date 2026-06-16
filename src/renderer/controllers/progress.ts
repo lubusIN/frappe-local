@@ -32,6 +32,7 @@ export type ProgressCenterBridge = Pick<
 >;
 
 const MAX_TASKS = 120;
+export const MAX_LOGS_PER_TASK = 800;
 const RECENT_WINDOW_MS = 1000 * 60 * 60 * 24;
 
 export const createDefaultProgressCenterState = (): ProgressCenterState => ({
@@ -42,6 +43,33 @@ export const createDefaultProgressCenterState = (): ProgressCenterState => ({
   resourceFilter: 'all',
   recentOnly: true,
 });
+
+export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[]): ProgressTaskSummary[] =>
+  tasks.map((task) => {
+    const logs = Array.isArray(task.logs) ? task.logs.slice(-MAX_LOGS_PER_TASK) : [];
+    if (task.status !== 'queued' && task.status !== 'running') {
+      return {
+        ...task,
+        logs,
+      };
+    }
+
+    return {
+      ...task,
+      status: 'failure' as const,
+      type: 'task.failed' as const,
+      message: 'Task was interrupted when the app closed.',
+      logs: [
+        ...logs,
+        {
+          message: 'Task was interrupted when the app closed.',
+          timestamp: new Date().toISOString(),
+          level: 'warning' as const,
+        },
+      ].slice(-MAX_LOGS_PER_TASK),
+      errorCode: 'task-interrupted',
+    };
+  });
 
 export const detectProgressTaskResource = (taskName: string): ProgressTaskResource => {
   const normalized = taskName.trim().toLowerCase();
@@ -73,6 +101,7 @@ export const upsertProgressTask = (
     timestamp: event.timestamp,
     level: event.logLevel,
   };
+  const logs = existing ? [...existing.logs, newLogEntry] : [newLogEntry];
 
   const next: ProgressTaskSummary = {
     taskId: event.taskId,
@@ -80,7 +109,7 @@ export const upsertProgressTask = (
     status: event.status,
     type: event.type,
     message: event.message,
-    logs: existing ? [...existing.logs, newLogEntry] : [newLogEntry],
+    logs: logs.slice(-MAX_LOGS_PER_TASK),
     stepName: event.stepName,
     timestamp: event.timestamp,
     errorCode: event.errorCode ?? existing?.errorCode ?? null,
