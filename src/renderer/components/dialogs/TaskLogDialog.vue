@@ -43,7 +43,7 @@
             <span class="ml-1 text-xs font-medium text-ink-gray-4">Output</span>
           </div>
           <span class="text-xs tabular-nums text-ink-gray-4">
-            {{ task.logs.length }} {{ task.logs.length === 1 ? 'entry' : 'entries' }}
+            {{ entryCountLabel }}
           </span>
         </div>
 
@@ -55,7 +55,7 @@
           @click.stop
         >
           <div
-            v-if="task.logs.length === 0"
+            v-if="displayedLogs.length === 0"
             class="flex items-center justify-center min-h-48 text-ink-gray-4"
           >
             Waiting for log output...
@@ -93,15 +93,15 @@
         </div>
 
         <div
-          v-if="task.logs.length > 0"
+          v-if="displayedLogs.length > 0"
           class="flex items-center justify-between border-t border-outline-gray-5 px-4 py-2.5"
         >
           <span class="text-xs text-ink-gray-4">
-            {{ isBusy ? 'Task is still running' : 'Task finished' }}
+            {{ footerStatusLabel }}
           </span>
           <TaskTimer
-            :start-time="task.logs[0].timestamp"
-            :end-time="task.logs[task.logs.length - 1].timestamp"
+            :start-time="displayedLogs[0].timestamp"
+            :end-time="displayedLogs[displayedLogs.length - 1].timestamp"
             :running="isBusy"
             size-class="text-xs"
             color-class="text-ink-gray-4"
@@ -124,7 +124,16 @@
         </div>
         <div class="flex justify-end gap-2">
           <Button
-            v-if="task.logs.length > 0"
+            v-if="task.logs.length > 0 && !fullLogLoaded"
+            size="md"
+            variant="subtle"
+            :loading="loadingFullLog"
+            @click="onLoadFullLogs"
+          >
+            Load full logs
+          </Button>
+          <Button
+            v-if="displayedLogs.length > 0"
             size="md"
             variant="subtle"
             :icon-left="IconCopy"
@@ -151,8 +160,9 @@ import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-u
 import IconCopy from '~icons/lucide/copy';
 import IconTerminal from '~icons/lucide/terminal';
 import type { ProgressTaskSummary } from '../../controllers/progress';
-import type { TaskProgressEvent } from '../../../shared/domain/task-runner';
+import type { TaskLogLevel, TaskProgressEvent } from '../../../shared/domain/task-runner';
 import { statusTheme } from '../../utils/format';
+import { useIpc } from '../../composables/system/useIpc';
 import TaskTimer from '../ui/TaskTimer.vue';
 
 const props = defineProps<{
@@ -165,7 +175,17 @@ const emit = defineEmits<{
 
 const logsContainer = ref<HTMLElement | null>(null);
 const copied = ref(false);
+const fullLogText = ref<string | null>(null);
+const loadingFullLog = ref(false);
 const MAX_RENDERED_LOGS = 400;
+const FULL_LOG_LINE_PATTERN = /^\[([^\]]+)\] \[([A-Z]+)\] (.*)$/;
+const ipc = useIpc();
+
+type DisplayLog = {
+  readonly message: string;
+  readonly timestamp: string;
+  readonly level: TaskLogLevel | null;
+};
 
 const LOCAL_STORAGE_KEY = 'local-bench:task-log-auto-scroll';
 const savedAutoScroll = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -186,8 +206,55 @@ const isOpen = computed({
 
 const isBusy = computed(() => props.task?.status === 'running' || props.task?.status === 'queued');
 
-const visibleLogs = computed(() => props.task?.logs.slice(-MAX_RENDERED_LOGS) ?? []);
-const hiddenLogCount = computed(() => Math.max(0, (props.task?.logs.length ?? 0) - visibleLogs.value.length));
+const fullLogLoaded = computed(() => fullLogText.value !== null);
+
+const parseFullLogLine = (line: string): DisplayLog => {
+  const fallbackTimestamp = props.task?.timestamp ?? new Date().toISOString();
+  const match = FULL_LOG_LINE_PATTERN.exec(line);
+
+  if (!match) {
+    return {
+      message: line,
+      timestamp: fallbackTimestamp,
+      level: null,
+    };
+  }
+
+  const parsedLevel = match[2].toLowerCase();
+  const level: TaskLogLevel | null =
+    parsedLevel === 'info' || parsedLevel === 'warning' || parsedLevel === 'error'
+      ? parsedLevel
+      : null;
+  const timestamp = Number.isNaN(Date.parse(match[1])) ? fallbackTimestamp : match[1];
+
+  return {
+    message: match[3],
+    timestamp,
+    level,
+  };
+};
+
+const fullLogLines = computed(() => {
+  if (fullLogText.value === null) return [];
+  return fullLogText.value
+    .split(/\r?\n/)
+    .filter((line) => line.length > 0)
+    .map(parseFullLogLine);
+});
+
+const displayedLogs = computed(() => fullLogLoaded.value ? fullLogLines.value : props.task?.logs ?? []);
+const visibleLogs = computed(() => displayedLogs.value.slice(-MAX_RENDERED_LOGS));
+const hiddenLogCount = computed(() => Math.max(0, displayedLogs.value.length - visibleLogs.value.length));
+const entryCountLabel = computed(() => {
+  const count = displayedLogs.value.length;
+  const suffix = count === 1 ? 'entry' : 'entries';
+  return fullLogLoaded.value ? `${count} full ${suffix}` : `${count} ${suffix}`;
+});
+const footerStatusLabel = computed(() => {
+  if (fullLogLoaded.value) return 'Full task log loaded';
+  if (isBusy.value) return 'Task is still running';
+  return 'Task finished';
+});
 
 const formattedStatus = computed(() => {
   if (!props.task) return '';
@@ -269,7 +336,7 @@ watch(logsContainer, (el) => {
 });
 
 watch(
-  () => props.task?.logs.length,
+  () => displayedLogs.value.length,
   async () => {
     if (!autoScroll.value) return;
     await nextTick();
@@ -277,12 +344,41 @@ watch(
   }
 );
 
-const onCopyLogs = async () => {
-  if (!props.task?.logs.length || copied.value) return;
+watch(
+  () => props.task?.taskId,
+  () => {
+    fullLogText.value = null;
+    copied.value = false;
+  }
+);
 
-  const text = props.task.logs
-    .map((log) => `[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`)
-    .join('\n');
+const onLoadFullLogs = async () => {
+  if (!props.task || loadingFullLog.value) return;
+
+  loadingFullLog.value = true;
+  try {
+    const content = await ipc.readTaskLog(props.task.taskId);
+    if (!content.trim()) {
+      toast.warning('Full log file is not available yet');
+      return;
+    }
+    fullLogText.value = content;
+    await nextTick();
+    scrollToBottom();
+  } catch {
+    toast.error('Failed to load full logs');
+  } finally {
+    loadingFullLog.value = false;
+  }
+};
+
+const onCopyLogs = async () => {
+  if (displayedLogs.value.length === 0 || copied.value) return;
+
+  const text = fullLogText.value
+    ?? displayedLogs.value
+      .map((log) => `[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`)
+      .join('\n');
 
   try {
     await navigator.clipboard.writeText(text);

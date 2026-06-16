@@ -37,6 +37,7 @@ export const ipcChannels = {
   taskRunnerSubscribe: 'task-runner:subscribe',
   taskRunnerUnsubscribe: 'task-runner:unsubscribe',
   taskRunnerProgressEvent: 'task-runner:progress-event',
+  taskRunnerReadLog: 'task-runner:read-log',
   utilsPathExists: 'utils:path-exists',
   utilsOpenExternal: 'utils:open-external',
   uiReady: 'app:ui-ready',
@@ -189,6 +190,7 @@ export type RendererBridge = {
 
   readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;
+  readonly readTaskLog: (taskId: string) => Promise<string>;
   readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;
   readonly pathExists: (path: string) => Promise<boolean>;
   readonly openExternal: (url: string) => Promise<void>;
