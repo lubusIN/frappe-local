@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import fs from 'node:fs';
+import path from 'node:path';
 import type {
   TaskProgressEvent,
   TaskSnapshot,
@@ -41,6 +43,8 @@ type TaskRunnerListener = (event: TaskProgressEvent) => void;
 
 const cancellationErrorCode = 'cancelled';
 const taskSignalStorage = new AsyncLocalStorage<AbortSignal>();
+const LOG_EVENT_EMIT_INTERVAL_MS = 250;
+const LOG_EVENT_EMIT_MAX_BURST = 40;
 
 export const getActiveTaskSignal = (): AbortSignal | undefined => taskSignalStorage.getStore();
 
@@ -61,7 +65,13 @@ export class TaskRunner {
   private readonly listeners = new Set<TaskRunnerListener>();
   private readonly tasks = new Map<string, ManagedTask>();
   private readonly queue: string[] = [];
+  private readonly logEmitState = new Map<string, { lastEmittedAt: number; burstCount: number }>();
   private activeTaskId: string | null = null;
+  private logDirectory: string | null = null;
+
+  public configureLogDirectory(logDirectory: string | null): void {
+    this.logDirectory = logDirectory;
+  }
 
   public onEvent(listener: TaskRunnerListener): () => void {
     this.listeners.add(listener);
@@ -326,9 +336,59 @@ export class TaskRunner {
   }
 
   private emit(event: TaskProgressEvent): void {
+    this.appendEventLog(event);
+
+    if (event.type === 'task.log' && !this.shouldEmitLogEvent(event)) {
+      return;
+    }
+
     this.listeners.forEach((listener) => {
       listener(event);
     });
+  }
+
+  private shouldEmitLogEvent(event: TaskProgressEvent): boolean {
+    const nowMs = Date.now();
+    const state = this.logEmitState.get(event.taskId) ?? { lastEmittedAt: 0, burstCount: 0 };
+
+    if (state.burstCount < LOG_EVENT_EMIT_MAX_BURST) {
+      this.logEmitState.set(event.taskId, {
+        lastEmittedAt: nowMs,
+        burstCount: state.burstCount + 1,
+      });
+      return true;
+    }
+
+    if (nowMs - state.lastEmittedAt >= LOG_EVENT_EMIT_INTERVAL_MS) {
+      this.logEmitState.set(event.taskId, {
+        lastEmittedAt: nowMs,
+        burstCount: state.burstCount + 1,
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  private appendEventLog(event: TaskProgressEvent): void {
+    if (!this.logDirectory) {
+      return;
+    }
+
+    try {
+      const taskLogsDirectory = path.join(this.logDirectory, 'tasks');
+      fs.mkdirSync(taskLogsDirectory, { recursive: true });
+      const safeTaskId = event.taskId.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const logPath = path.join(taskLogsDirectory, `${safeTaskId}.log`);
+      const level = event.logLevel ?? 'event';
+      fs.appendFileSync(
+        logPath,
+        `[${event.timestamp}] [${level.toUpperCase()}] ${event.message}\n`,
+        'utf8'
+      );
+    } catch {
+      // Logging should never make the task itself fail.
+    }
   }
 }
 

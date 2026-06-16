@@ -66,6 +66,7 @@ type IpcMainLike = {
 
 type TaskRunnerLike = {
   onEvent?: (listener: (event: TaskProgressEvent) => void) => () => void;
+  configureLogDirectory?: (logDirectory: string | null) => void;
   enqueue: (definition: { name: string; resource: { type: 'bench' | 'site' | 'runtime' | 'system'; id: string }; run: (context: TaskExecutionContext) => Promise<void> }) => string;
 };
 
@@ -268,6 +269,8 @@ export const registerIpcHandlers = (
     configPath: '',
   }
 ) => {
+  taskRunner.configureLogDirectory?.(runtimePaths.logsPath || null);
+
   ipcMainLike.handle(ipcChannels.appHealthCheck, async (): Promise<AppHealthResponse> => {
     return {
       appName: 'Local Bench',

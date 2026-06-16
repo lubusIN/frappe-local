@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { TaskRunner } from '../../../src/main/services/task-runner';
 import type { TaskProgressEvent } from '../../../src/shared/domain/task-runner';
 
@@ -213,5 +216,40 @@ describe('TaskRunner', () => {
     const completedEvent = events.find((event) => event.type === 'task.completed');
     expect(completedEvent).toBeDefined();
     expect(completedEvent?.resource).toEqual({ type: 'site', id: 'site-123' });
+  });
+
+  it('writes all task logs to disk while throttling noisy log events to listeners', async () => {
+    const runner = new TaskRunner();
+    const logsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-task-logs-'));
+    const events: TaskProgressEvent[] = [];
+
+    runner.configureLogDirectory(logsDir);
+    runner.onEvent((event) => {
+      events.push(event);
+    });
+
+    const taskId = runner.enqueue({
+      id: 'task-noisy',
+      name: 'Noisy migrate',
+      run: async (context) => {
+        for (let index = 0; index < 120; index++) {
+          context.log('info', `migrate line ${index}`, 'migrate');
+        }
+      },
+    });
+
+    await flushPromises();
+    await flushPromises();
+
+    const emittedLogs = events.filter((event) => event.type === 'task.log');
+    expect(emittedLogs.length).toBeLessThan(120);
+    expect(emittedLogs.length).toBeGreaterThan(0);
+
+    const logPath = path.join(logsDir, 'tasks', `${taskId}.log`);
+    const logContent = fs.readFileSync(logPath, 'utf8');
+    expect(logContent).toContain('migrate line 0');
+    expect(logContent).toContain('migrate line 119');
+
+    fs.rmSync(logsDir, { recursive: true, force: true });
   });
 });
