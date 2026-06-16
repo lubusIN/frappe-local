@@ -483,8 +483,6 @@ export const orchestrateSiteAppsUpdate = (
           }
 
           context.completeStep('install-apps', 'App installation completed');
-
-          await migrateSite(context, site.name, siteEnv);
         }
 
         if (uninstallDelta.length > 0) {
