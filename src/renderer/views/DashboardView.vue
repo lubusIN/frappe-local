@@ -36,10 +36,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue';
-import IconGlobe from '~icons/lucide/globe';
 import IconPackage from '~icons/lucide/package';
+import IconGlobe from '~icons/lucide/globe';
 import IconSettings from '~icons/lucide/settings';
+import { computed, onMounted, reactive } from 'vue';
 import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import ShortcutCard from '../components/ui/ShortcutCard.vue';
 import { useIpc } from '../composables/system/useIpc';

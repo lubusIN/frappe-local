@@ -1,22 +1,23 @@
 <template>
   <Dialog
     :model-value="open"
-    :options="{ title, size: 'md' }"
-    disable-outside-click-to-close
+    :title="title"
+    size="md"
+    :dismissible="false"
     @update:model-value="onOpenChange"
   >
-    <template #body-title>
+    <template #title>
       <div class="flex items-center gap-3">
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg min-w-8 bg-surface-red-2 text-ink-red-4">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg min-w-8 bg-surface-red-2 text-ink-red-8">
           <IconAlertTriangle class="h-[18px] w-[18px]" />
         </div>
-        <h3 class="m-0 text-sm font-semibold text-ink-gray-9">
+        <h3 class="m-0 text-sm-semibold text-ink-gray-9">
           {{ title }}
         </h3>
       </div>
     </template>
 
-    <template #body-content>
+    <template #default>
       <p class="mb-4 text-[13px] leading-relaxed text-ink-gray-5">
         {{ message }}
       </p>
@@ -58,8 +59,8 @@
 
 <script setup lang="ts">
 import { Button, Dialog, FormControl } from 'frappe-ui';
-import { computed, nextTick, ref, watch } from 'vue';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
+import { computed, nextTick, ref, watch } from 'vue';
 
 const props = withDefaults(
   defineProps<{

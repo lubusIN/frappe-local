@@ -30,7 +30,7 @@
       <Alert
         :title="summaryTitle"
         :description="summaryDescription"
-        :dismissable="false"
+        :dismissible="false"
         :theme="summaryTheme"
       />
 
@@ -41,90 +41,62 @@
         :options="diagnosticsListOptions"
         class="flex-1 w-full min-w-0"
       >
-        <ListHeader>
-          <ListHeaderItem
-            v-for="column in diagnosticsColumns"
-            :key="column.key"
-            :item="column"
-          />
-        </ListHeader>
+        <template #cell="{ row, column }">
+          <template v-if="column.key === 'check'">
+            <div class="min-w-0 py-4 pr-4">
+              <div class="text-sm-medium text-ink-gray-9">
+                {{ row.check.title }}
+              </div>
+              <div class="mt-2 text-sm leading-6 text-ink-gray-6">
+                {{ row.check.description }}
+              </div>
 
-        <ListRows>
-          <ListRow
-            v-for="row in diagnosticsRows"
-            :key="row.id"
-            v-slot="{ column, item }"
-            :row="row"
-          >
-            <template v-if="column.key === 'check'">
-              <ListRowItem
-                :item="item"
-                :align="column.align"
+              <div
+                v-if="row.check.remediation"
+                class="mt-2 text-sm leading-6 text-ink-gray-6"
               >
-                <template #default>
-                  <div class="min-w-0 py-4 pr-4">
-                    <div class="text-sm font-medium text-ink-gray-9">
-                      {{ item.title }}
-                    </div>
-                    <div class="mt-2 text-sm leading-6 text-ink-gray-6">
-                      {{ item.description }}
-                    </div>
+                <div class="break-words">
+                  <span class="font-medium text-ink-gray-9">Remediation:</span> {{ row.check.remediation }}
+                </div>
+              </div>
 
-                    <div
-                      v-if="item.remediation"
-                      class="mt-2 text-sm leading-6 text-ink-gray-6"
-                    >
-                      <div class="break-words">
-                        <span class="font-medium text-ink-gray-9">Remediation:</span> {{ item.remediation }}
-                      </div>
-                      <div
-                        v-if="item.type === 'runtime-health' && item.status === 'failed'"
-                        class="mt-2"
-                      >
-                        <Button
-                          variant="subtle"
-                          size="sm"
-                          theme="red"
-                          :loading="fixing"
-                          @click="$emit('fix', item.type)"
-                        >
-                          Fix
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </ListRowItem>
-            </template>
-
-            <template v-else-if="column.key === 'status'">
-              <ListRowItem
-                :item="item"
-                :align="column.align"
+              <div
+                v-if="row.check.type === 'runtime-health' && row.check.status === 'failed'"
+                class="mt-2"
               >
-                <template #default>
-                  <div class="py-4">
-                    <Badge
-                      :theme="statusTheme(item, 'diagnostic')"
-                      variant="subtle"
-                      size="md"
-                    >
-                      {{ formatStatus(item, 'diagnostic') }}
-                    </Badge>
-                  </div>
-                </template>
-              </ListRowItem>
-            </template>
-          </ListRow>
-        </ListRows>
+                <Button
+                  variant="subtle"
+                  size="sm"
+                  theme="red"
+                  :loading="fixing"
+                  @click="$emit('fix', row.check.type)"
+                >
+                  Fix
+                </Button>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="column.key === 'status'">
+            <div class="py-4">
+              <Badge
+                :theme="statusTheme(row.status, 'diagnostic')"
+                variant="subtle"
+                size="md"
+              >
+                {{ formatStatus(row.status, 'diagnostic') }}
+              </Badge>
+            </div>
+          </template>
+        </template>
       </ListView>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Alert, Badge, Button, ListView } from 'frappe-ui';
 import { computed, reactive } from 'vue';
-import { Alert, Badge, Button, ListHeader, ListHeaderItem, ListRow, ListRowItem, ListRows, ListView } from 'frappe-ui';
 import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '../../shared/domain/diagnostics';
 import StatePanel from './ui/StatePanel.vue';
 import { formatStatus, statusTheme } from '../utils/format';

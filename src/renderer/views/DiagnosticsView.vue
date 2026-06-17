@@ -12,7 +12,7 @@
     <section class="p-4 border border-red-200 rounded-xl bg-red-50/40">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 class="text-sm font-semibold text-ink-red-4">
+          <h3 class="text-sm-semibold text-ink-red-8">
             Danger Zone
           </h3>
           <p class="mt-1 text-sm text-ink-gray-6">
@@ -50,7 +50,7 @@
       >
         <Logo class="w-24 h-24 mb-6 text-ink-gray-9 animate-pulse" />
         <LoadingIndicator class="w-8 h-8 mb-4 text-ink-gray-9" />
-        <h2 class="text-xl font-semibold text-ink-gray-9">
+        <h2 class="text-3xl-semibold text-ink-gray-9">
           Resetting Frappe Local
         </h2>
         <p class="mt-2 text-ink-gray-6">
@@ -71,9 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { Button, LoadingIndicator, toast } from 'frappe-ui';
 import IconPlay from '~icons/lucide/play';
-import { Button, toast, LoadingIndicator } from 'frappe-ui';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import Logo from '../components/ui/Logo.vue';

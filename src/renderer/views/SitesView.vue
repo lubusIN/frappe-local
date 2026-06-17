@@ -115,7 +115,7 @@
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
           <div class="flex items-center h-full min-w-0">
-            <div class="text-sm font-medium truncate text-ink-gray-9">
+            <div class="text-sm-medium truncate text-ink-gray-9">
               {{ row.name }}
             </div>
           </div>
@@ -145,12 +145,12 @@
             class="flex items-center justify-end h-full"
             @click.stop
           >
-            <Dropdown :options="getSiteActions(row)">
+            <Dropdown :options="getSiteActions(row)" placement="right">
               <template #default>
                 <Button
                   size="md"
                   variant="subtle"
-                  icon="more-horizontal"
+                  :icon="IconMoreHorizontal"
                 />
               </template>
             </Dropdown>
@@ -201,24 +201,21 @@
 </template>
 
 <script setup lang="ts">
+import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
+import IconGlobe from '~icons/lucide/globe';
+import IconSearch from '~icons/lucide/search';
+import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+import IconExternalLink from '~icons/lucide/external-link';
+import IconActivity from '~icons/lucide/activity';
+import IconFolderOpen from '~icons/lucide/folder-open';
+import IconPackage from '~icons/lucide/package';
+import IconTrash2 from '~icons/lucide/trash2';
+import IconPlus from '~icons/lucide/plus';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
 import { useRoute } from 'vue-router';
-import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
-import IconPlus from '~icons/lucide/plus';
-import IconExternalLink from '~icons/lucide/external-link';
-import IconFolderOpen from '~icons/lucide/folder-open';
-import IconActivity from '~icons/lucide/activity';
 
-import IconSearch from '~icons/lucide/search';
-import IconTrash from '~icons/lucide/trash-2';
-import IconPackage from '~icons/lucide/package';
-import IconGlobe from '~icons/lucide/globe';
-import type { FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-
-
-
-import FirstRunGuide from '../components/FirstRunGuide.vue';
+import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
 import StatePanel from '../components/ui/StatePanel.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import ResourceListView from '../components/ui/ResourceListView.vue';
@@ -328,7 +325,7 @@ watch(
 
         if (task.status === 'success' && task.resourceId) {
           toast.success(`Site ${siteName} created.`, {
-            duration: 10,
+            duration: 10000,
             action: {
               label: 'View site',
               altText: `Open ${siteName}`,
@@ -441,7 +438,7 @@ const getSiteActions = (site: SiteListItem) => {
 
   actions.push({
     label: 'Delete',
-    icon: IconTrash,
+    icon: IconTrash2,
     theme: 'red' as const,
     disabled: !isBenchRunning || updating.value || deleting.value || isResourceBusy(site.id),
     onClick: () => confirmDeleteSite(site.id, site.name),

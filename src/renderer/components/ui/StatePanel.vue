@@ -2,9 +2,9 @@
   <section
     class="flex items-start gap-2.5 rounded-lg border p-4 select-text"
     :class="{
-      'border-outline-gray-2 bg-surface-white': kind === 'empty',
+      'border-outline-gray-2 bg-surface-base': kind === 'empty',
       'border-outline-gray-2 bg-surface-gray-2': kind === 'loading',
-      'border-outline-red-2 bg-surface-red-2': kind === 'error',
+      'border-red-200 dark:border-red-800 bg-surface-red-2': kind === 'error',
     }"
     role="status"
     aria-live="polite"
@@ -13,7 +13,7 @@
   >
     <div
       class="mt-0.5 min-w-4"
-      :class="kind === 'error' ? 'text-ink-red-4' : 'text-ink-gray-5'"
+      :class="kind === 'error' ? 'text-ink-red-8' : 'text-ink-gray-5'"
     >
       <LoadingIndicator
         v-if="kind === 'loading'"
@@ -31,14 +31,14 @@
     <div class="min-w-0">
       <h4
         class="m-0 text-[13px] font-semibold"
-        :class="kind === 'error' ? 'text-ink-red-4' : 'text-ink-gray-9'"
+        :class="kind === 'error' ? 'text-ink-red-8' : 'text-ink-gray-9'"
       >
         {{ title }}
       </h4>
       <p
         v-if="body"
         class="mt-1 text-[13px] leading-relaxed"
-        :class="kind === 'error' ? 'text-ink-red-4' : 'text-ink-gray-6'"
+        :class="kind === 'error' ? 'text-ink-red-8' : 'text-ink-gray-6'"
       >
         {{ body }}
       </p>
@@ -57,10 +57,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Button, LoadingIndicator } from 'frappe-ui';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import IconInbox from '~icons/lucide/inbox';
+import IconAlertTriangle from '~icons/lucide/alert-triangle';
+import { computed } from 'vue';
 
 const props = defineProps<{
   kind: 'loading' | 'empty' | 'error';

@@ -1,11 +1,12 @@
 <template>
   <Dialog
     :model-value="open"
-    :options="{ title: `Manage Apps in ${resourceName}`, size: '4xl' }"
+    :title="`Manage Apps in ${resourceName}`"
+    size="4xl"
     @update:model-value="onOpenChange"
     @close="$emit('close')"
   >
-    <template #body-content>
+    <template #default>
       <div class="flex flex-col gap-4">
         <div
           v-if="warningMessage"
@@ -14,7 +15,7 @@
           <Alert 
             theme="yellow" 
             :title="warningMessage" 
-            :dismissable="false" 
+            :dismissible="false" 
           />
         </div>
         <div

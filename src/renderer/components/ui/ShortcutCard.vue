@@ -3,7 +3,7 @@
     :is="is"
     :to="to"
     :class="[
-      'block w-full rounded-lg border border-outline-gray-2 bg-surface-white p-4 transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3',
+      'block w-full rounded-lg border border-outline-gray-2 bg-surface-base p-4 transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3',
       { 'no-underline text-inherit': to },
       { 'cursor-pointer focus-visible:outline-2 focus-visible:outline-outline-gray-3 focus-visible:outline-offset-2': !to }
     ]"

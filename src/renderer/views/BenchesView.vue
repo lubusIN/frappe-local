@@ -30,7 +30,7 @@
             class="flex h-full min-w-0 cursor-pointer flex-col justify-center gap-0.5 group"
             @click="onManageBench(row.id)"
           >
-            <div class="truncate text-sm font-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-3">
+            <div class="truncate text-sm-medium transition-colors text-ink-gray-9 group-hover:text-ink-blue-6">
               {{ row.name }}
             </div>
             <div
@@ -68,12 +68,12 @@
             class="flex h-full items-center justify-end"
             @click.stop
           >
-            <Dropdown :options="getBenchActions(row)">
+            <Dropdown :options="getBenchActions(row)" placement="right">
               <template #default>
                 <Button
                   size="md"
                   variant="subtle"
-                  icon="more-horizontal"
+                  :icon="IconMoreHorizontal"
                 />
               </template>
             </Dropdown>
@@ -151,22 +151,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch, watchEffect, type Component } from 'vue';
-import { useRouter } from 'vue-router';
 import { Badge, Button, Dropdown, toast } from 'frappe-ui';
-import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
-import IconPlus from '~icons/lucide/plus';
+import IconMoreHorizontal from '~icons/lucide/more-horizontal';
+import IconPackage from '~icons/lucide/package';
 import IconExternalLink from '~icons/lucide/external-link';
-
+import IconActivity from '~icons/lucide/activity';
+import IconRotateCw from '~icons/lucide/rotate-cw';
 import IconPlay from '~icons/lucide/play';
 import IconSquare from '~icons/lucide/square';
 import IconFolder from '~icons/lucide/folder';
 import IconTerminal from '~icons/lucide/terminal';
-import IconTrash from '~icons/lucide/trash-2';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
-import IconActivity from '~icons/lucide/activity';
-import IconRotateCw from '~icons/lucide/rotate-cw';
-import IconPackage from '~icons/lucide/package';
+import IconTrash2 from '~icons/lucide/trash2';
+import IconPlus from '~icons/lucide/plus';
+import { computed, onBeforeUnmount, ref, watch, watchEffect, type Component } from 'vue';
+import { useRouter } from 'vue-router';
+import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
+
 
 import StatePanel from '../components/ui/StatePanel.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
@@ -439,7 +440,7 @@ const getBenchActions = (bench: BenchListItem) => {
       },
       {
         label: 'Delete',
-        icon: IconTrash,
+        icon: IconTrash2,
         theme: 'red' as const,
         disabled: updating.value || deleting.value || bench.status === 'running' || isBusy,
         onClick: () => confirmDeleteBench(bench.id, bench.name),

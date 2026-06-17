@@ -84,7 +84,7 @@
           >-</span>
         </template>
         <template v-else-if="column.key === 'taskName'">
-          <span class="block truncate text-sm font-medium text-ink-gray-9">{{ row.taskName }}</span>
+          <span class="block truncate text-sm-medium text-ink-gray-9">{{ row.taskName }}</span>
         </template>
         <template v-else-if="column.key === 'message'">
           <span class="block truncate text-sm text-ink-gray-6">{{ row.message }}</span>
@@ -109,10 +109,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { Badge, LoadingIndicator, Select } from 'frappe-ui';
-import IconTrash from '~icons/lucide/trash-2';
 import IconActivity from '~icons/lucide/activity';
+import IconTrash2 from '~icons/lucide/trash2';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
 import EmptyState from '../components/ui/EmptyState.vue';
 import ErrorNotice from '../components/ui/ErrorNotice.vue';
@@ -150,7 +150,7 @@ const headerActions = computed(() => {
     {
       id: 'activity-clear',
       label: 'Clear',
-      icon: IconTrash,
+      icon: IconTrash2,
       theme: 'red',
       variant: 'subtle' as const,
       onClick: () => {

@@ -17,8 +17,8 @@
         :class="[
           'flex w-full cursor-pointer items-center justify-between rounded border border-outline-gray-3 !p-3 text-sm font-normal leading-5 text-ink-gray-9 focus:outline-none !min-h-0 !h-auto',
           selectedValue === option.value
-            ? 'border-outline-gray-5 bg-surface-gray-2 ring-1 ring-gray-900 hover:bg-surface-gray-2'
-            : 'bg-surface-white hover:bg-surface-gray-1',
+            ? 'border-outline-gray-7 bg-surface-gray-2 ring-1 ring-gray-900 hover:bg-surface-gray-2'
+            : 'bg-surface-base hover:bg-surface-gray-1',
         ]"
         @click="model = option.value"
       >
@@ -29,8 +29,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Button } from 'frappe-ui';
+import { computed } from 'vue';
 import { toSelectorFrappeVersion } from '../../utils/frappe-version';
 
 const model = defineModel<string>();

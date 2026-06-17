@@ -6,7 +6,7 @@ export const statusTheme = (status: string, context?: StatusContext) => {
   if (normalized === 'ready') return 'green';
   if (normalized === 'success' || normalized === 'passed' || normalized === 'ok') return 'green';
   if (normalized === 'failure' || normalized === 'failed' || normalized === 'error') return 'red';
-  if (normalized === 'warning' || normalized === 'warn') return 'orange';
+  if (normalized === 'warning' || normalized === 'warn') return 'amber';
   if (normalized === 'queued') return 'blue';
   return 'gray';
 };

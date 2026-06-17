@@ -1,11 +1,12 @@
 <template>
   <Dialog
     :model-value="open"
-    :options="{ title, size: '3xl' }"
+    :title="title"
+    size="3xl"
     @update:model-value="$emit('update:open', $event)"
     @close="$emit('close')"
   >
-    <template #body-content>
+    <template #default>
       <div class="flex flex-col gap-4">
         <div
           class="flex items-center gap-2.5 py-1"
@@ -31,7 +32,7 @@
         >
           <p
             v-if="errors && errors.length > 0"
-            class="mb-4 text-sm text-ink-red-3"
+            class="mb-4 text-sm text-ink-red-6"
           >
             {{ errors.join(' ') }}
           </p>

@@ -1,13 +1,11 @@
 <template>
   <Dialog
     v-model="isShowing"
-    :options="{
-      title: 'Settings',
-      description: 'Manage application preferences and storage paths.',
-      size: 'xl',
-    }"
+    title="Settings"
+    message="Manage application preferences and storage paths."
+    size="xl"
   >
-    <template #body-content>
+    <template #default>
       <div class="py-1">
         <StatePanel
           v-if="error"
@@ -70,7 +68,7 @@
                     Set the memory available to local benches and sites.
                   </p>
                 </div>
-                <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-white px-2.5 py-1 text-sm font-semibold text-ink-gray-8">
+                <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
                   {{ formatMemory(form.podmanMemoryMb) }}
                 </span>
               </div>
@@ -135,8 +133,8 @@
 </template>
 
 <script setup lang="ts">
+import { Button, Dialog, FormLabel, Slider, TextInput, toast } from 'frappe-ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { Dialog, Button, FormLabel, Slider, TextInput, toast } from 'frappe-ui';
 import StatePanel from '../ui/StatePanel.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
 import { useSettings } from '../../composables/data/useSettings';

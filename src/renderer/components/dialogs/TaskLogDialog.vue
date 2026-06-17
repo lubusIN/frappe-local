@@ -2,16 +2,16 @@
   <Dialog
     v-if="task"
     v-model="isOpen"
-    :options="{ size: '5xl' }"
+    size="5xl"
   >
-    <template #body-title>
+    <template #title>
       <div class="flex items-center min-w-0 gap-3">
         <div class="flex items-center justify-center rounded-lg size-9 shrink-0 bg-surface-gray-2 text-ink-gray-6">
           <IconTerminal class="size-[18px]" />
         </div>
         <div class="min-w-0">
           <div class="flex items-center min-w-0 gap-2">
-            <h3 class="m-0 text-base font-semibold truncate text-ink-gray-9">
+            <h3 class="m-0 text-base-semibold truncate text-ink-gray-9">
               {{ task.taskName }}
             </h3>
             <Badge
@@ -33,14 +33,14 @@
       </div>
     </template>
 
-    <template #body-content>
-      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-gray-7">
-        <div class="flex items-center justify-between border-b border-outline-gray-5 px-4 py-2.5">
+    <template #default>
+      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-gray-10">
+        <div class="flex items-center justify-between border-b border-outline-gray-7 px-4 py-2.5">
           <div class="flex items-center gap-2">
-            <span class="rounded-full size-2 bg-surface-red-5" />
-            <span class="rounded-full size-2 bg-surface-amber-5" />
-            <span class="rounded-full size-2 bg-surface-green-5" />
-            <span class="ml-1 text-xs font-medium text-ink-gray-4">Output</span>
+            <span class="rounded-full size-2 bg-surface-red-7" />
+            <span class="rounded-full size-2 bg-surface-amber-7" />
+            <span class="rounded-full size-2 bg-surface-green-7" />
+            <span class="ml-1 text-xs-medium text-ink-gray-4">Output</span>
           </div>
           <span class="text-xs tabular-nums text-ink-gray-4">
             {{ entryCountLabel }}
@@ -70,7 +70,7 @@
           <div
             v-for="(log, index) in visibleLogs"
             :key="`${log.timestamp}-${index}`"
-            class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-6"
+            class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-9"
           >
             <time
               class="tabular-nums text-ink-gray-4"
@@ -94,7 +94,7 @@
 
         <div
           v-if="displayedLogs.length > 0"
-          class="flex items-center justify-between border-t border-outline-gray-5 px-4 py-2.5"
+          class="flex items-center justify-between border-t border-outline-gray-7 px-4 py-2.5"
         >
           <span class="text-xs text-ink-gray-4">
             {{ footerStatusLabel }}
@@ -155,10 +155,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
 import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
-import IconCopy from '~icons/lucide/copy';
 import IconTerminal from '~icons/lucide/terminal';
+import IconCopy from '~icons/lucide/copy';
+import { computed, nextTick, ref, watch } from 'vue';
 import type { ProgressTaskSummary } from '../../controllers/progress';
 import type { TaskLogLevel, TaskProgressEvent } from '../../../shared/domain/task-runner';
 import { formatStatus, statusTheme } from '../../utils/format';
@@ -312,15 +312,15 @@ const formatLevel = (level: TaskProgressEvent['logLevel']) => {
 };
 
 const levelClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'text-ink-red-2';
-  if (level === 'warning') return 'text-ink-amber-3';
-  if (level === 'info') return 'text-ink-blue-2';
+  if (level === 'error') return 'text-ink-red-5';
+  if (level === 'warning') return 'text-ink-amber-6';
+  if (level === 'info') return 'text-ink-blue-5';
   return 'text-ink-gray-4';
 };
 
 const messageClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'text-ink-red-2';
-  if (level === 'warning') return 'text-ink-amber-2';
+  if (level === 'error') return 'text-ink-red-5';
+  if (level === 'warning') return 'text-ink-amber-5';
   return '';
 };
 

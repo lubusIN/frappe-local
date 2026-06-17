@@ -96,7 +96,7 @@ const createMainWindow = async (): Promise<void> => {
     height: 800,
     minWidth: 1024,
     minHeight: 720,
-    backgroundColor: '#f5f2ea',
+    backgroundColor: '#ffffff',
     titleBarStyle: 'hidden',
     show: false, // Don't show the window until the UI is ready
     titleBarOverlay: {

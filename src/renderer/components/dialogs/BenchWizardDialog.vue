@@ -72,15 +72,15 @@
         <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
       </div>
       <div class="flex justify-between text-[13px]">
-        <span>Path</span><strong class="font-mono text-xs font-semibold break-all">{{ createForm.path }}</strong>
+        <span>Path</span><strong class="font-mono text-xs-semibold break-all">{{ createForm.path }}</strong>
       </div>
     </div>
   </WizardDialog>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue';
 import { Button, FormLabel, TextInput } from 'frappe-ui';
+import { reactive, ref, watch } from 'vue';
 import WizardDialog from './WizardDialog.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
 import { useBenches } from '../../composables/data/useBenches';

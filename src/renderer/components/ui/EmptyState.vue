@@ -12,7 +12,7 @@
         aria-hidden="true"
       />
     </div>
-    <h2 class="m-0 text-lg font-semibold text-ink-gray-9">
+    <h2 class="m-0 text-xl-semibold text-ink-gray-9">
       {{ title }}
     </h2>
     <p class="mt-2 mb-6 text-sm text-ink-gray-5">

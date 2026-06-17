@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-screen h-screen overflow-hidden bg-surface-white">
+  <div class="flex flex-col w-screen h-screen overflow-hidden bg-surface-base">
     <!-- Main Content Area -->
     <div class="flex flex-1 min-h-0">
       <Sidebar
@@ -14,16 +14,16 @@
             style="-webkit-app-region: drag;"
           >
             <div 
-              class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-7 text-ink-white shrink-0"
+              class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-10 text-white shrink-0"
             >
-              <Logo class="w-5 h-5 text-ink-white" />
+              <Logo class="w-5 h-5 text-white" />
             </div>
             <div 
               v-if="!isCollapsed"
               class="flex flex-col ml-3 truncate transition-all duration-300"
             >
-              <span class="text-sm font-bold leading-tight text-ink-gray-9">Frappe Local</span>
-              <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">frappe for humans</span>
+              <span class="text-sm-bold leading-tight text-ink-gray-9">Frappe Local</span>
+              <span class="text-xs-medium text-ink-gray-5 leading-tight mt-0.5">frappe for humans</span>
             </div>
           </div>
         </template>
@@ -37,12 +37,12 @@
         </template>
       </Sidebar>
 
-      <div class="flex flex-col flex-1 min-w-0 bg-surface-white">
+      <div class="flex flex-col flex-1 min-w-0 bg-surface-base">
         <header 
           class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0"
           style="-webkit-app-region: drag;"
         >
-          <h1 class="text-lg font-medium truncate text-ink-gray-9">
+          <h1 class="text-xl-medium truncate text-ink-gray-9">
             {{ currentTitle }}
           </h1>
           
@@ -98,15 +98,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type Component } from 'vue';
-import { RouterView, useRoute } from 'vue-router';
-import { Sidebar, SidebarItem, Button, toast } from 'frappe-ui';
+import { Button, Sidebar, SidebarItem, toast } from 'frappe-ui';
+import IconSettings from '~icons/lucide/settings';
 import IconHome from '~icons/lucide/home';
+import IconActivity from '~icons/lucide/activity';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
-import IconActivity from '~icons/lucide/activity';
-import IconSettings from '~icons/lucide/settings';
 import IconZap from '~icons/lucide/zap';
+import { computed, onMounted, ref, watch, type Component } from 'vue';
+import { RouterView, useRoute } from 'vue-router';
 import Logo from './ui/Logo.vue';
 import SettingsDialog from './dialogs/SettingsDialog.vue';
 import TaskLogDialog from './dialogs/TaskLogDialog.vue';
@@ -145,7 +145,7 @@ watch(
 
     handledFailureTaskIds.add(task.taskId);
     toast.error(`${task.taskName} failed.`, {
-      duration: 10,
+      duration: 10000,
       action: {
         label: 'View logs',
         altText: `View logs for ${task.taskName}`,

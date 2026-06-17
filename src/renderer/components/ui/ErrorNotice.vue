@@ -1,7 +1,7 @@
 <template>
   <section
     class="flex items-start gap-3 rounded-lg border p-4 select-text"
-    :class="tone === 'warning' ? 'border-outline-amber-2 bg-surface-amber-2 text-ink-amber-3' : 'border-outline-red-2 bg-surface-red-2 text-ink-red-4'"
+    :class="tone === 'warning' ? 'border-amber-200 dark:border-amber-800 bg-surface-amber-2 text-ink-amber-6' : 'border-red-200 dark:border-red-800 bg-surface-red-2 text-ink-red-8'"
     role="alert"
     aria-live="polite"
     aria-atomic="true"
@@ -44,7 +44,7 @@
         >
           <RouterLink
             v-if="action.to"
-            class="inline-flex items-center rounded-md border border-current px-2.5 py-1 text-xs font-medium no-underline hover:bg-surface-white/50"
+            class="inline-flex items-center rounded-md border border-current px-2.5 py-1 text-xs-medium no-underline hover:bg-surface-base/50"
             :to="action.to"
             :aria-label="`${action.label}: navigate to resolve this error`"
           >
@@ -66,10 +66,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { RouterLink } from 'vue-router';
 import { Button } from 'frappe-ui';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
+import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import type { ErrorRemediationNotice } from '../../utils/error-remediation';
 
 defineProps<{

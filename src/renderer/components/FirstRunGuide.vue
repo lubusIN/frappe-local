@@ -1,14 +1,14 @@
 <template>
   <section
-    class="grid gap-3.5 rounded-lg border border-outline-blue-1 bg-surface-blue-2"
+    class="grid gap-3.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-surface-blue-2"
     :class="compact ? 'p-3.5' : 'p-4'"
   >
     <div class="flex items-start gap-2.5">
-      <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border border-outline-blue-1 bg-surface-white text-ink-blue-3">
+      <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border border-blue-200 dark:border-blue-800 bg-surface-base text-ink-blue-6">
         <IconPackage class="h-4 w-4" />
       </div>
       <div>
-        <h4 class="m-0 text-sm font-semibold text-ink-gray-9">
+        <h4 class="m-0 text-sm-semibold text-ink-gray-9">
           {{ title }}
         </h4>
         <p class="mt-1 text-[13px] leading-relaxed text-ink-gray-6">
@@ -51,9 +51,9 @@
 
 <script setup lang="ts">
 import { Button } from 'frappe-ui';
-import { useRouter } from 'vue-router';
-import IconChevronRight from '~icons/lucide/chevron-right';
 import IconPackage from '~icons/lucide/package';
+import IconChevronRight from '~icons/lucide/chevron-right';
+import { useRouter } from 'vue-router';
 
 export type FirstRunGuideLink = {
   label: string;

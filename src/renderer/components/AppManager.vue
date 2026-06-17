@@ -26,7 +26,7 @@
 
     <div
       v-if="state.error"
-      class="px-2 py-3 text-xs text-center text-ink-red-4"
+      class="px-2 py-3 text-xs text-center text-ink-red-8"
     >
       {{ state.error }}
     </div>
@@ -66,7 +66,7 @@
             >
             <div
               v-else
-              class="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 text-sm font-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
+              class="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 text-sm-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
             >
               {{ row.appName.charAt(0).toUpperCase() }}
             </div>
@@ -134,7 +134,7 @@
           <!-- Title & Description -->
           <div class="flex flex-col min-h-0 flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <h3 class="text-sm font-semibold text-ink-gray-9 truncate">
+              <h3 class="text-sm-semibold text-ink-gray-9 truncate">
                 {{ row.appName }}
               </h3>
             </div>
@@ -152,8 +152,8 @@
               <span
                 class="text-[10px] font-medium"
                 :class="{
-                  'text-ink-amber-3': row.compatibilityStatus === 'warning',
-                  'text-ink-red-4': row.compatibilityStatus === 'blocked',
+                  'text-ink-amber-6': row.compatibilityStatus === 'warning',
+                  'text-ink-red-8': row.compatibilityStatus === 'blocked',
                   'text-ink-gray-6': row.compatibilityStatus !== 'warning' && row.compatibilityStatus !== 'blocked',
                 }"
               >
@@ -197,9 +197,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import IconSearch from '~icons/lucide/search';
 import { Badge, Button, Select, TextInput } from 'frappe-ui';
+import IconSearch from '~icons/lucide/search';
+import { computed, ref } from 'vue';
 import type { CatalogAppItem } from '../../shared/core/ipc';
 import { useAppCatalogFilters } from '../composables/data/useAppCatalogFilters';
 

@@ -19,7 +19,7 @@
       class="grid gap-4"
     >
       <label class="flex flex-col gap-1.5">
-        <span class="mb-1 text-xs font-medium text-ink-gray-6">Select bench</span>
+        <span class="mb-1 text-xs-medium text-ink-gray-6">Select bench</span>
         <Select
           v-model="createBenchSelection"
           :disabled="benchLoading"
@@ -76,8 +76,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
 import { FormLabel, Select, Switch, TextInput } from 'frappe-ui';
+import { computed, reactive, ref, watch } from 'vue';
 import WizardDialog from './WizardDialog.vue';
 import { useSites } from '../../composables/data/useSites';
 import { useBenches } from '../../composables/data/useBenches';

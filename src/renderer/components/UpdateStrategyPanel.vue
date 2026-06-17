@@ -1,5 +1,5 @@
 <template>
-  <section class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-white">
+  <section class="overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base">
     <div class="flex items-center justify-between gap-3 border-b border-outline-gray-2 bg-surface-gray-2 px-4 py-3.5">
       <div>
         <h3 class="m-0 text-[13px] font-semibold text-ink-gray-9">
@@ -90,7 +90,7 @@
           v-if="status.rollbackGuidance.length > 0"
           class="border-t border-dashed border-outline-gray-2 pt-3"
         >
-          <h4 class="m-0 mb-2 text-xs font-semibold uppercase text-ink-gray-6">
+          <h4 class="m-0 mb-2 text-xs-semibold uppercase text-ink-gray-6">
             Rollback Guidance
           </h4>
           <ul class="m-0 grid list-disc gap-1 pl-5 text-[13px] text-ink-gray-6">
@@ -108,8 +108,8 @@
 </template>
 
 <script setup lang="ts">
-import type { UpdateCheckResult, UpdateStrategyStatus } from '../../shared/core/ipc';
 import { Badge, Button } from 'frappe-ui';
+import type { UpdateCheckResult, UpdateStrategyStatus } from '../../shared/core/ipc';
 import { computed } from 'vue';
 import StatePanel from './ui/StatePanel.vue';
 
@@ -126,7 +126,7 @@ defineEmits<{
   check: [];
 }>();
 
-const lastCheckTheme = computed<'gray' | 'blue' | 'green' | 'red' | 'orange'>(() => {
+const lastCheckTheme = computed<'gray' | 'blue' | 'green' | 'red' | 'amber'>(() => {
   if (props.lastCheck?.status === 'not-configured') return 'gray';
   return 'gray';
 });

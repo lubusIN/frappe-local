@@ -18,8 +18,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { ListView } from 'frappe-ui';
+import { computed } from 'vue';
 
 const props = defineProps<{
   columns?: object[];
