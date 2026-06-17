@@ -81,7 +81,7 @@ export const SettingsSchema = z.object({
 
 export const DEFAULT_SETTINGS: Settings = {
   defaultFrappeVersion: '16.0.0',
-  storagePath: '~/Library/Application Support/Local Bench',
+  storagePath: '~/Library/Application Support/Frappe Local',
   editorPreference: 'code',
   updateChannel: 'stable',
   autoUpdateEnabled: true,

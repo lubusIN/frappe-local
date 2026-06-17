@@ -8,7 +8,7 @@ import { getRecommendedPodmanMemoryMb } from '../../../src/shared/core/system-re
 
 const seedSettings: Settings = {
   ...DEFAULT_SETTINGS,
-  storagePath: '/Users/dev/.local-bench',
+  storagePath: '/Users/dev/.frappe-local',
 };
 
 function makeStubCatalogRepo(items: AppCatalogItem[] = []) {

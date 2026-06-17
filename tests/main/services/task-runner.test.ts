@@ -220,7 +220,7 @@ describe('TaskRunner', () => {
 
   it('writes all task logs to disk while throttling noisy log events to listeners', async () => {
     const runner = new TaskRunner();
-    const logsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-task-logs-'));
+    const logsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-task-logs-'));
     const events: TaskProgressEvent[] = [];
 
     runner.configureLogDirectory(logsDir);

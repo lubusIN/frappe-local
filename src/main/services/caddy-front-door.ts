@@ -13,7 +13,7 @@ import { BAD_GATEWAY_ERROR_PAGE } from '../pages/bad-gateway/page';
 
 const logger = createMainLogger('caddy-front-door');
 
-const CADDY_RUNTIME_DIR = path.join(os.tmpdir(), 'local-bench-caddy');
+const CADDY_RUNTIME_DIR = path.join(os.tmpdir(), 'frappe-local-caddy');
 const CADDY_CONFIG_PATH = path.join(CADDY_RUNTIME_DIR, 'Caddyfile');
 const CADDY_PID_PATH = path.join(CADDY_RUNTIME_DIR, 'caddy.pid');
 const CADDY_ADMIN_ADDRESS = 'localhost:29919';
@@ -189,14 +189,14 @@ const ensureCaddyRootTrusted = async (): Promise<boolean> => {
   return false;
 };
 
-const buildBadGatewayErrorHandler = (): string => `(local_bench_bad_gateway) {
+const buildBadGatewayErrorHandler = (): string => `(frappe_local_bad_gateway) {
   handle_errors {
     @bad_gateway expression {err.status_code} == 502
     handle @bad_gateway {
       header Content-Type "text/html; charset=utf-8"
-      respond <<LOCAL_BENCH_502_PAGE
+      respond <<FRAPPE_LOCAL_502_PAGE
 ${BAD_GATEWAY_ERROR_PAGE}
-LOCAL_BENCH_502_PAGE 502
+FRAPPE_LOCAL_502_PAGE 502
     }
   }
 }`;
@@ -326,7 +326,7 @@ const stopOrphanFrontDoorProcesses = (): void => {
 
     try {
       process.kill(processInfo.pid, 'SIGTERM');
-      logger.warn(`Stopped orphan Local Bench Caddy process (pid=${processInfo.pid}).`);
+      logger.warn(`Stopped orphan Frappe Local Caddy process (pid=${processInfo.pid}).`);
     } catch {
       // Ignore dead/stale process entries.
     }
@@ -415,12 +415,12 @@ export const pruneStaleCaddySiteCertificates = (
     }
 
     const directoryName = entry.name.trim().toLowerCase();
-    const isManagedLocalBenchCert =
+    const isManagedFrappeLocalCert =
       directoryName === 'localhost' ||
       directoryName.endsWith('.localhost') ||
       directoryName === LEGACY_WILDCARD_CERT_DIR;
 
-    if (!isManagedLocalBenchCert || keepHosts.has(directoryName)) {
+    if (!isManagedFrappeLocalCert || keepHosts.has(directoryName)) {
       continue;
     }
 
@@ -445,7 +445,7 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
 
   const routeBlocks = Array.from(uniqueRoutes.values())
     .map(({ siteHost, benchPort }) => {
-      const proxy = `  import local_bench_bad_gateway
+      const proxy = `  import frappe_local_bad_gateway
   handle /socket.io/* {
     reverse_proxy 127.0.0.1:${benchPort + 1000} {
       header_up Host 127.0.0.1

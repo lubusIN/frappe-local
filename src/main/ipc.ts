@@ -15,7 +15,7 @@ import type {
 } from '../shared/core/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
-import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './services/runtime-service';
+import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from './services/runtime-service';
 import { getPodmanMachines, isPodmanMachineRequired } from './utils/podman/podman';
 import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
 import { getBinaryPath } from './utils/binaries';
@@ -272,7 +272,7 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.appHealthCheck, async (): Promise<AppHealthResponse> => {
     return {
-      appName: 'Local Bench',
+      appName: 'Frappe Local',
       platform: process.platform,
       nodeVersion: process.version,
       electronVersion: process.versions.electron,
@@ -397,25 +397,25 @@ export const registerIpcHandlers = (
       try {
         const machines = await getPodmanMachines();
         const machineExists = machines.some(
-          (machine) => machine.Name === LOCAL_BENCH_MACHINE_NAME
+          (machine) => machine.Name === FRAPPE_LOCAL_MACHINE_NAME
         );
 
         if (machineExists) {
-          mainLogger.info(`Destroying dedicated podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
+          mainLogger.info(`Destroying dedicated podman machine: ${FRAPPE_LOCAL_MACHINE_NAME}`);
           const result = await execPromise(
             getBinaryPath('podman'),
-            ['machine', 'rm', '--force', LOCAL_BENCH_MACHINE_NAME]
+            ['machine', 'rm', '--force', FRAPPE_LOCAL_MACHINE_NAME]
           );
           if (result.code !== 0) {
             const reason = (result.stderr || result.stdout).trim() || `exit code ${result.code}`;
             throw new Error(reason);
           }
-          mainLogger.info(`Successfully destroyed podman machine: ${LOCAL_BENCH_MACHINE_NAME}`);
+          mainLogger.info(`Successfully destroyed podman machine: ${FRAPPE_LOCAL_MACHINE_NAME}`);
         }
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         podmanMachineRemovalError = new Error(
-          `Failed to destroy Podman machine '${LOCAL_BENCH_MACHINE_NAME}': ${reason}`
+          `Failed to destroy Podman machine '${FRAPPE_LOCAL_MACHINE_NAME}': ${reason}`
         );
         mainLogger.warn(podmanMachineRemovalError.message);
       }

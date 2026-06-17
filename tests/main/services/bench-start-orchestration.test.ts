@@ -66,7 +66,7 @@ describe('bench start/restart orchestration', () => {
     vi.clearAllMocks();
     queuedRun = null;
 
-    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-bench-start-'));
+    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-bench-start-'));
 
     bench.path = benchPath;
     fs.mkdirSync(path.join(benchPath, 'sites'), { recursive: true });

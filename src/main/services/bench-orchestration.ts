@@ -1353,11 +1353,11 @@ export const resetAllBenchContainers = async (
     }
   }
 
-  // Clean up any orphaned podman resources matching the local-bench prefix
+  // Clean up any orphaned podman resources matching the frappe-local prefix
   const podmanBinary = getBinaryPath('podman');
   await cleanupPodmanResources(
     podmanBinary,
-    nameFilterArgs('local-bench-'),
+    nameFilterArgs('frappe-local-'),
     runtimeEnv,
     { idleTimeout: 60000 },
     { info: () => {}, warn: (msg) => logger.warn(msg) }

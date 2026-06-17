@@ -50,7 +50,7 @@ describe('bench app orchestration', () => {
     vi.clearAllMocks();
     queuedRun = null;
 
-    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-apps-'));
+    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-apps-'));
 
     getBinaryPathMock.mockImplementation((name: string) => {
       if (name === 'apps.json') return path.resolve(__dirname, '../../../bin/apps.json');
@@ -130,7 +130,7 @@ describe('bench app orchestration', () => {
     );
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'local-bench-bench-ap', 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
+      ['-p', 'frappe-local-bench-ap', 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -138,7 +138,7 @@ describe('bench app orchestration', () => {
     );
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'local-bench-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
+      ['-p', 'frappe-local-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -286,7 +286,7 @@ describe('bench app orchestration', () => {
     );
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'local-bench-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
+      ['-p', 'frappe-local-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

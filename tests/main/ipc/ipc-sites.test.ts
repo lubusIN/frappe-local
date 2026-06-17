@@ -473,7 +473,7 @@ describe('sites IPC handlers', () => {
 
     expect(deleted).toBe(true);
   });
-ß
+
   it('sites:logs returns lifecycle entries for a site', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 

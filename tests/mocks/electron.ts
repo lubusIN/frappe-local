@@ -4,9 +4,9 @@ import path from 'node:path';
 export const app = {
   isPackaged: false,
   getAppPath: () => process.cwd(),
-  getPath: (name: string) => path.join(os.tmpdir(), `local-bench-${name}`),
+  getPath: (name: string) => path.join(os.tmpdir(), `frappe-local-${name}`),
   getVersion: () => '0.1.0',
-  getName: () => 'Local Bench',
+  getName: () => 'Frappe Local',
 };
 
 export class BrowserWindow {

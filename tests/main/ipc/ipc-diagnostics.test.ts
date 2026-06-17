@@ -20,7 +20,7 @@ vi.mock('../../../src/main/services/runtime-service', () => ({
   ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
   getLastRuntimeError: () => getLastRuntimeErrorMock(),
   getRuntimeEnv: () => getRuntimeEnvMock(),
-  LOCAL_BENCH_MACHINE_NAME: 'local-bench',
+  FRAPPE_LOCAL_MACHINE_NAME: 'frappe-local',
 }));
 
 vi.mock('../../../src/main/utils/binaries', () => ({
@@ -40,7 +40,7 @@ import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
 
 const seedSettings: Settings = {
   ...DEFAULT_SETTINGS,
-  storagePath: '/Users/dev/.local-bench',
+  storagePath: '/Users/dev/.frappe-local',
 };
 
 function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
@@ -172,7 +172,7 @@ describe('diagnostics IPC handlers', () => {
   it('resets development state and recreates fresh storage snapshot', async () => {
     const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
     const refreshFrontDoorHosts = vi.fn(async () => undefined);
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-reset-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -226,7 +226,7 @@ describe('diagnostics IPC handlers', () => {
 
   it('removes dormant bench folders from managed storage locations', async () => {
     const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-dormant-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-reset-dormant-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     const customStoragePath = path.join(tempRoot, 'custom-storage');
@@ -267,10 +267,10 @@ describe('diagnostics IPC handlers', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('reset performs compose and podman teardown for local-bench resources', async () => {
+  it('reset performs compose and podman teardown for frappe-local resources', async () => {
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    getPodmanMachinesMock.mockResolvedValue([{ Name: 'local-bench', State: 'running' }]);
+    getPodmanMachinesMock.mockResolvedValue([{ Name: 'frappe-local', State: 'running' }]);
 
     const bench = {
       id: '1adb2eedabcdef',
@@ -288,13 +288,13 @@ describe('diagnostics IPC handlers', () => {
     execPromiseMock.mockImplementation(async (...allArgs: unknown[]) => {
       const args = (allArgs[1] as string[]) ?? [];
       const joined = args.join(' ');
-      if (joined.includes('ps -a') && joined.includes('name=local-bench-')) {
+      if (joined.includes('ps -a') && joined.includes('name=frappe-local-')) {
         return { code: 0, stdout: 'container-1\n', stderr: '' };
       }
-      if (joined.includes('volume ls') && joined.includes('name=local-bench-')) {
+      if (joined.includes('volume ls') && joined.includes('name=frappe-local-')) {
         return { code: 0, stdout: 'volume-1\n', stderr: '' };
       }
-      if (joined.includes('network ls') && joined.includes('name=local-bench-')) {
+      if (joined.includes('network ls') && joined.includes('name=frappe-local-')) {
         return { code: 0, stdout: 'network-1\n', stderr: '' };
       }
 
@@ -302,7 +302,7 @@ describe('diagnostics IPC handlers', () => {
     });
 
     const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-cleanup-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-reset-cleanup-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -334,7 +334,7 @@ describe('diagnostics IPC handlers', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'local-bench-1adb2eed', 'down', '-v', '--remove-orphans'],
+      ['-p', 'frappe-local-1adb2eed', 'down', '-v', '--remove-orphans'],
       '/Users/dev/frappe-bench-2',
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -343,7 +343,7 @@ describe('diagnostics IPC handlers', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['ps', '-a', '--filter', 'name=local-bench-', '--format', '{{.ID}}'],
+      ['ps', '-a', '--filter', 'name=frappe-local-', '--format', '{{.ID}}'],
       undefined,
       undefined,
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -379,24 +379,24 @@ describe('diagnostics IPC handlers', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['machine', 'rm', '--force', 'local-bench']
+      ['machine', 'rm', '--force', 'frappe-local']
     );
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
   it('reports a Podman machine removal failure after resetting local data', async () => {
-    getPodmanMachinesMock.mockResolvedValue([{ Name: 'local-bench', State: 'stopped' }]);
+    getPodmanMachinesMock.mockResolvedValue([{ Name: 'frappe-local', State: 'stopped' }]);
     execPromiseMock.mockImplementation(async (...allArgs: unknown[]) => {
       const args = (allArgs[1] as string[]) ?? [];
-      if (args.join(' ') === 'machine rm --force local-bench') {
+      if (args.join(' ') === 'machine rm --force frappe-local') {
         return { code: 125, stdout: '', stderr: 'machine is locked' };
       }
       return { code: 0, stdout: '', stderr: '' };
     });
 
     const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-reset-vm-test-'));
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-reset-vm-test-'));
     const storagePath = path.join(tempRoot, 'storage');
     const configPath = path.join(tempRoot, 'config');
     fs.mkdirSync(storagePath, { recursive: true });
@@ -422,7 +422,7 @@ describe('diagnostics IPC handlers', () => {
 
     await expect(
       handlers.get(ipcChannels.diagnosticsResetDevState)?.()
-    ).rejects.toThrow("Failed to destroy Podman machine 'local-bench': machine is locked");
+    ).rejects.toThrow("Failed to destroy Podman machine 'frappe-local': machine is locked");
     expect(fs.existsSync(path.join(storagePath, 'storage.json'))).toBe(true);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });

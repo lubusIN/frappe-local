@@ -9,7 +9,7 @@ import { createMainLogger } from '../logger';
 import { execPromise } from '../utils/exec';
 import { getBinaryPath } from '../utils/binaries';
 import { isPodmanMachineRequired, getPodmanMachines } from '../utils/podman/podman';
-import { getRuntimeEnv, LOCAL_BENCH_MACHINE_NAME } from './runtime-service';
+import { getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from './runtime-service';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
@@ -55,7 +55,7 @@ const checkPathWritability = async (targetPath: string): Promise<DiagnosticsChec
   const title = `Path Writability: ${targetPath}`;
 
   try {
-    const testFile = path.join(targetPath, `.local-bench-write-test-${Date.now()}`);
+    const testFile = path.join(targetPath, `.frappe-local-write-test-${Date.now()}`);
     await fs.writeFile(testFile, 'test', 'utf8');
     await fs.unlink(testFile);
 
@@ -63,7 +63,7 @@ const checkPathWritability = async (targetPath: string): Promise<DiagnosticsChec
       type: 'path-writability',
       status: 'passed',
       title,
-      description: `Successfully verified write access to ${targetPath}. Local Bench needs this to store bench templates and site metadata.`,
+      description: `Successfully verified write access to ${targetPath}. Frappe Local needs this to store bench templates and site metadata.`,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
@@ -99,7 +99,7 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
       type: 'storage-access',
       status: 'passed',
       title,
-      description: `Storage directory accessible. Local Bench uses this to store bench templates and site metadata.`,
+      description: `Storage directory accessible. Frappe Local uses this to store bench templates and site metadata.`,
       timestamp: new Date().toISOString(),
     };
   } catch {
@@ -174,7 +174,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
       status: failureStatus,
       title: 'Podman Binary',
       description: `Bundled Podman could not run: ${message}`,
-      remediation: 'Reinstall Local Bench. On macOS, also verify the app was allowed by Gatekeeper.',
+      remediation: 'Reinstall Frappe Local. On macOS, also verify the app was allowed by Gatekeeper.',
       timestamp: new Date().toISOString(),
     });
     return checks; // Cannot proceed with further podman checks
@@ -196,7 +196,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
         const machines = await getPodmanMachines();
 
         if (machines.length > 0) {
-          const activeMachine = machines.find((machine) => machine.Name === LOCAL_BENCH_MACHINE_NAME);
+          const activeMachine = machines.find((machine) => machine.Name === FRAPPE_LOCAL_MACHINE_NAME);
           const isRunning = activeMachine && (activeMachine.CurrentlyRunning === true || activeMachine.Running === true || activeMachine.State === 'running');
 
           if (isRunning) {
@@ -221,7 +221,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
               type: 'runtime-health',
               status: failureStatus,
               title: 'Podman Machine',
-              description: `Dedicated Podman machine '${LOCAL_BENCH_MACHINE_NAME}' not found`,
+              description: `Dedicated Podman machine '${FRAPPE_LOCAL_MACHINE_NAME}' not found`,
               remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
               timestamp: new Date().toISOString(),
             });
@@ -231,7 +231,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
             type: 'runtime-health',
             status: failureStatus,
             title: 'Podman Machine',
-            description: `No Podman machines found. Dedicated machine '${LOCAL_BENCH_MACHINE_NAME}' is required.`,
+            description: `No Podman machines found. Dedicated machine '${FRAPPE_LOCAL_MACHINE_NAME}' is required.`,
             remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
             timestamp: new Date().toISOString(),
           });
@@ -262,7 +262,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
     try {
       const args = ['ps'];
       if (isPodmanMachineRequired()) {
-        args.unshift('--connection', `${LOCAL_BENCH_MACHINE_NAME}-root`);
+        args.unshift('--connection', `${FRAPPE_LOCAL_MACHINE_NAME}-root`);
       }
       const { code } = await execPromise(getBinaryPath('podman'), args, undefined, undefined, undefined, { idleTimeout: 10000 });
       if (code === 0) {

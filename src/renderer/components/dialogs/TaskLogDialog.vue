@@ -187,7 +187,7 @@ type DisplayLog = {
   readonly level: TaskLogLevel | null;
 };
 
-const LOCAL_STORAGE_KEY = 'local-bench:task-log-auto-scroll';
+const LOCAL_STORAGE_KEY = 'frappe-local:task-log-auto-scroll';
 const savedAutoScroll = localStorage.getItem(LOCAL_STORAGE_KEY);
 const autoScroll = ref(savedAutoScroll !== null ? savedAutoScroll === 'true' : true);
 

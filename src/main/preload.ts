@@ -49,4 +49,4 @@ const rendererBridge: RendererBridge = {
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 };
 
-contextBridge.exposeInMainWorld('localBench', rendererBridge);
+contextBridge.exposeInMainWorld('frappeLocal', rendererBridge);

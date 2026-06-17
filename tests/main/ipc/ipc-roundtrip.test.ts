@@ -140,7 +140,7 @@ describe('ipc roundtrip', () => {
 
     const response = await appHealthHandler?.();
     expect(response).toMatchObject({
-      appName: 'Local Bench',
+      appName: 'Frappe Local',
       platform: process.platform,
       nodeVersion: process.version,
       electronVersion: process.versions.electron,

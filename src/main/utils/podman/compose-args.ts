@@ -1,6 +1,6 @@
 /** Derives a consistent, short Docker Compose project name from a bench ID. */
 export const getComposeProjectName = (benchId: string): string => {
-  return `local-bench-${benchId.slice(0, 8)}`;
+  return `frappe-local-${benchId.slice(0, 8)}`;
 };
 
 /** Base arguments for invoking docker-compose against a bench. */

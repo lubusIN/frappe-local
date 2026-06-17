@@ -11,7 +11,7 @@ import { CURRENT_STORAGE_SCHEMA_VERSION } from '../../../src/main/storage/schema
 const temporaryDirectories: string[] = [];
 
 const createTemporaryStorageFilePath = async (): Promise<string> => {
-  const temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'local-bench-bootstrap-'));
+  const temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'frappe-local-bootstrap-'));
   temporaryDirectories.push(temporaryDirectory);
   return path.join(temporaryDirectory, 'storage.json');
 };

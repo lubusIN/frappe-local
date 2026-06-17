@@ -8,8 +8,8 @@ import {
 } from '../../controllers/progress';
 import { useIpc } from './useIpc';
 
-export const ACTIVITIES_STORAGE_KEY = 'local-bench:activities';
-export const ACKNOWLEDGED_TASKS_KEY = 'local-bench:acknowledged-tasks';
+export const ACTIVITIES_STORAGE_KEY = 'frappe-local:activities';
+export const ACKNOWLEDGED_TASKS_KEY = 'frappe-local:acknowledged-tasks';
 
 const loadSavedTasks = () => {
   try {

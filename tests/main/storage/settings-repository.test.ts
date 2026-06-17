@@ -28,7 +28,7 @@ import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
 
 const fullSettings: Settings = {
   ...DEFAULT_SETTINGS,
-  storagePath: '/home/user/.local-bench',
+  storagePath: '/home/user/.frappe-local',
 };
 
 describe('SettingsRepository', () => {

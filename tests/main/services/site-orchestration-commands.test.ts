@@ -119,7 +119,7 @@ describe('site orchestration command execution', () => {
     expect(timeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(args).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -141,7 +141,7 @@ describe('site orchestration command execution', () => {
     const [, migrateArgs] = execPromiseMock.mock.calls[1] as [string, string[]];
     expect(migrateArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -154,7 +154,7 @@ describe('site orchestration command execution', () => {
     const [, clearCacheArgs] = execPromiseMock.mock.calls[2] as [string, string[]];
     expect(clearCacheArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -167,7 +167,7 @@ describe('site orchestration command execution', () => {
     const [, clearWebsiteCacheArgs] = execPromiseMock.mock.calls[3] as [string, string[]];
     expect(clearWebsiteCacheArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -180,7 +180,7 @@ describe('site orchestration command execution', () => {
     const [, pkillArgs] = execPromiseMock.mock.calls[4] as [string, string[]];
     expect(pkillArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -191,7 +191,7 @@ describe('site orchestration command execution', () => {
     const [, startArgs] = execPromiseMock.mock.calls[5] as [string, string[]];
     expect(startArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-d',
       'frappe',
@@ -239,7 +239,7 @@ describe('site orchestration command execution', () => {
     expect(installTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(installArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -265,7 +265,7 @@ describe('site orchestration command execution', () => {
     expect(clearCacheTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(clearCacheArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -290,7 +290,7 @@ describe('site orchestration command execution', () => {
     expect(clearWebsiteCacheTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(clearWebsiteCacheArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -315,7 +315,7 @@ describe('site orchestration command execution', () => {
     expect(pkillTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(pkillArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -338,7 +338,7 @@ describe('site orchestration command execution', () => {
     expect(startTimeout).toMatchObject({ idleTimeout: expect.any(Number) });
     expect(startArgs).toEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-d',
       'frappe',
@@ -382,7 +382,7 @@ describe('site orchestration command execution', () => {
     const calledArgs = execPromiseMock.mock.calls.map((call) => call[1] as string[]);
     expect(calledArgs).toContainEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-T',
       'frappe',
@@ -395,7 +395,7 @@ describe('site orchestration command execution', () => {
     ]);
     expect(calledArgs).toContainEqual([
       '-p',
-      'local-bench-1adb2eed',
+      'frappe-local-1adb2eed',
       'exec',
       '-d',
       'frappe',

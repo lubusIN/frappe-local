@@ -22,7 +22,7 @@
               v-if="!isCollapsed"
               class="flex flex-col ml-3 truncate transition-all duration-300"
             >
-              <span class="text-sm font-bold leading-tight text-ink-gray-9">Local Bench</span>
+              <span class="text-sm font-bold leading-tight text-ink-gray-9">Frappe Local</span>
               <span class="text-xs text-ink-gray-5 font-medium leading-tight mt-0.5">frappe for humans</span>
             </div>
           </div>
@@ -181,15 +181,15 @@ const sidebarSections = computed(() => [
   },
 ]);
 
-const currentTitle = computed(() => String(route.meta.title ?? 'Local Bench'));
+const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Local'));
 
 onMounted(async () => {
   try {
-    await window.localBench?.getSettings();
+    await window.frappeLocal?.getSettings();
   } catch {
     // The inline warning already covers a missing preload bridge.
   } finally {
-    await window.localBench?.uiReady();
+    await window.frappeLocal?.uiReady();
   }
 });
 </script>

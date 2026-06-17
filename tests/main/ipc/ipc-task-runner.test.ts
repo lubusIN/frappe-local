@@ -109,7 +109,7 @@ describe('task runner IPC handlers', () => {
   it('reads full task logs from the configured log directory', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
     const taskRunner = makeStubTaskRunner();
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-task-log-ipc-'));
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-task-log-ipc-'));
     const logsPath = path.join(tempDir, 'logs');
     const tasksPath = path.join(logsPath, 'tasks');
     fs.mkdirSync(tasksPath, { recursive: true });

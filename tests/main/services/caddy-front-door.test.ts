@@ -34,20 +34,20 @@ describe('caddy front door config', () => {
       { siteHost: 'unavailable.localhost', benchPort: 18080 },
     ]);
 
-    expect(caddyfile).toContain('(local_bench_bad_gateway)');
+    expect(caddyfile).toContain('(frappe_local_bad_gateway)');
     expect(caddyfile).toContain('@bad_gateway expression {err.status_code} == 502');
-    expect(caddyfile).toContain('import local_bench_bad_gateway');
+    expect(caddyfile).toContain('import frappe_local_bad_gateway');
     expect(caddyfile).toContain('Site temporarily unavailable');
     expect(caddyfile).toContain('Restart the bench hosting this site.');
-    expect(caddyfile).toContain('https://github.com/lubusIN/local-bench/issues/new');
-    expect(caddyfile).toContain('LOCAL_BENCH_502_PAGE 502');
+    expect(caddyfile).toContain('https://github.com/lubusIN/frappe-local/issues/new');
+    expect(caddyfile).toContain('FRAPPE_LOCAL_502_PAGE 502');
     expect(caddyfile).toContain('class="grid min-h-screen');
     expect(caddyfile).not.toContain('@tailwind');
-    expect(caddyfile).not.toContain('LOCAL_BENCH_TAILWIND_CSS');
+    expect(caddyfile).not.toContain('FRAPPE_LOCAL_TAILWIND_CSS');
   });
 
   it('removes stale local site certificate directories while keeping active hosts', () => {
-    const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-certs-test-'));
+    const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-certs-test-'));
     fs.mkdirSync(path.join(certRoot, 'localhost'));
     fs.mkdirSync(path.join(certRoot, 'site-a.localhost'));
     fs.mkdirSync(path.join(certRoot, 'site-b.localhost'));
@@ -66,7 +66,7 @@ describe('caddy front door config', () => {
   });
 
   it('keeps config and certificate cache aligned after removing a site host', () => {
-    const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-certs-sync-test-'));
+    const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-certs-sync-test-'));
     fs.mkdirSync(path.join(certRoot, 'localhost'));
     fs.mkdirSync(path.join(certRoot, 'site-a.localhost'));
     fs.mkdirSync(path.join(certRoot, 'site-b.localhost'));

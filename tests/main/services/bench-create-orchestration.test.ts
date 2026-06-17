@@ -56,7 +56,7 @@ describe('bench creation orchestration app install', () => {
     vi.clearAllMocks();
     queuedRun = null;
 
-    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'local-bench-create-'));
+    benchPath = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-create-'));
 
     getBinaryPathMock.mockImplementation((name: string) => {
       if (name === 'apps.json') return path.resolve(__dirname, '../../../bin/apps.json');

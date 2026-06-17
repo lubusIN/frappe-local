@@ -90,7 +90,7 @@ describe('bench stop orchestration', () => {
     ];
 
     expect(command).toBe('/mock/docker-compose');
-    expect(args).toEqual(['-p', 'local-bench-1adb2eed', 'stop', '--timeout', '20']);
+    expect(args).toEqual(['-p', 'frappe-local-1adb2eed', 'stop', '--timeout', '20']);
     expect(cwd).toBe('/Users/dev/frappe-bench-2');
     expect(env).toMatchObject({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
     expect(timeout).toMatchObject({ idleTimeout: expect.any(Number) });
@@ -113,8 +113,8 @@ describe('bench stop orchestration', () => {
     const [, firstArgs] = execPromiseMock.mock.calls[0] as [string, string[]];
     const [, secondArgs] = execPromiseMock.mock.calls[1] as [string, string[]];
 
-    expect(firstArgs).toEqual(['-p', 'local-bench-1adb2eed', 'stop', '--timeout', '20']);
-    expect(secondArgs).toEqual(['-p', 'local-bench-1adb2eed', 'down', '--remove-orphans', '--timeout', '20']);
+    expect(firstArgs).toEqual(['-p', 'frappe-local-1adb2eed', 'stop', '--timeout', '20']);
+    expect(secondArgs).toEqual(['-p', 'frappe-local-1adb2eed', 'down', '--remove-orphans', '--timeout', '20']);
   });
 
   it('treats already-stopped outputs as success', async () => {

@@ -9,7 +9,7 @@ import { vi } from 'vitest';
 vi.mock('../../../src/main/utils/exec', () => ({
   execPromise: vi.fn().mockImplementation((command, args) => {
     if (command === 'podman' && args.includes('ls')) {
-      return Promise.resolve({ code: 0, stdout: '[{"Name": "local-bench", "Running": true}]' });
+      return Promise.resolve({ code: 0, stdout: '[{"Name": "frappe-local", "Running": true}]' });
     }
     return Promise.resolve({ code: 0, stdout: '[]' });
   }),
@@ -32,7 +32,7 @@ import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
 
 const seedSettings: Settings = {
   ...DEFAULT_SETTINGS,
-  storagePath: '/tmp/local-bench',
+  storagePath: '/tmp/frappe-local',
 };
 
 afterEach(async () => {
@@ -45,7 +45,7 @@ afterEach(async () => {
 
 describe('diagnostics service', () => {
   it('builds a report from writable paths and runtime health data', async () => {
-    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'local-bench-diagnostics-'));
+    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'frappe-local-diagnostics-'));
     const storagePath = path.join(userDataPath, 'storage');
     await fs.mkdir(storagePath, { recursive: true });
     createdPaths.push(userDataPath);
@@ -73,7 +73,7 @@ describe('diagnostics service', () => {
   });
 
   it('reports critical issues when runtime health cannot be collected', async () => {
-    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'local-bench-diagnostics-'));
+    const userDataPath = await fs.mkdtemp(path.join(os.tmpdir(), 'frappe-local-diagnostics-'));
     createdPaths.push(userDataPath);
 
     const report = await runDiagnostics({

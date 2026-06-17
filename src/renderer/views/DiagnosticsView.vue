@@ -16,7 +16,7 @@
             Danger Zone
           </h3>
           <p class="mt-1 text-sm text-ink-gray-6">
-            Remove all Local Bench data, containers, and the dedicated Podman VM to start from a clean slate.
+            Remove all Frappe Local data, containers, and the dedicated Podman VM to start from a clean slate.
           </p>
         </div>
         <Button
@@ -51,7 +51,7 @@
         <Logo class="w-24 h-24 mb-6 text-ink-gray-9 animate-pulse" />
         <LoadingIndicator class="w-8 h-8 mb-4 text-ink-gray-9" />
         <h2 class="text-xl font-semibold text-ink-gray-9">
-          Resetting Local Bench
+          Resetting Frappe Local
         </h2>
         <p class="mt-2 text-ink-gray-6">
           This may take a few moments. Please do not close the application.

@@ -7,18 +7,18 @@ describe('runtime path resolver', () => {
     const resolved = resolveAppRuntimePaths({
       getPath: (name) => {
         if (name === 'userData') {
-          return '/tmp/local-bench-user';
+          return '/tmp/frappe-local-user';
         }
 
-        return '/tmp/local-bench-logs';
+        return '/tmp/frappe-local-logs';
       },
     });
 
     expect(resolved).toEqual({
-      userDataPath: '/tmp/local-bench-user',
-      logsPath: '/tmp/local-bench-logs',
-      configPath: path.join('/tmp/local-bench-user', 'config'),
-      storagePath: path.join('/tmp/local-bench-user', 'storage'),
+      userDataPath: '/tmp/frappe-local-user',
+      logsPath: '/tmp/frappe-local-logs',
+      configPath: path.join('/tmp/frappe-local-user', 'config'),
+      storagePath: path.join('/tmp/frappe-local-user', 'storage'),
     });
   });
 });

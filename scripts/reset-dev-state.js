@@ -4,13 +4,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Local Bench');
+const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Frappe Local');
 const storagePath = path.join(appSupportPath, 'storage');
 const configPath = path.join(appSupportPath, 'config');
 const benchesPath = path.join(appSupportPath, 'benches');
 const storageFilePath = path.join(storagePath, 'storage.json');
 const APP_CATALOG_SEED_VERSION = 13;
-const LOCAL_BENCH_MACHINE_NAME = 'local-bench';
+const FRAPPE_LOCAL_MACHINE_NAME = 'frappe-local';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,7 +79,7 @@ for (const bench of benches) {
     continue;
   }
 
-  const projectName = `local-bench-${bench.id.slice(0, 8)}`;
+  const projectName = `frappe-local-${bench.id.slice(0, 8)}`;
   const benchPath = typeof bench.path === 'string' ? bench.path : repoRoot;
   runBestEffort(
     `docker compose down for ${projectName}`,
@@ -89,27 +89,27 @@ for (const bench of benches) {
   );
 }
 
-const containerIds = listPodmanNames(['ps', '-a', '--filter', 'name=local-bench-', '--format', '{{.ID}}']);
+const containerIds = listPodmanNames(['ps', '-a', '--filter', 'name=frappe-local-', '--format', '{{.ID}}']);
 if (containerIds.length > 0) {
-  runBestEffort('remove local-bench containers', podmanBinary, ['rm', '-f', ...containerIds]);
+  runBestEffort('remove frappe-local containers', podmanBinary, ['rm', '-f', ...containerIds]);
 }
 
-const volumeNames = listPodmanNames(['volume', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
+const volumeNames = listPodmanNames(['volume', 'ls', '--filter', 'name=frappe-local-', '--format', '{{.Name}}']);
 if (volumeNames.length > 0) {
-  runBestEffort('remove local-bench volumes', podmanBinary, ['volume', 'rm', '-f', ...volumeNames]);
+  runBestEffort('remove frappe-local volumes', podmanBinary, ['volume', 'rm', '-f', ...volumeNames]);
 }
 
-const networkNames = listPodmanNames(['network', 'ls', '--filter', 'name=local-bench-', '--format', '{{.Name}}']);
+const networkNames = listPodmanNames(['network', 'ls', '--filter', 'name=frappe-local-', '--format', '{{.Name}}']);
 if (networkNames.length > 0) {
-  runBestEffort('remove local-bench networks', podmanBinary, ['network', 'rm', ...networkNames]);
+  runBestEffort('remove frappe-local networks', podmanBinary, ['network', 'rm', ...networkNames]);
 }
 
 const machineNames = listPodmanNames(['machine', 'list', '--format', '{{.Name}}']);
-if (machineNames.includes(LOCAL_BENCH_MACHINE_NAME)) {
+if (machineNames.includes(FRAPPE_LOCAL_MACHINE_NAME)) {
   runBestEffort(
-    `destroy Podman machine ${LOCAL_BENCH_MACHINE_NAME}`,
+    `destroy Podman machine ${FRAPPE_LOCAL_MACHINE_NAME}`,
     podmanBinary,
-    ['machine', 'rm', '--force', LOCAL_BENCH_MACHINE_NAME]
+    ['machine', 'rm', '--force', FRAPPE_LOCAL_MACHINE_NAME]
   );
 }
 

@@ -7,7 +7,7 @@ import { getAppIconPath } from './utils/app-icon';
 import { stopCaddyFrontDoor } from './services/caddy-front-door';
 
 let isQuitting = false;
-const APP_DISPLAY_NAME = 'Local Bench';
+const APP_DISPLAY_NAME = 'Frappe Local';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mainLogger = createMainLogger('main');

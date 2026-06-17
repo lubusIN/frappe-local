@@ -34,7 +34,7 @@ import {
   configurePodmanMemoryProvider,
   ensureRuntimeRunning,
   getLastRuntimeError,
-  LOCAL_BENCH_MACHINE_NAME,
+  FRAPPE_LOCAL_MACHINE_NAME,
 } from '../../../src/main/services/runtime-service';
 
 describe('Podman machine memory configuration', () => {
@@ -45,17 +45,17 @@ describe('Podman machine memory configuration', () => {
     configurePodmanMemoryProvider(async () => 4096);
   });
 
-  it('uses configured memory when initializing the Local Bench machine', async () => {
+  it('uses configured memory when initializing the Frappe Local machine', async () => {
     configurePodmanMemoryProvider(async () => 8192);
     getPodmanMachinesMock
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ Name: LOCAL_BENCH_MACHINE_NAME, State: 'running' }]);
+      .mockResolvedValueOnce([{ Name: FRAPPE_LOCAL_MACHINE_NAME, State: 'running' }]);
 
     await expect(ensureRuntimeRunning()).resolves.toBe(true);
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['machine', 'init', '--now', '--cpus', '4', '--memory', '8192', LOCAL_BENCH_MACHINE_NAME],
+      ['machine', 'init', '--now', '--cpus', '4', '--memory', '8192', FRAPPE_LOCAL_MACHINE_NAME],
       undefined,
       expect.any(Function),
       undefined,
@@ -68,7 +68,7 @@ describe('Podman machine memory configuration', () => {
 
   it('restarts a running machine around a changed memory allocation', async () => {
     getPodmanMachinesMock.mockResolvedValue([
-      { Name: LOCAL_BENCH_MACHINE_NAME, State: 'running' },
+      { Name: FRAPPE_LOCAL_MACHINE_NAME, State: 'running' },
     ]);
     execPromiseMock.mockImplementation(async (_binary: string, args: string[]) => {
       if (args[0] === 'machine' && args[1] === 'inspect') {
@@ -80,15 +80,15 @@ describe('Podman machine memory configuration', () => {
     await applyPodmanMachineMemory(6144);
 
     const commands = execPromiseMock.mock.calls.map(([, args]) => args);
-    expect(commands).toContainEqual(['machine', 'stop', LOCAL_BENCH_MACHINE_NAME]);
+    expect(commands).toContainEqual(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME]);
     expect(commands).toContainEqual([
       'machine',
       'set',
       '--memory',
       '6144',
-      LOCAL_BENCH_MACHINE_NAME,
+      FRAPPE_LOCAL_MACHINE_NAME,
     ]);
-    expect(commands).toContainEqual(['machine', 'start', LOCAL_BENCH_MACHINE_NAME]);
+    expect(commands).toContainEqual(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME]);
   });
 
   it('retains stderr from non-zero Podman commands', async () => {
