@@ -1,7 +1,8 @@
 <template>
   <div :class="[sizeClass, colorClass, 'font-mono transition-colors duration-200']">
-    <span v-if="running">⏳ Time elapsed: {{ formattedTime }}</span>
-    <span v-else>✅ Completed in: {{ formattedTime }}</span>
+    <span v-if="!showLabel">{{ formattedTime }}</span>
+    <span v-else-if="running">Time elapsed: {{ formattedTime }}</span>
+    <span v-else>Completed in: {{ formattedTime }}</span>
   </div>
 </template>
 
@@ -12,11 +13,13 @@ const props = withDefaults(defineProps<{
   startTime: string | number;
   endTime?: string | number;
   running?: boolean;
+  showLabel?: boolean;
   sizeClass?: string;
   colorClass?: string;
 }>(), {
   endTime: undefined,
   running: false,
+  showLabel: true,
   sizeClass: 'text-sm',
   colorClass: 'text-ink-gray-6',
 });

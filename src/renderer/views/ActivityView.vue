@@ -47,7 +47,23 @@
       :on-row-click="onActivityRowClick"
     >
       <template #cell="{ column, row }">
-        <template v-if="column.key === 'status'">
+        <template v-if="column.key === 'task'">
+          <div class="min-w-0 max-w-[520px]">
+            <div class="flex min-w-0 items-center gap-2">
+              <Badge
+                theme="gray"
+                size="md"
+                variant="outline"
+                class="shrink-0 capitalize"
+              >
+                {{ row.resource }}
+              </Badge>
+              <span class="truncate text-sm text-ink-gray-9">{{ row.taskName }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="column.key === 'state'">
           <Badge
             :theme="statusTheme(row.status, 'task')"
             size="md"
@@ -56,38 +72,36 @@
             {{ formatStatus(row.status, 'task') }}
           </Badge>
         </template>
-        <template v-else-if="column.key === 'resource'">
-          <Badge
-            theme="gray"
-            size="md"
-            variant="outline"
-            class="capitalize"
-          >
-            {{ row.resource }}
-          </Badge>
-        </template>
-        <template v-else-if="column.key === 'timestamp'">
-          <span class="block truncate text-xs tabular-nums text-ink-gray-5">{{ formatTime(row.timestamp) }}</span>
-        </template>
-        <template v-else-if="column.key === 'elapsed'">
-          <TaskTimer
-            v-if="row.logs && row.logs.length > 0"
-            :start-time="row.logs[0].timestamp"
-            :end-time="row.logs[row.logs.length - 1].timestamp"
-            :running="row.status === 'running' || row.status === 'queued'"
-            size-class="text-xs"
-            color-class="text-ink-gray-5 tabular-nums"
-          />
-          <span
-            v-else
-            class="text-xs text-ink-gray-5"
-          >-</span>
-        </template>
-        <template v-else-if="column.key === 'taskName'">
-          <span class="block truncate text-sm-medium text-ink-gray-9">{{ row.taskName }}</span>
-        </template>
-        <template v-else-if="column.key === 'message'">
-          <span class="block truncate text-sm text-ink-gray-6">{{ row.message }}</span>
+
+        <template v-else-if="column.key === 'timing'">
+          <div class="flex min-w-0 flex-col gap-1">
+            <span
+              class="truncate text-xs tabular-nums text-ink-gray-5"
+              :title="formatFullActivityTime(row.timestamp)"
+            >
+              {{ formatActivityTime(row.timestamp) }}
+            </span>
+            <Badge
+              v-if="row.logs && row.logs.length > 0"
+              :theme="row.status === 'running' || row.status === 'queued' ? 'blue' : 'gray'"
+              variant="subtle"
+              size="md"
+              class="w-fit"
+            >
+              <TaskTimer
+                :start-time="row.logs[0].timestamp"
+                :end-time="row.logs[row.logs.length - 1].timestamp"
+                :running="row.status === 'running' || row.status === 'queued'"
+                :show-label="false"
+                size-class="text-xs"
+                color-class="tabular-nums"
+              />
+            </Badge>
+            <span
+              v-else
+              class="text-xs text-ink-gray-5"
+            >-</span>
+          </div>
         </template>
       </template>
     </ResourceListView>
@@ -122,7 +136,7 @@ import TaskTimer from '../components/ui/TaskTimer.vue';
 import { useProgressCenter } from '../composables/system/useProgressCenter';
 import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { buildErrorRemediationNotice } from '../utils/error-remediation';
-import { formatStatus, formatTime, statusTheme } from '../utils/format';
+import { formatStatus, statusTheme } from '../utils/format';
 import type { ProgressTaskSummary } from '../controllers/progress';
 
 const {
@@ -203,15 +217,52 @@ const retryProgressSubscription = async (): Promise<void> => {
 };
 
 const activityColumns = [
-  { key: 'status', label: 'Status', width: '120px' },
-  { key: 'resource', label: 'Resource', width: '120px' },
-  { key: 'taskName', label: 'Task', width: 'minmax(160px, 1fr)' },
-  { key: 'message', label: 'Message', width: 'minmax(240px, 2fr)' },
-  { key: 'timestamp', label: 'Updated', width: '100px' },
-  { key: 'elapsed', label: 'Elapsed', width: '120px' },
+  { key: 'task', label: 'Activity', width: 'minmax(240px, 50%)' },
+  { key: 'state', label: 'State', width: 'minmax(170px, 220px)' },
+  { key: 'timing', label: 'Time', width: 'minmax(150px, 180px)' },
 ] satisfies object[];
 
 const activityRows = computed(() => filteredTasks.value);
+
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const fullDateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+const startOfDay = (value: Date): number =>
+  new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+
+const formatActivityTime = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  const today = startOfDay(new Date());
+  const itemDay = startOfDay(date);
+  const dayDiff = Math.round((today - itemDay) / 86_400_000);
+  const time = timeFormatter.format(date);
+
+  if (dayDiff === 0) return `Today, ${time}`;
+  if (dayDiff === 1) return `Yesterday, ${time}`;
+  return dateTimeFormatter.format(date);
+};
+
+const formatFullActivityTime = (value: string): string => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return fullDateTimeFormatter.format(date);
+};
 
 const onActivityRowClick = (row: object) => {
   selectedTask.value = row as ProgressTaskSummary;
