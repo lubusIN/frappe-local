@@ -130,7 +130,7 @@ fs.mkdirSync(benchesPath, { recursive: true });
 
 const timestamp = new Date().toISOString();
 const freshSnapshot = {
-  schemaVersion: 2,
+  schemaVersion: 1,
   metadata: {
     createdAt: timestamp,
     updatedAt: timestamp,

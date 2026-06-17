@@ -116,7 +116,7 @@ export type SiteListItem = {
   readonly id: string;
   readonly name: string;
   readonly benchId: string;
-  readonly status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+  readonly status: 'queued' | 'ready' | 'failure';
   readonly path: string;
   readonly appCount: number;
   readonly apps?: string[];
@@ -136,7 +136,7 @@ export type SiteUpdateInput = {
   readonly name?: string;
   readonly benchId?: string;
   readonly path?: string;
-  readonly status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+  readonly status?: 'queued' | 'ready' | 'failure';
   readonly apps?: string[];
 };
 

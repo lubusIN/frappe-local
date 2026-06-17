@@ -3,7 +3,7 @@ import type { StorageSnapshot } from './schema';
 const isBenchInterrupted = (status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'): boolean =>
   status === 'queued';
 
-const isSiteInterrupted = (status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'): boolean =>
+const isSiteInterrupted = (status: 'queued' | 'ready' | 'failure'): boolean =>
   status === 'queued';
 
 export type ReconcileLifecycleResult = {

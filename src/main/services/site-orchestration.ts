@@ -135,11 +135,11 @@ export type SiteCreationDependencies = {
       name: string;
       benchId: string;
       apps: string[];
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status: 'queued' | 'ready' | 'failure';
       path: string;
     }) => Promise<Site>;
     update: (id: string, input: {
-      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status?: 'queued' | 'ready' | 'failure';
     }) => Promise<Site | null>;
     delete?: (id: string) => Promise<boolean>;
   };
@@ -175,7 +175,7 @@ export const orchestrateSiteCreation = async (
   const taskRunner = getTaskRunner();
 
   taskRunner.enqueue({
-    name: `Create Site: ${input.name}`,
+    name: `Create Site ${input.name}`,
     resource: { type: 'site', id: createdSite.id },
     run: async (context) => {
       const projectName = getComposeProjectName(bench.id);
@@ -270,7 +270,7 @@ export const orchestrateSiteCreation = async (
         await clearSiteCaches(context, input.name, siteEnv);
         await restartBenchServices(context, siteEnv);
 
-        const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'running' });
+        const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'ready' });
         
         if (options?.onCompleted && updatedSite) {
           try {
@@ -317,7 +317,7 @@ export const orchestrateSiteDeletion = async (
   dependencies: {
     sites: {
       findById: (id: string) => Promise<Site | null>;
-      update: (id: string, input: { status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Site | null>;
+      update: (id: string, input: { status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
       delete: (id: string) => Promise<boolean>;
     };
     benches: {
@@ -341,7 +341,7 @@ export const orchestrateSiteDeletion = async (
 
   const taskRunner = getTaskRunner();
   taskRunner.enqueue({
-    name: `Delete Site: ${site.name}`,
+    name: `Delete Site ${site.name}`,
     resource: { type: 'site', id: siteId },
     run: async (context) => {
       try {
@@ -425,7 +425,7 @@ export const orchestrateSiteAppsUpdate = (
       findById: (id: string) => Promise<Bench | null>;
     };
     sites: {
-      update: (id: string, input: { apps?: string[]; status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure' }) => Promise<Site | null>;
+      update: (id: string, input: { apps?: string[]; status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
     };
   },
   site: Site,
@@ -442,10 +442,10 @@ export const orchestrateSiteAppsUpdate = (
   if (installDelta.length === 0 && uninstallDelta.length === 0) return;
 
   const appName = installDelta[0] || uninstallDelta[0] || 'apps';
-  const actionNoun = installDelta.length > 0 ? 'installation' : 'uninstallation';
+  const actionVerb = installDelta.length > 0 ? 'Install' : 'Uninstall';
   
   taskRunner.enqueue({
-    name: `App ${appName} ${actionNoun} on ${site.name}`,
+    name: `${actionVerb} app ${appName} on ${site.name}`,
     resource: { type: 'site', id: site.id },
     run: async (context) => {
       let recoveryEnv: SiteCommandEnv | null = null;
@@ -544,7 +544,7 @@ export const orchestrateSiteAppsUpdate = (
           await restartBenchServices(context, siteEnv);
         }
 
-        const updatedSite = await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'running' });
+        const updatedSite = await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'ready' });
         
         if (options?.onCompleted && updatedSite) {
           try {

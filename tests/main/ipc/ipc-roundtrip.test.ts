@@ -67,7 +67,7 @@ function makeStubSiteRepo() {
     name: 'site.localhost',
     benchId: 'bench-stub',
     apps: ['frappe'],
-    status: 'stopped' as const,
+    status: 'ready' as const,
     path: '/tmp/site',
     timestamps: {
       createdAt: new Date().toISOString(),
@@ -82,7 +82,7 @@ function makeStubSiteRepo() {
       name: string;
       benchId: string;
       apps: string[];
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status: 'queued' | 'ready' | 'failure';
       path: string;
     }) => ({
       id: 'site-stub',
@@ -96,7 +96,7 @@ function makeStubSiteRepo() {
       name?: string;
       benchId?: string;
       apps?: string[];
-      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status?: 'queued' | 'ready' | 'failure';
       path?: string;
     }) => {
       current = {

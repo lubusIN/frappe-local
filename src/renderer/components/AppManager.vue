@@ -217,6 +217,10 @@ const props = withDefaults(
   {
     disabled: false,
     activeAppIds: () => [],
+    frappeVersion: '',
+    allowedAppIds: undefined,
+    context: 'bench',
+    loadingAppId: null,
   }
 );
 

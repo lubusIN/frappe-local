@@ -45,7 +45,7 @@ function makeStubSiteRepo() {
       name: 'site.local',
       benchId: 'bench-stub',
       apps: [],
-      status: 'stopped' as const,
+      status: 'ready' as const,
       path: '/tmp/site',
       timestamps: {
         createdAt: new Date().toISOString(),

@@ -7,7 +7,7 @@ import {
 
 const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSummary => ({
   taskId: overrides.taskId ?? 'task-1',
-  taskName: overrides.taskName ?? 'App frappe_builder installation on alpha.localhost',
+  taskName: overrides.taskName ?? 'Install app frappe_builder on alpha.localhost',
   status: overrides.status ?? 'running',
   type: overrides.type ?? 'task.started',
   message: overrides.message ?? 'Updating',
@@ -22,22 +22,22 @@ const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSum
 describe('site app task results', () => {
   it('detects completed site creation tasks only', () => {
     expect(isCompletedSiteCreationTask(makeTask({
-      taskName: 'Create Site: alpha.localhost',
+      taskName: 'Create Site alpha.localhost',
       status: 'success',
       type: 'task.completed',
     }))).toBe(true);
     expect(isCompletedSiteCreationTask(makeTask({
-      taskName: 'Create Site: alpha.localhost',
+      taskName: 'Create Site alpha.localhost',
       status: 'failure',
       type: 'task.failed',
     }))).toBe(true);
     expect(isCompletedSiteCreationTask(makeTask({
-      taskName: 'Create Site: alpha.localhost',
+      taskName: 'Create Site alpha.localhost',
       status: 'running',
       type: 'task.started',
     }))).toBe(false);
     expect(isCompletedSiteCreationTask(makeTask({
-      taskName: 'Create Site: alpha.localhost',
+      taskName: 'Create Site alpha.localhost',
       resource: 'bench',
       status: 'success',
     }))).toBe(false);

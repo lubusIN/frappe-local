@@ -1,7 +1,7 @@
 import type { ProgressTaskSummary } from '../../controllers/progress';
 
-const SITE_APPS_TASK_NAME_PATTERN = /^app .* (installation|uninstallation) on /i;
-const SITE_CREATION_TASK_NAME_PATTERN = 'create site:';
+const SITE_APPS_TASK_NAME_PATTERN = /^(install|uninstall) app .* on /i;
+const SITE_CREATION_TASK_NAME_PATTERN = 'create site ';
 
 const isCompletedTask = (task: ProgressTaskSummary): boolean =>
   task.status === 'success' || task.status === 'failure';

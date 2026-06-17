@@ -106,7 +106,7 @@ export type IpcRepositories = {
   readonly sites: {
     findAll: () => Promise<Site[]>;
     findById: (id: string) => Promise<Site | null>;
-    create: (input: SiteCreateInput & { status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'; path: string }) => Promise<Site>;
+    create: (input: SiteCreateInput & { status: 'queued' | 'ready' | 'failure'; path: string }) => Promise<Site>;
     update: (id: string, input: Partial<SiteUpdateInput>) => Promise<Site | null>;
     delete: (id: string) => Promise<boolean>;
   };
@@ -195,7 +195,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
 const toLifecycleLogs = (
   entityId: string,
   entityName: string,
-  status: 'queued' | 'running' | 'stopped' | 'success' | 'failure',
+  status: 'queued' | 'running' | 'stopped' | 'success' | 'failure' | 'ready',
   path: string,
   createdAt: string,
   updatedAt: string
@@ -809,7 +809,7 @@ export const registerIpcHandlers = (
       : null;
 
     if (requestedApps) {
-      if (existing.status !== 'running' && existing.status !== 'stopped') {
+      if (existing.status !== 'ready') {
         throw new Error('Site must be ready before activating apps.');
       }
 

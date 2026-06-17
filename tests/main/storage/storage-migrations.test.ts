@@ -2,7 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { runStorageMigrations, type StorageMigration } from '../../../src/main/storage/migrations';
 
 describe('storage migrations', () => {
-  it('migrates a version 1 snapshot to version 2', () => {
+  it('migrates a version 1 snapshot to version 2 using a test migration', () => {
+    const testMigration: StorageMigration = {
+      fromVersion: 1,
+      toVersion: 2,
+      description: 'Test migration',
+      migrate: (snapshot) => {
+        const source = snapshot as unknown as import('../../../src/main/storage/schema').StorageSnapshot;
+        return {
+          ...source,
+          schemaVersion: 2,
+          metadata: {
+            ...source.metadata,
+            lastMigratedAt: '2026-04-19T08:00:00.000Z',
+            updatedAt: '2026-04-19T08:00:00.000Z'
+          }
+        } as import('../../../src/main/storage/schema').StorageSnapshot;
+      }
+    };
+
     const migrated = runStorageMigrations(
       {
         schemaVersion: 1,
@@ -18,7 +36,7 @@ describe('storage migrations', () => {
         appCatalog: [],
       },
       2,
-      undefined,
+      [testMigration],
       { now: () => '2026-04-19T08:00:00.000Z' }
     );
 

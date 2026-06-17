@@ -215,7 +215,7 @@ describe('site orchestration command execution', () => {
       },
       {
         ...createdSite,
-        status: 'running',
+        status: 'ready',
       },
       ['frappe', 'erpnext']
     );
@@ -348,7 +348,7 @@ describe('site orchestration command execution', () => {
 
     expect(updateSiteMock).toHaveBeenCalledWith('site-001', {
       apps: ['frappe', 'erpnext'],
-      status: 'running',
+      status: 'ready',
     });
   });
 
@@ -371,7 +371,7 @@ describe('site orchestration command execution', () => {
       },
       {
         ...createdSite,
-        status: 'running',
+        status: 'ready',
       },
       ['frappe', 'erpnext']
     );
@@ -402,7 +402,7 @@ describe('site orchestration command execution', () => {
       'bench',
       'start',
     ]);
-    expect(updateSiteMock).toHaveBeenLastCalledWith('site-001', { status: 'running' });
+    expect(updateSiteMock).toHaveBeenLastCalledWith('site-001', { status: 'ready' });
     expect(updateSiteMock).not.toHaveBeenCalledWith(
       'site-001',
       expect.objectContaining({ apps: ['frappe', 'erpnext'] })

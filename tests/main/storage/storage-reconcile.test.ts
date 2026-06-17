@@ -72,7 +72,7 @@ describe('storage reconcile', () => {
     };
     snapshot.sites[0] = {
       ...snapshot.sites[0]!,
-      status: 'stopped',
+      status: 'ready',
     };
 
     const result = reconcileLifecycleSnapshot(snapshot);

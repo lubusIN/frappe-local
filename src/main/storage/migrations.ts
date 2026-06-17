@@ -1,21 +1,4 @@
-import type { AppCatalogItem, BenchRecord, Settings, Site } from '../../shared/domain/models';
-import type { StorageMetadata, StorageSnapshot } from './schema';
-
-export type LegacyStorageMetadataV1 = {
-  readonly createdAt: string;
-  readonly updatedAt: string;
-  readonly appCatalogSeedVersion: number;
-};
-
-export type LegacyStorageSnapshotV1 = {
-  readonly schemaVersion: 1;
-  readonly metadata: LegacyStorageMetadataV1;
-  readonly benches: BenchRecord[];
-  readonly sites: Array<Site & { groupId?: string }>;
-  readonly groups: unknown[];
-  readonly settings: Settings | null;
-  readonly appCatalog: AppCatalogItem[];
-};
+import type { StorageSnapshot } from './schema';
 
 export type StorageMigrationContext = {
   readonly now: () => string;
@@ -28,42 +11,7 @@ export type StorageMigration = {
   readonly migrate: (snapshot: unknown, context: StorageMigrationContext) => StorageSnapshot;
 };
 
-const addMigrationTrackingMetadata = (
-  metadata: LegacyStorageMetadataV1,
-  migratedAt: string
-): StorageMetadata => ({
-  ...metadata,
-  updatedAt: migratedAt,
-  lastMigratedAt: migratedAt,
-});
-
-export const storageMigrations: readonly StorageMigration[] = [
-  {
-    fromVersion: 1,
-    toVersion: 2,
-    description: 'Add migration tracking metadata to storage snapshots and decommission groups',
-    migrate: (snapshot, context) => {
-      const source = snapshot as LegacyStorageSnapshotV1;
-      const migratedAt = context.now();
-
-      // Clean up sites to remove groupId
-      const migratedSites: Site[] = source.sites.map((site) => {
-        const { groupId: _removedGroupId, ...rest } = site;
-        void _removedGroupId;
-        return rest as Site;
-      });
-
-      return {
-        schemaVersion: 2,
-        metadata: addMigrationTrackingMetadata(source.metadata, migratedAt),
-        benches: source.benches,
-        sites: migratedSites,
-        settings: source.settings,
-        appCatalog: source.appCatalog,
-      };
-    },
-  },
-];
+export const storageMigrations: readonly StorageMigration[] = [];
 
 export const runStorageMigrations = (
   snapshot: unknown,

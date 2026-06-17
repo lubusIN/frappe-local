@@ -202,7 +202,7 @@ describe('TaskRunner', () => {
     });
 
     runner.enqueue({
-      name: 'Update Site Apps alpha.localhost',
+      name: 'Install app erpnext on alpha.localhost',
       resource: { type: 'site', id: 'site-123' },
       run: async (context) => {
         context.startStep('apps', 'Updating site apps');

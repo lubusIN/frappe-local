@@ -96,7 +96,7 @@ describe('progress', () => {
   it('marks saved active tasks as interrupted on startup', () => {
     const saved = upsertProgressTask([], makeEvent({
       taskId: 'stale-migrate',
-      taskName: 'Update Site Apps frappe.localhost',
+      taskName: 'Install app hrms on frappe.localhost',
       status: 'running',
       type: 'task.log',
       message: 'Running migrate for frappe.localhost',

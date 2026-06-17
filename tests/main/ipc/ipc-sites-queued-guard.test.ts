@@ -86,7 +86,7 @@ describe('sites:update queued guard', () => {
     );
 
     const updateHandler = handlers.get(ipcChannels.sitesUpdate);
-    const result = await updateHandler?.(undefined, 'site-queued', { status: 'stopped' });
+    const result = await updateHandler?.(undefined, 'site-queued', { status: 'ready' });
 
     expect(result).toMatchObject({
       id: 'site-queued',

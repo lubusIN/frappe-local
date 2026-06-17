@@ -1,5 +1,6 @@
 import { ref, watch, type Ref } from 'vue';
 import type { ProgressTaskSummary } from '../../controllers/progress';
+import { formatStatus, statusTheme } from '../../utils/format';
 
 export type ResourceType = 'bench' | 'site';
 
@@ -45,7 +46,10 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
 
   const isActive = (t: ProgressTaskSummary) => t.status === 'running' || t.status === 'queued';
   const isFinished = (t: ProgressTaskSummary) => t.status === 'success' || t.status === 'failure';
-  const isAppsTask = (t: ProgressTaskSummary) => t.taskName.toLowerCase().includes(`update ${resourceType} apps`);
+  const isAppsTask = (t: ProgressTaskSummary) => {
+    const verb = String(t.taskName ?? '').toLowerCase().split(' ')[0] || '';
+    return ['install', 'uninstall', 'get', 'remove'].includes(verb);
+  };
   const getLatestTask = (resourceId: string) => findTask(resourceId);
 
   const isResourceBusy = (id: string) => Boolean(findTask(id, isActive));
@@ -65,30 +69,26 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
     const task = getLatestTask(row.id);
     if (task && isActive(task)) {
       const name = String(task.taskName ?? '').toLowerCase();
-      if (name.includes(`create ${resourceType}`)) return 'Creating';
-      if (name.includes(`update ${resourceType} apps`)) {
-        const stepName = String(task.stepName ?? '').toLowerCase();
-        if (stepName.includes('install')) return 'Installing';
-        if (stepName.includes('remov')) return 'Removing apps';
-        if (stepName.includes('migrate')) return 'Migrating';
-        return 'Installing';
+      const verb = name.split(' ')[0];
+
+      switch (verb) {
+        case 'create': return 'Creating';
+        case 'stop': return 'Stopping';
+        case 'start': return 'Starting';
+        case 'restart': return 'Restarting';
+        case 'delete': return 'Deleting';
+        case 'clean': return 'Cleaning';
+        case 'install': return 'Installing';
+        case 'uninstall': return 'Uninstalling';
+        case 'get': return 'Getting app';
+        case 'remove': return 'Removing app';
+        default:
+          return 'Processing';
       }
-      if (name.includes(`restart ${resourceType}`)) return 'Restarting';
-      if (name.includes(`start ${resourceType}`)) return 'Starting';
-      if (name.includes(`stop ${resourceType}`)) return 'Stopping';
-      if (name.includes(`delete ${resourceType}`)) return 'Deleting';
-      if (name.includes(`clean ${resourceType}`)) return 'Cleaning';
-      
-      return typeof task.stepName === 'string' && task.stepName.length > 0
-        ? task.stepName.replace(/\.\.\./g, '')
-        : 'Processing';
     }
 
-    if (row.status === 'running') return 'Running';
-    if (row.status === 'stopped') return 'Stopped';
-    if (row.status === 'queued') return 'In Progress';
-    if (row.status === 'failure') return 'Failed';
-    return typeof row.status === 'string' && row.status.length > 0 ? row.status : 'Unknown';
+    if (typeof row.status !== 'string' || row.status.length === 0) return 'Unknown';
+    return formatStatus(row.status, 'resource');
   };
 
   const getStatusTheme = (row: TrackableResource) => {
@@ -97,12 +97,7 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
     const task = getLatestTask(row.id);
     if (task && isActive(task)) return 'blue';
     
-    const status = row.status;
-    if (status === 'running') return 'green';
-    if (status === 'stopped') return 'gray';
-    if (status === 'queued') return 'blue';
-    if (status === 'failure') return 'red';
-    return 'gray';
+    return statusTheme(row.status, 'resource');
   };
 
   // Prioritize: active apps task > any active task > completed apps task > any completed task

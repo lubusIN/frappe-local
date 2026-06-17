@@ -85,16 +85,16 @@ describe('SiteRepository', () => {
     const before = created.timestamps.updatedAt;
 
     await new Promise((r) => setTimeout(r, 5));
-    const updated = await repo.update(created.id, { status: 'running' });
+    const updated = await repo.update(created.id, { status: 'ready' });
 
     expect(updated).not.toBeNull();
-    expect(updated!.status).toBe('running');
+    expect(updated!.status).toBe('ready');
     expect(updated!.timestamps.updatedAt).not.toBe(before);
     expect(updated!.timestamps.createdAt).toBe(created.timestamps.createdAt);
   });
 
   it('update returns null for unknown id', async () => {
-    const result = await repo.update('missing', { status: 'running' });
+    const result = await repo.update('missing', { status: 'ready' });
     expect(result).toBeNull();
   });
 

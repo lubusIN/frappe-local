@@ -123,7 +123,7 @@ function makeStubSiteRepo(items: Site[] = []) {
       name: string;
       benchId: string;
       apps: string[];
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status: 'queued' | 'ready' | 'failure';
       path: string;
     }) => ({
       id: 'site-stub',
@@ -443,7 +443,7 @@ describe('benches IPC handlers', () => {
             name: 'demo.localhost',
             benchId: 'bench-001',
             apps: ['frappe'],
-            status: 'stopped',
+            status: 'ready',
             path: '/Users/dev/frappe-bench/sites/demo.localhost',
             timestamps: {
               createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),

@@ -49,11 +49,11 @@
       <template #cell="{ column, row }">
         <template v-if="column.key === 'status'">
           <Badge
-            :theme="statusTheme(row.status)"
+            :theme="statusTheme(row.status, 'task')"
             size="md"
             variant="subtle"
           >
-            {{ formatStatus(row.status) }}
+            {{ formatStatus(row.status, 'task') }}
           </Badge>
         </template>
         <template v-else-if="column.key === 'resource'">

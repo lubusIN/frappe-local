@@ -105,11 +105,11 @@
                 <template #default>
                   <div class="py-4">
                     <Badge
-                      :theme="getBadgeTheme(item)"
+                      :theme="statusTheme(item, 'diagnostic')"
                       variant="subtle"
                       size="md"
                     >
-                      {{ formatStatus(item) }}
+                      {{ formatStatus(item, 'diagnostic') }}
                     </Badge>
                   </div>
                 </template>
@@ -127,6 +127,7 @@ import { computed, reactive } from 'vue';
 import { Alert, Badge, Button, ListHeader, ListHeaderItem, ListRow, ListRowItem, ListRows, ListView } from 'frappe-ui';
 import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '../../shared/domain/diagnostics';
 import StatePanel from './ui/StatePanel.vue';
+import { formatStatus, statusTheme } from '../utils/format';
 
 const props = defineProps<{
   report: DiagnosticsReport | null;
@@ -218,27 +219,5 @@ const diagnosticsListOptions = {
   rowHeight: 'auto',
 };
 
-const formatStatus = (status: string) => {
-  if (status === 'ok') return 'Passed';
-  if (status === 'warn') return 'Warning';
-  return `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
-};
 
-const getBadgeTheme = (status: string) => {
-  switch (status) {
-    case 'passed':
-    case 'ok':
-      return 'green';
-    case 'failed':
-    case 'error':
-      return 'red';
-    case 'warning':
-    case 'warn':
-      return 'orange';
-    case 'skipped':
-      return 'gray';
-    default:
-      return 'gray';
-  }
-};
 </script>

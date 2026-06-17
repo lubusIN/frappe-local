@@ -68,7 +68,7 @@ describe('bench delete orchestration cleanup', () => {
         benchId: bench.id,
         path: '/Users/dev/frappe-bench-2/sites/demo.localhost',
         apps: ['frappe'],
-        status: 'stopped' as const,
+        status: 'ready' as const,
         timestamps: {
           createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
           updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
@@ -80,7 +80,7 @@ describe('bench delete orchestration cleanup', () => {
         benchId: bench.id,
         path: '/Users/dev/frappe-bench-2/sites/erp.localhost',
         apps: ['frappe'],
-        status: 'stopped' as const,
+        status: 'ready' as const,
         timestamps: {
           createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
           updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
@@ -92,7 +92,7 @@ describe('bench delete orchestration cleanup', () => {
         benchId: 'another-bench',
         path: '/Users/dev/other-bench/sites/other-bench.localhost',
         apps: ['frappe'],
-        status: 'stopped' as const,
+        status: 'ready' as const,
         timestamps: {
           createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
           updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),

@@ -128,11 +128,11 @@
           <div class="flex items-center h-full">
             <Badge
               variant="subtle"
-              :theme="getStatusTheme(row)"
+              :theme="getDisplayTheme(row)"
               class="inline-flex cursor-pointer items-center gap-1.5"
               @click.stop="onStatusClick(row.id)"
             >
-              {{ formatStatusLabel(row) }}
+              {{ getDisplayLabel(row) }}
               <span
                 v-if="isResourceBusy(row.id)"
                 class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
@@ -354,8 +354,8 @@ watch(
         void refresh();
 
         if (task.status === 'success') {
-          const actionVerb = task.taskName.includes('installation') ? 'installed' : 'uninstalled';
-          const msg = task.taskName.replace('installation', actionVerb).replace('uninstallation', actionVerb);
+          const actionVerb = task.taskName.toLowerCase().startsWith('install') ? 'Installed' : 'Uninstalled';
+          const msg = task.taskName.replace(/^(Install|Uninstall)/i, actionVerb);
           toast.success(msg);
         }
       }
@@ -373,7 +373,30 @@ const siteColumns = [
   { key: 'actions', label: '', width: '48px', align: 'right' },
 ] satisfies object[];
 
+const { benches: allBenches, loading: benchLoading } = useBenches();
+
+const getDisplayTheme = (row: SiteListItem) => {
+  if (row.status === 'ready') {
+    const benchStatus = allBenches.value.find((b) => b.id === row.benchId)?.status;
+    if (benchStatus !== 'running') {
+      return 'gray';
+    }
+  }
+  return getStatusTheme(row);
+};
+
+const getDisplayLabel = (row: SiteListItem) => {
+  if (row.status === 'ready') {
+    const benchStatus = allBenches.value.find((b) => b.id === row.benchId)?.status;
+    if (benchStatus !== 'running') {
+      return 'Offline';
+    }
+  }
+  return formatStatusLabel(row);
+};
+
 const getSiteActions = (site: SiteListItem) => {
+  const isBenchRunning = allBenches.value.find((b) => b.id === site.benchId)?.status === 'running';
   const actions: Array<{
     label: string;
     icon: Component;
@@ -383,10 +406,11 @@ const getSiteActions = (site: SiteListItem) => {
     onClick: () => void | Promise<void>;
   }> = [];
 
-  if (site.status === 'running' || site.status === 'stopped') {
+  if (site.status === 'ready') {
     actions.push({
       label: 'View',
       icon: IconExternalLink,
+      disabled: !isBenchRunning,
       onClick: async () => {
         await ipc.openSiteExternal(site.id);
       },
@@ -411,7 +435,7 @@ const getSiteActions = (site: SiteListItem) => {
   actions.push({
     label: 'Apps',
     icon: IconPackage,
-    disabled: updating.value || isBusy || (site.status !== 'running' && site.status !== 'stopped'),
+    disabled: !isBenchRunning || updating.value || isBusy || site.status !== 'ready',
     onClick: () => onShowSiteApps(site),
   });
 
@@ -419,7 +443,7 @@ const getSiteActions = (site: SiteListItem) => {
     label: 'Delete',
     icon: IconTrash,
     theme: 'red' as const,
-    disabled: updating.value || deleting.value || isResourceBusy(site.id),
+    disabled: !isBenchRunning || updating.value || deleting.value || isResourceBusy(site.id),
     onClick: () => confirmDeleteSite(site.id, site.name),
   });
 
@@ -427,7 +451,6 @@ const getSiteActions = (site: SiteListItem) => {
 };
 
 const showCreateSiteModal = ref(false);
-const { benches: allBenches, loading: benchLoading } = useBenches();
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 const siteFilters = reactive({
   benchId: '',
@@ -452,8 +475,7 @@ const benchFilterOptions = computed(() => [
 ]);
 const statusFilterOptions = [
   { label: 'All statuses', value: SELECT_ALL },
-  { label: 'Running', value: 'running' },
-  { label: 'Stopped', value: 'stopped' },
+  { label: 'Ready', value: 'ready' },
   { label: 'In Progress', value: 'queued' },
   { label: 'Success', value: 'success' },
   { label: 'Failure', value: 'failure' },
@@ -495,7 +517,7 @@ const siteAppsWarningMessage = computed(() => {
   const site = selectedSiteForApps.value;
   if (!site) return null;
   
-  const siteReady = site.status === 'running' || site.status === 'stopped';
+  const siteReady = site.status === 'ready';
   if (!siteReady) return 'Wait for site to be ready before managing apps.';
   
   if (isResourceBusy(site.id)) return 'Site app management is currently in progress. Please wait.';
@@ -538,7 +560,7 @@ const onActivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  if (site.status !== 'running' && site.status !== 'stopped') {
+  if (site.status !== 'ready') {
     toast.error('Wait for site to be ready before installing apps.');
     return;
   }
@@ -610,7 +632,7 @@ const onDeactivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  if (site.status !== 'running' && site.status !== 'stopped') {
+  if (site.status !== 'ready') {
     toast.error('Wait for site to be ready before uninstalling apps.');
     return;
   }

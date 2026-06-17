@@ -161,7 +161,7 @@ describe('storage bootstrap', () => {
       storageFilePath,
       JSON.stringify(
         {
-          schemaVersion: 1,
+          schemaVersion: 0,
           metadata: {
             createdAt: '2026-04-19T00:00:00.000Z',
             updatedAt: '2026-04-19T00:00:00.000Z',
@@ -182,6 +182,19 @@ describe('storage bootstrap', () => {
     const migratedSnapshot = await initializeStorage(adapter, storageFilePath, {
       appCatalogSeed: [],
       appCatalogSeedVersion: 1,
+      migrations: [{
+        fromVersion: 0,
+        toVersion: 1,
+        description: 'Test migration',
+        migrate: (s) => {
+          const snapshot = s as unknown as import('../../../src/main/storage/schema').StorageSnapshot;
+          return {
+            ...snapshot,
+            schemaVersion: 1,
+            metadata: { ...snapshot.metadata, lastMigratedAt: '2026-04-19T08:00:00.000Z', updatedAt: '2026-04-19T08:00:00.000Z' }
+          } as import('../../../src/main/storage/schema').StorageSnapshot;
+        }
+      }]
     });
 
     expect(migratedSnapshot.schemaVersion).toBe(CURRENT_STORAGE_SCHEMA_VERSION);
@@ -195,7 +208,7 @@ describe('storage bootstrap', () => {
     await adapter.connect();
     const originalContents = JSON.stringify(
       {
-        schemaVersion: 1,
+        schemaVersion: 0,
         metadata: {
           createdAt: '2026-04-19T00:00:00.000Z',
           updatedAt: '2026-04-19T00:00:00.000Z',
@@ -214,8 +227,8 @@ describe('storage bootstrap', () => {
     await fs.writeFile(storageFilePath, originalContents, 'utf8');
 
     const failingMigration: StorageMigration = {
-      fromVersion: 1,
-      toVersion: 2,
+      fromVersion: 0,
+      toVersion: 1,
       description: 'Fail intentionally',
       migrate: () => {
         throw new Error('intentional migration failure');

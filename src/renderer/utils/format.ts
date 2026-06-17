@@ -1,15 +1,27 @@
-export const statusTheme = (status: string) => {
-  if (status === 'running') return 'blue';
-  if (status === 'success' || status === 'passed' || status === 'ok') return 'green';
-  if (status === 'failure' || status === 'error') return 'red';
-  if (status === 'warning' || status === 'warn') return 'orange';
-  if (status === 'queued') return 'blue';
+export type StatusContext = 'resource' | 'task' | 'diagnostic';
+
+export const statusTheme = (status: string, context?: StatusContext) => {
+  const normalized = status.toLowerCase();
+  if (normalized === 'running') return context === 'resource' ? 'green' : 'blue';
+  if (normalized === 'ready') return 'green';
+  if (normalized === 'success' || normalized === 'passed' || normalized === 'ok') return 'green';
+  if (normalized === 'failure' || normalized === 'failed' || normalized === 'error') return 'red';
+  if (normalized === 'warning' || normalized === 'warn') return 'orange';
+  if (normalized === 'queued') return 'blue';
   return 'gray';
 };
 
-export const formatStatus = (status: string) => {
-  if (status === 'ok') return 'Passed';
-  if (status === 'warn') return 'Warning';
+export const formatStatus = (status: string, context?: StatusContext) => {
+  const normalized = status.toLowerCase();
+  
+  if (normalized === 'running') return context === 'resource' ? 'Running' : 'In Progress';
+  if (normalized === 'ready') return 'Ready';
+  if (normalized === 'queued') return 'Queued';
+  if (normalized === 'failure' || normalized === 'failed' || normalized === 'error') return 'Failed';
+  if (normalized === 'success') return 'Success';
+  if (normalized === 'ok' || normalized === 'passed') return 'Passed';
+  if (normalized === 'warn' || normalized === 'warning') return 'Warning';
+  
   return `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 };
 

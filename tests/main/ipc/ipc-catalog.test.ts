@@ -67,7 +67,7 @@ function makeStubSiteRepo() {
       name: string;
       benchId: string;
       apps: string[];
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status: 'queued' | 'ready' | 'failure';
       path: string;
     }) => ({
       id: 'site-stub',

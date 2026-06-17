@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<{
   sizeClass?: string;
   colorClass?: string;
 }>(), {
+  endTime: undefined,
   running: false,
   sizeClass: 'text-sm',
   colorClass: 'text-ink-gray-6',

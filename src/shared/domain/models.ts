@@ -4,7 +4,8 @@ const nonEmptyString = z.string().trim().min(1);
 const isoDateString = z.string().datetime();
 
 
-export const EntityStatusSchema = z.enum(['queued', 'running', 'stopped', 'success', 'failure']);
+export const BenchStatusSchema = z.enum(['queued', 'running', 'stopped', 'success', 'failure']);
+export const SiteStatusSchema = z.enum(['queued', 'ready', 'failure']);
 
 export const TimestampsSchema = z.object({
   createdAt: isoDateString,
@@ -17,7 +18,7 @@ export const BenchSchema = z.object({
   path: nonEmptyString,
   frappeVersion: nonEmptyString,
   httpPort: z.number().int().min(1024).max(65535).optional(),
-  status: EntityStatusSchema,
+  status: BenchStatusSchema,
   apps: z.array(nonEmptyString),
   timestamps: TimestampsSchema,
 });
@@ -28,7 +29,7 @@ export const SiteSchema = z.object({
   benchId: nonEmptyString,
 
   apps: z.array(nonEmptyString),
-  status: EntityStatusSchema,
+  status: SiteStatusSchema,
   path: nonEmptyString,
   timestamps: TimestampsSchema,
 });
@@ -96,7 +97,7 @@ export const CreateBenchInputSchema = BenchSchema.omit({
 });
 
 export const UpdateBenchInputSchema = CreateBenchInputSchema.partial().extend({
-  status: EntityStatusSchema.optional(),
+  status: BenchStatusSchema.optional(),
 });
 
 export const CreateSiteInputSchema = SiteSchema.omit({
@@ -108,7 +109,7 @@ export const CreateSiteInputSchema = SiteSchema.omit({
 });
 
 export const UpdateSiteInputSchema = CreateSiteInputSchema.partial().extend({
-  status: EntityStatusSchema.optional(),
+  status: SiteStatusSchema.optional(),
 });
 
 
@@ -134,7 +135,7 @@ export type BenchRecord = {
   path: string;
   frappe_version: string;
   http_port?: number;
-  status: z.infer<typeof EntityStatusSchema>;
+  status: z.infer<typeof BenchStatusSchema>;
   apps: string[];
   created_at: string;
   updated_at: string;

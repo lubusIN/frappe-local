@@ -98,7 +98,7 @@ export const useSites = () => {
         input.path === undefined &&
         input.benchId === undefined;
 
-      if (!isAppsOnlyUpdate && input.status !== 'running' && input.status !== 'stopped') {
+      if (!isAppsOnlyUpdate && input.status !== 'ready') {
         successMessage.value = `Updated site ${updated.name}.`;
       }
     } catch (err) {

@@ -1,6 +1,6 @@
 import type { AppCatalogItem, BenchRecord, Settings, Site } from '../../shared/domain/models';
 
-export const CURRENT_STORAGE_SCHEMA_VERSION = 2;
+export const CURRENT_STORAGE_SCHEMA_VERSION = 1;
 
 export const DEFAULT_APP_CATALOG_SEED_VERSION = 1;
 

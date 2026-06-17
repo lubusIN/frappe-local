@@ -161,7 +161,7 @@ import IconCopy from '~icons/lucide/copy';
 import IconTerminal from '~icons/lucide/terminal';
 import type { ProgressTaskSummary } from '../../controllers/progress';
 import type { TaskLogLevel, TaskProgressEvent } from '../../../shared/domain/task-runner';
-import { statusTheme } from '../../utils/format';
+import { formatStatus, statusTheme } from '../../utils/format';
 import { useIpc } from '../../composables/system/useIpc';
 import TaskTimer from '../ui/TaskTimer.vue';
 
@@ -259,18 +259,26 @@ const footerStatusLabel = computed(() => {
 const formattedStatus = computed(() => {
   if (!props.task) return '';
 
+  if (props.task.status === 'queued') return 'Queued';
+
   if (isBusy.value) {
     const name = String(props.task.taskName ?? '').toLowerCase();
-    if (name.includes('create bench') || name.includes('create site')) return 'Creating';
-    if (name.includes('stop site') || name.includes('stop bench')) return 'Stopping';
-    if (name.includes('start site') || name.includes('start bench')) return 'Starting';
-    if (name.includes('restart bench') || name.includes('restart site')) return 'Restarting';
-    if (name.includes('delete site') || name.includes('delete bench')) return 'Deleting';
-    if (name.includes('clean bench')) return 'Cleaning';
+    const verb = name.split(' ')[0];
 
-    return typeof props.task.stepName === 'string' && props.task.stepName.length > 0
-      ? props.task.stepName.replace(/\.\.\./g, '')
-      : 'Processing';
+    switch (verb) {
+      case 'create': return 'Creating';
+      case 'stop': return 'Stopping';
+      case 'start': return 'Starting';
+      case 'restart': return 'Restarting';
+      case 'delete': return 'Deleting';
+      case 'clean': return 'Cleaning';
+      case 'install': return 'Installing';
+      case 'uninstall': return 'Uninstalling';
+      case 'get': return 'Getting app';
+      case 'remove': return 'Removing app';
+      default:
+        return 'Processing';
+    }
   }
 
   if (props.task.status === 'success') return 'Success';
@@ -281,10 +289,10 @@ const formattedStatus = computed(() => {
     return 'Failed';
   }
 
-  return props.task.status || 'Unknown';
+  return formatStatus(props.task.status || 'Unknown', 'task');
 });
 
-const statusThemeValue = computed(() => statusTheme(props.task?.status || ''));
+const statusThemeValue = computed(() => statusTheme(props.task?.status || '', 'task'));
 
 const formatTime = (timestamp: string) =>
   new Date(timestamp).toLocaleTimeString(undefined, {

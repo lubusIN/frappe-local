@@ -6,7 +6,7 @@ const sites = [
     id: 'site-001',
     name: 'alpha.localhost',
     benchId: 'bench-001',
-    status: 'running',
+    status: 'ready',
     path: '/tmp/bench-001/sites/alpha.localhost',
     appCount: 2,
     createdAt: new Date('2026-04-01T00:00:00.000Z').toISOString(),
@@ -16,7 +16,7 @@ const sites = [
     id: 'site-002',
     name: 'beta.localhost',
     benchId: 'bench-002',
-    status: 'stopped',
+    status: 'queued',
     path: '/tmp/bench-002/sites/beta.localhost',
     appCount: 1,
     createdAt: new Date('2026-04-01T00:00:00.000Z').toISOString(),
@@ -39,7 +39,7 @@ describe('site filters', () => {
   it('filters by status', () => {
     const result = filterSites(sites, {
       benchId: '',
-      status: 'stopped',
+      status: 'queued',
       search: '',
     });
 

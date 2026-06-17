@@ -9,7 +9,7 @@ const sites: Site[] = [
     name: 'demo.localhost',
     benchId: 'bench-001',
     apps: ['frappe', 'erpnext'],
-    status: 'running',
+    status: 'ready',
     path: '/Users/dev/frappe-bench/sites/demo.localhost',
     timestamps: {
       createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
@@ -74,7 +74,7 @@ function makeStubSiteRepo(items: Site[] = sites) {
       name: string;
       benchId: string;
       apps: string[];
-      status: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status: 'queued' | 'ready' | 'failure';
       path: string;
     }) => {
       const created: Site = {
@@ -92,7 +92,7 @@ function makeStubSiteRepo(items: Site[] = sites) {
       name?: string;
       benchId?: string;
       apps?: string[];
-      status?: 'queued' | 'running' | 'stopped' | 'success' | 'failure';
+      status?: 'queued' | 'ready' | 'failure';
       path?: string;
     }) => {
       const index = current.findIndex((site) => site.id === id);
@@ -163,7 +163,7 @@ describe('sites IPC handlers', () => {
         id: 'site-001',
         name: 'demo.localhost',
         benchId: 'bench-001',
-        status: 'running',
+        status: 'ready',
         path: '/Users/dev/frappe-bench/sites/demo.localhost',
         appCount: 2,
         apps: ['frappe', 'erpnext'],
@@ -352,7 +352,7 @@ describe('sites IPC handlers', () => {
         sites: makeStubSiteRepo([
           {
             ...sites[0]!,
-            status: 'stopped',
+            status: 'ready',
           },
         ]),
         settings: makeStubSettingsRepo(),
@@ -360,11 +360,11 @@ describe('sites IPC handlers', () => {
     );
 
     const updateHandler = handlers.get(ipcChannels.sitesUpdate);
-    const updated = await updateHandler?.(undefined, 'site-001', { status: 'stopped' });
+    const updated = await updateHandler?.(undefined, 'site-001', { status: 'ready' });
 
     expect(updated).toMatchObject({
       id: 'site-001',
-      status: 'stopped',
+      status: 'ready',
     });
   });
 
@@ -380,7 +380,7 @@ describe('sites IPC handlers', () => {
           {
             ...sites[0]!,
             apps: ['frappe'],
-            status: 'running',
+            status: 'ready',
           },
         ]),
         settings: makeStubSettingsRepo(),
@@ -413,9 +413,9 @@ describe('sites IPC handlers', () => {
     );
 
     const updateHandler = handlers.get(ipcChannels.sitesUpdate);
-    const updated = await updateHandler?.(undefined, 'site-001', { status: 'success' });
-
-    expect(updated).toBeNull();
+    await expect(
+      updateHandler?.(undefined, 'site-001', { status: 'success' } as unknown as Parameters<NonNullable<typeof updateHandler>>[2])
+    ).rejects.toThrow();
   });
 
   it('sites:update blocks renaming to an existing canonical host', async () => {
@@ -461,7 +461,7 @@ describe('sites IPC handlers', () => {
         sites: makeStubSiteRepo([
           {
             ...sites[0]!,
-            status: 'stopped',
+            status: 'ready',
           },
         ]),
         settings: makeStubSettingsRepo(),
@@ -628,7 +628,7 @@ describe('sites IPC handlers', () => {
         sites: makeStubSiteRepo([
           {
             ...sites[0]!,
-            status: 'stopped',
+            status: 'ready',
           },
         ]),
         settings: makeStubSettingsRepo(),

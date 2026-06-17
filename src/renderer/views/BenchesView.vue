@@ -467,7 +467,7 @@ watch(
     for (const task of items) {
       if (
         task.resource === 'bench' &&
-        task.taskName.match(/^App .* (installation|uninstallation) on /i) &&
+        task.taskName.match(/^(Get|Remove) app .* on /i) &&
         (task.status === 'success' || task.status === 'failure') &&
         !acknowledgedTasks.has(task.taskId)
       ) {
@@ -475,8 +475,8 @@ watch(
         void refresh(true);
 
         if (task.status === 'success') {
-          const actionVerb = task.taskName.includes('installation') ? 'installed' : 'uninstalled';
-          const msg = task.taskName.replace('installation', actionVerb).replace('uninstallation', actionVerb);
+          const actionVerb = task.taskName.toLowerCase().startsWith('get') ? 'Got' : 'Removed';
+          const msg = task.taskName.replace(/^(Get|Remove)/i, actionVerb);
           toast.success(msg);
         }
       }

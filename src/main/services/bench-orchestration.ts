@@ -613,10 +613,10 @@ export const orchestrateBenchAppChanges = (
   }
 
   const appName = delta.install[0] || delta.remove[0] || 'apps';
-  const actionNoun = delta.install.length > 0 ? 'installation' : 'uninstallation';
+  const actionVerb = delta.install.length > 0 ? 'Get' : 'Remove';
 
   taskRunner.enqueue({
-    name: `App ${appName} ${actionNoun} on ${bench.name}`,
+    name: `${actionVerb} app ${appName} on ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       let attemptedInstallAppIds: string[] = [];

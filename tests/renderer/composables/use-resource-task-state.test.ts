@@ -5,7 +5,7 @@ import type { ProgressTaskSummary } from '../../../src/renderer/controllers/prog
 
 const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSummary => ({
   taskId: overrides.taskId ?? 'task-1',
-  taskName: overrides.taskName ?? 'Update Bench Apps demo',
+  taskName: overrides.taskName ?? 'Install app hrms on demo',
   status: overrides.status ?? 'failure',
   type: overrides.type ?? 'task.failed',
   message: overrides.message ?? 'Failed to fetch app',
