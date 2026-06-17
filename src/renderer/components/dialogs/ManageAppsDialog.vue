@@ -18,7 +18,21 @@
             :dismissible="false" 
           />
         </div>
+        <EmptyState
+          v-if="showNoBenchAppsState"
+          title="No apps on this bench"
+          description="Add apps to the parent bench before installing them on this site."
+          :icon="IconPackage"
+        >
+          <Button
+            variant="solid"
+            @click="$emit('manage-bench-apps')"
+          >
+            Manage bench apps
+          </Button>
+        </EmptyState>
         <div
+          v-else
           class="flex flex-col min-h-0 gap-3"
           :class="warningMessage ? 'pt-0' : 'pt-6'"
         >
@@ -53,9 +67,12 @@
 
 <script setup lang="ts">
 import { Alert, Button, Dialog } from 'frappe-ui';
+import IconPackage from '~icons/lucide/package';
+import { computed } from 'vue';
 import AppManager from '../AppManager.vue';
+import EmptyState from '../ui/EmptyState.vue';
 
-defineProps<{
+const props = defineProps<{
   open: boolean;
   resourceName: string;
   context: 'bench' | 'site';
@@ -72,7 +89,14 @@ const emit = defineEmits<{
   (event: 'close'): void;
   (event: 'add-app', appId: string): void;
   (event: 'remove-app', appId: string): void;
+  (event: 'manage-bench-apps'): void;
 }>();
+
+const showNoBenchAppsState = computed(() =>
+  props.context === 'site' &&
+  Array.isArray(props.allowedAppIds) &&
+  props.allowedAppIds.filter((appId) => appId.trim() !== 'frappe').length === 0
+);
 
 const onOpenChange = (value: boolean) => {
   emit('update:open', value);

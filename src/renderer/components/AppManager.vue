@@ -37,7 +37,7 @@
       Loading apps…
     </div>
     <div
-      v-else-if="items.length === 0"
+      v-else-if="rows.length === 0"
       class="px-2 py-3 text-xs text-center text-ink-gray-6"
     >
       No matching apps.
@@ -245,7 +245,7 @@ const {
 
 const imageErrors = ref<Record<string, boolean>>({});
 const allowedAppIds = computed(() => {
-  if (!props.allowedAppIds || props.allowedAppIds.length === 0) {
+  if (!props.allowedAppIds) {
     return null;
   }
   return new Set(props.allowedAppIds.map((appId) => appId.trim()).filter(Boolean));
