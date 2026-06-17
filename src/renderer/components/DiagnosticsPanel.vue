@@ -27,76 +27,165 @@
       v-else-if="report"
       class="flex flex-col flex-1 min-h-0 gap-4"
     >
-      <Alert
-        :title="summaryTitle"
-        :description="summaryDescription"
-        :dismissible="false"
-        :theme="summaryTheme"
-      />
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section
+          class="flex flex-col gap-4 rounded-lg border bg-white p-4 sm:flex-row sm:items-start sm:justify-between"
+          :class="summaryCardClass"
+        >
+          <div class="flex items-start gap-3">
+            <div
+              class="flex size-10 shrink-0 items-center justify-center rounded-lg"
+              :class="summaryIconClass"
+            >
+              <component
+                :is="summaryIcon"
+                class="size-5"
+              />
+            </div>
+            <div class="min-w-0">
+              <h2 class="text-base-semibold text-ink-gray-9">
+                {{ summaryTitle }}
+              </h2>
+              <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                {{ summaryDescription }}
+              </p>
+            </div>
+          </div>
 
-      <ListView
-        :columns="diagnosticsColumns"
-        :rows="diagnosticsRows"
-        row-key="id"
-        :options="diagnosticsListOptions"
-        class="flex-1 w-full min-w-0"
-      >
-        <template #cell="{ row, column }">
-          <template v-if="column.key === 'check'">
-            <div class="min-w-0 py-4 pr-4">
-              <div class="text-sm-medium text-ink-gray-9">
-                {{ row.check.title }}
-              </div>
-              <div class="mt-2 text-sm leading-6 text-ink-gray-6">
-                {{ row.check.description }}
+          <Badge
+            :theme="summaryTheme"
+            variant="subtle"
+            size="md"
+            class="shrink-0"
+          >
+            {{ summaryBadgeLabel }}
+          </Badge>
+        </section>
+
+        <slot name="summary-action" />
+      </div>
+
+      <section class="flex flex-col gap-3">
+        <div>
+          <h2 class="text-base-semibold text-ink-gray-9">
+            Checks
+          </h2>
+          <p class="mt-1 text-sm text-ink-gray-6">
+            Runtime, storage, and path readiness for local development.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <article
+            v-for="check in sortedChecks"
+            :key="`${check.type}-${check.title}`"
+            class="flex flex-col rounded-lg border bg-white p-3 transition-colors"
+            :class="cardClass(check.status)"
+          >
+            <div class="flex items-start gap-3">
+              <div class="min-w-0 flex-1">
+                <h3 class="flex items-center gap-1.5 text-sm-semibold text-ink-gray-9">
+                  <component
+                    :is="checkIcon(check)"
+                    class="size-3.5 shrink-0 text-ink-gray-5"
+                  />
+                  <span class="min-w-0 truncate">{{ displayTitle(check) }}</span>
+                  <Popover
+                    v-if="hasMoreDetails(check)"
+                    trigger="hover"
+                    placement="top-end"
+                    popover-class="w-80"
+                    :hover-delay="0.2"
+                  >
+                    <template #target>
+                      <button
+                        type="button"
+                        class="flex size-5 shrink-0 items-center justify-center rounded text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8"
+                        aria-label="Show check details"
+                      >
+                        <IconInfo class="size-3.5" />
+                      </button>
+                    </template>
+                    <template #body-main>
+                      <div class="space-y-3 p-3 text-sm leading-6 text-ink-gray-6">
+                        <div
+                          v-for="detail in infoDetails(check)"
+                          :key="detail.label"
+                        >
+                          <div class="text-xs-semibold uppercase text-ink-gray-5">
+                            {{ detail.label }}
+                          </div>
+                          <p class="mt-1 break-words">
+                            {{ detail.value }}
+                          </p>
+                        </div>
+                      </div>
+                    </template>
+                  </Popover>
+                </h3>
+                <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                  {{ conciseDescription(check) }}
+                </p>
               </div>
 
               <div
-                v-if="row.check.remediation"
-                class="mt-2 text-sm leading-6 text-ink-gray-6"
+                class="flex size-7 shrink-0 items-center justify-center rounded-full"
+                :class="statusIconClass(check.status)"
+                :title="formatStatus(check.status, 'diagnostic')"
               >
-                <div class="break-words">
-                  <span class="font-medium text-ink-gray-9">Remediation:</span> {{ row.check.remediation }}
-                </div>
+                <component
+                  :is="statusIcon(check.status)"
+                  class="size-3.5"
+                />
               </div>
+            </div>
 
-              <div
-                v-if="row.check.type === 'runtime-health' && row.check.status === 'failed'"
-                class="mt-2"
+            <div class="mt-3 flex items-center justify-between gap-3">
+              <Badge
+                v-if="check.status !== 'passed'"
+                :theme="statusTheme(check.status, 'diagnostic')"
+                variant="subtle"
+                size="md"
               >
+                {{ formatStatus(check.status, 'diagnostic') }}
+              </Badge>
+
+              <div class="ml-auto flex items-center gap-2">
                 <Button
+                  v-if="canFix(check)"
                   variant="subtle"
                   size="sm"
                   theme="red"
+                  :icon="IconWrench"
                   :loading="fixing"
-                  @click="$emit('fix', row.check.type)"
+                  @click="$emit('fix', check.type)"
                 >
                   Fix
                 </Button>
               </div>
             </div>
-          </template>
-
-          <template v-else-if="column.key === 'status'">
-            <div class="py-4">
-              <Badge
-                :theme="statusTheme(row.status, 'diagnostic')"
-                variant="subtle"
-                size="md"
-              >
-                {{ formatStatus(row.status, 'diagnostic') }}
-              </Badge>
-            </div>
-          </template>
-        </template>
-      </ListView>
+          </article>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, ListView } from 'frappe-ui';
-import { computed, reactive } from 'vue';
+import { Badge, Button, Popover } from 'frappe-ui';
+import IconAlertTriangle from '~icons/lucide/alert-triangle';
+import IconCheck from '~icons/lucide/check';
+import IconCircleDashed from '~icons/lucide/circle-dashed';
+import IconCloud from '~icons/lucide/cloud';
+import IconDatabase from '~icons/lucide/database';
+import IconFolder from '~icons/lucide/folder';
+import IconHardDrive from '~icons/lucide/hard-drive';
+import IconInfo from '~icons/lucide/info';
+import IconMonitorCog from '~icons/lucide/monitor-cog';
+import IconRoute from '~icons/lucide/route';
+import IconWrench from '~icons/lucide/wrench';
+import IconX from '~icons/lucide/x';
+import { computed, type Component } from 'vue';
 import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '../../shared/domain/diagnostics';
 import StatePanel from './ui/StatePanel.vue';
 import { formatStatus, statusTheme } from '../utils/format';
@@ -143,6 +232,38 @@ const formattedCompletedAt = computed(() => {
   });
 });
 
+const summaryBadgeLabel = computed(() => {
+  if (props.running) return 'Checking';
+  if (!props.report) return 'Not checked';
+  if (props.report.hasCriticalIssues) return 'Needs attention';
+  if (props.report.hasWarnings) return 'Warnings';
+  return 'Ready';
+});
+
+const summaryIcon = computed<Component>(() => {
+  if (props.running) return IconCircleDashed;
+  if (!props.report) return IconInfo;
+  if (props.report.hasCriticalIssues) return IconX;
+  if (props.report.hasWarnings) return IconAlertTriangle;
+  return IconCheck;
+});
+
+const summaryCardClass = computed(() => {
+  if (props.running) return 'border-blue-200';
+  if (!props.report) return 'border-outline-gray-2';
+  if (props.report.hasCriticalIssues) return 'border-red-200';
+  if (props.report.hasWarnings) return 'border-amber-200';
+  return 'border-outline-gray-2';
+});
+
+const summaryIconClass = computed(() => {
+  if (props.running) return 'bg-blue-50 text-ink-blue-6';
+  if (!props.report) return 'bg-surface-gray-2 text-ink-gray-6';
+  if (props.report.hasCriticalIssues) return 'bg-red-50 text-ink-red-8';
+  if (props.report.hasWarnings) return 'bg-amber-50 text-ink-amber-6';
+  return 'bg-green-50 text-ink-green-7';
+});
+
 const statusPriority: Record<DiagnosticsCheckStatus, number> = {
   failed: 0,
   warning: 1,
@@ -171,25 +292,159 @@ const sortedChecks = computed(() => {
   });
 });
 
-const diagnosticsRows = computed(() =>
-  sortedChecks.value.map((check) => ({
-    id: `${check.type}-${check.title}`,
-    check,
-    status: check.status,
-  }))
-);
-
-const diagnosticsColumns = reactive([
-  { label: 'Check', key: 'check', width: 'minmax(90%, 500px)' },
-  { label: 'Status', key: 'status'},
-]);
-
-const diagnosticsListOptions = {
-  selectable: false,
-  showTooltip: false,
-  resizeColumn: false,
-  rowHeight: 'auto',
+const pathFromTitle = (title: string): string | null => {
+  const match = title.match(/^[^:]+:\s*(.+)$/);
+  return match?.[1] ?? null;
 };
 
+const displayTitle = (check: DiagnosticsCheckResult): string => {
+  if (check.title.startsWith('Path Writability')) return 'App Data Path';
+  if (check.title.startsWith('Directory Access')) return 'Storage Directory';
+  if (check.title === 'Docker Compose Binary') return 'Docker Compose';
+  if (check.title === 'Podman Binary') return 'Podman';
+  if (check.title === 'Environment Requirement') return 'Runtime Platform';
+  if (check.title === 'Orchestrator Connection') return 'Compose Connection';
+  return check.title;
+};
 
+const conciseDescription = (check: DiagnosticsCheckResult): string => {
+  if (check.title === 'Internet Connectivity') {
+    return check.status === 'passed'
+      ? 'Online and ready for downloads.'
+      : 'Offline; downloads may be limited.';
+  }
+
+  if (check.title.startsWith('Path Writability')) {
+    return check.status === 'passed'
+      ? 'Writable.'
+      : 'Not writable.';
+  }
+
+  if (check.title.startsWith('Directory Access')) {
+    if (check.status === 'passed') return 'Accessible.';
+    if (check.status === 'warning') return 'Will be created when needed.';
+    return 'Not a directory.';
+  }
+
+  if (check.title === 'Docker Compose Binary') {
+    return check.status === 'passed'
+      ? 'Available.'
+      : 'Unavailable.';
+  }
+
+  if (check.title === 'Podman Binary') {
+    return check.status === 'passed'
+      ? 'Available.'
+      : 'Could not run.';
+  }
+
+  if (check.title === 'Environment Requirement') {
+    return check.description.includes('No VM')
+      ? 'No VM needed.'
+      : 'Podman machine required.';
+  }
+
+  if (check.title === 'Podman Machine') {
+    if (check.status === 'passed') return 'Running.';
+    if (check.status === 'skipped') return 'Not required on this platform.';
+    return 'Missing or stopped.';
+  }
+
+  if (check.title === 'Podman Engine') {
+    return check.status === 'passed'
+      ? 'Accepting connections.'
+      : 'Cannot connect.';
+  }
+
+  if (check.title === 'Orchestrator Connection') {
+    return check.status === 'passed'
+      ? 'Connected.'
+      : 'Cannot connect.';
+  }
+
+  return check.description;
+};
+
+const infoDetails = (check: DiagnosticsCheckResult): Array<{ label: string; value: string }> => {
+  const details: Array<{ label: string; value: string }> = [];
+  const pathValue = pathFromTitle(check.title);
+
+  if (pathValue) {
+    details.push({ label: 'Path', value: pathValue });
+  }
+
+  if (check.title === 'Orchestrator Connection' && check.status === 'passed') {
+    const connection = check.description.match(/\svia\s(.+)$/)?.[1];
+    if (connection) {
+      details.push({ label: 'Connection', value: connection });
+    }
+  }
+
+  const hasUsefulDescription =
+    check.status !== 'passed' &&
+    check.description !== conciseDescription(check) &&
+    !pathValue;
+
+  if (hasUsefulDescription) {
+    details.push({ label: 'Details', value: check.description });
+  }
+
+  if (check.remediation) {
+    details.push({ label: 'Fix', value: check.remediation });
+  }
+
+  return details;
+};
+
+const hasMoreDetails = (check: DiagnosticsCheckResult): boolean =>
+  infoDetails(check).length > 0;
+
+const checkIcon = (check: DiagnosticsCheckResult): Component => {
+  if (check.title === 'Internet Connectivity') return IconCloud;
+  if (check.title.startsWith('Path Writability')) return IconFolder;
+  if (check.title.startsWith('Directory Access')) return IconDatabase;
+  if (check.title === 'Docker Compose Binary') return IconRoute;
+  if (check.title === 'Podman Binary') return IconHardDrive;
+  if (check.title === 'Environment Requirement') return IconMonitorCog;
+  if (check.title === 'Podman Machine') return IconMonitorCog;
+  if (check.title === 'Podman Engine') return IconHardDrive;
+  if (check.title === 'Orchestrator Connection') return IconRoute;
+  return IconInfo;
+};
+
+const statusIcon = (status: DiagnosticsCheckStatus): Component => {
+  const icons: Record<DiagnosticsCheckStatus, Component> = {
+    passed: IconCheck,
+    warning: IconAlertTriangle,
+    failed: IconX,
+    skipped: IconCircleDashed,
+  };
+
+  return icons[status] ?? IconInfo;
+};
+
+const cardClass = (status: DiagnosticsCheckStatus): string => {
+  const classes: Record<DiagnosticsCheckStatus, string> = {
+    passed: 'border-outline-gray-2',
+    warning: 'border-amber-200',
+    failed: 'border-red-200',
+    skipped: 'border-outline-gray-2 opacity-80',
+  };
+
+  return classes[status];
+};
+
+const statusIconClass = (status: DiagnosticsCheckStatus): string => {
+  const classes: Record<DiagnosticsCheckStatus, string> = {
+    passed: 'bg-green-50 text-ink-green-7',
+    warning: 'bg-amber-50 text-ink-amber-6',
+    failed: 'bg-red-50 text-ink-red-8',
+    skipped: 'bg-surface-gray-2 text-ink-gray-5',
+  };
+
+  return classes[status];
+};
+
+const canFix = (check: DiagnosticsCheckResult): boolean =>
+  check.type === 'runtime-health' && check.status === 'failed';
 </script>

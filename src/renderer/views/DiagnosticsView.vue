@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-6">
     <DiagnosticsPanel
       :report="report"
       :running="running"
@@ -7,29 +7,37 @@
       :error="error"
       @run="run"
       @fix="fix"
-    />
-
-    <section class="p-4 border border-red-200 rounded-xl bg-red-50/40">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h3 class="text-sm-semibold text-ink-red-8">
-            Danger Zone
-          </h3>
-          <p class="mt-1 text-sm text-ink-gray-6">
-            Remove all Frappe Local data, containers, and the dedicated Podman VM to start from a clean slate.
-          </p>
+    >
+      <template #summary-action>
+        <div class="flex flex-col gap-4 rounded-lg border border-red-200 bg-red-50/40 p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex items-start gap-3">
+            <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-ink-red-8">
+              <IconRotateCcw class="size-5" />
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-base-semibold text-ink-red-8">
+                Reset Environment
+              </h3>
+              <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                Clear local data and runtime containers.
+              </p>
+            </div>
+          </div>
+          <div class="flex justify-end">
+            <Button
+              theme="red"
+              variant="solid"
+              :icon="IconRotateCcw"
+              :loading="resetting"
+              :disabled="running || fixing || resetting"
+              @click="onOpenResetConfirm"
+            >
+              Reset
+            </Button>
+          </div>
         </div>
-        <Button
-          theme="red"
-          variant="solid"
-          :loading="resetting"
-          :disabled="running || fixing || resetting"
-          @click="onOpenResetConfirm"
-        >
-          Reset
-        </Button>
-      </div>
-    </section>
+      </template>
+    </DiagnosticsPanel>
 
     <ConfirmationDialog
       :open="showResetConfirm"
@@ -73,6 +81,7 @@
 <script setup lang="ts">
 import { Button, LoadingIndicator, toast } from 'frappe-ui';
 import IconPlay from '~icons/lucide/play';
+import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import DiagnosticsPanel from '../components/DiagnosticsPanel.vue';
 import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
@@ -122,7 +131,7 @@ const headerActions = computed(() => [
     id: 'diagnostics-run',
     label: running.value ? 'Running' : 'Run',
     variant: 'primary' as const,
-    disabled: running.value,
+    disabled: running.value || resetting.value,
     loading: running.value,
     icon: IconPlay,
     onClick: () => {
