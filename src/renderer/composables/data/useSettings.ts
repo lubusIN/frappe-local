@@ -11,6 +11,7 @@ export const useSettings = () => {
   const saving = ref(false);
   const error = ref<string | null>(null);
   const configured = ref(false);
+  const originalSettings = ref<SettingsItem | null>(null);
 
   const load = async () => {
     loading.value = true;
@@ -20,6 +21,7 @@ export const useSettings = () => {
       const ipc = useIpc();
       const settings = await ipc.getSettings();
       configured.value = settings !== null;
+      originalSettings.value = settings;
       form.value = settings ?? defaultSettings();
     } catch (err) {
       error.value = String(err);
@@ -35,6 +37,7 @@ export const useSettings = () => {
     try {
       const ipc = useIpc();
       const saved = await ipc.setSettings({ ...form.value });
+      originalSettings.value = saved;
       form.value = saved;
     } catch (err) {
       error.value = String(err);
@@ -53,6 +56,7 @@ export const useSettings = () => {
     saving,
     error,
     configured,
+    originalSettings,
     refresh: load,
     save,
   };

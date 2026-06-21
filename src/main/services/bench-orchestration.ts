@@ -262,8 +262,26 @@ const ensureBenchSocketioPort = (
   }
 };
 
-const normalizeBenchApps = (apps: readonly string[]): string[] => {
+const normalizeBenchApps = (apps?: readonly string[] | null): string[] => {
+  if (!apps) return [];
   return Array.from(new Set(apps.map((app) => app.trim()).filter(Boolean)));
+};
+
+const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: { findAll?: () => Promise<any[]> }): Promise<Array<{ source: string; target: string }>> => {
+  if (!customAppsRepo?.findAll) return [];
+  const customAppsList = await customAppsRepo.findAll();
+  const localVolumes: Array<{ source: string; target: string }> = [];
+  
+  for (const app of appNames ?? []) {
+    const customApp = customAppsList.find((c: any) => c.name === app);
+    if (customApp && customApp.type === 'local' && customApp.source) {
+      localVolumes.push({
+        source: customApp.source,
+        target: `/workspace/apps/${customApp.name}`,
+      });
+    }
+  }
+  return localVolumes;
 };
 
 const getAppDelta = (previousApps: readonly string[], nextApps: readonly string[]) => {
@@ -287,6 +305,7 @@ const fetchBenchApps = async (
     apps: readonly string[];
     bench: Bench;
     appCatalogRepo?: { findById?: (id: string) => Promise<AppCatalogItem | null> };
+    customAppsRepo?: { findAll?: () => Promise<any[]> };
     projectName: string;
     runtimeCmd: string;
     runtimeEnv: NodeJS.ProcessEnv;
@@ -295,23 +314,60 @@ const fetchBenchApps = async (
 ): Promise<void> => {
   if (options.apps.length === 0) return;
 
-  const { stepId, stepStartDesc, stepCompleteDesc, apps, bench, appCatalogRepo, projectName, runtimeCmd, runtimeEnv, onAttemptedInstall } = options;
+  const { stepId, stepStartDesc, stepCompleteDesc, apps, bench, appCatalogRepo, customAppsRepo, projectName, runtimeCmd, runtimeEnv, onAttemptedInstall } = options;
 
   context.startStep(stepId, stepStartDesc);
   
   const benchBranch = resolveBenchBranch(bench.frappeVersion);
 
+  const customAppsList = customAppsRepo?.findAll ? await customAppsRepo.findAll() : [];
+
   for (const [index, app] of apps.entries()) {
     onAttemptedInstall(app);
-    const catalogItem = appCatalogRepo?.findById ? await appCatalogRepo.findById(app) : null;
-    const appSource = catalogItem?.source?.trim() || app;
-    const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
+    
+    // Check if it's a custom app
+    const customApp = customAppsList.find((c: any) => c.name === app);
+    let getAppArgs: string[] = [];
 
-    context.log('info', `[${index + 1}/${apps.length}] Fetching app ${app} via bench get-app (${appBranch})`, stepId);
-    const args = composeBenchArgs(
-      projectName,
-      ['get-app', '--overwrite', '--branch', appBranch, appSource]
-    );
+    if (customApp) {
+      if (customApp.type === 'local') {
+        // For local apps, we don't fetch them using get-app with URL.
+        // Instead, we just pip install -e /workspace/apps/${app} or whatever path they are mapped to.
+        // Wait, Frappe uses standard python paths. 
+        // We will just tell bench to install it if it's not already installed.
+        // Actually `bench get-app` clones it. If it's already mapped via docker-compose into `/workspace/apps/${app}`, we just need to install it.
+        context.log('info', `[${index + 1}/${apps.length}] Installing local app ${app}`, stepId);
+        // We use pip install -e and yarn install in the app folder
+        const pipArgs = composeExecArgs(projectName, 'frappe', ['bench', 'pip', 'install', '-e', `apps/${app}`]);
+        const pipResult = await execPromise(runtimeCmd, pipArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 5 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
+        if (pipResult.code !== 0) throw new Error(`Failed to pip install local app ${app}`);
+
+        // Try yarn install if package.json exists
+        const yarnArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', `if [ -f apps/${app}/package.json ]; then cd apps/${app} && yarn install; fi`]);
+        await execPromise(runtimeCmd, yarnArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 5 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
+        
+        // Add to apps.txt if not present
+        const appsTxtArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', `grep -qFx "${app}" sites/apps.txt || echo "${app}" >> sites/apps.txt`]);
+        await execPromise(runtimeCmd, appsTxtArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
+        continue;
+      } else {
+        // GitHub Custom App
+        const appSource = customApp.source;
+        const appBranch = customApp.branch || benchBranch;
+        context.log('info', `[${index + 1}/${apps.length}] Fetching custom app ${app} via bench get-app (${appBranch})`, stepId);
+        getAppArgs = ['get-app', '--overwrite', '--branch', appBranch, appSource];
+      }
+    } else {
+      // Standard catalog app
+      const catalogItem = appCatalogRepo?.findById ? await appCatalogRepo.findById(app) : null;
+      const appSource = catalogItem?.source?.trim() || app;
+      const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
+
+      context.log('info', `[${index + 1}/${apps.length}] Fetching app ${app} via bench get-app (${appBranch})`, stepId);
+      getAppArgs = ['get-app', '--overwrite', '--branch', appBranch, appSource];
+    }
+
+    const args = composeBenchArgs(projectName, getAppArgs);
     let result;
     try {
       result = await execPromise(
@@ -360,7 +416,11 @@ export const orchestrateBenchCreation = (
   },
   appCatalogRepo?: {
     findById?: (id: string) => Promise<AppCatalogItem | null>;
-  }
+  },
+    customAppsRepo?: {
+      findAll?: () => Promise<any[]>;
+    },
+    shareSshKeys: boolean = false
 ): void => {
   const taskRunner = getTaskRunner();
 
@@ -395,7 +455,8 @@ export const orchestrateBenchCreation = (
 
         context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveAndPersistBenchPort(bench, benchesRepo, context, true);
-        ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT);
+        const localVolumes = await getLocalAppVolumes(bench.apps ?? [], customAppsRepo);
+        ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
@@ -521,6 +582,7 @@ export const orchestrateBenchCreation = (
             apps: appsToInstall,
             bench,
             appCatalogRepo,
+            customAppsRepo,
             projectName,
             runtimeCmd: command,
             runtimeEnv,
@@ -602,6 +664,8 @@ export const orchestrateBenchAppChanges = (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
   appCatalogRepo: { findById?: (id: string) => Promise<AppCatalogItem | null> } | undefined,
+  customAppsRepo: { findAll?: () => Promise<any[]> } | undefined,
+  shareSshKeys: boolean = false,
   previousApps: readonly string[],
   nextApps: readonly string[]
 ): void => {
@@ -642,10 +706,13 @@ export const orchestrateBenchAppChanges = (
 
         const command = getBinaryPath('docker-compose');
         const projectName = getComposeProjectName(bench.id);
+        const localVolumes = await getLocalAppVolumes(nextApps, customAppsRepo);
         const composePath = ensureBenchComposeWritten(
           bench.path,
           bench.frappeVersion,
-          bench.httpPort ?? DEFAULT_HTTP_PORT
+          bench.httpPort ?? DEFAULT_HTTP_PORT,
+          shareSshKeys,
+          localVolumes
         );
         const commonArgs = benchComposeArgs(projectName, composePath);
         const runtimeEnv = await getRuntimeEnv();
@@ -705,6 +772,7 @@ export const orchestrateBenchAppChanges = (
             apps: delta.install,
             bench,
             appCatalogRepo,
+            customAppsRepo,
             projectName,
             runtimeCmd: command,
             runtimeEnv,
@@ -728,7 +796,11 @@ export const orchestrateBenchAppChanges = (
             );
 
             if (code !== 0) {
-              throw new Error(`Failed to remove app ${app}: ${stderr}`);
+              if (stderr.includes('AppNotInstalledError') || stdout?.includes('AppNotInstalledError')) {
+                context.log('info', `App ${app} is already not installed.`, 'remove-apps');
+              } else {
+                throw new Error(`Failed to remove app ${app}: ${stderr || stdout}`);
+              }
             }
           }
 
@@ -808,9 +880,16 @@ export const orchestrateBenchAppChanges = (
             }
           } catch (cleanupError) {
             if (!context.signal.aborted) {
-              context.log('warning', `Rollback cleanup failed: ${errorMessage(cleanupError)}`, 'rollback-apps');
+              context.log('error', `Failed to restore bench state: ${errorMessage(cleanupError)}`, 'rollback-apps');
             }
           }
+        }
+
+        // Explicitly revert the DB state to the existing apps to ensure the UI removes the failed app
+        try {
+          await benchesRepo.update(bench.id, { apps: [...existingApps] });
+        } catch (dbCleanupError) {
+          context.log('warning', `Failed to revert bench apps in DB: ${errorMessage(dbCleanupError)}`, 'apps');
         }
 
         if (!context.signal.aborted) {
@@ -867,6 +946,8 @@ export const orchestrateBenchAppChanges = (
 export const orchestrateBenchStart = (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
+  customAppsRepo?: { findAll?: () => Promise<any[]> },
+  shareSshKeys: boolean = false,
   isRestart = false
 ): void => {
   const taskRunner = getTaskRunner();
@@ -918,7 +999,8 @@ export const orchestrateBenchStart = (
 
         context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveAndPersistBenchPort(bench, benchesRepo, context, !isRestart);
-        ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT);
+        const localVolumes = await getLocalAppVolumes(bench, customAppsRepo);
+        ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
         ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
         ensureBenchProcfile(bench.path, context, 'env');
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);

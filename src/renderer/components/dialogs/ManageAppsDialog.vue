@@ -34,20 +34,26 @@
         <div
           v-else
           class="flex flex-col min-h-0 gap-3"
-          :class="warningMessage ? 'pt-0' : 'pt-6'"
         >
-          <AppManager
-            :context="context"
-            :active-app-ids="activeAppIds"
-            :allowed-app-ids="allowedAppIds"
-            :disabled="disabled"
-            :frappe-version="frappeVersion"
-            :loading-app-id="loadingAppId"
-            @add-app="$emit('add-app', $event)"
-            @remove-app="$emit('remove-app', $event)"
-            @install-app="$emit('add-app', $event)"
-            @uninstall-app="$emit('remove-app', $event)"
-          />
+          <Tabs :tabs="appTabs" v-model="activeTabIndex">
+            <template #tab-panel="{ tab }">
+              <div class="pt-4">
+                <component
+                  :is="tab.value === 'catalog' ? AppManager : CustomAppManager"
+                  :context="context"
+                  :active-app-ids="activeAppIds"
+                  :allowed-app-ids="allowedAppIds"
+                  :disabled="disabled"
+                  :frappe-version="frappeVersion"
+                  :loading-app-id="loadingAppId"
+                  @add-app="$emit('add-app', $event)"
+                  @remove-app="$emit('remove-app', $event)"
+                  @install-app="$emit('add-app', $event)"
+                  @uninstall-app="$emit('remove-app', $event)"
+                />
+              </div>
+            </template>
+          </Tabs>
         </div>
       </div>
     </template>
@@ -66,10 +72,11 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, Dialog } from 'frappe-ui';
+import { Alert, Button, Dialog, Tabs } from 'frappe-ui';
 import IconPackage from '~icons/lucide/package';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import AppManager from '../AppManager.vue';
+import CustomAppManager from '../CustomAppManager.vue';
 import EmptyState from '../ui/EmptyState.vue';
 
 const props = defineProps<{
@@ -97,6 +104,13 @@ const showNoBenchAppsState = computed(() =>
   Array.isArray(props.allowedAppIds) &&
   props.allowedAppIds.filter((appId) => appId.trim() !== 'frappe').length === 0
 );
+
+const appTabs = [
+  { label: 'Brewery', value: 'catalog' },
+  { label: 'My Apps', value: 'custom' },
+];
+
+const activeTabIndex = ref(0);
 
 const onOpenChange = (value: boolean) => {
   emit('update:open', value);

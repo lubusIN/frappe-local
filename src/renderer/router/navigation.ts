@@ -31,6 +31,12 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     description: 'Track bench creation, runtime state, and the actions users will rely on most.',
   },
   {
+    path: '/custom-apps',
+    name: 'customApps',
+    title: 'My Apps',
+    description: 'Manage your custom Frappe apps from GitHub or local directories.',
+  },
+  {
     path: '/activity',
     name: 'activity',
     title: 'Activity',
@@ -59,6 +65,11 @@ export const navigationItems: NavigationItem[] = [
     label: 'Benches',
     description: 'Manage bench lifecycle, versions, and logs.',
     path: '/benches',
+  },
+  {
+    label: 'My Apps',
+    description: 'Manage custom apps.',
+    path: '/custom-apps',
   },
   {
     label: 'Activity',

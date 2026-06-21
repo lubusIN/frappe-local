@@ -105,6 +105,7 @@ import IconActivity from '~icons/lucide/activity';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
 import IconZap from '~icons/lucide/zap';
+import IconBlocks from '~icons/lucide/blocks';
 import { computed, onMounted, ref, watch, type Component } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import Logo from './ui/Logo.vue';
@@ -163,6 +164,7 @@ const iconComponentMap: Record<string, Component> = {
   '/activity': IconActivity,
   '/benches': IconPackage,
   '/sites': IconGlobe,
+  '/custom-apps': IconBlocks,
   '/diagnostics': IconZap,
 };
 

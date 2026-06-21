@@ -95,9 +95,9 @@ describe('bench start/restart orchestration', () => {
 
     orchestrateBenchStart(
       bench,
-      {
-        update: updateMock,
-      },
+      { update: updateMock },
+      undefined,
+      false,
       true
     );
 
@@ -158,9 +158,9 @@ describe('bench start/restart orchestration', () => {
 
     orchestrateBenchStart(
       bench,
-      {
-        update: updateMock,
-      },
+      { update: updateMock },
+      undefined,
+      false,
       true
     );
 

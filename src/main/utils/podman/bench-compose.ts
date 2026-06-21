@@ -21,6 +21,8 @@ export const getImageTag = (): string => {
 export interface BenchComposeOptions {
   frappeVersion: string;
   httpPort: number;
+  localVolumes?: Array<{ source: string; target: string }>;
+  shareSshKeys: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ services:
       SHELL: /bin/bash
     volumes:
       - ../:/workspace:cached
+${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.localVolumes ? options.localVolumes.map(v => `      - ${v.source}:${v.target}`).join('\n') : ''}
     ports:
       - "127.0.0.1:${httpPort}:8000"
       - "127.0.0.1:${socketPort}:9000"
@@ -88,7 +91,9 @@ volumes:
 export const ensureBenchComposeWritten = (
   benchPath: string,
   frappeVersion: string,
-  httpPort: number
+  httpPort: number,
+  shareSshKeys: boolean,
+  localVolumes?: Array<{ source: string; target: string }>
 ): string => {
   const frappeLocalDir = path.join(benchPath, FRAPPE_LOCAL_DIR);
   if (!fs.existsSync(frappeLocalDir)) {
@@ -96,7 +101,7 @@ export const ensureBenchComposeWritten = (
   }
 
   const composePath = getBenchComposePath(benchPath);
-  const content = generateBenchCompose({ frappeVersion, httpPort });
+  const content = generateBenchCompose({ frappeVersion, httpPort, shareSshKeys, localVolumes });
   fs.writeFileSync(composePath, content, 'utf8');
   return composePath;
 };

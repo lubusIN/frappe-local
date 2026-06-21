@@ -7,6 +7,7 @@ describe('renderer routes', () => {
       'dashboard',
       'sites',
       'benches',
+      'customApps',
       'activity',
       'diagnostics',
     ]);

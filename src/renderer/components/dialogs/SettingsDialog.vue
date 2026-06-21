@@ -25,7 +25,7 @@
         <div v-else>
           <form
             class="space-y-6"
-            @submit.prevent="save"
+            @submit.prevent="onSave"
           >
             <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div class="space-y-1.5 md:col-span-2">
@@ -54,6 +54,16 @@
                 >
                   Browse
                 </Button>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 flex flex-row items-center gap-4">
+              <Switch v-model="form.shareSshKeys" size="sm" />
+              <div class="flex flex-col">
+                <span class="text-sm font-medium text-ink-gray-9">Share SSH Keys with Benches</span>
+                <p class="text-xs text-ink-gray-5">
+                  Mounts your local ~/.ssh directory into benches to fetch private GitHub repos.
+                </p>
               </div>
             </div>
 
@@ -123,22 +133,31 @@
           size="md"
           variant="solid"
           :loading="saving"
-          @click="onSave"
         >
           Save settings
         </Button>
       </div>
     </template>
   </Dialog>
+
+  <ConfirmDialog
+    v-model="showSshConfirmation"
+    title="Restart Running Benches?"
+    message="Changing SSH Key sharing requires a restart of all running benches to apply the new volume mounts. Are you sure you want to proceed?"
+    @confirm="onConfirmSshSave"
+    @cancel="onCancelSshSave"
+  />
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog, FormLabel, Slider, TextInput, toast } from 'frappe-ui';
+import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast } from 'frappe-ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { ConfirmDialog } from 'frappe-ui';
 import StatePanel from '../ui/StatePanel.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
 import { useSettings } from '../../composables/data/useSettings';
 import { useIpc } from '../../composables/system/useIpc';
+import { useSshKeys } from '../../composables/system/useSshKeys';
 import { MIN_PODMAN_MEMORY_MB } from '../../../shared/domain/models';
 
 const props = defineProps<{
@@ -149,7 +168,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { form, loading, saving, error, configured, refresh, save } = useSettings();
+const { form, loading, saving, error, originalSettings, refresh, save, configured } = useSettings();
 const ipc = useIpc();
 const systemResources = reactive({
   totalMemoryMb: MIN_PODMAN_MEMORY_MB,
@@ -191,11 +210,34 @@ const useRecommendedMemory = (): void => {
   form.value.podmanMemoryMb = systemResources.recommendedPodmanMemoryMb;
 };
 
-const onSave = async () => {
+const { showSshConfirmation, pendingSshValue, performSshSave } = useSshKeys();
+
+const performSave = async () => {
   await save();
   if (!error.value) {
     toast.success('Settings saved successfully.');
   }
+};
+
+const onSave = async () => {
+  if (originalSettings.value && form.value.shareSshKeys !== originalSettings.value.shareSshKeys) {
+    pendingSshValue.value = form.value.shareSshKeys;
+    showSshConfirmation.value = true;
+  } else {
+    await performSave();
+  }
+};
+
+const onConfirmSshSave = async () => {
+  showSshConfirmation.value = false;
+  await performSave();
+  await performSshSave(pendingSshValue.value);
+};
+
+const onCancelSshSave = () => {
+  showSshConfirmation.value = false;
+  // Revert toggle
+  form.value.shareSshKeys = originalSettings.value?.shareSshKeys ?? false;
 };
 
 onMounted(async () => {

@@ -105,6 +105,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       appCatalogRepo,
+      undefined, false,
       bench.apps,
       ['frappe', 'erpnext', 'payments']
     );
@@ -171,6 +172,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: vi.fn(async () => bench) },
       undefined,
+      undefined, false,
       bench.apps,
       ['frappe', 'builder']
     );
@@ -207,6 +209,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       undefined,
+      undefined, false,
       bench.apps,
       ['frappe', 'builder']
     );
@@ -252,6 +255,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       undefined,
+      undefined, false,
       bench.apps,
       ['frappe', 'builder']
     );
@@ -344,6 +348,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       appCatalogRepo,
+      undefined, false,
       bench.apps,
       ['frappe', 'erpnext', 'builder']
     );
@@ -406,6 +411,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       appCatalogRepo,
+      undefined, false,
       bench.apps,
       ['frappe', 'erpnext', 'helpdesk']
     );
@@ -462,6 +468,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       appCatalogRepo,
+      undefined, false,
       bench.apps,
       ['frappe', 'erpnext', 'wiki']
     );
@@ -500,6 +507,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       undefined,
+      undefined, false,
       bench.apps,
       ['frappe', 'erpnext']
     );
@@ -548,6 +556,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       undefined,
+      undefined, false,
       bench.apps,
       ['frappe', 'erpnext', 'builder']
     );
@@ -585,6 +594,7 @@ describe('bench app orchestration', () => {
       bench,
       { update: updateMock },
       undefined,
+      undefined, false,
       bench.apps,
       ['frappe']
     );

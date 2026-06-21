@@ -14,6 +14,11 @@ export const ipcChannels = {
   runtimeFix: 'runtime:fix',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
+  customAppsList: 'custom-apps:list',
+  customAppsCreate: 'custom-apps:create',
+  customAppsUpdate: 'custom-apps:update',
+  customAppsDelete: 'custom-apps:delete',
+  customAppsExtract: 'custom-apps:extract',
   benchesList: 'benches:list',
   benchesPickFolder: 'benches:pick-folder',
   benchesCreate: 'benches:create',
@@ -40,6 +45,7 @@ export const ipcChannels = {
   taskRunnerReadLog: 'task-runner:read-log',
   utilsPathExists: 'utils:path-exists',
   utilsOpenExternal: 'utils:open-external',
+  utilsCheckGithubRepoVisibility: 'utils:check-github-repo-visibility',
   uiReady: 'app:ui-ready',
 } as const;
 
@@ -71,6 +77,19 @@ export type DiagnosticsRunResponse = DiagnosticsReport;
 export type DiagnosticsGetLastResponse = DiagnosticsReport | null;
 
 export type CatalogAppItem = AppCatalogItem;
+
+export type CustomAppListItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly title?: string;
+  readonly description?: string;
+  readonly type: 'github' | 'local';
+  readonly source: string;
+  readonly branch?: string;
+  readonly icon?: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
 
 export type BenchListItem = {
   readonly id: string;
@@ -148,6 +167,7 @@ export type SettingsItem = {
   readonly autoUpdateEnabled: boolean;
   readonly sidebarCompact: boolean;
   readonly podmanMemoryMb: number;
+  readonly shareSshKeys: boolean;
 };
 
 export type SystemResources = {
@@ -168,6 +188,11 @@ export type RendererBridge = {
   readonly syncCatalog: (apps: CatalogAppItem[]) => Promise<boolean>;
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
+  readonly listCustomApps: () => Promise<CustomAppListItem[]>;
+  readonly createCustomApp: (input: any) => Promise<CustomAppListItem>;
+  readonly updateCustomApp: (id: string, input: any) => Promise<CustomAppListItem | null>;
+  readonly deleteCustomApp: (id: string) => Promise<boolean>;
+  readonly extractCustomApp: (type: 'github' | 'local', source: string) => Promise<any>;
   readonly listBenches: () => Promise<BenchListItem[]>;
   readonly pickBenchFolder: () => Promise<string | null>;
   readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;
@@ -194,6 +219,7 @@ export type RendererBridge = {
   readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;
   readonly pathExists: (path: string) => Promise<boolean>;
   readonly openExternal: (url: string) => Promise<void>;
+  readonly checkGithubRepoVisibility: (url: string) => Promise<boolean>;
   readonly uiReady: () => Promise<void>;
 };
 

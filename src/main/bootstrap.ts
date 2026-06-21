@@ -16,6 +16,7 @@ import { AppCatalogRepository } from './storage/repositories/app-catalog-reposit
 import { BenchRepository } from './storage/repositories/bench-repository';
 import { SettingsRepository } from './storage/repositories/settings-repository';
 import { SiteRepository } from './storage/repositories/site-repository';
+import { CustomAppsRepository } from './storage/repositories/custom-apps-repository';
 import { analytics } from './services/analytics';
 import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/catalog-provider';
 import { runDiagnostics } from './services/diagnostics-service';
@@ -134,6 +135,7 @@ export const runApplicationBootstrap = async (
       benches: new BenchRepository(adapter),
       sites: new SiteRepository(adapter),
       settings: settingsRepository,
+      customApps: new CustomAppsRepository(adapter),
     } satisfies AppRepositories;
 
     const refreshCaddyFrontDoorHosts = async (): Promise<void> => {

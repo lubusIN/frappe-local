@@ -13,6 +13,11 @@ const rendererBridge: RendererBridge = {
 	listCatalog: async () => ipcRenderer.invoke(ipcChannels.catalogList),
 	findCatalogItem: async (id: string) => ipcRenderer.invoke(ipcChannels.catalogFindById, id),
 	searchCatalog: async (query: string) => ipcRenderer.invoke(ipcChannels.catalogSearch, query),
+	listCustomApps: async () => ipcRenderer.invoke(ipcChannels.customAppsList),
+	createCustomApp: async (input: any) => ipcRenderer.invoke(ipcChannels.customAppsCreate, input),
+	updateCustomApp: async (id: string, input: any) => ipcRenderer.invoke(ipcChannels.customAppsUpdate, id, input),
+	deleteCustomApp: async (id: string) => ipcRenderer.invoke(ipcChannels.customAppsDelete, id),
+	extractCustomApp: async (type: 'github' | 'local', source: string) => ipcRenderer.invoke(ipcChannels.customAppsExtract, type, source),
 	listBenches: async () => ipcRenderer.invoke(ipcChannels.benchesList),
 	pickBenchFolder: async () => ipcRenderer.invoke(ipcChannels.benchesPickFolder),
 	createBench: async (input) => ipcRenderer.invoke(ipcChannels.benchesCreate, input),
@@ -46,6 +51,7 @@ const rendererBridge: RendererBridge = {
 	},
 	pathExists: async (path: string) => ipcRenderer.invoke(ipcChannels.utilsPathExists, path),
 	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
+	checkGithubRepoVisibility: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsCheckGithubRepoVisibility, url),
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 };
 

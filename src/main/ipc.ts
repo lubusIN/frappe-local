@@ -45,6 +45,7 @@ import {
   UpdateSiteInputSchema,
   type Bench,
   MIN_PODMAN_MEMORY_MB,
+  DEFAULT_SETTINGS,
   type Settings,
   type Site,
 } from '../shared/domain/models';
@@ -57,6 +58,7 @@ import { createDefaultStorageSnapshot } from './storage/schema';
 import type { LifecycleOperation } from './services/analytics';
 import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from './services/site-orchestration';
 import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './services/bench-orchestration';
+import { extractCustomApp } from './services/custom-app-extractor';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -115,6 +117,13 @@ export type IpcRepositories = {
     update?: (input: Partial<Settings>) => Promise<Settings>;
     get?: () => Promise<Settings | null>;
     set?: (input: Partial<Settings>) => Promise<Settings>;
+  };
+  readonly customApps: {
+    findAll: () => Promise<any[]>;
+    findById: (id: string) => Promise<any | null>;
+    create: (input: any) => Promise<any>;
+    update: (id: string, input: any) => Promise<any | null>;
+    delete: (id: string) => Promise<boolean>;
   };
 };
 
@@ -188,6 +197,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   autoUpdateEnabled: settings.autoUpdateEnabled,
   sidebarCompact: settings.sidebarCompact,
   podmanMemoryMb: settings.podmanMemoryMb,
+  shareSshKeys: settings.shareSshKeys,
 });
 
 
@@ -329,6 +339,26 @@ export const registerIpcHandlers = (
     });
   });
 
+  ipcMainLike.handle(ipcChannels.utilsCheckGithubRepoVisibility, async (_event: unknown, url: unknown): Promise<boolean> => {
+    if (typeof url !== 'string' || !url) return false;
+    try {
+      // Basic extraction of owner/repo from various formats:
+      let checkUrl = url;
+      if (url.startsWith('https://github.com/')) {
+        checkUrl = url.replace(/\.git$/, '');
+      } else if (url.startsWith('git@github.com:')) {
+        checkUrl = `https://github.com/${url.substring(15).replace(/\.git$/, '')}`;
+      } else {
+        return false;
+      }
+      
+      const response = await fetch(checkUrl, { method: 'HEAD' });
+      // GitHub returns 200 for public repos, 404/401 for private or non-existent
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  });
 
   ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
     return runDiagnostics({
@@ -481,8 +511,9 @@ export const registerIpcHandlers = (
       httpPort,
     });
 
+    const settings = await getCurrentSettings(repositories.settings);
     operations.trackBenchOperation?.(created.id, 'create');
-    orchestrateBenchCreation(created, repositories.benches, repositories.appCatalog);
+    orchestrateBenchCreation(created, repositories.benches, repositories.appCatalog, repositories.customApps, settings?.shareSshKeys ?? false);
 
     return toBenchListItem(created);
   });
@@ -530,30 +561,32 @@ export const registerIpcHandlers = (
     operations.trackBenchOperation?.(updated.id, 'update');
 
     if (targetStatus && (targetStatus !== existing.status || targetStatus === 'running')) {
-      if (targetStatus === 'running' || targetStatus === 'stopped') {
-        // Do not allow conflicting lifecycle requests while transition is already queued.
-        if (existing.status === 'queued') {
-          mainLogger.info(`Ignoring bench status change while queued. benchId=${id} target=${targetStatus}`);
-          return toBenchListItem(updated);
-        }
-
-        // Set to queued in DB immediately so UI shows pending state.
-        updated = (await repositories.benches.update(id, { status: 'queued' })) ?? updated;
-
-        if (targetStatus === 'running') {
-          const isRestart = existing.status === 'running';
-          orchestrateBenchStart(updated, repositories.benches, isRestart);
-        } else {
-          orchestrateBenchStop(updated, repositories.benches);
-        }
-      } else {
-        // Normal status update without orchestration.
-        updated = (await repositories.benches.update(id, { status: targetStatus })) ?? updated;
+      const status = targetStatus;
+      // Do not allow conflicting lifecycle requests while transition is already queued.
+      if (existing.status === 'queued') {
+        mainLogger.info(`Ignoring bench status change while queued. benchId=${id} target=${status}`);
+        return toBenchListItem(updated);
       }
+
+      // Set to queued in DB immediately so UI shows pending state.
+      updated = (await repositories.benches.update(id, { status: 'queued' })) ?? updated;
+
+      if (status === 'running') {
+        const isRestart = existing.status === 'running';
+        const settings = await getCurrentSettings(repositories.settings);
+        orchestrateBenchStart(updated, repositories.benches, repositories.customApps, settings?.shareSshKeys ?? false, isRestart);
+      } else if (status === 'stopped') {
+        orchestrateBenchStop(updated, repositories.benches);
+      }
+    } else if (targetStatus !== undefined) {
+      // Normal status update without orchestration.
+      updated = (await repositories.benches.update(id, { status: targetStatus })) ?? updated;
     }
 
     if (appsChanged && existing.status === 'running' && !targetStatus) {
-      orchestrateBenchAppChanges(updated, repositories.benches, repositories.appCatalog, existing.apps, requestedApps ?? []);
+      const requestedApps = (input as BenchUpdateInput).apps;
+      const settings = await getCurrentSettings(repositories.settings);
+      orchestrateBenchAppChanges(updated, repositories.benches, repositories.appCatalog, repositories.customApps, settings?.shareSshKeys ?? false, existing.apps, requestedApps ?? []);
     }
 
     return toBenchListItem(updated);
@@ -970,7 +1003,12 @@ export const registerIpcHandlers = (
     ) {
       await operations.applyRuntimeMemory(payload.podmanMemoryMb);
     }
-    const updated = await updateSettings(repositories.settings, payload);
+    const fullPayload = {
+      ...DEFAULT_SETTINGS,
+      ...(current || {}),
+      ...payload
+    };
+    const updated = await updateSettings(repositories.settings, fullPayload);
     return toSettingsItem(updated);
   });
 
@@ -1009,5 +1047,25 @@ export const registerIpcHandlers = (
   ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {
     const settings = await getCurrentSettings(repositories.settings);
     return buildUpdateStrategyStatus(settings, appVersion);
+  });
+
+  ipcMainLike.handle(ipcChannels.customAppsList, async () => {
+    return repositories.customApps.findAll();
+  });
+
+  ipcMainLike.handle(ipcChannels.customAppsCreate, async (_event: unknown, input: unknown) => {
+    return repositories.customApps.create(input);
+  });
+
+  ipcMainLike.handle(ipcChannels.customAppsUpdate, async (_event: unknown, id: string, input: unknown) => {
+    return repositories.customApps.update(id, input);
+  });
+
+  ipcMainLike.handle(ipcChannels.customAppsDelete, async (_event: unknown, id: string) => {
+    return repositories.customApps.delete(id);
+  });
+
+  ipcMainLike.handle(ipcChannels.customAppsExtract, async (_event: unknown, type: 'github' | 'local', source: string) => {
+    return extractCustomApp(type, source);
   });
 };

@@ -68,6 +68,18 @@ export const AppSchema = z.object({
   compatibility: AppCompatibilitySchema,
 });
 
+export const CustomAppSchema = z.object({
+  id: nonEmptyString,
+  name: nonEmptyString,
+  title: z.string().optional(),
+  description: z.string().optional(),
+  type: z.enum(['github', 'local']),
+  source: nonEmptyString,
+  branch: z.string().optional(),
+  icon: z.string().optional(),
+  timestamps: TimestampsSchema,
+});
+
 export const MIN_PODMAN_MEMORY_MB = 4096;
 
 export const SettingsSchema = z.object({
@@ -78,6 +90,7 @@ export const SettingsSchema = z.object({
   autoUpdateEnabled: z.boolean(),
   sidebarCompact: z.boolean().default(false),
   podmanMemoryMb: z.number().int().min(MIN_PODMAN_MEMORY_MB).default(MIN_PODMAN_MEMORY_MB),
+  shareSshKeys: z.boolean().default(false),
 });
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -88,6 +101,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoUpdateEnabled: true,
   sidebarCompact: false,
   podmanMemoryMb: MIN_PODMAN_MEMORY_MB,
+  shareSshKeys: false,
 };
 
 export const CreateBenchInputSchema = BenchSchema.omit({
@@ -120,12 +134,25 @@ export type Bench = z.infer<typeof BenchSchema>;
 export type Site = z.infer<typeof SiteSchema>;
 
 export type AppCatalogItem = z.infer<typeof AppSchema>;
+export type CustomAppItem = z.infer<typeof CustomAppSchema>;
 export type Settings = z.infer<typeof SettingsSchema>;
 
 export type CreateBenchInput = z.infer<typeof CreateBenchInputSchema>;
 export type UpdateBenchInput = z.infer<typeof UpdateBenchInputSchema>;
 export type CreateSiteInput = z.infer<typeof CreateSiteInputSchema>;
 export type UpdateSiteInput = z.infer<typeof UpdateSiteInputSchema>;
+
+export const CreateCustomAppInputSchema = CustomAppSchema.omit({
+  id: true,
+  timestamps: true,
+}).extend({
+  id: nonEmptyString.optional(),
+});
+
+export const UpdateCustomAppInputSchema = CreateCustomAppInputSchema.partial();
+
+export type CreateCustomAppInput = z.infer<typeof CreateCustomAppInputSchema>;
+export type UpdateCustomAppInput = z.infer<typeof UpdateCustomAppInputSchema>;
 
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
 
@@ -137,6 +164,19 @@ export type BenchRecord = {
   http_port?: number;
   status: z.infer<typeof BenchStatusSchema>;
   apps: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type CustomAppRecord = {
+  id: string;
+  name: string;
+  title?: string;
+  description?: string;
+  type: 'github' | 'local';
+  source: string;
+  branch?: string;
+  icon?: string;
   created_at: string;
   updated_at: string;
 };
@@ -173,4 +213,33 @@ export const mapBenchDomainToRecord = (bench: Bench): BenchRecord => ({
   apps: bench.apps,
   created_at: normalizeTimestamp(bench.timestamps.createdAt),
   updated_at: normalizeTimestamp(bench.timestamps.updatedAt),
+});
+
+export const mapCustomAppRecordToDomain = (record: CustomAppRecord): CustomAppItem =>
+  CustomAppSchema.parse({
+    id: normalizeId(record.id),
+    name: record.name,
+    title: record.title,
+    description: record.description,
+    type: record.type,
+    source: record.source,
+    branch: record.branch,
+    icon: record.icon,
+    timestamps: {
+      createdAt: normalizeTimestamp(record.created_at),
+      updatedAt: normalizeTimestamp(record.updated_at),
+    },
+  });
+
+export const mapCustomAppDomainToRecord = (app: CustomAppItem): CustomAppRecord => ({
+  id: normalizeId(app.id),
+  name: app.name,
+  title: app.title,
+  description: app.description,
+  type: app.type,
+  source: app.source,
+  branch: app.branch,
+  icon: app.icon,
+  created_at: normalizeTimestamp(app.timestamps.createdAt),
+  updated_at: normalizeTimestamp(app.timestamps.updatedAt),
 });
