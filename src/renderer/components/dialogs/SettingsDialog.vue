@@ -133,8 +133,9 @@
           size="md"
           variant="solid"
           :loading="saving"
+          @click="onSave"
         >
-          Save settings
+          Save
         </Button>
       </div>
     </template>

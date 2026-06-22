@@ -39,19 +39,24 @@ function getLocalFileContent(dir: string, filePaths: string[]): string | null {
 
 function detectIconUrl(appName: string, dir: string): string | null {
   const dashName = appName.replace(/_/g, '-');
+  const shortName = dashName.replace(/^frappe-/, '');
   const candidates = [
     `${appName}/public/images/${dashName}-logo.svg`,
     `${appName}/public/images/${dashName}-logo.png`,
+    `${appName}/public/images/${shortName}-logo.svg`,
+    `${appName}/public/images/${shortName}-logo.png`,
     `${appName}/public/images/${appName}_logo.svg`,
     `${appName}/public/images/${appName}_logo.png`,
     `${appName}/public/images/logo.svg`,
     `${appName}/public/images/logo.png`,
-    `${appName}/public/${dashName}-logo.png`,
     `${appName}/public/${dashName}-logo.svg`,
-    `${appName}/public/${appName}_logo.png`,
+    `${appName}/public/${dashName}-logo.png`,
+    `${appName}/public/${shortName}-logo.svg`,
+    `${appName}/public/${shortName}-logo.png`,
     `${appName}/public/${appName}_logo.svg`,
-    `${appName}/public/logo.png`,
+    `${appName}/public/${appName}_logo.png`,
     `${appName}/public/logo.svg`,
+    `${appName}/public/logo.png`,
     `frontend/public/logo.svg`,
     `frontend/public/logo.png`,
     `public/logo.svg`,
@@ -95,7 +100,10 @@ export async function extractGithubAppMetadata(repoUrl: string): Promise<Extract
     }
 
     // Shallow clone the repo
-    await execPromise('git', ['clone', '--depth', '1', repoUrl, tmpDir]);
+    const cloneResult = await execPromise('git', ['clone', '--depth', '1', repoUrl, tmpDir]);
+    if (cloneResult.code !== 0) {
+      throw new Error(`Failed to clone repository ${repoUrl}:\n${cloneResult.stderr || cloneResult.stdout}`);
+    }
 
     // Parse hooks.py
     // We need to figure out appName. Typically it's the folder name inside the repo that has hooks.py

@@ -21,8 +21,17 @@ export const useSettings = () => {
       const ipc = useIpc();
       const settings = await ipc.getSettings();
       configured.value = settings !== null;
-      originalSettings.value = settings;
-      form.value = settings ?? defaultSettings();
+      originalSettings.value = settings ? { ...settings } : null;
+
+      if (settings) {
+        form.value = { ...settings };
+      } else {
+        const resources = await ipc.getSystemResources();
+        form.value = {
+          ...defaultSettings(),
+          podmanMemoryMb: resources.recommendedPodmanMemoryMb,
+        };
+      }
     } catch (err) {
       error.value = String(err);
     } finally {
@@ -37,8 +46,8 @@ export const useSettings = () => {
     try {
       const ipc = useIpc();
       const saved = await ipc.setSettings({ ...form.value });
-      originalSettings.value = saved;
-      form.value = saved;
+      originalSettings.value = { ...saved };
+      form.value = { ...saved };
     } catch (err) {
       error.value = String(err);
     } finally {

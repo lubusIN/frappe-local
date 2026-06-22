@@ -25,15 +25,30 @@
             placeholder="e.g. https://github.com/frappe/hrms"
             :disabled="isExtracting || isSaving"
           />
-          <p class="text-xs text-ink-gray-5">we'll fetch metadata from it.</p>
           
-          <div v-if="isCheckingVisibility" class="text-xs text-ink-gray-5 mt-1">
-            Checking repository visibility...
-          </div>
-          <div v-else-if="isRepoPrivate && !shareSshKeysEnabled" class="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
-            <p class="text-xs text-orange-800 leading-relaxed">
-              This repository appears to be private or unreachable. You must enable SSH key sharing below to install it.
+          <div v-show="!(source && !isCheckingVisibility && isRepoPrivate && !shareSshKeysEnabled)" class="h-5 mt-0.5 flex items-center transition-all duration-200">
+            <p v-if="!source" class="text-xs text-ink-gray-5">We'll fetch metadata from it.</p>
+            <p v-else-if="isCheckingVisibility" class="text-xs text-ink-gray-5 animate-pulse">Checking repository visibility...</p>
+            <p v-else-if="!isRepoPrivate" class="text-xs text-green-600 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Repository is accessible.
             </p>
+            <p v-else-if="isRepoPrivate && shareSshKeysEnabled" class="text-xs text-green-600 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Private repository ready (SSH enabled).
+            </p>
+          </div>
+          
+          <div v-if="source && !isCheckingVisibility && isRepoPrivate && !shareSshKeysEnabled" class="mt-1">
+            <Alert
+              title="This repository appears to be private or unreachable. You must enable SSH key sharing below to install it."
+              theme="yellow"
+              :dismissible="false"
+            />
           </div>
         </div>
 
@@ -60,7 +75,7 @@
           {{ error }}
         </div>
         
-        <div v-if="appType === 'github'" class="mt-2 flex flex-row items-center gap-4 border-t border-outline-gray-2 pt-4">
+        <div v-if="appType === 'github'" class="flex flex-row items-center gap-4 border-t border-outline-gray-1 pt-3">
           <Switch v-model="shareSshKeysEnabled" size="sm" @change="onToggleSshKeys" />
           <div class="flex flex-col">
             <span class="text-sm font-medium text-ink-gray-9">Share SSH Keys with Benches</span>
@@ -98,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { Dialog, TextInput, Button, TabButtons, Switch, toast, ConfirmDialog } from 'frappe-ui';
+import { Dialog, TextInput, Button, TabButtons, Switch, toast, ConfirmDialog, Alert } from 'frappe-ui';
 import { debounce } from 'frappe-ui';
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSshKeys } from '../../composables/system/useSshKeys';
@@ -134,17 +149,27 @@ const checkVisibility = debounce(async (url: string) => {
   isCheckingVisibility.value = true;
   try {
     const isPublic = await window.frappeLocal.checkGithubRepoVisibility(url);
+    if (source.value !== url) return;
     isRepoPrivate.value = !isPublic;
   } catch (err) {
     console.error('Failed to check repo visibility:', err);
+    if (source.value !== url) return;
     // Assume private if check fails so they can still see the SSH option
     isRepoPrivate.value = true;
   } finally {
-    isCheckingVisibility.value = false;
+    if (source.value === url) {
+      isCheckingVisibility.value = false;
+    }
   }
 }, 500);
 
 watch(source, (newVal) => {
+  if (newVal && appType.value === 'github') {
+    isCheckingVisibility.value = true;
+  } else {
+    isCheckingVisibility.value = false;
+    isRepoPrivate.value = false;
+  }
   checkVisibility(newVal);
 });
 

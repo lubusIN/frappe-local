@@ -272,7 +272,10 @@ const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: 
   const customAppsList = await customAppsRepo.findAll();
   const localVolumes: Array<{ source: string; target: string }> = [];
   
-  for (const app of appNames ?? []) {
+  const safeAppNames = Array.isArray(appNames) 
+    ? appNames 
+    : (typeof appNames === 'string' ? [appNames] : []);
+  for (const app of safeAppNames) {
     const customApp = customAppsList.find((c: any) => c.name === app);
     if (customApp && customApp.type === 'local' && customApp.source) {
       localVolumes.push({
