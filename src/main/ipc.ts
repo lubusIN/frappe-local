@@ -303,6 +303,13 @@ export const registerIpcHandlers = (
     return true;
   });
 
+  ipcMainLike.handle(ipcChannels.frontDoorStatus, async () => {
+    return {
+      available: operations.isFrontDoorAvailable?.() ?? false,
+      secure: operations.isFrontDoorSecure?.() ?? false,
+    };
+  });
+
   ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
     return true;
   });

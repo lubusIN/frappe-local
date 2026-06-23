@@ -53,6 +53,7 @@ const rendererBridge: RendererBridge = {
 	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
 	checkGithubRepoVisibility: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsCheckGithubRepoVisibility, url),
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
+	getFrontDoorStatus: async () => ipcRenderer.invoke(ipcChannels.frontDoorStatus),
 };
 
 contextBridge.exposeInMainWorld('frappeLocal', rendererBridge);

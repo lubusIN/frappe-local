@@ -64,6 +64,10 @@ describe('ipc contract', () => {
     expect(ipcChannels.diagnosticsResetDevState).toBe('diagnostics:reset-dev-state');
   });
 
+  it('uses a stable channel name for front door status', () => {
+    expect(ipcChannels.frontDoorStatus).toBe('app:front-door-status');
+  });
+
 
 
   it('validates app health payload shape', () => {

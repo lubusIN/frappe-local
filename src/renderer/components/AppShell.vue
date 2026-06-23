@@ -25,6 +25,22 @@
         </template>
         
         <template #footer-items>
+          <Alert
+            v-if="!isFrontDoorAvailable"
+            class="mx-2 mb-2 transition-all duration-300"
+            :class="isCollapsed ? 'hidden' : 'block'"
+            theme="yellow"
+            title="Port 80 In Use"
+            variant="outline"
+            :dismissible="false"
+          >
+            <template #footer>
+              <p class="col-span-full -mt-1.5 text-xs text-ink-gray-7 leading-tight">
+                Falling back to port-based URLs for sites.
+              </p>
+            </template>
+          </Alert>
+
           <SidebarItem
             label="Settings"
             :icon="IconSettings"
@@ -94,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Sidebar, SidebarItem, toast } from 'frappe-ui';
+import { Alert, Button, Sidebar, SidebarItem, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
 import IconHome from '~icons/lucide/home';
 import IconActivity from '~icons/lucide/activity';
@@ -113,6 +129,7 @@ import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { useSettingsDialog } from '../composables/ui/useSettingsDialog';
 import { navigationItems } from '../router/routes';
 import { useProgressCenter } from '../composables/system/useProgressCenter';
+import { useFrontDoorStatus } from '../composables/system/useFrontDoorStatus';
 import { findUnhandledFailedTask } from '../controllers/progress';
 
 const route = useRoute();
@@ -121,6 +138,7 @@ const { actions: headerActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
 const { tasks } = useProgressCenter();
+const { isFrontDoorAvailable } = useFrontDoorStatus();
 const handledFailureTaskIds = new Set(
   tasks.value
     .filter((task) => task.type === 'task.failed')
