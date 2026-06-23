@@ -58,6 +58,8 @@
                   <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
                 </div>
 
+                <Divider/>
+
                 <div class="space-y-1.5">
                   <FormLabel
                     label="Storage Path"
@@ -124,13 +126,12 @@
                   description="Mounts your local ~/.ssh directory into benches to fetch private GitHub repos."
                 />
 
-                <div
-                  v-if="systemResources.podmanMachineRequired"
-                  class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
-                >
+                <Divider />
+
+                <div v-if="systemResources.podmanMachineRequired">
                   <div class="flex items-start justify-between gap-6">
                     <div class="min-w-0">
-                      <FormLabel label="Podman Memory" />
+                      <FormLabel label="Memory" />
                       <p class="mt-1 text-xs leading-5 text-ink-gray-6">
                         Set the memory available to local benches and sites.
                       </p>
@@ -154,7 +155,7 @@
                     </div>
                   </div>
 
-                  <div class="mt-4 flex flex-col gap-3 border-t border-outline-gray-2 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="mt-2 flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
                     <div class="text-xs leading-5">
                       <p class="font-medium text-ink-gray-7">
                         Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
@@ -210,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast, Sidebar, ThemeSwitcher } from 'frappe-ui';
+import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast, Sidebar, ThemeSwitcher, Divider } from 'frappe-ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ConfirmDialog } from 'frappe-ui';
 import StatePanel from '../ui/StatePanel.vue';

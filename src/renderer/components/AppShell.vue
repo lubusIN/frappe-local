@@ -30,13 +30,13 @@
             class="mx-2 mb-2 transition-all duration-300"
             :class="isCollapsed ? 'hidden' : 'block'"
             theme="yellow"
-            title="Port 80 In Use"
+            title="Port 80 Unavailable"
             variant="outline"
             :dismissible="false"
           >
             <template #footer>
               <p class="col-span-full -mt-1.5 text-xs text-ink-gray-7 leading-tight">
-                Falling back to port-based URLs for sites.
+                using port based urls.
               </p>
             </template>
           </Alert>
