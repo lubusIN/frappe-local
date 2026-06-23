@@ -1,20 +1,22 @@
+<p align="center"><img width="160" src=".github/assets/logo.svg"></p>
+
+<img src=".github/assets/banner.png" />
+
 # Frappe Local
 
 Frappe Local is a cross-platform desktop app that lets anyone create local Frappe benches and sites visually without Docker setup, dependency management, or terminal commands.
 
-<img src=".github/assets/frappe-local-banner.jpg" />
-
 ## Status
 
 > [!CAUTION]
-> Project is currently experimental and under active development.
+> Project is currently under active development.
 
 ## Installation
 
 ### macOS
 
 #### Download
-Download the latest release .dmg directly from the from [releases](https://github.com/lubusIN/frappe-local/releases). After download open and drag the app to the applications folder.
+Download the latest release .dmg directly from [releases](https://github.com/lubusIN/frappe-local/releases). After download open and drag the app to the applications folder.
 
 #### Unblock Gatekeeper
 Apple blocks apps not from Mac App Store or signed by trusted developers. Open terminal and run the following command:
@@ -26,7 +28,7 @@ this will remove the quarantine attribute from the app and you can open it norma
 
 ## First Bench Creation
 
-The first bench creation on MaCOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`. Depending on the connection, this can take several minutes. Keep Frappe Local open until setup completes.
+The first bench creation on macOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`. Depending on the connection, this can take several minutes. Keep Frappe Local open until setup completes.
 
 If setup fails, open **Diagnostics**, run the checks, and use **Fix**. The diagnostic error includes the underlying Podman output, such as blocked downloads, Gatekeeper restrictions, or missing VM helpers.
 
@@ -45,7 +47,7 @@ Frappe Local uses Caddy to provide HTTPS for `*.localhost` sites. On first use, 
 - Caddy (Local HTTPS reverse proxy)
 
 ### Prerequisites:
-- Node.js (tested with Node 24)
+- Node.js (tested with Node 22)
 - npm
 
 ### Getting Started
@@ -63,7 +65,7 @@ npm start
 
 ### App Catalog
 
-Frappe Local dynamically fetches its list of available Frappe apps from the [Frappe Brewery](https://frappe-brewery.pages.dev/) (`https://frappe-brewery.pages.dev/index/apps.json`). The registry is automatically downloaded into the `bin/` directory as a build asset during `npm install` and is parsed at runtime. It is excluded from version control.
+Frappe Local dynamically fetches its list of available Frappe apps from the [Frappe Brewery](https://frappe-brewery.lubus.in/) (`https://frappe-brewery.lubus.in/index/apps.json`). The registry is automatically downloaded into the `bin/` directory as a build asset during `npm install` and is parsed at runtime. It is excluded from version control.
 
 ## Scripts
 
