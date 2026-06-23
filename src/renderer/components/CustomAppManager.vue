@@ -43,7 +43,7 @@
         <div
           v-for="row in rows"
           :key="row.appId"
-          class="flex flex-col relative bg-white border rounded-xl p-4 transition-all duration-200 h-[190px]"
+          class="flex flex-col relative bg-surface-base border rounded-xl p-4 transition-all duration-200 h-[190px]"
           :class="[
             row.disabled ? 'opacity-60 cursor-not-allowed border-outline-gray-2' : 'border-outline-gray-2 hover:border-outline-gray-4'
           ]"
@@ -69,7 +69,7 @@
               <template v-if="context === 'bench'">
                 <Button
                   v-if="row.isActive"
-                  variant="subtle"
+                  variant="outline"
                   theme="red"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
@@ -80,7 +80,7 @@
                 </Button>
                 <Button
                   v-else
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
                   :loading="loadingAppId === row.appId"
@@ -92,7 +92,7 @@
               <template v-else-if="context === 'site'">
                 <Button
                   v-if="row.isActive"
-                  variant="subtle"
+                  variant="outline"
                   theme="red"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
@@ -144,7 +144,10 @@
 
             <!-- Bottom Right -->
             <div class="flex items-center gap-2 shrink-0 max-w-[50%]">
-              <span class="text-[10px] uppercase text-ink-gray-4 font-medium tracking-wide truncate" :title="row.source">
+              <span
+                class="text-[10px] uppercase text-ink-gray-4 font-medium tracking-wide truncate"
+                :title="row.source"
+              >
                 {{ row.type === 'github' ? row.branch || 'main' : 'Local App' }}
               </span>
             </div>

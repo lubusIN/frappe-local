@@ -28,17 +28,31 @@
         <template v-if="column.key === 'name'">
           <div class="flex items-center gap-3">
             <div class="flex size-8 items-center justify-center overflow-hidden rounded bg-ink-gray-1 border border-ink-gray-2 text-ink-gray-5 flex-shrink-0">
-              <img v-if="row.icon && !imageErrors[row.id]" :src="row.icon" class="size-full object-contain" @error="imageErrors[row.id] = true" />
-              <div v-else-if="imageErrors[row.id]" class="flex size-full items-center justify-center text-xs font-semibold">
+              <img
+                v-if="row.icon && !imageErrors[row.id]"
+                :src="row.icon"
+                class="size-full object-contain"
+                @error="imageErrors[row.id] = true"
+              >
+              <div
+                v-else-if="imageErrors[row.id]"
+                class="flex size-full items-center justify-center text-xs font-semibold"
+              >
                 {{ (row.title || row.name).charAt(0).toUpperCase() }}
               </div>
-              <IconPackage v-else class="size-4" />
+              <IconPackage
+                v-else
+                class="size-4"
+              />
             </div>
             <div class="flex h-full min-w-0 flex-col justify-center gap-0.5 group">
               <div class="truncate text-sm-medium transition-colors text-ink-gray-9">
                 {{ row.title || row.name }}
               </div>
-              <div class="truncate text-xs text-ink-gray-5" :title="row.description || 'No description'">
+              <div
+                class="truncate text-xs text-ink-gray-5"
+                :title="row.description || 'No description'"
+              >
                 {{ row.description || 'No description' }}
               </div>
             </div>
@@ -46,22 +60,38 @@
         </template>
 
         <template v-else-if="column.key === 'type'">
-          <Badge variant="subtle" :theme="row.type === 'github' ? 'blue' : 'orange'">
+          <Badge
+            variant="subtle"
+            :theme="row.type === 'github' ? 'blue' : 'orange'"
+          >
             {{ row.type === 'github' ? 'GitHub' : 'Local' }}
           </Badge>
         </template>
         
         <template v-else-if="column.key === 'source'">
-          <div class="truncate text-xs text-ink-gray-6 max-w-xs" :title="row.source">
+          <div
+            class="truncate text-xs text-ink-gray-6 max-w-xs"
+            :title="row.source"
+          >
             {{ formatSource(row.source) }}
           </div>
         </template>
 
         <template v-else-if="column.key === 'actions'">
-          <div class="flex h-full items-center justify-end" @click.stop>
-            <Dropdown :options="getAppActions(row)" placement="right">
+          <div
+            class="flex h-full items-center justify-end"
+            @click.stop
+          >
+            <Dropdown
+              :options="getAppActions(row)"
+              placement="right"
+            >
               <template #default>
-                <Button size="md" variant="subtle" :icon="IconMoreHorizontal" />
+                <Button
+                  size="md"
+                  variant="subtle"
+                  :icon="IconMoreHorizontal"
+                />
               </template>
             </Dropdown>
           </div>
@@ -75,7 +105,10 @@
       description="Register a custom app from GitHub or a local directory to install it on your benches."
       :icon="IconPackage"
     >
-      <Button variant="solid" @click="showAddModal = true">
+      <Button
+        variant="solid"
+        @click="showAddModal = true"
+      >
         Add Custom App
       </Button>
     </EmptyState>

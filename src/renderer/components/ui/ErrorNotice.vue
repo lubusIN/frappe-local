@@ -1,7 +1,7 @@
 <template>
   <section
     class="flex items-start gap-3 rounded-lg border p-4 select-text"
-    :class="tone === 'warning' ? 'border-amber-200 dark:border-amber-800 bg-surface-amber-2 text-ink-amber-6' : 'border-red-200 dark:border-red-800 bg-surface-red-2 text-ink-red-8'"
+    :class="tone === 'warning' ? 'border-outline-amber-3 bg-surface-amber-2 text-ink-amber-6' : 'border-outline-red-3 bg-surface-red-2 text-ink-red-8'"
     role="alert"
     aria-live="polite"
     aria-atomic="true"
@@ -53,7 +53,7 @@
           <Button
             v-else
             class="inline-flex items-center"
-            variant="subtle"
+            variant="outline"
             :aria-label="`${action.label}: take action to resolve this error`"
             @click="$emit('action', action.id)"
           >

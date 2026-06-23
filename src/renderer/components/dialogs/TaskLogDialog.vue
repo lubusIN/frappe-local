@@ -34,8 +34,8 @@
     </template>
 
     <template #default>
-      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-gray-10">
-        <div class="flex items-center justify-between border-b border-outline-gray-7 px-4 py-2.5">
+      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-base">
+        <div class="flex items-center justify-between border-b border-outline-gray-2 px-4 py-2.5">
           <div class="flex items-center gap-2">
             <span class="rounded-full size-2 bg-surface-red-7" />
             <span class="rounded-full size-2 bg-surface-amber-7" />
@@ -70,7 +70,7 @@
           <div
             v-for="(log, index) in visibleLogs"
             :key="`${log.timestamp}-${index}`"
-            class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-9"
+            class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-2"
           >
             <time
               class="tabular-nums text-ink-gray-4"
@@ -86,7 +86,7 @@
               {{ formatLevel(log.level) }}
             </span>
             <span
-              class="min-w-0 break-words whitespace-pre-wrap text-ink-gray-3"
+              class="min-w-0 break-words whitespace-pre-wrap text-ink-gray-7"
               :class="messageClass(log.level)"
             >{{ log.message }}</span>
           </div>
@@ -94,7 +94,7 @@
 
         <div
           v-if="displayedLogs.length > 0"
-          class="flex items-center justify-between border-t border-outline-gray-7 px-4 py-2.5"
+          class="flex items-center justify-between border-t border-outline-gray-2 px-4 py-2.5"
         >
           <span class="text-xs text-ink-gray-4">
             {{ footerStatusLabel }}

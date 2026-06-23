@@ -63,16 +63,16 @@
 
     <div
       v-if="wizardStep === 2"
-      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2"
+      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px] text-ink-gray-9"
     >
-      <div class="mb-2 flex justify-between text-[13px]">
-        <span>Name</span><strong class="font-semibold">{{ createForm.name }}</strong>
+      <div class="mb-2 flex justify-between text-ink-gray-5">
+        <span>Name</span><strong class="font-semibold text-ink-gray-9">{{ createForm.name }}</strong>
       </div>
-      <div class="mb-2 flex justify-between text-[13px]">
-        <span>Frappe Version</span><strong class="font-semibold">{{ createForm.frappeVersion }}</strong>
+      <div class="mb-2 flex justify-between text-ink-gray-5">
+        <span>Frappe Version</span><strong class="font-semibold text-ink-gray-9">{{ createForm.frappeVersion }}</strong>
       </div>
-      <div class="flex justify-between text-[13px]">
-        <span>Path</span><strong class="font-mono text-xs-semibold break-all">{{ createForm.path }}</strong>
+      <div class="flex justify-between text-ink-gray-5">
+        <span>Path</span><strong class="font-mono text-xs-semibold break-all text-ink-gray-9">{{ createForm.path }}</strong>
       </div>
     </div>
   </WizardDialog>

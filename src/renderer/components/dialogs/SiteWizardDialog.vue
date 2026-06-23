@@ -57,19 +57,19 @@
 
     <div
       v-if="wizardStep === 3"
-      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px]"
+      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px] text-ink-gray-9"
     >
-      <div class="flex justify-between mb-2">
-        <span>Bench</span><strong class="font-semibold">{{ selectedBench?.name ?? createForm.benchId }}</strong>
+      <div class="flex justify-between mb-2 text-ink-gray-5">
+        <span>Bench</span><strong class="font-semibold text-ink-gray-9">{{ selectedBench?.name ?? createForm.benchId }}</strong>
       </div>
-      <div class="flex justify-between mb-2">
-        <span>Site</span><strong class="font-semibold">{{ toSiteDomain(createForm.name) }}</strong>
+      <div class="flex justify-between mb-2 text-ink-gray-5">
+        <span>Site</span><strong class="font-semibold text-ink-gray-9">{{ toSiteDomain(createForm.name) }}</strong>
       </div>
       <div
         v-if="createForm.force"
-        class="flex justify-between mb-2"
+        class="flex justify-between mb-2 text-ink-gray-5"
       >
-        <span>Force</span><strong class="font-semibold">Yes</strong>
+        <span>Force</span><strong class="font-semibold text-ink-gray-9">Yes</strong>
       </div>
     </div>
   </WizardDialog>

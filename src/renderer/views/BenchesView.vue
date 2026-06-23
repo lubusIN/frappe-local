@@ -68,7 +68,10 @@
             class="flex h-full items-center justify-end"
             @click.stop
           >
-            <Dropdown :options="getBenchActions(row)" placement="right">
+            <Dropdown
+              :options="getBenchActions(row)"
+              placement="right"
+            >
               <template #default>
                 <Button
                   size="md"

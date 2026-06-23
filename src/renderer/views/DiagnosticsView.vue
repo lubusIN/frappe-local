@@ -9,9 +9,9 @@
       @fix="fix"
     >
       <template #summary-action>
-        <div class="flex flex-col gap-4 rounded-lg border border-red-200 bg-red-50/40 p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex flex-col gap-4 rounded-lg border border-outline-red-3 bg-surface-red-2 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex items-start gap-3">
-            <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-100 text-ink-red-8">
+            <div class="flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-red-8">
               <IconRotateCcw class="size-5" />
             </div>
             <div class="min-w-0">
@@ -54,7 +54,7 @@
     <Teleport to="body">
       <div
         v-if="resetting"
-        class="fixed inset-0 z-[9999] bg-white/90 flex flex-col items-center justify-center backdrop-blur-sm"
+        class="fixed inset-0 z-[9999] bg-surface-base/90 flex flex-col items-center justify-center backdrop-blur-sm"
       >
         <Logo class="w-24 h-24 mb-6 text-ink-gray-9 animate-pulse" />
         <LoadingIndicator class="w-8 h-8 mb-4 text-ink-gray-9" />

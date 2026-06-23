@@ -29,7 +29,7 @@
     >
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section
-          class="flex flex-col gap-4 rounded-lg border bg-white p-4 sm:flex-row sm:items-start sm:justify-between"
+          class="flex flex-col gap-4 rounded-lg border bg-surface-base p-4 sm:flex-row sm:items-start sm:justify-between"
           :class="summaryCardClass"
         >
           <div class="flex items-start gap-3">
@@ -79,7 +79,7 @@
           <article
             v-for="check in sortedChecks"
             :key="`${check.type}-${check.title}`"
-            class="flex flex-col rounded-lg border bg-white p-3 transition-colors"
+            class="flex flex-col rounded-lg border bg-surface-base p-3 transition-colors"
             :class="cardClass(check.status)"
           >
             <div class="flex items-start gap-3">
@@ -249,19 +249,19 @@ const summaryIcon = computed<Component>(() => {
 });
 
 const summaryCardClass = computed(() => {
-  if (props.running) return 'border-blue-200';
+  if (props.running) return 'border-outline-blue-3';
   if (!props.report) return 'border-outline-gray-2';
-  if (props.report.hasCriticalIssues) return 'border-red-200';
-  if (props.report.hasWarnings) return 'border-amber-200';
+  if (props.report.hasCriticalIssues) return 'border-outline-red-3';
+  if (props.report.hasWarnings) return 'border-outline-amber-3';
   return 'border-outline-gray-2';
 });
 
 const summaryIconClass = computed(() => {
-  if (props.running) return 'bg-blue-50 text-ink-blue-6';
+  if (props.running) return 'bg-surface-blue-2 text-ink-blue-6';
   if (!props.report) return 'bg-surface-gray-2 text-ink-gray-6';
-  if (props.report.hasCriticalIssues) return 'bg-red-50 text-ink-red-8';
-  if (props.report.hasWarnings) return 'bg-amber-50 text-ink-amber-6';
-  return 'bg-green-50 text-ink-green-7';
+  if (props.report.hasCriticalIssues) return 'bg-surface-red-2 text-ink-red-8';
+  if (props.report.hasWarnings) return 'bg-surface-amber-2 text-ink-amber-6';
+  return 'bg-surface-green-2 text-ink-green-7';
 });
 
 const statusPriority: Record<DiagnosticsCheckStatus, number> = {
@@ -426,8 +426,8 @@ const statusIcon = (status: DiagnosticsCheckStatus): Component => {
 const cardClass = (status: DiagnosticsCheckStatus): string => {
   const classes: Record<DiagnosticsCheckStatus, string> = {
     passed: 'border-outline-gray-2',
-    warning: 'border-amber-200',
-    failed: 'border-red-200',
+    warning: 'border-outline-amber-3',
+    failed: 'border-outline-red-3',
     skipped: 'border-outline-gray-2 opacity-80',
   };
 
@@ -436,9 +436,9 @@ const cardClass = (status: DiagnosticsCheckStatus): string => {
 
 const statusIconClass = (status: DiagnosticsCheckStatus): string => {
   const classes: Record<DiagnosticsCheckStatus, string> = {
-    passed: 'bg-green-50 text-ink-green-7',
-    warning: 'bg-amber-50 text-ink-amber-6',
-    failed: 'bg-red-50 text-ink-red-8',
+    passed: 'bg-surface-green-2 text-ink-green-7',
+    warning: 'bg-surface-amber-2 text-ink-amber-6',
+    failed: 'bg-surface-red-2 text-ink-red-8',
     skipped: 'bg-surface-gray-2 text-ink-gray-5',
   };
 

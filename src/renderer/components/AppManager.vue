@@ -51,7 +51,7 @@
         <div
           v-for="row in rows"
           :key="row.appId"
-          class="flex flex-col relative bg-white border rounded-xl p-4 transition-all duration-200 h-[190px]"
+          class="flex flex-col relative bg-surface-base border rounded-xl p-4 transition-all duration-200 h-[190px]"
           :class="[
             row.disabled ? 'opacity-60 cursor-not-allowed border-outline-gray-2' : 'border-outline-gray-2 hover:border-outline-gray-4'
           ]"
@@ -85,7 +85,7 @@
               <template v-else-if="context === 'bench'">
                 <Button
                   v-if="row.isActive"
-                  variant="subtle"
+                  variant="outline"
                   theme="red"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
@@ -96,7 +96,7 @@
                 </Button>
                 <Button
                   v-else
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
                   :loading="loadingAppId === row.appId"
@@ -108,7 +108,7 @@
               <template v-else-if="context === 'site'">
                 <Button
                   v-if="row.isActive"
-                  variant="subtle"
+                  variant="outline"
                   theme="red"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
@@ -119,7 +119,7 @@
                 </Button>
                 <Button
                   v-else
-                  variant="subtle"
+                  variant="outline"
                   size="sm"
                   :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
                   :loading="loadingAppId === row.appId"

@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex min-h-[60vh] flex-col items-center justify-center p-12 bg-white text-center rounded-lg"
+    class="flex min-h-[60vh] flex-col items-center justify-center p-12 bg-surface-base text-center rounded-lg"
   >
     <div
       v-if="icon"

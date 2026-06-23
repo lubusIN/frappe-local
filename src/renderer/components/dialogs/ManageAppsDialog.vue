@@ -35,7 +35,10 @@
           v-else
           class="flex flex-col min-h-0 gap-3"
         >
-          <Tabs :tabs="appTabs" v-model="activeTabIndex">
+          <Tabs
+            v-model="activeTabIndex"
+            :tabs="appTabs"
+          >
             <template #tab-panel="{ tab }">
               <div class="pt-4">
                 <component

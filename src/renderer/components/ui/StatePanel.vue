@@ -4,7 +4,7 @@
     :class="{
       'border-outline-gray-2 bg-surface-base': kind === 'empty',
       'border-outline-gray-2 bg-surface-gray-2': kind === 'loading',
-      'border-red-200 dark:border-red-800 bg-surface-red-2': kind === 'error',
+      'border-outline-red-3 bg-surface-red-2': kind === 'error',
     }"
     role="status"
     aria-live="polite"
@@ -46,7 +46,7 @@
         v-if="actionLabel"
         class="mt-2"
         :theme="kind === 'error' ? 'red' : 'gray'"
-        variant="subtle"
+        variant="outline"
         :aria-label="actionAriaLabel"
         @click="$emit('action')"
       >

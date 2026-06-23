@@ -18,26 +18,39 @@
         <div class="flex-1 overflow-y-auto p-6 sm:p-10">
           <StatePanel
             v-if="error"
-          kind="error"
-          title="Unable to load settings"
-          :body="error"
-          action-label="Retry"
-          @action="refresh"
-        />
-        <StatePanel
-          v-else-if="loading"
-          kind="loading"
-          title="Loading settings"
-          body="Reading current preferences and runtime defaults."
-        />
+            kind="error"
+            title="Unable to load settings"
+            :body="error"
+            action-label="Retry"
+            @action="refresh"
+          />
+          <StatePanel
+            v-else-if="loading"
+            kind="loading"
+            title="Loading settings"
+            body="Reading current preferences and runtime defaults."
+          />
 
-        <div v-else class="min-h-full">
-            <form class="space-y-6" @submit.prevent="onSave">
+          <div
+            v-else
+            class="min-h-full"
+          >
+            <form
+              class="space-y-6"
+              @submit.prevent="onSave"
+            >
               <!-- General Tab -->
-              <div v-if="activeTab === 'general'" class="space-y-8">
+              <div
+                v-if="activeTab === 'general'"
+                class="space-y-8"
+              >
                 <div>
-                  <h2 class="text-lg font-semibold text-ink-gray-9">Preferences</h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">Choose how you want to use the application by setting your preferences.</p>
+                  <h2 class="text-lg font-semibold text-ink-gray-9">
+                    Preferences
+                  </h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">
+                    Choose how you want to use the application by setting your preferences.
+                  </p>
                 </div>
                 
                 <div class="space-y-1.5">
@@ -46,7 +59,10 @@
                 </div>
 
                 <div class="space-y-1.5">
-                  <FormLabel label="Storage Path" required />
+                  <FormLabel
+                    label="Storage Path"
+                    required
+                  />
                   <div class="flex gap-2">
                     <div class="flex-1">
                       <TextInput
@@ -67,23 +83,38 @@
               </div>
 
               <!-- Appearance Tab -->
-              <div v-else-if="activeTab === 'appearance'" class="space-y-8">
+              <div
+                v-else-if="activeTab === 'appearance'"
+                class="space-y-8"
+              >
                 <div>
-                  <h2 class="text-lg font-semibold text-ink-gray-9">Appearance</h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">Customize the look and feel of the application.</p>
+                  <h2 class="text-lg font-semibold text-ink-gray-9">
+                    Appearance
+                  </h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">
+                    Customize the look and feel of the application.
+                  </p>
                 </div>
 
-                <ThemeSwitcher v-model="form.theme"
+                <ThemeSwitcher
+                  v-model="form.theme"
                   name="Local"
                   :logo="AppLogo"
                 />
               </div>
 
               <!-- Advanced Tab -->
-              <div v-else-if="activeTab === 'advanced'" class="space-y-8">
+              <div
+                v-else-if="activeTab === 'advanced'"
+                class="space-y-8"
+              >
                 <div>
-                  <h2 class="text-lg font-semibold text-ink-gray-9">Advanced</h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">Manage technical and resource settings.</p>
+                  <h2 class="text-lg font-semibold text-ink-gray-9">
+                    Advanced
+                  </h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">
+                    Manage technical and resource settings.
+                  </p>
                 </div>
 
                 <Switch

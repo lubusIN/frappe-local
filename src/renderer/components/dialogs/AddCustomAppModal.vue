@@ -18,32 +18,77 @@
           />
         </div>
 
-        <div v-if="appType === 'github'" class="flex flex-col gap-1.5">
+        <div
+          v-if="appType === 'github'"
+          class="flex flex-col gap-1.5"
+        >
           <TextInput
-            label="GitHub Repository URL"
             v-model="source"
+            label="GitHub Repository URL"
             placeholder="e.g. https://github.com/frappe/hrms"
             :disabled="isExtracting || isSaving"
           />
           
-          <div v-show="!(source && !isCheckingVisibility && isRepoPrivate && !shareSshKeysEnabled)" class="h-5 mt-0.5 flex items-center transition-all duration-200">
-            <p v-if="!source" class="text-xs text-ink-gray-5">We'll fetch metadata from it.</p>
-            <p v-else-if="isCheckingVisibility" class="text-xs text-ink-gray-5 animate-pulse">Checking repository visibility...</p>
-            <p v-else-if="!isRepoPrivate" class="text-xs text-green-600 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          <div
+            v-show="!(source && !isCheckingVisibility && isRepoPrivate && !shareSshKeysEnabled)"
+            class="h-5 mt-0.5 flex items-center transition-all duration-200"
+          >
+            <p
+              v-if="!source"
+              class="text-xs text-ink-gray-5"
+            >
+              We'll fetch metadata from it.
+            </p>
+            <p
+              v-else-if="isCheckingVisibility"
+              class="text-xs text-ink-gray-5 animate-pulse"
+            >
+              Checking repository visibility...
+            </p>
+            <p
+              v-else-if="!isRepoPrivate"
+              class="text-xs text-ink-green-6 flex items-center gap-1"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Repository is accessible.
             </p>
-            <p v-else-if="isRepoPrivate && shareSshKeysEnabled" class="text-xs text-green-600 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            <p
+              v-else-if="isRepoPrivate && shareSshKeysEnabled"
+              class="text-xs text-ink-green-6 flex items-center gap-1"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Private repository ready (SSH enabled).
             </p>
           </div>
           
-          <div v-if="source && !isCheckingVisibility && isRepoPrivate && !shareSshKeysEnabled" class="mt-1">
+          <div
+            v-if="source && !isCheckingVisibility && isRepoPrivate && !shareSshKeysEnabled"
+            class="mt-1"
+          >
             <Alert
               title="This repository appears to be private or unreachable. You must enable SSH key sharing below to install it."
               theme="yellow"
@@ -52,12 +97,15 @@
           </div>
         </div>
 
-        <div v-else class="flex flex-col gap-1.5">
+        <div
+          v-else
+          class="flex flex-col gap-1.5"
+        >
           <label class="text-sm font-medium text-ink-gray-9">Local Folder Path</label>
           <div class="flex gap-2">
             <TextInput
-              class="flex-1"
               v-model="source"
+              class="flex-1"
               placeholder="/Users/username/projects/my-app"
               :disabled="isExtracting || isSaving"
             />
@@ -71,12 +119,22 @@
           </div>
         </div>
 
-        <div v-if="error" class="p-3 bg-red-50 text-red-600 rounded-md text-sm">
+        <div
+          v-if="error"
+          class="p-3 bg-surface-red-2 text-ink-red-8 rounded-md text-sm"
+        >
           {{ error }}
         </div>
         
-        <div v-if="appType === 'github'" class="flex flex-row items-center gap-4 border-t border-outline-gray-1 pt-3">
-          <Switch v-model="shareSshKeysEnabled" size="sm" @change="onToggleSshKeys" />
+        <div
+          v-if="appType === 'github'"
+          class="flex flex-row items-center gap-4 border-t border-outline-gray-1 pt-3"
+        >
+          <Switch
+            v-model="shareSshKeysEnabled"
+            size="sm"
+            @change="onToggleSshKeys"
+          />
           <div class="flex flex-col">
             <span class="text-sm font-medium text-ink-gray-9">Share SSH Keys with Benches</span>
             <p class="text-xs text-ink-gray-5">
@@ -88,7 +146,10 @@
     </template>
     <template #actions>
       <div class="flex justify-end gap-2 w-full">
-        <Button variant="subtle" @click="close">
+        <Button
+          variant="subtle"
+          @click="close"
+        >
           Cancel
         </Button>
         <Button

@@ -133,7 +133,7 @@ export async function extractGithubAppMetadata(repoUrl: string): Promise<Extract
 
     if (!appName) {
       // Extract from URL
-      let cleanUrl = repoUrl.replace(/\.git$/, '');
+      const cleanUrl = repoUrl.replace(/\.git$/, '');
       const parts = cleanUrl.split('/');
       appName = parts[parts.length - 1] || 'unknown_app';
       appName = appName.replace(/-/g, '_');
