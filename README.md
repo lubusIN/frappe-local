@@ -2,6 +2,8 @@
 
 <img src=".github/assets/banner.png" />
 
+[![Release](https://github.com/lubusIN/frappe-local/actions/workflows/release.yml/badge.svg)](https://github.com/lubusIN/frappe-local/actions/workflows/release.yml) [![Nightly Build](https://github.com/lubusIN/frappe-local/actions/workflows/nightly.yml/badge.svg)](https://github.com/lubusIN/frappe-local/actions/workflows/nightly.yml)
+
 # Frappe Local
 
 Frappe Local is a cross-platform desktop app that lets anyone create local Frappe benches and sites visually without Docker setup, dependency management, or terminal commands.
