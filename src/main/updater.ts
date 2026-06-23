@@ -1,3 +1,5 @@
+import { app } from 'electron';
+import path from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import type { UpdateCheckResult } from '../shared/core/ipc';
 import { createMainLogger } from './logger';
@@ -14,6 +16,10 @@ export const initializeUpdater = async (settingsRepository: SettingsRepository):
   };
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+
+  if (!app.isPackaged) {
+    autoUpdater.updateConfigPath = path.join(process.cwd(), 'resources', 'dev-update.yml');
+  }
 
   try {
     const settings = await settingsRepository.get();

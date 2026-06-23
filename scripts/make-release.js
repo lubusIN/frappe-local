@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import forge from '@electron-forge/core';
 
@@ -65,3 +66,49 @@ for (const artifact of artifacts) {
 }
 
 console.log(`Prepared ${artifacts.length} artifact(s) in ${releaseDirectory}`);
+
+// Generate electron-updater manifest
+const finalVersion = releaseVersion || appPackage.version;
+let channel = 'latest';
+if (finalVersion.includes('nightly')) channel = 'nightly';
+else if (finalVersion.includes('-alpha')) channel = 'alpha';
+else if (finalVersion.includes('-beta')) channel = 'beta';
+
+const isMac = process.platform === 'darwin';
+const isWin = process.platform === 'win32';
+
+const suffix = isMac ? '-mac' : (isWin ? '' : '-linux');
+const yamlFilename = `${channel}${suffix}.yml`;
+
+let extToMatch = '.zip';
+if (isWin) extToMatch = '.exe';
+if (!isMac && !isWin) extToMatch = '.rpm';
+
+let targetFile = artifacts.find(f => path.extname(f).toLowerCase() === extToMatch);
+if (!isMac && !isWin && !targetFile) targetFile = artifacts.find(f => path.extname(f).toLowerCase() === '.deb');
+if (!isMac && !isWin && !targetFile) targetFile = artifacts.find(f => path.extname(f).toLowerCase() === '.AppImage');
+
+if (targetFile) {
+  const filePath = targetFile; // it's the absolute path from Forge
+  const destinationFileName = path.basename(filePath);
+  const destinationFilePath = path.join(releaseDirectory, destinationFileName);
+  
+  const stat = fs.statSync(destinationFilePath);
+  const hash = crypto.createHash('sha512');
+  hash.update(fs.readFileSync(destinationFilePath));
+  const sha512 = hash.digest('base64');
+  
+  const yamlContent = `version: ${finalVersion}
+files:
+  - url: ${destinationFileName}
+    sha512: ${sha512}
+    size: ${stat.size}
+path: ${destinationFileName}
+sha512: ${sha512}
+releaseDate: '${new Date().toISOString()}'`;
+
+  fs.writeFileSync(path.join(releaseDirectory, yamlFilename), yamlContent);
+  console.log(`Generated manifest: ${yamlFilename}`);
+} else {
+  console.log('No suitable artifact found to generate manifest for.');
+}

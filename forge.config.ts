@@ -40,7 +40,7 @@ const config: ForgeConfig = {
     appBundleId: 'in.lubus.frappe-local',
     appCategoryType: 'public.app-category.developer-tools',
     asar: true,
-    extraResource: ['./bin', './resources/icons/icon.png'],
+    extraResource: ['./bin', './resources/icons/icon.png', './resources/app-update.yml'],
     icon: iconBasePath,
     // Platform-specific configurations
     ...(isDarwin && {
