@@ -19,7 +19,7 @@
               class="flex flex-col ml-3 truncate transition-all duration-300"
             >
               <span class="text-sm-bold leading-tight text-ink-gray-9">Frappe Local</span>
-              <span class="text-xs-medium text-ink-gray-5 leading-tight mt-0.5">frappe for humans</span>
+              <span class="text-xs-medium text-ink-gray-5 leading-tight mt-0.5">v{{ appVersion }}</span>
             </div>
           </div>
         </template>
@@ -145,6 +145,7 @@ const handledFailureTaskIds = new Set(
     .map((task) => task.taskId)
 );
 const selectedFailedTaskId = ref<string | null>(null);
+const appVersion = __APP_VERSION__;
 
 const selectedFailedTask = computed(() => {
   if (!selectedFailedTaskId.value) return null;

@@ -7,6 +7,7 @@ declare module '*.vue' {
 
 declare global {
   interface Window {
-    readonly frappeLocal?: import('../shared/core/ipc').RendererBridge;
+    readonly frappeLocal?: import('../../shared/core/ipc').RendererBridge;
   }
+  const __APP_VERSION__: string;
 }
