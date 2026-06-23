@@ -11,6 +11,13 @@ class MockStorageAdapter implements StorageAdapter {
     this.snapshot = initialSnapshot;
   }
 
+  async connect(): Promise<void> {}
+  async close(): Promise<void> {}
+  
+  async writeSnapshot(snapshot: StorageSnapshot): Promise<void> {
+    this.snapshot = snapshot;
+  }
+
   async readSnapshot(): Promise<StorageSnapshot> {
     return this.snapshot;
   }

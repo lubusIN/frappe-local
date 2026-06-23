@@ -62,7 +62,7 @@ export type AppHealthResponse = {
 export type UpdateCheckResult = {
   readonly checkedAt: string;
   readonly source: 'manual';
-  readonly status: 'not-configured';
+  readonly status: 'not-configured' | 'update-available' | 'up-to-date' | 'error';
   readonly message: string;
 };
 
@@ -156,7 +156,7 @@ export type SettingsItem = {
   readonly defaultFrappeVersion: string;
   readonly storagePath: string;
   readonly editorPreference: string;
-  readonly updateChannel: 'stable' | 'beta';
+  readonly updateChannel: 'stable' | 'beta' | 'alpha' | 'nightly';
   readonly autoUpdateEnabled: boolean;
   readonly sidebarCompact: boolean;
   readonly podmanMemoryMb: number;

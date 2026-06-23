@@ -26,6 +26,16 @@ function makeStubCatalogRepo(items: AppCatalogItem[] = []) {
   };
 }
 
+function makeStubCustomAppsRepo() {
+  return {
+    findAll: async () => [],
+    findById: async () => null,
+    create: async () => ({} as any),
+    update: async () => null,
+    delete: async () => false,
+  };
+}
+
 function makeStubBenchRepo(apps: string[] = ['frappe']) {
   const benches = [
     {
@@ -149,6 +159,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -183,6 +194,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -220,6 +232,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -239,6 +252,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       { openPath: async () => false, openInEditor: async () => false, openExternal: async () => false, pathExists: () => true, trackSiteOperation }
     );
@@ -270,6 +284,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -295,6 +310,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(['frappe', 'erpnext']),
         sites: makeStubSiteRepo([]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -326,6 +342,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -356,6 +373,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -384,6 +402,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -409,6 +428,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -440,6 +460,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -465,6 +486,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -484,6 +506,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -515,6 +538,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       { openPath, openInEditor: async () => false, openExternal: async () => false, pathExists: () => true, trackSiteOperation }
     );
@@ -538,6 +562,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       {
         openPath: async () => false,
@@ -567,6 +592,7 @@ describe('sites IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       {
         openPath: async () => false,
@@ -600,6 +626,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       {
         openPath: async () => false,
@@ -632,6 +659,7 @@ describe('sites IPC handlers', () => {
           },
         ]),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       {
         openPath: async () => false,

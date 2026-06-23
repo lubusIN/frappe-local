@@ -64,6 +64,16 @@ function makeStubSettingsRepo() {
   };
 }
 
+function makeStubCustomAppsRepo() {
+  return {
+    findAll: async () => [],
+    findById: async () => null,
+    create: async () => ({} as any),
+    update: async () => null,
+    delete: async () => false,
+  };
+}
+
 function makeStubTaskRunner() {
   let listener: ((event: TaskProgressEvent) => void) | null = null;
 
@@ -96,6 +106,7 @@ describe('task runner IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       undefined,
       taskRunner.runner
@@ -126,6 +137,7 @@ describe('task runner IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       undefined,
       taskRunner.runner,

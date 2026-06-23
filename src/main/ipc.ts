@@ -1064,15 +1064,15 @@ export const registerIpcHandlers = (
     return repositories.customApps.create(input);
   });
 
-  ipcMainLike.handle(ipcChannels.customAppsUpdate, async (_event: unknown, id: string, input: unknown) => {
-    return repositories.customApps.update(id, input);
+  ipcMainLike.handle(ipcChannels.customAppsUpdate, async (_event: unknown, id: unknown, input: unknown) => {
+    return repositories.customApps.update(id as string, input);
   });
 
-  ipcMainLike.handle(ipcChannels.customAppsDelete, async (_event: unknown, id: string) => {
-    return repositories.customApps.delete(id);
+  ipcMainLike.handle(ipcChannels.customAppsDelete, async (_event: unknown, id: unknown) => {
+    return repositories.customApps.delete(id as string);
   });
 
-  ipcMainLike.handle(ipcChannels.customAppsExtract, async (_event: unknown, type: 'github' | 'local', source: string) => {
-    return extractCustomApp(type, source);
+  ipcMainLike.handle(ipcChannels.customAppsExtract, async (_event: unknown, type: unknown, source: unknown) => {
+    return extractCustomApp(type as 'github' | 'local', source as string);
   });
 };

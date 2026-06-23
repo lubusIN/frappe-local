@@ -44,6 +44,13 @@ const unavailableBridge: RendererBridge = {
   pathExists: () => rejectUnavailable(),
   openExternal: () => rejectUnavailable(),
   uiReady: () => rejectUnavailable(),
+  listCustomApps: () => rejectUnavailable(),
+  createCustomApp: () => rejectUnavailable(),
+  updateCustomApp: () => rejectUnavailable(),
+  deleteCustomApp: () => rejectUnavailable(),
+  extractCustomApp: () => rejectUnavailable(),
+  checkGithubRepoVisibility: () => rejectUnavailable(),
+  getFrontDoorStatus: () => rejectUnavailable(),
 };
 
 export const isIpcBridgeAvailable = (): boolean => {

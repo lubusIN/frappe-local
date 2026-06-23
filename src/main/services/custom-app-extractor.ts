@@ -17,13 +17,13 @@ export type ExtractedAppMetadata = {
 
 function extractAppTitle(content: string): string | null {
   const hookMatch = content.match(/app_title\s*=\s*["'](.+?)["']/);
-  if (hookMatch) return hookMatch[1];
+  if (hookMatch && hookMatch[1]) return hookMatch[1];
   return null;
 }
 
 function extractAppDescription(content: string): string | null {
   const hookMatch = content.match(/app_description\s*=\s*["'](.+?)["']/);
-  if (hookMatch) return hookMatch[1];
+  if (hookMatch && hookMatch[1]) return hookMatch[1];
   return null;
 }
 

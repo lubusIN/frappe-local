@@ -76,6 +76,16 @@ function makeStubSettingsRepo(initial: Settings | null = null) {
   };
 }
 
+function makeStubCustomAppsRepo() {
+  return {
+    findAll: async () => [],
+    findById: async () => null,
+    create: async () => ({} as any),
+    update: async () => null,
+    delete: async () => false,
+  };
+}
+
 describe('settings IPC handlers', () => {
   it('settings:get returns null when settings are not configured', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -87,6 +97,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -104,6 +115,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -125,6 +137,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -147,6 +160,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(null),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -167,6 +181,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -193,6 +208,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -216,6 +232,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings,
+        customApps: makeStubCustomAppsRepo(),
       },
       {
         openPath: async () => false,

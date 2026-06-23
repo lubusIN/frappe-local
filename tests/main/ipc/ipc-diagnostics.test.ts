@@ -108,6 +108,16 @@ function makeStubSettingsRepo(initial: Settings | null = seedSettings) {
   };
 }
 
+function makeStubCustomAppsRepo() {
+  return {
+    findAll: async () => [],
+    findById: async () => null,
+    create: async () => ({} as any),
+    update: async () => null,
+    delete: async () => false,
+  };
+}
+
 describe('diagnostics IPC handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -132,6 +142,7 @@ describe('diagnostics IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       undefined,
       undefined,
@@ -161,6 +172,7 @@ describe('diagnostics IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 
@@ -188,6 +200,7 @@ describe('diagnostics IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       {
         openPath: async () => false,
@@ -246,6 +259,7 @@ describe('diagnostics IPC handlers', () => {
           ...seedSettings,
           storagePath: customStoragePath,
         }),
+        customApps: makeStubCustomAppsRepo(),
       },
       undefined,
       undefined,
@@ -317,6 +331,7 @@ describe('diagnostics IPC handlers', () => {
         },
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       undefined,
       undefined,
@@ -408,6 +423,7 @@ describe('diagnostics IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       },
       undefined,
       undefined,

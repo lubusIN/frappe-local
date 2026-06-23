@@ -6,6 +6,7 @@ describe('bench compose generation', () => {
     const content = generateBenchCompose({
       frappeVersion: 'version-16',
       httpPort: 8080,
+      shareSshKeys: false,
     });
 
     expect(content).toContain('services:\n  frappe:\n    image: docker.io/frappe/bench:latest');
@@ -17,6 +18,7 @@ describe('bench compose generation', () => {
     const content = generateBenchCompose({
       frappeVersion: 'version-16',
       httpPort: 8080,
+      shareSshKeys: false,
     });
 
     expect(content).toContain('- ../:/workspace:cached');
@@ -28,6 +30,7 @@ describe('bench compose generation', () => {
     const content = generateBenchCompose({
       frappeVersion: 'version-16',
       httpPort: 8080,
+      shareSshKeys: false,
     });
 
     // http port
@@ -40,6 +43,7 @@ describe('bench compose generation', () => {
     const content = generateBenchCompose({
       frappeVersion: 'v15.0.0',
       httpPort: 8080,
+      shareSshKeys: false,
     });
 
     expect(content).toContain('mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1');

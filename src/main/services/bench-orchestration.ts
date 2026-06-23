@@ -790,7 +790,7 @@ export const orchestrateBenchAppChanges = (
 
           for (const app of delta.remove) {
             context.log('info', `Removing app ${app} from bench`, 'remove-apps');
-            const { code, stderr } = await execPromise(
+            const { code, stderr, stdout } = await execPromise(
               command,
               composeBenchArgs(projectName, ['remove-app', app]),
               bench.path,
@@ -890,7 +890,7 @@ export const orchestrateBenchAppChanges = (
 
         // Explicitly revert the DB state to the existing apps to ensure the UI removes the failed app
         try {
-          await benchesRepo.update(bench.id, { apps: [...existingApps] });
+          await benchesRepo.update(bench.id, { apps: [...previousApps] });
         } catch (dbCleanupError) {
           context.log('warning', `Failed to revert bench apps in DB: ${errorMessage(dbCleanupError)}`, 'apps');
         }
@@ -1002,7 +1002,7 @@ export const orchestrateBenchStart = (
 
         context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveAndPersistBenchPort(bench, benchesRepo, context, !isRestart);
-        const localVolumes = await getLocalAppVolumes(bench, customAppsRepo);
+        const localVolumes = await getLocalAppVolumes(bench.apps, customAppsRepo);
         ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
         ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
         ensureBenchProcfile(bench.path, context, 'env');

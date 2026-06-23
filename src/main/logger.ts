@@ -1,4 +1,4 @@
-type LogLevel = 'info' | 'warn' | 'error';
+type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 const formatMessage = (scope: string, level: LogLevel, message: string): string => {
   const timestamp = new Date().toISOString();
@@ -14,5 +14,8 @@ export const createMainLogger = (scope: string) => ({
   },
   error: (message: string, error?: unknown): void => {
     console.error(formatMessage(scope, 'error', message), error);
+  },
+  debug: (message: string): void => {
+    console.debug(formatMessage(scope, 'debug', message));
   },
 });

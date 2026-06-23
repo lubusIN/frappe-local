@@ -78,6 +78,13 @@ describe('sites:update queued guard', () => {
         get: async () => null as Settings | null,
         set: async (input: Partial<Settings>) => input as Settings,
       },
+      customApps: {
+        findAll: async () => [],
+        findById: async () => null,
+        create: async () => ({} as any),
+        update: async () => null,
+        delete: async () => false,
+      },
     };
 
     registerIpcHandlers(

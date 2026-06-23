@@ -121,6 +121,16 @@ function makeStubSettingsRepo() {
   };
 }
 
+function makeStubCustomAppsRepo() {
+  return {
+    findAll: async () => [],
+    findById: async () => null,
+    create: async () => ({} as any),
+    update: async () => null,
+    delete: async () => false,
+  };
+}
+
 describe('ipc roundtrip', () => {
   it('returns app health through the registered handler', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
@@ -132,6 +142,7 @@ describe('ipc roundtrip', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 

@@ -51,7 +51,7 @@ app_description = "A test custom app"
     // Mock execPromise to simulate cloning
     vi.mocked(execPromise).mockImplementation(async (cmd, args, cwd) => {
       if (cmd === 'git' && args[0] === 'clone') {
-        const dest = args[args.length - 1];
+        const dest = args[args.length - 1] as string;
         fs.mkdirSync(path.join(dest, 'github_app'), { recursive: true });
         fs.writeFileSync(path.join(dest, 'setup.py'), `name="github_app"`);
         fs.writeFileSync(path.join(dest, 'github_app', 'hooks.py'), `

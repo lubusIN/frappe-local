@@ -1,6 +1,6 @@
 import { ref, onMounted } from 'vue';
 import type { CustomAppListItem } from '../../../shared/core/ipc';
-import { useProgressCenter } from '../system/useProgressCenter';
+import { useIpc } from '../system/useIpc';
 
 export const useCustomApps = () => {
   const customApps = ref<CustomAppListItem[]>([]);
@@ -10,13 +10,13 @@ export const useCustomApps = () => {
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
-  const { load: refreshTasks } = useProgressCenter?.() || { load: null };
+  const ipc = useIpc();
 
   const load = async () => {
     loading.value = true;
     error.value = null;
     try {
-      customApps.value = await window.frappeLocal.listCustomApps();
+      customApps.value = await ipc.listCustomApps();
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e);
     } finally {
@@ -28,7 +28,7 @@ export const useCustomApps = () => {
     updating.value = true;
     error.value = null;
     try {
-      const created = await window.frappeLocal.createCustomApp(input);
+      const created = await ipc.createCustomApp(input);
       successMessage.value = `Created custom app ${created.name}`;
       await load();
       return created;
@@ -44,7 +44,7 @@ export const useCustomApps = () => {
     updating.value = true;
     error.value = null;
     try {
-      const updated = await window.frappeLocal.updateCustomApp(id, input);
+      const updated = await ipc.updateCustomApp(id, input);
       if (updated) {
         successMessage.value = `Updated custom app ${updated.name}`;
         await load();
@@ -62,7 +62,7 @@ export const useCustomApps = () => {
     deleting.value = true;
     error.value = null;
     try {
-      const success = await window.frappeLocal.deleteCustomApp(id);
+      const success = await ipc.deleteCustomApp(id);
       if (success) {
         successMessage.value = `Deleted custom app`;
         await load();

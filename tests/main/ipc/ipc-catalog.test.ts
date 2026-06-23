@@ -93,6 +93,16 @@ function makeStubSettingsRepo() {
   };
 }
 
+function makeStubCustomAppsRepo() {
+  return {
+    findAll: async () => [],
+    findById: async () => null,
+    create: async () => ({} as any),
+    update: async () => null,
+    delete: async () => false,
+  };
+}
+
 function buildHandlers(items: AppCatalogItem[] = catalogItems) {
   const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
   registerIpcHandlers(
@@ -102,6 +112,7 @@ function buildHandlers(items: AppCatalogItem[] = catalogItems) {
       benches: makeStubBenchRepo(),
       sites: makeStubSiteRepo(),
       settings: makeStubSettingsRepo(),
+      customApps: makeStubCustomAppsRepo(),
     }
   );
   return handlers;

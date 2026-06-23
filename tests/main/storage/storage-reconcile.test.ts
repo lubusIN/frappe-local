@@ -48,6 +48,7 @@ const makeSnapshot = (): StorageSnapshot => ({
   ],
   settings: null,
   appCatalog: [],
+  customApps: [],
 });
 
 describe('storage reconcile', () => {
