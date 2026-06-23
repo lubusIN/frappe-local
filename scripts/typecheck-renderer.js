@@ -1,10 +1,19 @@
 import { spawnSync } from 'node:child_process';
 
 console.log('Running typecheck for renderer...');
-const result = spawnSync('npx', ['tsc', '--noEmit', '-p', 'tsconfig.renderer.json'], { encoding: 'utf-8' });
+const result = spawnSync('npx', ['tsc', '--noEmit', '-p', 'tsconfig.renderer.json'], { 
+  encoding: 'utf-8',
+  shell: true 
+});
+
+if (result.error) {
+  console.error('Failed to start tsc:', result.error);
+  process.exit(1);
+}
 
 if (result.status !== 0) {
-  const lines = result.stdout.split('\n');
+  const output = (result.stdout || '') + (result.stderr || '');
+  const lines = output.split('\n');
   const actualErrors = [];
   
   let currentError = [];
