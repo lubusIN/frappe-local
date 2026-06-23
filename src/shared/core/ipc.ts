@@ -4,7 +4,6 @@ import type { AppCatalogItem } from '../domain/models';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
-  updateGetStatus: 'update:get-status',
   updateCheckNow: 'update:check-now',
   catalogList: 'catalog:list',
   catalogSync: 'catalog:sync',
@@ -58,14 +57,7 @@ export type AppHealthResponse = {
   readonly timestamp: string;
 };
 
-export type UpdateStrategyStatus = {
-  readonly mode: 'deferred-manual';
-  readonly channel: 'stable' | 'beta';
-  readonly autoUpdateEnabled: boolean;
-  readonly currentVersion: string;
-  readonly summary: string;
-  readonly rollbackGuidance: readonly string[];
-};
+
 
 export type UpdateCheckResult = {
   readonly checkedAt: string;
@@ -180,7 +172,7 @@ export type SystemResources = {
 
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
-  readonly getUpdateStatus: () => Promise<UpdateStrategyStatus>;
+
   readonly checkForUpdates: () => Promise<UpdateCheckResult>;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;

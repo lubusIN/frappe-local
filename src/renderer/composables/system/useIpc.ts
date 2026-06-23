@@ -9,7 +9,6 @@ const noopDispose = (): void => {};
 
 const unavailableBridge: RendererBridge = {
   checkAppHealth: () => rejectUnavailable(),
-  getUpdateStatus: () => rejectUnavailable(),
   checkForUpdates: () => rejectUnavailable(),
   runDiagnostics: () => rejectUnavailable(),
   getLastDiagnosticsReport: () => rejectUnavailable(),

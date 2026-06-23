@@ -11,7 +11,6 @@ import type {
   SiteListItem,
   SiteUpdateInput,
   UpdateCheckResult,
-  UpdateStrategyStatus,
 } from '../shared/core/ipc';
 import type { DiagnosticsReport } from '../shared/domain/diagnostics';
 import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
@@ -20,7 +19,6 @@ import { getPodmanMachines, isPodmanMachineRequired } from './utils/podman/podma
 import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
 import { getBinaryPath } from './utils/binaries';
 import { execPromise } from './utils/exec';
-import { buildUpdateStrategyStatus } from './services/update-strategy-service';
 import { ipcChannels } from '../shared/core/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTaskRunner, type TaskExecutionContext } from './services/task-runner';
@@ -1056,11 +1054,6 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
     return triggerManualUpdateCheck();
-  });
-
-  ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {
-    const settings = await getCurrentSettings(repositories.settings);
-    return buildUpdateStrategyStatus(settings, appVersion);
   });
 
   ipcMainLike.handle(ipcChannels.customAppsList, async () => {

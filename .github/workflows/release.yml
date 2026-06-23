@@ -4,6 +4,12 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag_name:
+        required: true
+        type: string
+        description: 'Tag name for the release'
 
 permissions:
   contents: write
@@ -67,8 +73,74 @@ jobs:
 
       - name: Build and Package App
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
         run: npm run release:make
+
+      - name: Generate electron-updater Manifests
+        if: github.event_name == 'release' || github.event_name == 'workflow_call'
+        env:
+          RELEASE_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const crypto = require('crypto');
+            
+            const tag = process.env.RELEASE_TAG || '';
+            let channel = 'latest';
+            if (tag.includes('-nightly')) channel = 'nightly';
+            else if (tag.includes('-alpha')) channel = 'alpha';
+            else if (tag.includes('-beta')) channel = 'beta';
+            
+            const isMac = process.platform === 'darwin';
+            const isWin = process.platform === 'win32';
+            
+            let suffix = isMac ? '-mac' : (isWin ? '' : '-linux');
+            const yamlFilename = \`\${channel}\${suffix}.yml\`;
+            
+            const artifactsDir = path.join(process.cwd(), 'release-artifacts');
+            if (!fs.existsSync(artifactsDir)) {
+              console.log('No release-artifacts directory found. Skipping.');
+              process.exit(0);
+            }
+            
+            const files = fs.readdirSync(artifactsDir);
+            // Forge generates .zip for macOS, .exe for Windows, .rpm/.deb for Linux. 
+            // The auto updater relies on zip for mac, exe for win, AppImage/snap for linux (but forge outputs rpm/deb? Wait, let's use whatever zip or exe it creates). 
+            // To be robust, let's just find the main distributable.
+            let extToMatch = '.zip';
+            if (isWin) extToMatch = '.exe';
+            if (!isMac && !isWin) extToMatch = '.rpm'; // Or .deb, usually electron-updater uses AppImage. We will just find any installer if AppImage is missing.
+            
+            let targetFile = files.find(f => f.endsWith(extToMatch));
+            if (!isMac && !isWin && !targetFile) targetFile = files.find(f => f.endsWith('.deb'));
+            if (!isMac && !isWin && !targetFile) targetFile = files.find(f => f.endsWith('.AppImage'));
+            
+            if (!targetFile) {
+              console.log('No suitable artifact found to generate manifest for.', files);
+              process.exit(0);
+            }
+            
+            const filePath = path.join(artifactsDir, targetFile);
+            const stat = fs.statSync(filePath);
+            
+            const hash = crypto.createHash('sha512');
+            hash.update(fs.readFileSync(filePath));
+            const sha512 = hash.digest('base64');
+            
+            const yamlContent = \`version: \${tag}
+          files:
+            - url: \${targetFile}
+              sha512: \${sha512}
+              size: \${stat.size}
+          path: \${targetFile}
+          sha512: \${sha512}
+          releaseDate: '\${new Date().toISOString()}'\`.replace(/^          /gm, '');
+            
+            fs.writeFileSync(path.join(artifactsDir, yamlFilename), yamlContent);
+            console.log('Generated manifest:', yamlFilename);
+            console.log(yamlContent);
+          "
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v7
@@ -82,7 +154,7 @@ jobs:
     name: Upload Release Assets
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || github.event_name == 'workflow_call'
 
     steps:
       - name: Download all artifacts
@@ -97,4 +169,4 @@ jobs:
         with:
           files: release-assets/*
           fail_on_unmatched_files: true
-          tag_name: ${{ github.event.release.tag_name }}
+          tag_name: ${{ inputs.tag_name || github.event.release.tag_name }}

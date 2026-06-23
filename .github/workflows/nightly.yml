@@ -1,0 +1,66 @@
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Every day at midnight UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly-release:
+    runs-on: ubuntu-latest
+    outputs:
+      nightly_version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Bump Nightly Version
+        id: version
+        run: |
+          # Get the current base version from package.json
+          CURRENT_VERSION=$(node -e "console.log(require('./package.json').version.split('-')[0])")
+          DATE=$(date +'%Y%m%d')
+          NIGHTLY_VERSION="${CURRENT_VERSION}-nightly.${DATE}"
+          
+          # Update package.json version
+          npm version $NIGHTLY_VERSION --no-git-tag-version
+          
+          echo "version=$NIGHTLY_VERSION" >> $GITHUB_OUTPUT
+          echo "NIGHTLY_VERSION=$NIGHTLY_VERSION" >> $GITHUB_ENV
+          echo "Created version $NIGHTLY_VERSION"
+
+      - name: Commit and Tag
+        run: |
+          git commit -am "chore: nightly release ${{ env.NIGHTLY_VERSION }} [skip ci]"
+          git tag v${{ env.NIGHTLY_VERSION }}
+          git push origin main
+          git push origin v${{ env.NIGHTLY_VERSION }}
+
+      - name: Create Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.NIGHTLY_VERSION }}
+          name: Nightly Build v${{ env.NIGHTLY_VERSION }}
+          prerelease: true
+          generate_release_notes: true
+
+  build-and-upload:
+    needs: nightly-release
+    uses: ./.github/workflows/release.yml
+    with:
+      tag_name: v${{ needs.nightly-release.outputs.nightly_version }}

@@ -4,7 +4,7 @@ import { ipcChannels } from '../shared/core/ipc';
 
 const rendererBridge: RendererBridge = {
 	checkAppHealth: async () => ipcRenderer.invoke(ipcChannels.appHealthCheck),
-	getUpdateStatus: async () => ipcRenderer.invoke(ipcChannels.updateGetStatus),
+
 	checkForUpdates: async () => ipcRenderer.invoke(ipcChannels.updateCheckNow),
 	runDiagnostics: async () => ipcRenderer.invoke(ipcChannels.diagnosticsRun),
 	getLastDiagnosticsReport: async () => ipcRenderer.invoke(ipcChannels.diagnosticsGetLast),
