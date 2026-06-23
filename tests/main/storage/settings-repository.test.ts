@@ -74,7 +74,7 @@ describe('SettingsRepository', () => {
 
   it('set rejects invalid updateChannel via Zod', async () => {
     await expect(
-      repo.set({ ...fullSettings, updateChannel: 'nightly' as 'stable' })
+      repo.set({ ...fullSettings, updateChannel: 'invalid-channel' as 'stable' })
     ).rejects.toThrow();
   });
 });

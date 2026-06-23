@@ -153,7 +153,7 @@ describe('settings IPC handlers', () => {
     const saveHandler = handlers.get(ipcChannels.settingsSet);
 
     await expect(
-      saveHandler?.(undefined, { ...seedSettings, updateChannel: 'nightly' })
+      saveHandler?.(undefined, { ...seedSettings, updateChannel: 'invalid-channel' })
     ).rejects.toThrow();
   });
 
@@ -232,7 +232,7 @@ describe('settings IPC handlers', () => {
     expect(await settings.get()).toMatchObject(seedSettings);
   });
 
-  it('update:get-status returns deferred update strategy', async () => {
+  it('update:check-now returns error when unconfigured or not packed', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
@@ -242,37 +242,14 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-      },
-      undefined,
-      undefined,
-      '0.1.0'
-    );
-
-    const status = await handlers.get(ipcChannels.updateGetStatus)?.();
-    expect(status).toMatchObject({
-      mode: 'deferred-manual',
-      channel: 'stable',
-      currentVersion: '0.1.0',
-    });
-  });
-
-  it('update:check-now returns not-configured result', async () => {
-    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
-
-    registerIpcHandlers(
-      { handle: (channel, listener) => { handlers.set(channel, listener); } },
-      {
-        appCatalog: makeStubCatalogRepo(),
-        benches: makeStubBenchRepo(),
-        sites: makeStubSiteRepo(),
-        settings: makeStubSettingsRepo(seedSettings),
+        customApps: { findAll: async () => [], findById: async () => null, create: async () => ({}), update: async () => null, delete: async () => false },
       }
     );
 
     const result = await handlers.get(ipcChannels.updateCheckNow)?.();
     expect(result).toMatchObject({
       source: 'manual',
-      status: 'not-configured',
+      status: 'error',
     });
   });
 });
