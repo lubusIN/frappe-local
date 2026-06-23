@@ -13,11 +13,7 @@
             :class="isCollapsed ? 'justify-center' : ''"
             style="-webkit-app-region: drag;"
           >
-            <div 
-              class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-surface-gray-10 text-white shrink-0"
-            >
-              <Logo class="w-5 h-5 text-white" />
-            </div>
+            <AppLogo />
             <div 
               v-if="!isCollapsed"
               class="flex flex-col ml-3 truncate transition-all duration-300"
@@ -108,7 +104,7 @@ import IconZap from '~icons/lucide/zap';
 import IconBlocks from '~icons/lucide/blocks';
 import { computed, onMounted, ref, watch, type Component } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
-import Logo from './ui/Logo.vue';
+import AppLogo from './ui/AppLogo.vue';
 import SettingsDialog from './dialogs/SettingsDialog.vue';
 import TaskLogDialog from './dialogs/TaskLogDialog.vue';
 import ErrorNotice from './ui/ErrorNotice.vue';

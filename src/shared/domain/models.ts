@@ -91,6 +91,7 @@ export const SettingsSchema = z.object({
   sidebarCompact: z.boolean().default(false),
   podmanMemoryMb: z.number().int().min(MIN_PODMAN_MEMORY_MB).default(MIN_PODMAN_MEMORY_MB),
   shareSshKeys: z.boolean().default(false),
+  theme: z.enum(['system', 'light', 'dark']).default('system'),
 });
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -102,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarCompact: false,
   podmanMemoryMb: MIN_PODMAN_MEMORY_MB,
   shareSshKeys: false,
+  theme: 'system',
 };
 
 export const CreateBenchInputSchema = BenchSchema.omit({

@@ -1,14 +1,23 @@
 <template>
   <Dialog
     v-model="isShowing"
-    title="Settings"
-    message="Manage application preferences and storage paths."
-    size="xl"
+    size="5xl"
+    bare
   >
-    <template #default>
-      <div class="py-1">
-        <StatePanel
-          v-if="error"
+    <div class="flex flex-col md:flex-row h-[75vh] sm:h-[80vh] w-full bg-surface-base rounded-xl overflow-hidden shadow-2xl">
+      <!-- Sidebar -->
+      <Sidebar
+        :sections="sidebarSections"
+        disable-collapse
+        class="shrink-0 border-r border-outline-gray-2 bg-surface-gray-1"
+      />
+
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col min-w-0">
+        <!-- Scrollable Form Area -->
+        <div class="flex-1 overflow-y-auto p-6 sm:p-10">
+          <StatePanel
+            v-if="error"
           kind="error"
           title="Unable to load settings"
           :body="error"
@@ -22,123 +31,142 @@
           body="Reading current preferences and runtime defaults."
         />
 
-        <div v-else>
-          <form
-            class="space-y-6"
-            @submit.prevent="onSave"
-          >
-            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div class="space-y-1.5 md:col-span-2">
-                <FormLabel label="Default Frappe Version" />
-                <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
-              </div>
-            </div>
-
-            <div class="space-y-1.5">
-              <FormLabel
-                label="Storage Path"
-                required
-              />
-              <div class="flex gap-2">
-                <div class="flex-1">
-                  <TextInput
-                    v-model="form.storagePath"
-                    placeholder="/path/to/storage"
-                    required
-                  />
+        <div v-else class="min-h-full">
+            <form class="space-y-6" @submit.prevent="onSave">
+              <!-- General Tab -->
+              <div v-if="activeTab === 'general'" class="space-y-8">
+                <div>
+                  <h2 class="text-lg font-semibold text-ink-gray-9">Preferences</h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">Choose how you want to use the application by setting your preferences.</p>
                 </div>
-                <Button
-                  size="md"
-                  variant="subtle"
-                  @click="onPickStoragePath"
-                >
-                  Browse
-                </Button>
-              </div>
-            </div>
-
-            <div class="space-y-1.5 flex flex-row items-center gap-4">
-              <Switch v-model="form.shareSshKeys" size="sm" />
-              <div class="flex flex-col">
-                <span class="text-sm font-medium text-ink-gray-9">Share SSH Keys with Benches</span>
-                <p class="text-xs text-ink-gray-5">
-                  Mounts your local ~/.ssh directory into benches to fetch private GitHub repos.
-                </p>
-              </div>
-            </div>
-
-            <div
-              v-if="systemResources.podmanMachineRequired"
-              class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
-            >
-              <div class="flex items-start justify-between gap-6">
-                <div class="min-w-0">
-                  <FormLabel label="Podman Memory" />
-                  <p class="mt-1 text-xs leading-5 text-ink-gray-6">
-                    Set the memory available to local benches and sites.
-                  </p>
+                
+                <div class="space-y-1.5">
+                  <FormLabel label="Default Frappe Version" />
+                  <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
                 </div>
-                <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
-                  {{ formatMemory(form.podmanMemoryMb) }}
-                </span>
+
+                <div class="space-y-1.5">
+                  <FormLabel label="Storage Path" required />
+                  <div class="flex gap-2">
+                    <div class="flex-1">
+                      <TextInput
+                        v-model="form.storagePath"
+                        placeholder="/path/to/storage"
+                        required
+                      />
+                    </div>
+                    <Button
+                      size="md"
+                      variant="subtle"
+                      @click="onPickStoragePath"
+                    >
+                      Browse
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              <div class="mt-5">
-                <Slider
-                  v-model="memorySliderValue"
-                  class="cursor-pointer [&_[role=slider]]:cursor-pointer"
-                  :min="MIN_PODMAN_MEMORY_MB"
-                  :max="systemResources.totalMemoryMb"
-                  :step="1024"
+              <!-- Appearance Tab -->
+              <div v-else-if="activeTab === 'appearance'" class="space-y-8">
+                <div>
+                  <h2 class="text-lg font-semibold text-ink-gray-9">Appearance</h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">Customize the look and feel of the application.</p>
+                </div>
+
+                <ThemeSwitcher v-model="form.theme"
+                  name="Local"
+                  :logo="AppLogo"
                 />
-                <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
-                  <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
-                  <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
-                </div>
               </div>
 
-              <div class="mt-4 flex flex-col gap-3 border-t border-outline-gray-2 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="text-xs leading-5">
-                  <p class="font-medium text-ink-gray-7">
-                    Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
-                  </p>
-                  <p class="text-ink-gray-5">
-                    Saving a change briefly restarts Podman.
-                  </p>
+              <!-- Advanced Tab -->
+              <div v-else-if="activeTab === 'advanced'" class="space-y-8">
+                <div>
+                  <h2 class="text-lg font-semibold text-ink-gray-9">Advanced</h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">Manage technical and resource settings.</p>
                 </div>
-                <Button
+
+                <Switch
+                  v-model="form.shareSshKeys"
                   size="sm"
-                  variant="subtle"
-                  class="shrink-0"
-                  @click="useRecommendedMemory"
+                  label="Share SSH Keys with Benches"
+                  description="Mounts your local ~/.ssh directory into benches to fetch private GitHub repos."
+                />
+
+                <div
+                  v-if="systemResources.podmanMachineRequired"
+                  class="rounded-lg border border-outline-gray-2 bg-surface-gray-1 p-4"
                 >
-                  Use recommended
-                </Button>
+                  <div class="flex items-start justify-between gap-6">
+                    <div class="min-w-0">
+                      <FormLabel label="Podman Memory" />
+                      <p class="mt-1 text-xs leading-5 text-ink-gray-6">
+                        Set the memory available to local benches and sites.
+                      </p>
+                    </div>
+                    <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
+                      {{ formatMemory(form.podmanMemoryMb) }}
+                    </span>
+                  </div>
+
+                  <div class="mt-5">
+                    <Slider
+                      v-model="memorySliderValue"
+                      class="cursor-pointer [&_[role=slider]]:cursor-pointer"
+                      :min="MIN_PODMAN_MEMORY_MB"
+                      :max="systemResources.totalMemoryMb"
+                      :step="1024"
+                    />
+                    <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
+                      <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
+                      <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 flex flex-col gap-3 border-t border-outline-gray-2 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="text-xs leading-5">
+                      <p class="font-medium text-ink-gray-7">
+                        Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
+                      </p>
+                      <p class="text-ink-gray-5">
+                        Saving a change briefly restarts Podman.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      class="shrink-0"
+                      @click="useRecommendedMemory"
+                    >
+                      Use recommended
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="border-t border-outline-gray-2 bg-surface-gray-1 px-6 py-4 flex items-center justify-end gap-2 shrink-0">
+          <Button
+            size="md"
+            variant="subtle"
+            @click="$emit('close')"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="md"
+            variant="solid"
+            :loading="saving"
+            @click="onSave"
+          >
+            Save
+          </Button>
         </div>
       </div>
-    </template>
-    <template #actions>
-      <div class="flex justify-end w-full gap-2">
-        <Button
-          size="md"
-          variant="subtle"
-          @click="$emit('close')"
-        >
-          Cancel
-        </Button>
-        <Button
-          size="md"
-          variant="solid"
-          :loading="saving"
-          @click="onSave"
-        >
-          Save
-        </Button>
-      </div>
-    </template>
+    </div>
   </Dialog>
 
   <ConfirmDialog
@@ -151,11 +179,12 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast } from 'frappe-ui';
+import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast, Sidebar, ThemeSwitcher } from 'frappe-ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ConfirmDialog } from 'frappe-ui';
 import StatePanel from '../ui/StatePanel.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
+import AppLogo from '../ui/AppLogo.vue';
 import { useSettings } from '../../composables/data/useSettings';
 import { useIpc } from '../../composables/system/useIpc';
 import { useSshKeys } from '../../composables/system/useSshKeys';
@@ -168,6 +197,33 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
+
+const activeTab = ref('general');
+const sidebarSections = computed(() => [
+  {
+    label: 'User Preferences',
+    items: [
+      { 
+        label: 'General', 
+        isActive: activeTab.value === 'general',
+        onClick: () => activeTab.value = 'general',
+        icon: 'lucide-settings'
+      },
+      { 
+        label: 'Appearance', 
+        isActive: activeTab.value === 'appearance',
+        onClick: () => activeTab.value = 'appearance',
+        icon: 'lucide-palette'
+      },
+      { 
+        label: 'Advanced', 
+        isActive: activeTab.value === 'advanced',
+        onClick: () => activeTab.value = 'advanced',
+        icon: 'lucide-sliders-horizontal'
+      },
+    ]
+  }
+]);
 
 const { form, loading, saving, error, originalSettings, refresh, save, configured } = useSettings();
 const ipc = useIpc();
@@ -193,7 +249,6 @@ const isShowing = computed({
     if (!val) emit('close');
   },
 });
-
 
 const onPickStoragePath = async () => {
   const selectedPath = await ipc.pickBenchFolder();

@@ -168,6 +168,7 @@ export type SettingsItem = {
   readonly sidebarCompact: boolean;
   readonly podmanMemoryMb: number;
   readonly shareSshKeys: boolean;
+  readonly theme: 'system' | 'light' | 'dark';
 };
 
 export type SystemResources = {

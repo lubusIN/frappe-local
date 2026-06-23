@@ -3,8 +3,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import type { IpcMain } from 'electron';
-import { BrowserWindow } from 'electron';
-import { shell } from 'electron';
+import { BrowserWindow, nativeTheme, shell } from 'electron';
 import type { AppRepositories } from './ipc';
 import { registerIpcHandlers } from './ipc';
 import { createMainLogger } from './logger';
@@ -137,6 +136,9 @@ export const runApplicationBootstrap = async (
       settings: settingsRepository,
       customApps: new CustomAppsRepository(adapter),
     } satisfies AppRepositories;
+
+    const currentSettings = await settingsRepository.get();
+    nativeTheme.themeSource = currentSettings?.theme ?? 'system';
 
     const refreshCaddyFrontDoorHosts = async (): Promise<void> => {
       const caddyReady = await initializeCaddyFrontDoor({ benches: repositories.benches, sites: repositories.sites });

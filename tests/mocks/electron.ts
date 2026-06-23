@@ -53,3 +53,7 @@ export const Menu = {
   buildFromTemplate: () => ({}),
   setApplicationMenu: () => undefined,
 };
+
+export const nativeTheme = {
+  themeSource: 'system',
+};

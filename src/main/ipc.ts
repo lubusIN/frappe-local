@@ -35,7 +35,8 @@ import type { AppRuntimePaths } from './config';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { BrowserWindow, dialog } from 'electron';
+import type { IpcMain } from 'electron';
+import { dialog, nativeTheme, BrowserWindow } from 'electron';
 import {
   CreateBenchInputSchema,
   CreateSiteInputSchema,
@@ -198,6 +199,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   sidebarCompact: settings.sidebarCompact,
   podmanMemoryMb: settings.podmanMemoryMb,
   shareSshKeys: settings.shareSshKeys,
+  theme: settings.theme,
 });
 
 
@@ -1009,6 +1011,9 @@ export const registerIpcHandlers = (
       ...payload
     };
     const updated = await updateSettings(repositories.settings, fullPayload);
+    
+    nativeTheme.themeSource = updated.theme ?? 'system';
+    
     return toSettingsItem(updated);
   });
 
