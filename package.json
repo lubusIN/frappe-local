@@ -12,7 +12,7 @@
     "release:make": "node scripts/make-release.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.renderer.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
     "test": "vitest run",
     "precommit:check": "bash scripts/precommit-check.sh",
     "icons:generate": "node scripts/generate-icons.js",
