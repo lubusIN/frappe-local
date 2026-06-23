@@ -10,6 +10,10 @@ on:
         required: true
         type: string
         description: 'Tag name for the release'
+      override_version:
+        required: false
+        type: string
+        description: 'Optional semantic version to inject ephemerally'
 
 permissions:
   contents: write
@@ -71,6 +75,10 @@ jobs:
       - name: Run Tests
         run: npm run test
 
+      - name: Inject Override Version
+        if: inputs.override_version != ''
+        run: npm version ${{ inputs.override_version }} --no-git-tag-version
+
       - name: Build and Package App
         env:
           RELEASE_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
@@ -80,6 +88,7 @@ jobs:
         if: github.event_name == 'release' || github.event_name == 'workflow_call'
         env:
           RELEASE_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
+          OVERRIDE_VERSION: ${{ inputs.override_version }}
         run: |
           node -e "
             const fs = require('fs');
@@ -87,8 +96,11 @@ jobs:
             const crypto = require('crypto');
             
             const tag = process.env.RELEASE_TAG || '';
+            const injectedVersion = process.env.OVERRIDE_VERSION || '';
+            const finalVersion = injectedVersion || tag.replace(/^v/, ''); // electron-updater version is purely semver without the v
+            
             let channel = 'latest';
-            if (tag.includes('-nightly')) channel = 'nightly';
+            if (tag.includes('nightly')) channel = 'nightly';
             else if (tag.includes('-alpha')) channel = 'alpha';
             else if (tag.includes('-beta')) channel = 'beta';
             
@@ -128,7 +140,7 @@ jobs:
             hash.update(fs.readFileSync(filePath));
             const sha512 = hash.digest('base64');
             
-            const yamlContent = \`version: \${tag}
+            const yamlContent = \`version: \${finalVersion}
           files:
             - url: \${targetFile}
               sha512: \${sha512}

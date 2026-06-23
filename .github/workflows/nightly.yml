@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       nightly_version: ${{ steps.version.outputs.version }}
+      skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,38 +30,48 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Bump Nightly Version
+      - name: Check for Changes and Generate Version
         id: version
         run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            COMMITS=$(git log --since="24 hours ago" --oneline)
+            if [ -z "$COMMITS" ]; then
+              echo "No changes in the last 24 hours. Skipping nightly build."
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+          
           # Get the current base version from package.json
           CURRENT_VERSION=$(node -e "console.log(require('./package.json').version.split('-')[0])")
           DATE=$(date +'%Y%m%d')
           NIGHTLY_VERSION="${CURRENT_VERSION}-nightly.${DATE}"
           
-          # Update package.json version
-          npm version $NIGHTLY_VERSION --no-git-tag-version
-          
           echo "version=$NIGHTLY_VERSION" >> $GITHUB_OUTPUT
-          echo "NIGHTLY_VERSION=$NIGHTLY_VERSION" >> $GITHUB_ENV
           echo "Created version $NIGHTLY_VERSION"
 
-      - name: Commit and Tag
+      - name: Recreate Rolling Release
+        if: steps.version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git commit -am "chore: nightly release ${{ env.NIGHTLY_VERSION }} [skip ci]"
-          git tag v${{ env.NIGHTLY_VERSION }}
-          git push origin main
-          git push origin v${{ env.NIGHTLY_VERSION }}
-
-      - name: Create Pre-Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ env.NIGHTLY_VERSION }}
-          name: Nightly Build v${{ env.NIGHTLY_VERSION }}
-          prerelease: true
-          generate_release_notes: true
+          # Delete the old nightly release and tag if they exist
+          gh release delete nightly --cleanup-tag -y || true
+          
+          # Create new tag locally and push
+          git tag nightly
+          git push origin nightly --force
+          
+          # Create a fresh release
+          gh release create nightly \
+            --title "Nightly Build v${{ steps.version.outputs.version }}" \
+            --prerelease \
+            --notes "Rolling nightly build containing the latest changes."
 
   build-and-upload:
     needs: nightly-release
+    if: needs.nightly-release.outputs.skip != 'true'
     uses: ./.github/workflows/release.yml
     with:
-      tag_name: v${{ needs.nightly-release.outputs.nightly_version }}
+      tag_name: nightly
+      override_version: ${{ needs.nightly-release.outputs.nightly_version }}
