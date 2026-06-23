@@ -20,7 +20,7 @@ import { getPodmanMachines, isPodmanMachineRequired } from './utils/podman/podma
 import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
 import { getBinaryPath } from './utils/binaries';
 import { execPromise } from './utils/exec';
-import { buildUpdateStrategyStatus, runManualUpdateCheck } from './services/update-strategy-service';
+import { buildUpdateStrategyStatus } from './services/update-strategy-service';
 import { ipcChannels } from '../shared/core/ipc';
 import type { TaskProgressEvent } from '../shared/domain/task-runner';
 import { getTaskRunner, type TaskExecutionContext } from './services/task-runner';
@@ -60,6 +60,8 @@ import type { LifecycleOperation } from './services/analytics';
 import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from './services/site-orchestration';
 import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './services/bench-orchestration';
 import { extractCustomApp } from './services/custom-app-extractor';
+
+import { triggerManualUpdateCheck } from './updater';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -1053,7 +1055,7 @@ export const registerIpcHandlers = (
 
 
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
-    return runManualUpdateCheck();
+    return triggerManualUpdateCheck();
   });
 
   ipcMainLike.handle(ipcChannels.updateGetStatus, async (): Promise<UpdateStrategyStatus> => {

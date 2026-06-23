@@ -3,7 +3,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import type { IpcMain } from 'electron';
-import { BrowserWindow, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 import type { AppRepositories } from './ipc';
 import { registerIpcHandlers } from './ipc';
 import { createMainLogger } from './logger';
@@ -30,6 +30,7 @@ import {
   configurePodmanMemoryProvider,
 } from './services/runtime-service';
 import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
+import { initializeUpdater } from './updater';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
@@ -186,6 +187,14 @@ export const runApplicationBootstrap = async (
     }, undefined, context.appVersion, context.runtimePaths);
     
     await context.createMainWindow();
+
+    // Initialize auto-updater
+    if (app.isPackaged) {
+      setTimeout(() => {
+        initializeUpdater(settingsRepository).catch((err) => bootstrapLogger.error('Failed to initialize updater', err));
+      }, 3000);
+    }
+
     bootstrapLogger.info('startup sequence completed');
 
     // Run initial diagnostics in background after a short delay

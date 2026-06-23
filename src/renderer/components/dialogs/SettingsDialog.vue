@@ -40,11 +40,8 @@
               @submit.prevent="onSave"
             >
               <!-- General Tab -->
-              <div
-                v-if="activeTab === 'general'"
-                class="space-y-8"
-              >
-                <div>
+              <div v-if="activeTab === 'general'">
+                <div class="mb-6">
                   <h2 class="text-lg font-semibold text-ink-gray-9">
                     Preferences
                   </h2>
@@ -53,33 +50,116 @@
                   </p>
                 </div>
                 
-                <div class="space-y-1.5">
-                  <FormLabel label="Default Frappe Version" />
-                  <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
+                <div class="flex flex-col">
+                  <div class="pb-5 space-y-1.5">
+                    <div>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Default Frappe Version</p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
+                        Select the Frappe version to use when creating new benches.
+                      </p>
+                    </div>
+                    <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
+                  </div>
+
+                  <Divider/>
+
+                  <div class="py-5 space-y-1.5">
+                    <div>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Storage Path
+                        <span class="text-red-500 ml-1">*</span>
+                      </p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
+                        The directory where all your local benches and sites will be stored.
+                      </p>
+                    </div>
+                    <div class="flex gap-2">
+                      <div class="flex-1">
+                        <TextInput
+                          v-model="form.storagePath"
+                          placeholder="/path/to/storage"
+                          required
+                        />
+                      </div>
+                      <Button
+                        size="md"
+                        variant="subtle"
+                        @click="onPickStoragePath"
+                      >
+                        Browse
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Updates Tab -->
+              <div v-else-if="activeTab === 'updates'">
+                <div class="mb-6">
+                  <h2 class="text-lg font-semibold text-ink-gray-9">
+                    Updates
+                  </h2>
+                  <p class="text-sm text-ink-gray-5 mt-1">
+                    Manage how Frappe Local receives updates.
+                  </p>
                 </div>
 
-                <Divider/>
-
-                <div class="space-y-1.5">
-                  <FormLabel
-                    label="Storage Path"
-                    required
-                  />
-                  <div class="flex gap-2">
-                    <div class="flex-1">
-                      <TextInput
-                        v-model="form.storagePath"
-                        placeholder="/path/to/storage"
-                        required
+                <div class="flex flex-col">
+                  <div class="pb-5 flex items-center justify-between gap-6">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Auto Update</p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                        Automatically check for and download updates in the background.
+                      </p>
+                    </div>
+                    <div class="shrink-0">
+                      <Switch
+                        v-model="form.autoUpdateEnabled"
+                        size="sm"
                       />
                     </div>
-                    <Button
-                      size="md"
-                      variant="subtle"
-                      @click="onPickStoragePath"
-                    >
-                      Browse
-                    </Button>
+                  </div>
+
+                  <Divider />
+
+                  <div class="py-5 flex items-center justify-between gap-6">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Update Channel</p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                        Choose how early you'd like to receive new updates.
+                      </p>
+                    </div>
+                    <Select
+                      v-model="form.updateChannel"
+                      :options="[
+                        { label: 'Stable', value: 'stable' },
+                        { label: 'Beta', value: 'beta' },
+                        { label: 'Alpha', value: 'alpha' },
+                        { label: 'Nightly', value: 'nightly' }
+                      ]"
+                    />
+                  </div>
+
+                  <Divider />
+
+                  <div class="py-5 flex items-center justify-between gap-6">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Check for Updates</p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                        Last checked: {{ formattedLastChecked }}
+                        <span v-if="updateMessage" class="block mt-0.5 text-ink-gray-5">{{ updateMessage }}</span>
+                      </p>
+                    </div>
+                    <div class="shrink-0">
+                      <Button
+                        size="sm"
+                        variant="subtle"
+                        :loading="isCheckingForUpdates"
+                        @click="onCheckForUpdates"
+                      >
+                        Check Now
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -106,11 +186,8 @@
               </div>
 
               <!-- Advanced Tab -->
-              <div
-                v-else-if="activeTab === 'advanced'"
-                class="space-y-8"
-              >
-                <div>
+              <div v-else-if="activeTab === 'advanced'">
+                <div class="mb-6">
                   <h2 class="text-lg font-semibold text-ink-gray-9">
                     Advanced
                   </h2>
@@ -119,25 +196,34 @@
                   </p>
                 </div>
 
-                <Switch
-                  v-model="form.shareSshKeys"
-                  size="sm"
-                  label="Share SSH Keys with Benches"
-                  description="Mounts your local ~/.ssh directory into benches to fetch private GitHub repos."
-                />
-
-                <Divider />
-
-                <div v-if="systemResources.podmanMachineRequired">
-                  <div class="flex items-start justify-between gap-6">
-                    <div class="min-w-0">
-                      <FormLabel label="Memory" />
-                      <p class="mt-1 text-xs leading-5 text-ink-gray-6">
-                        Set the memory available to local benches and sites.
+                <div class="flex flex-col">
+                  <div class="pb-5 flex items-center justify-between gap-6">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Share SSH Keys with Benches</p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                        Mounts your local ~/.ssh directory into benches to fetch private GitHub repos.
                       </p>
                     </div>
-                    <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
-                      {{ formatMemory(form.podmanMemoryMb) }}
+                    <div class="shrink-0">
+                      <Switch
+                        v-model="form.shareSshKeys"
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+
+                  <Divider />
+
+                  <div v-if="systemResources.podmanMachineRequired" class="py-5">
+                    <div class="flex items-center justify-between gap-6">
+                      <div class="min-w-0">
+                        <p class="font-medium leading-normal text-ink-gray-8 text-base">Memory</p>
+                        <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                          Set the memory available to local benches and sites.
+                        </p>
+                      </div>
+                      <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
+                        {{ formatMemory(form.podmanMemoryMb) }}
                     </span>
                   </div>
 
@@ -175,6 +261,7 @@
                   </div>
                 </div>
               </div>
+              </div>
             </form>
           </div>
         </div>
@@ -211,8 +298,8 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast, Sidebar, ThemeSwitcher, Divider } from 'frappe-ui';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast, Sidebar, ThemeSwitcher, Divider, Select } from 'frappe-ui';
+import { ref, watch, onMounted, computed, reactive } from 'vue';
 import { ConfirmDialog } from 'frappe-ui';
 import StatePanel from '../ui/StatePanel.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
@@ -231,6 +318,41 @@ const emit = defineEmits<{
 }>();
 
 const activeTab = ref('general');
+
+const isCheckingForUpdates = ref(false);
+const updateMessage = ref<string | null>(null);
+const lastCheckedAt = ref<string | null>(localStorage.getItem('frappeLocal:lastUpdateCheck'));
+
+const formattedLastChecked = computed(() => {
+  if (!lastCheckedAt.value) return 'Never';
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(lastCheckedAt.value));
+});
+
+const onCheckForUpdates = async () => {
+  isCheckingForUpdates.value = true;
+  updateMessage.value = null;
+  try {
+    const result = await window.frappeLocal.checkForUpdates();
+    lastCheckedAt.value = result.checkedAt;
+    localStorage.setItem('frappeLocal:lastUpdateCheck', result.checkedAt);
+    
+    if (result.status === 'update-available') {
+      updateMessage.value = result.message;
+    } else if (result.status === 'up-to-date') {
+      updateMessage.value = 'App is up to date.';
+    } else {
+      updateMessage.value = result.message;
+    }
+  } catch (error: any) {
+    updateMessage.value = error.message || 'Failed to check for updates.';
+  } finally {
+    isCheckingForUpdates.value = false;
+  }
+};
+
 const sidebarSections = computed(() => [
   {
     label: 'User Preferences',
@@ -252,6 +374,12 @@ const sidebarSections = computed(() => [
         isActive: activeTab.value === 'advanced',
         onClick: () => activeTab.value = 'advanced',
         icon: 'lucide-sliders-horizontal'
+      },
+      { 
+        label: 'Updates', 
+        isActive: activeTab.value === 'updates',
+        onClick: () => activeTab.value = 'updates',
+        icon: 'lucide-download'
       },
     ]
   }

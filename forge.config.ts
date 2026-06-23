@@ -102,6 +102,18 @@ const config: ForgeConfig = {
       ],
     }),
   ],
+  publishers: [
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'lubusIN',
+          name: 'frappe-local'
+        },
+        prerelease: false
+      }
+    }
+  ],
 };
 
 export default config;

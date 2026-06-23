@@ -86,7 +86,7 @@ export const SettingsSchema = z.object({
   defaultFrappeVersion: nonEmptyString,
   storagePath: nonEmptyString,
   editorPreference: z.string(),
-  updateChannel: z.enum(['stable', 'beta']).default('stable'),
+  updateChannel: z.enum(['stable', 'beta', 'alpha', 'nightly']).default('stable'),
   autoUpdateEnabled: z.boolean(),
   sidebarCompact: z.boolean().default(false),
   podmanMemoryMb: z.number().int().min(MIN_PODMAN_MEMORY_MB).default(MIN_PODMAN_MEMORY_MB),
