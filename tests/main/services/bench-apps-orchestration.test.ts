@@ -220,7 +220,7 @@ describe('bench app orchestration', () => {
     expect(execPromiseMock.mock.calls[0]?.[1]).toEqual(
       expect.arrayContaining(['up', '-d', '--remove-orphans', 'frappe'])
     );
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe'] });
   });
 
   it('restarts bench processes and preserves apps when app download fails', async () => {
@@ -262,7 +262,7 @@ describe('bench app orchestration', () => {
 
     expect(queuedRun).not.toBeNull();
     await expect(queuedRun?.(context)).rejects.toThrow('Failed to fetch app builder');
-    expect(updateMock).not.toHaveBeenCalled();
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe'] });
     expect(fs.existsSync(path.join(benchPath, 'apps', 'builder'))).toBe(false);
     expect(fs.existsSync(path.join(benchPath, 'sites', 'assets', 'builder'))).toBe(false);
     expect(fs.readFileSync(path.join(benchPath, 'sites', 'apps.txt'), 'utf8')).toBe('frappe\n');

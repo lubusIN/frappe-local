@@ -190,7 +190,7 @@ describe('benches IPC handlers', () => {
       expect.objectContaining({ id: 'bench-001', apps: ['frappe'] }),
       expect.any(Object),
       expect.any(Object),
-      undefined,
+      expect.any(Object),
       false,
       ['frappe'],
       ['frappe', 'payments']
