@@ -32,6 +32,7 @@ type TaskRunnerLike = {
   onEvent?: (listener: (event: TaskProgressEvent) => void) => () => void;
   configureLogDirectory?: (logDirectory: string | null) => void;
   enqueue: (definition: { name: string; resource: { type: 'bench' | 'site' | 'runtime' | 'system'; id: string }; run: (context: TaskExecutionContext) => Promise<void> }) => string;
+  cancelTask?: (taskId: string) => boolean;
 };
 
 const resolveUserPath = (untrimmedPath: string): string => {
@@ -276,6 +277,11 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.taskRunnerUnsubscribe, async () => {
     return true;
+  });
+
+  ipcMainLike.handle(ipcChannels.taskRunnerCancelTask, async (_event: unknown, taskId: unknown): Promise<boolean> => {
+    if (typeof taskId !== 'string' || !taskId) return false;
+    return taskRunner.cancelTask ? taskRunner.cancelTask(taskId) : false;
   });
 
   ipcMainLike.handle(ipcChannels.taskRunnerReadLog, async (_event: unknown, taskId: unknown): Promise<string> => {

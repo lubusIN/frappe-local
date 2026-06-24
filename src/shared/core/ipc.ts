@@ -40,6 +40,7 @@ export const ipcChannels = {
   taskRunnerUnsubscribe: 'task-runner:unsubscribe',
   taskRunnerProgressEvent: 'task-runner:progress-event',
   taskRunnerReadLog: 'task-runner:read-log',
+  taskRunnerCancelTask: 'task-runner:cancel-task',
   utilsPathExists: 'utils:path-exists',
   utilsOpenExternal: 'utils:open-external',
   utilsCheckGithubRepoVisibility: 'utils:check-github-repo-visibility',
@@ -214,6 +215,7 @@ export type RendererBridge = {
   readonly subscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly unsubscribeTaskRunnerEvents: () => Promise<boolean>;
   readonly readTaskLog: (taskId: string) => Promise<string>;
+  readonly cancelTask: (taskId: string) => Promise<boolean>;
   readonly onTaskRunnerProgress: (listener: (event: TaskProgressEvent) => void) => () => void;
   readonly pathExists: (path: string) => Promise<boolean>;
   readonly openExternal: (url: string) => Promise<void>;

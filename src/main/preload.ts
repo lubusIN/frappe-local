@@ -43,6 +43,7 @@ const rendererBridge: RendererBridge = {
 	subscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerSubscribe),
 	unsubscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerUnsubscribe),
 	readTaskLog: async (taskId: string) => ipcRenderer.invoke(ipcChannels.taskRunnerReadLog, taskId),
+	cancelTask: async (taskId: string) => ipcRenderer.invoke(ipcChannels.taskRunnerCancelTask, taskId),
 	onTaskRunnerProgress: (listener) => {
 		const handler = (_event: unknown, payload: unknown) => listener(payload as never);
 		ipcRenderer.on(ipcChannels.taskRunnerProgressEvent, handler);

@@ -212,7 +212,6 @@ export class TaskRunner {
       taskId,
       signal: task.controller.signal,
       startStep: (stepId, stepName, message) => {
-        this.assertNotCancelled(taskId);
         this.updateTask(taskId, {
           currentStepId: stepId,
           currentStepName: stepName,
@@ -224,7 +223,6 @@ export class TaskRunner {
         });
       },
       completeStep: (stepId, stepName, message) => {
-        this.assertNotCancelled(taskId);
         this.emitTaskEvent(taskId, 'task.step.completed', 'running', {
           stepId,
           stepName,
@@ -232,7 +230,6 @@ export class TaskRunner {
         });
       },
       log: (level, message, stepId, stepName) => {
-        this.assertNotCancelled(taskId);
         this.emitTaskEvent(taskId, 'task.log', 'running', {
           stepId: stepId ?? this.tasks.get(taskId)?.currentStepId ?? null,
           stepName: stepName ?? this.tasks.get(taskId)?.currentStepName ?? null,

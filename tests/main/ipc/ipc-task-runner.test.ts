@@ -78,6 +78,9 @@ function makeStubTaskRunner() {
       },
       configureLogDirectory: () => undefined,
       enqueue: () => 'task-stub',
+      cancelTask: (taskId: string) => {
+        return taskId === 'task-stub';
+      },
     },
     emit: (event: TaskProgressEvent) => {
       listener?.(event);
@@ -144,5 +147,33 @@ describe('task runner IPC handlers', () => {
     await expect(handlers.get(ipcChannels.taskRunnerReadLog)?.({}, 'unsafe/task')).rejects.toThrow('Invalid task id.');
     await expect(handlers.get(ipcChannels.taskRunnerReadLog)?.({}, 'missing-task')).resolves.toBe('');
     await expect(handlers.get(ipcChannels.taskRunnerReadLog)?.({}, 'task-123')).resolves.toContain('first line');
+  });
+
+  it('cancels a task by ID through the taskRunnerCancelTask channel', async () => {
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const taskRunner = makeStubTaskRunner();
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
+      },
+      undefined,
+      taskRunner.runner
+    );
+
+    const cancelTaskHandler = handlers.get(ipcChannels.taskRunnerCancelTask);
+    expect(cancelTaskHandler).toBeDefined();
+
+    if (cancelTaskHandler) {
+      expect(await cancelTaskHandler({}, 'task-stub')).toBe(true);
+      expect(await cancelTaskHandler({}, 'missing-task')).toBe(false);
+      expect(await cancelTaskHandler({}, null)).toBe(false);
+      expect(await cancelTaskHandler({}, 123)).toBe(false);
+    }
   });
 });

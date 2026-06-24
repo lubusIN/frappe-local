@@ -120,6 +120,16 @@
         </div>
         <div class="flex justify-end gap-2">
           <Button
+            v-if="isBusy"
+            size="md"
+            variant="outline"
+            theme="red"
+            :loading="isCancelling"
+            @click="showCancelConfirm = true"
+          >
+            Cancel Task
+          </Button>
+          <Button
             v-if="task.logs.length > 0 && !fullLogLoaded"
             size="md"
             variant="subtle"
@@ -148,10 +158,17 @@
       </div>
     </template>
   </Dialog>
+
+  <ConfirmDialog
+    v-model="showCancelConfirm"
+    title="Cancel Task"
+    message="Are you sure you want to cancel this task? It will be forcefully aborted, which may leave resources in an inconsistent state."
+    @confirm="onCancelTask"
+  />
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
+import { Badge, Button, ConfirmDialog, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import IconTerminal from '~icons/lucide/terminal';
 import IconCopy from '~icons/lucide/copy';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -173,6 +190,8 @@ const logsContainer = ref<HTMLElement | null>(null);
 const copied = ref(false);
 const fullLogText = ref<string | null>(null);
 const loadingFullLog = ref(false);
+const showCancelConfirm = ref(false);
+const isCancelling = ref(false);
 const MAX_RENDERED_LOGS = 400;
 const FULL_LOG_LINE_PATTERN = /^\[([^\]]+)\] \[([A-Z]+)\] (.*)$/;
 const ipc = useIpc();
@@ -393,6 +412,24 @@ const onCopyLogs = async () => {
     }, 2000);
   } catch {
     toast.error('Failed to copy logs');
+  }
+};
+
+const onCancelTask = async () => {
+  if (!props.task) return;
+  showCancelConfirm.value = false;
+  isCancelling.value = true;
+  try {
+    const cancelled = await ipc.cancelTask(props.task.taskId);
+    if (cancelled) {
+      toast.success('Task cancelled');
+    } else {
+      toast.error('Could not cancel task (it may have already completed)');
+    }
+  } catch (error) {
+    toast.error('Failed to cancel task: ' + (error instanceof Error ? error.message : String(error)));
+  } finally {
+    isCancelling.value = false;
   }
 };
 </script>
