@@ -35,6 +35,16 @@ export const initializeUpdater = async (settingsRepository: SettingsRepository):
     } else {
       autoUpdater.channel = settings.updateChannel;
       autoUpdater.allowPrerelease = true;
+
+      if (settings.updateChannel === 'nightly') {
+        // GitHub provider ignores releases if the tag name isn't a valid semver.
+        // Since 'nightly' is a rolling tag, we must use the generic provider.
+        autoUpdater.setFeedURL({
+          provider: 'generic',
+          url: 'https://github.com/lubusIN/frappe-local/releases/download/nightly',
+          channel: 'nightly'
+        });
+      }
     }
 
     updaterLogger.info(`initializing updater on channel: ${autoUpdater.channel}`);
