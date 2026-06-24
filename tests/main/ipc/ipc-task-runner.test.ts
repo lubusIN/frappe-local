@@ -6,6 +6,7 @@ import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { TaskProgressEvent } from '../../../src/shared/domain/task-runner';
 import type { Settings } from '../../../src/shared/domain/models';
+import { makeStubCustomAppsRepo } from './helpers';
 
 function makeStubCatalogRepo() {
   return {
@@ -61,22 +62,6 @@ function makeStubSettingsRepo() {
   return {
     get: async () => null,
     set: async (input: Partial<Settings>) => input as Settings,
-  };
-}
-
-function makeStubCustomAppsRepo() {
-  return {
-    findAll: async () => [],
-    findById: async () => null,
-    create: async () => ({
-      id: 'custom-app',
-      name: 'custom_app',
-      type: 'github' as const,
-      source: 'https://example.test/custom_app',
-      timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 

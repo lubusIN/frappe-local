@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Settings } from '../../../src/shared/domain/models';
+import { makeStubCustomAppsRepo } from './helpers';
 
 import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
 import { getRecommendedPodmanMemoryMb } from '../../../src/shared/core/system-resources';
@@ -73,22 +74,6 @@ function makeStubSettingsRepo(initial: Settings | null = null) {
       current = { ...(current ?? seedSettings), ...input };
       return current;
     },
-  };
-}
-
-function makeStubCustomAppsRepo() {
-  return {
-    findAll: async () => [],
-    findById: async () => null,
-    create: async () => ({
-      id: 'custom-app',
-      name: 'custom_app',
-      type: 'github' as const,
-      source: 'https://example.test/custom_app',
-      timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 
@@ -265,19 +250,7 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-        customApps: {
-          findAll: async () => [],
-          findById: async () => null,
-          create: async () => ({
-            id: 'custom-app',
-            name: 'custom_app',
-            type: 'github' as const,
-            source: 'https://example.test/custom_app',
-            timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-          }),
-          update: async () => null,
-          delete: async () => false,
-        },
+        customApps: makeStubCustomAppsRepo(),
       }
     );
 

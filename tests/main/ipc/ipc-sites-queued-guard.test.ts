@@ -11,6 +11,7 @@ vi.mock('../../../src/main/services/site-orchestration', () => ({
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { Settings, Site } from '../../../src/shared/domain/models';
+import { makeStubCustomAppsRepo } from './helpers';
 
 describe('sites:update queued guard', () => {
   it('does not enqueue a duplicate status operation when site is already queued', async () => {
@@ -78,19 +79,7 @@ describe('sites:update queued guard', () => {
         get: async () => null as Settings | null,
         set: async (input: Partial<Settings>) => input as Settings,
       },
-      customApps: {
-        findAll: async () => [],
-        findById: async () => null,
-        create: async () => ({
-          id: 'custom-app',
-          name: 'custom_app',
-          type: 'github' as const,
-          source: 'https://example.test/custom_app',
-          timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-        }),
-        update: async () => null,
-        delete: async () => false,
-      },
+      customApps: makeStubCustomAppsRepo(),
     };
 
     registerIpcHandlers(

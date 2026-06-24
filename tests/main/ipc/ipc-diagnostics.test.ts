@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Settings } from '../../../src/shared/domain/models';
+import { makeStubCustomAppsRepo } from './helpers';
 
 const ensureRuntimeRunningMock = vi.fn(async () => false);
 const getLastRuntimeErrorMock = vi.fn(() => 'Podman machine image download failed.');
@@ -105,22 +106,6 @@ function makeStubSettingsRepo(initial: Settings | null = seedSettings) {
       current = { ...(current ?? seedSettings), ...input };
       return current;
     },
-  };
-}
-
-function makeStubCustomAppsRepo() {
-  return {
-    findAll: async () => [],
-    findById: async () => null,
-    create: async () => ({
-      id: 'custom-app',
-      name: 'custom_app',
-      type: 'github' as const,
-      source: 'https://example.test/custom_app',
-      timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 

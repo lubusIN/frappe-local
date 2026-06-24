@@ -3,6 +3,7 @@ import path from 'node:path';
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Bench, Settings, Site } from '../../../src/shared/domain/models';
+import { makeStubCustomAppsRepo } from './helpers';
 
 const orchestrateBenchAppChangesMock = vi.fn();
 
@@ -146,22 +147,6 @@ function makeStubSettingsRepo() {
       current = { ...current, ...input } as Settings;
       return current;
     },
-  };
-}
-
-function makeStubCustomAppsRepo() {
-  return {
-    findAll: async () => [],
-    findById: async () => null,
-    create: async () => ({
-      id: 'custom-app',
-      name: 'custom_app',
-      type: 'github' as const,
-      source: 'https://example.test/custom_app',
-      timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
-    }),
-    update: async () => null,
-    delete: async () => false,
   };
 }
 
