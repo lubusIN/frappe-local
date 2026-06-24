@@ -185,9 +185,16 @@ const getAppActions = (app: CustomAppListItem) => [
 
 const onConfirmDelete = async () => {
   if (!deleteAppId.value) return;
+  const id = deleteAppId.value;
+  const name = deleteAppName.value;
   try {
-    await deleteApp(deleteAppId.value);
-    toast.success(`Removed app ${deleteAppName.value}`);
+    const promise = deleteApp(id);
+    toast.promise(promise, {
+      loading: `Removing app ${name}...`,
+      success: `Removed app ${name}`,
+      error: `Failed to remove app ${name}`
+    });
+    await promise;
     cancelDelete();
   } catch (err) {
     console.error(err);

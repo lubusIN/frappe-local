@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { toast } from 'frappe-ui';
 
-import { useIpc } from '@frappe-local/renderer/composables/system';
+import { useIpc, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import type { BenchListItem } from '@frappe-local/shared/core';
 
 export const useSshKeys = () => {
@@ -26,7 +26,7 @@ export const useSshKeys = () => {
   };
 
   const performSshSave = async (newValue: boolean, restartBenches: boolean = true) => {
-    try {
+    const promise = (async () => {
       const settings = await ipc.getSettings();
       if (!settings) {
         throw new Error('Settings are not available.');
@@ -37,29 +37,30 @@ export const useSshKeys = () => {
         const benches = await ipc.listBenches();
         const runningBenches = benches.filter((b: BenchListItem) => b.status === 'running');
         if (runningBenches.length > 0) {
-          toast.info(`Restarting ${runningBenches.length} running bench(es)...`);
-          const benchIds = runningBenches.map(b => b.id);
-          for (const bench of runningBenches) {
-            await ipc.updateBench(bench.id, { status: 'running' });
-          }
-          
-          let allRestarted = false;
-          while (!allRestarted) {
-            await new Promise(r => setTimeout(r, 1000));
-            const currentBenches = await ipc.listBenches();
-            const pending = currentBenches.filter(b => benchIds.includes(b.id) && b.status === 'queued');
-            if (pending.length === 0) {
-              allRestarted = true;
-            }
-          }
-          toast.success('Benches restarted successfully.');
+          const restartPromises = runningBenches.map(bench => {
+            return runAndWaitForTask(
+              () => ipc.updateBench(bench.id, { status: 'running' }),
+              'bench',
+              bench.id,
+              /^Restart bench/i
+            );
+          });
+          await Promise.all(restartPromises);
         }
       }
-      toast.success(`SSH Key sharing ${newValue ? 'enabled' : 'disabled'}.`);
+    })();
+
+    toast.promise(promise, {
+      loading: restartBenches ? 'Applying SSH settings and restarting benches...' : 'Applying SSH settings...',
+      success: `SSH Key sharing ${newValue ? 'enabled' : 'disabled'}.`,
+      error: 'Failed to update SSH settings.',
+    });
+
+    try {
+      await promise;
       return true;
     } catch (err) {
       console.error('Failed to update SSH keys:', err);
-      toast.error('Failed to update SSH settings.');
       return false;
     }
   };

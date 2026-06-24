@@ -632,6 +632,16 @@ export const orchestrateBenchCreation = (
           } else {
             context.log('warning', 'Runtime setup did not complete. Skipping container cleanup.', 'cleanup');
           }
+
+          if (fs.existsSync(bench.path)) {
+            try {
+              await fs.promises.rm(bench.path, { recursive: true, force: true });
+              context.log('info', `Deleted bench directory at ${bench.path}`, 'cleanup');
+            } catch (rmError) {
+              context.log('warning', `Failed to delete bench directory: ${errorMessage(rmError)}`, 'cleanup');
+            }
+          }
+
           context.completeStep('cleanup', 'Partial resources cleaned up');
         } catch (cleanupError) {
           context.log('warning', `Cleanup after failed create did not complete: ${errorMessage(cleanupError)}`, 'cleanup');

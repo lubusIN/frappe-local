@@ -179,7 +179,7 @@ import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDial
 
 import { useConfirmAction, usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 
-import { useProgressCenter, useResourceTaskState } from '@frappe-local/renderer/composables/system';
+import { useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 
 import { useAppCatalog, useBenches } from '@frappe-local/renderer/composables/data';
 
@@ -277,13 +277,25 @@ const onAddBenchApp = async (appId: string) => {
 
   const nextApps = normalizeSelection([...bench.apps, appId]);
   pendingRemoveBenchAppId.value = appId;
-  toast.info(`Getting app ${appId} for bench ${bench.name}`, {
+  
+  const promise = runAndWaitForTask(
+    () => queueBenchAppsUpdate(nextApps),
+    'bench', bench.id, /^(Get) app .* on /i
+  );
+  
+  toast.promise(promise, {
+    loading: `Getting app ${appId} for bench ${bench.name}`,
+    success: `Got app ${appId} on bench ${bench.name}`,
+    error: `Failed to get app ${appId}`,
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(bench.id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
+      },
     },
   });
-  await queueBenchAppsUpdate(nextApps);
+  
   closeAppsDialog();
 };
 
@@ -325,13 +337,24 @@ const onConfirmRemoveBenchApp = async () => {
   removeAppConfirmOpen.value = false;
 
   const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
-  toast.info(`Removing app from bench ${bench.name}`, {
+  const promise = runAndWaitForTask(
+    () => queueBenchAppsUpdate(nextApps),
+    'bench', bench.id, /^(Remove) app .* on /i
+  );
+
+  toast.promise(promise, {
+    loading: `Removing app from bench ${bench.name}`,
+    success: `Removed app from bench ${bench.name}`,
+    error: 'Failed to remove app',
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(bench.id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
+      },
     },
   });
-  await queueBenchAppsUpdate(nextApps);
+  
   closeAppsDialog();
 };
 
@@ -398,7 +421,7 @@ const getBenchActions = (bench: BenchListItem) => {
         onClick: () => onManageBench(bench.id),
       },
       {
-        label: 'View Progress',
+        label: 'View logs',
         icon: IconActivity,
         onClick: () => onStatusClick(bench.id),
         hidden: !isBusy,
@@ -461,29 +484,7 @@ const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
 
-watch(
-  tasks,
-  (items) => {
-    for (const task of items) {
-      if (
-        task.resource === 'bench' &&
-        task.taskName.match(/^(Get|Remove) app .* on /i) &&
-        (task.status === 'success' || task.status === 'failure') &&
-        !acknowledgedTasks.has(task.taskId)
-      ) {
-        acknowledgedTasks.add(task.taskId);
-        void refresh(true);
-
-        if (task.status === 'success') {
-          const actionVerb = task.taskName.toLowerCase().startsWith('get') ? 'Got' : 'Removed';
-          const msg = task.taskName.replace(/^(Get|Remove)/i, actionVerb);
-          toast.success(msg);
-        }
-      }
-    }
-  },
-  { deep: true }
-);
+// watch for specific status updates removed in favor of toast.promise
 
 const showCreateBenchModal = ref(false);
 
@@ -520,26 +521,52 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
   const bench = benches.value.find(b => b.id === id);
   const name = bench ? bench.name : '';
 
+  let loadingMsg = '';
+  let successMsg = '';
+  let errorMsg = '';
+  let actionMatch: RegExp;
+
   if (status === 'running') {
     if (currentStatus === 'running') {
-      toast.info(`Restarting bench ${name}`, {
-        action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); } },
-      });
+      loadingMsg = `Restarting bench ${name}`;
+      successMsg = `Bench ${name} restarted.`;
+      errorMsg = `Failed to restart bench ${name}.`;
+      actionMatch = /^Restart bench/i;
+      setPendingBenchAction(id, 'restarting');
     } else {
-      toast.info(`Starting bench ${name}`, {
-        action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); } },
-      });
+      loadingMsg = `Starting bench ${name}`;
+      successMsg = `Bench ${name} started.`;
+      errorMsg = `Failed to start bench ${name}.`;
+      actionMatch = /^Start bench/i;
+      setPendingBenchAction(id, 'starting');
     }
-    setPendingBenchAction(id, currentStatus === 'running' ? 'restarting' : 'starting');
   } else {
-    toast.info(`Stopping bench ${name}`, {
-      action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); } },
-    });
+    loadingMsg = `Stopping bench ${name}`;
+    successMsg = `Bench ${name} stopped.`;
+    errorMsg = `Failed to stop bench ${name}.`;
+    actionMatch = /^Stop bench/i;
     setPendingBenchAction(id, 'stopping');
   }
 
+  const promise = runAndWaitForTask(
+    () => update(id, { status }),
+    'bench', id, actionMatch
+  );
+  toast.promise(promise, {
+    loading: loadingMsg,
+    success: successMsg,
+    error: errorMsg,
+    action: {
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(id);
+      }
+    },
+  });
+
   try {
-    await update(id, { status });
+    await promise;
   } catch {
     clearPendingBenchAction(id);
   }
@@ -547,12 +574,27 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
 
 const onConfirmDeleteBench = async () => {
   if (!deleteBenchId.value) return;
+  const id = deleteBenchId.value;
+  const name = deleteBenchName.value;
+  cancelDeleteBench();
   try {
-    toast.info(`Deleting bench ${deleteBenchName.value}`, {
-      action: { label: 'View progress', onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(deleteBenchId.value!); } },
+    const promise = runAndWaitForTask(
+      () => deleteBench(id),
+      'bench', id, /^Delete bench/i
+    );
+    toast.promise(promise, {
+      loading: `Deleting bench ${name}`,
+      success: `Bench ${name} deleted.`,
+      error: `Failed to delete bench ${name}.`,
+      action: {
+        label: 'View logs',
+        onClick: (e?: Event) => {
+          e?.preventDefault();
+          selectedTaskId.value = getLatestRelevantTaskId(id);
+        }
+      },
     });
-    await deleteBench(deleteBenchId.value);
-    cancelDeleteBench();
+    await promise;
   } catch (err) {
     console.error(err);
   }
@@ -573,13 +615,21 @@ const onOpenBenchFolder = async (id: string) => {
 };
 
 const onBenchCreated = async (bench: BenchListItem) => {
-  toast.info(`Creating bench ${bench.name}`, {
+  // For onBenchCreated we don't trigger the create action here, it was already triggered in the wizard
+  // So we just pass a no-op Promise.resolve()
+  const promise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
+  toast.promise(promise, {
+    loading: `Creating bench ${bench.name}`,
+    success: `Bench ${bench.name} created.`,
+    error: `Failed to create bench ${bench.name}.`,
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(bench.id); }
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
+      }
     }
   });
-  await refresh(true);
 };
 
 const onOpenBenchShell = async (id: string) => {

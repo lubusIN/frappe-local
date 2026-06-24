@@ -7,3 +7,4 @@ export * from './useResourceTaskState';
 export * from './useSshKeys';
 export * from './useStatusPolling';
 export * from './useTheme';
+export * from './waitForTask';

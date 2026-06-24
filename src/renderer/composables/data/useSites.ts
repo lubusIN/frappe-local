@@ -30,7 +30,6 @@ export const useSites = () => {
       // Check for completed deletions
       for (const [id, name] of deletingIds.value.entries()) {
         if (!newList.some((s) => s.id === id)) {
-          successMessage.value = `Site ${name} deleted.`;
           deletingIds.value.delete(id);
         }
       }

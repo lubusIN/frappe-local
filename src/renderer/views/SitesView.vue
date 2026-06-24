@@ -249,12 +249,12 @@ import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListV
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
-import { useIpc, useProgressCenter, useResourceTaskState } from '@frappe-local/renderer/composables/system';
+import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 
 import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 
-import { filterSites, isCompletedSiteAppUpdateTask, isCompletedSiteCreationTask } from '@frappe-local/renderer/utils/sites';
+import { filterSites } from '@frappe-local/renderer/utils/sites';
 
 import type { BenchListItem, SiteListItem } from '@frappe-local/shared/core';
 
@@ -291,13 +291,44 @@ const refresh = async (force = false) => {
 };
 
 const onSiteCreated = async (site: SiteListItem) => {
-  toast.info(`Creating site ${site.name}`, {
+  const promise = runAndWaitForTask(() => Promise.resolve(), 'site', site.id, /^Create Site/i).then(() => refresh(true));
+  const toastId = toast.loading(`Creating site ${site.name}`, {
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(site.id); }
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(site.id);
+      }
     }
   });
-  await refresh(true);
+
+  promise.then(() => {
+    toast.success(`Site ${site.name} created.`, {
+      id: toastId,
+      action: {
+        label: 'Open',
+        onClick: (e?: Event) => {
+          e?.preventDefault();
+          void ipc.openSiteExternal(site.id).then((opened) => {
+            if (!opened) {
+              toast.error(`Unable to open ${site.name}.`);
+            }
+          });
+        }
+      }
+    });
+  }).catch(() => {
+    toast.error(`Failed to create site ${site.name}.`, {
+      id: toastId,
+      action: {
+        label: 'View logs',
+        onClick: (e?: Event) => {
+          e?.preventDefault();
+          selectedTaskId.value = getLatestRelevantTaskId(site.id);
+        }
+      }
+    });
+  });
 };
 
 watch(successMessage, (msg) => {
@@ -336,57 +367,7 @@ const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
 
-watch(
-  tasks,
-  (items) => {
-    for (const task of items) {
-      if (
-        isCompletedSiteCreationTask(task) &&
-        !acknowledgedTasks.has(task.taskId)
-      ) {
-        acknowledgedTasks.add(task.taskId);
-        const siteName = sites.value.find((site) => site.id === task.resourceId)?.name
-          ?? task.taskName.replace(/^Create Site:\s*/i, '').trim();
-
-        void refresh();
-
-        if (task.status === 'success' && task.resourceId) {
-          toast.success(`Site ${siteName} created.`, {
-            duration: 10000,
-            action: {
-              label: 'View site',
-              altText: `Open ${siteName}`,
-              onClick: () => {
-                void ipc.openSiteExternal(task.resourceId!).then((opened) => {
-                  if (!opened) {
-                    toast.error(`Unable to open ${siteName}.`);
-                  }
-                });
-              },
-            },
-          });
-        }
-
-        continue;
-      }
-
-      if (
-        isCompletedSiteAppUpdateTask(task) &&
-        !acknowledgedTasks.has(task.taskId)
-      ) {
-        acknowledgedTasks.add(task.taskId);
-        void refresh();
-
-        if (task.status === 'success') {
-          const actionVerb = task.taskName.toLowerCase().startsWith('install') ? 'Installed' : 'Uninstalled';
-          const msg = task.taskName.replace(/^(Install|Uninstall)/i, actionVerb);
-          toast.success(msg);
-        }
-      }
-    }
-  },
-  { deep: true }
-);
+// watch for specific status updates removed in favor of toast.promise
 
 const SELECT_ALL = '__all__';
 
@@ -450,7 +431,7 @@ const getSiteActions = (site: SiteListItem) => {
   const isBusy = isResourceBusy(site.id) || Boolean(getPendingSiteAction(site.id));
 
   actions.push({
-    label: 'View Progress',
+    label: 'View logs',
     icon: IconActivity,
     hidden: !isBusy,
     onClick: () => onStatusClick(site.id),
@@ -607,13 +588,24 @@ const onAddParentBenchApp = async (appId: string) => {
 
   const nextApps = normalizeSelection([...bench.apps, appId]);
   pendingRemoveBenchAppId.value = appId;
-  toast.info(`Getting app ${appId} for bench ${bench.name}`, {
+  
+  const promise = runAndWaitForTask(
+    () => queueParentBenchAppsUpdate(bench, nextApps),
+    'bench', bench.id, /^(Get) app .* on /i
+  );
+  toast.promise(promise, {
+    loading: `Getting app ${appId} for bench ${bench.name}`,
+    success: `Got app ${appId} on bench ${bench.name}`,
+    error: `Failed to get app ${appId}`,
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
+      },
     },
   });
-  await queueParentBenchAppsUpdate(bench, nextApps);
+  
   closeBenchAppsDialog();
 };
 
@@ -654,13 +646,24 @@ const onConfirmRemoveParentBenchApp = async () => {
 
   removeBenchAppConfirmOpen.value = false;
   const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
-  toast.info(`Removing app from bench ${bench.name}`, {
+  
+  const promise = runAndWaitForTask(
+    () => queueParentBenchAppsUpdate(bench, nextApps),
+    'bench', bench.id, /^(Remove) app .* on /i
+  );
+  toast.promise(promise, {
+    loading: `Removing app from bench ${bench.name}`,
+    success: `Removed app from bench ${bench.name}`,
+    error: 'Failed to remove app',
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
+      },
     },
   });
-  await queueParentBenchAppsUpdate(bench, nextApps);
+  
   closeBenchAppsDialog();
 };
 
@@ -735,16 +738,29 @@ const onActivateSiteApp = async (appId: string) => {
 
   activatingSiteAppId.value = appId;
   const nextApps = Array.from(new Set([...existingApps, appId]));
-  toast.info(`Installing app ${appId} on ${site.name}`, {
+  
+  const promise = runAndWaitForTask(
+    () => update(site.id, { apps: nextApps }),
+    'site', site.id, /^Install app/i
+  );
+  toast.promise(promise, {
+    loading: `Installing app ${appId} on ${site.name}`,
+    success: `Installed app ${appId} on ${site.name}`,
+    error: `Failed to install app ${appId}`,
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(site.id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(site.id);
+      },
     },
   });
 
   try {
-    await update(site.id, { apps: nextApps });
+    await promise;
     closeSiteAppsDialog();
+  } catch {
+    // Error is handled by toast
   } finally {
     activatingSiteAppId.value = null;
   }
@@ -801,16 +817,29 @@ const onDeactivateSiteApp = async (appId: string) => {
 
   activatingSiteAppId.value = appId;
   const nextApps = existingApps.filter((x) => x !== appId);
-  toast.info(`Uninstalling app ${appId} from ${site.name}`, {
+  
+  const promise = runAndWaitForTask(
+    () => update(site.id, { apps: nextApps }),
+    'site', site.id, /^Uninstall app/i
+  );
+  toast.promise(promise, {
+    loading: `Uninstalling app ${appId} from ${site.name}`,
+    success: `Uninstalled app ${appId} from ${site.name}`,
+    error: `Failed to uninstall app ${appId}`,
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(site.id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(site.id);
+      },
     },
   });
 
   try {
-    await update(site.id, { apps: nextApps });
+    await promise;
     closeSiteAppsDialog();
+  } catch {
+    // Error handled by toast
   } finally {
     activatingSiteAppId.value = null;
     pendingRemoveSiteAppName.value = '';
@@ -840,14 +869,31 @@ const onConfirmDeleteSite = async (): Promise<void> => {
     return;
   }
   confirmDeleteSiteOpen.value = false;
-  toast.info(`Deleting site ${name}`, {
+  
+  const promise = runAndWaitForTask(
+    () => remove(id),
+    'site', id, /^Delete site/i
+  );
+  toast.promise(promise, {
+    loading: `Deleting site ${name}`,
+    success: `Site ${name} deleted.`,
+    error: `Failed to delete site ${name}.`,
     action: {
-      label: 'View progress',
-      onClick: () => { selectedTaskId.value = getLatestRelevantTaskId(id); },
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(id);
+      },
     },
   });
-  await remove(id);
-  cancelDeleteSite();
+  
+  try {
+    await promise;
+  } catch {
+    // Error handled by toast
+  } finally {
+    cancelDeleteSite();
+  }
 };
 
 onMounted(() => {

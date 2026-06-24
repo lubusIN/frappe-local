@@ -29,22 +29,7 @@ export const useBenches = () => {
       // Check for completed deletions
       for (const [id, name] of deletingIds.value.entries()) {
         if (!newList.some((b) => b.id === id)) {
-          successMessage.value = `Bench ${name} deleted.`;
           deletingIds.value.delete(id);
-        }
-      }
-
-      // Check for completed background tasks (queued -> running/stopped)
-      if (benches.value.length > 0) {
-        for (const newBench of newList) {
-          const oldBench = benches.value.find((b) => b.id === newBench.id);
-          if (oldBench && oldBench.status === 'queued' && newBench.status !== 'queued') {
-            if (newBench.status === 'running') {
-              successMessage.value = `Bench ${newBench.name} is running.`;
-            } else if (newBench.status === 'stopped') {
-              successMessage.value = `Bench ${newBench.name} is stopped.`;
-            }
-          }
         }
       }
 
