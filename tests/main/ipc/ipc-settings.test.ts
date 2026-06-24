@@ -80,7 +80,13 @@ function makeStubCustomAppsRepo() {
   return {
     findAll: async () => [],
     findById: async () => null,
-    create: async () => ({} as any),
+    create: async () => ({
+      id: 'custom-app',
+      name: 'custom_app',
+      type: 'github' as const,
+      source: 'https://example.test/custom_app',
+      timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+    }),
     update: async () => null,
     delete: async () => false,
   };
@@ -259,7 +265,19 @@ describe('settings IPC handlers', () => {
         benches: makeStubBenchRepo(),
         sites: makeStubSiteRepo(),
         settings: makeStubSettingsRepo(seedSettings),
-        customApps: { findAll: async () => [], findById: async () => null, create: async () => ({}), update: async () => null, delete: async () => false },
+        customApps: {
+          findAll: async () => [],
+          findById: async () => null,
+          create: async () => ({
+            id: 'custom-app',
+            name: 'custom_app',
+            type: 'github' as const,
+            source: 'https://example.test/custom_app',
+            timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+          }),
+          update: async () => null,
+          delete: async () => false,
+        },
       }
     );
 

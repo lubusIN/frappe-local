@@ -9,9 +9,8 @@
       >
         <template #header>
           <div
-            class="flex items-center p-3 pt-8 transition-all duration-300"
+            class="flex items-center p-3 pt-8 transition-all duration-300 [-webkit-app-region:drag]"
             :class="isCollapsed ? 'justify-center' : ''"
-            style="-webkit-app-region: drag;"
           >
             <AppLogo />
             <div 
@@ -51,8 +50,7 @@
 
       <div class="flex flex-col flex-1 min-w-0 bg-surface-base">
         <header 
-          class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0"
-          style="-webkit-app-region: drag;"
+          class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0 [-webkit-app-region:drag]"
         >
           <h1 class="text-xl-medium truncate text-ink-gray-9">
             {{ currentTitle }}
@@ -60,8 +58,7 @@
           
           <div
             v-if="headerActions.length > 0"
-            class="flex items-center gap-3"
-            style="-webkit-app-region: no-drag;"
+            class="flex items-center gap-3 [-webkit-app-region:no-drag]"
           >
             <Button
               v-for="action in headerActions"

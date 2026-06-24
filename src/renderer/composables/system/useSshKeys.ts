@@ -12,7 +12,10 @@ export const useSshKeys = () => {
   const performSshSave = async (newValue: boolean) => {
     try {
       const settings = await ipc.getSettings();
-      await ipc.setSettings({ ...(settings || {}), shareSshKeys: newValue } as any);
+      if (!settings) {
+        throw new Error('Settings are not available.');
+      }
+      await ipc.setSettings({ ...settings, shareSshKeys: newValue });
       toast.success(`SSH Key sharing ${newValue ? 'enabled' : 'disabled'}.`);
         
       const benches = await ipc.listBenches();
@@ -29,25 +32,6 @@ export const useSshKeys = () => {
       console.error('Failed to update SSH keys:', err);
       toast.error('Failed to update SSH settings.');
       return false;
-    }
-  };
-
-  const toggleSshKeys = async (currentValue: boolean, newValue: boolean) => {
-    if (currentValue === newValue) {
-      return false; // No change
-    }
-    const benches = await ipc.listBenches();
-    const runningBenches = benches.filter((b: BenchListItem) => b.status === 'running');
-    if (runningBenches.length > 0) {
-      pendingSshValue.value = newValue;
-      showSshConfirmation.value = true;
-      return new Promise<boolean>((resolve) => {
-        // We need a way to resolve this when the dialog is confirmed or cancelled.
-        // For simplicity, we can just return a promise that doesn't resolve immediately,
-        // but it's easier to just handle the confirm/cancel callbacks in the component.
-      });
-    } else {
-      return await performSshSave(newValue);
     }
   };
 

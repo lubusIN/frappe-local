@@ -11,14 +11,3 @@ import { useTheme } from './composables/system/useTheme';
 
 useTheme();
 </script>
-
-<style>
-/* Allow toast to expand horizontally instead of truncating or wrapping to a second line */
-.toast-root-animatable {
-  max-width: max-content !important;
-}
-
-.toast-root-animatable .break-words {
-  white-space: nowrap !important;
-}
-</style>

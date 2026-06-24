@@ -146,6 +146,7 @@ import AddCustomAppModal from '../components/dialogs/AddCustomAppModal.vue';
 import { useConfirmAction } from '../composables/ui/useConfirmAction';
 import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
 import { useCustomApps } from '../composables/data/useCustomApps';
+import type { CustomAppListItem } from '../../shared/core/ipc';
 
 const {
   customApps,
@@ -173,7 +174,7 @@ const {
   cancel: cancelDelete,
 } = useConfirmAction();
 
-const getAppActions = (app: any) => [
+const getAppActions = (app: CustomAppListItem) => [
   {
     label: 'Delete',
     icon: IconTrash2,

@@ -3,7 +3,6 @@ import { spawnSync } from 'node:child_process';
 console.log('Running typecheck for renderer...');
 const result = spawnSync('npx', ['tsc', '--noEmit', '-p', 'tsconfig.renderer.json'], { 
   encoding: 'utf-8',
-  shell: true 
 });
 
 if (result.error) {
@@ -23,7 +22,7 @@ if (result.status !== 0) {
     if (!line.trim()) continue;
     
     // Check if line starts a new error
-    const isNewError = /^[a-zA-Z0-9_\-\.\/]+:[0-9]+:[0-9]+ - error TS/.test(line);
+    const isNewError = /^[a-zA-Z0-9_./-]+:[0-9]+:[0-9]+ - error TS/.test(line);
     
     if (isNewError) {
       if (currentError.length > 0 && !isFrappeUiError) {

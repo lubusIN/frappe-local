@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { CustomAppsRepository } from '../../../src/main/storage/repositories/custom-apps-repository';
 import { StorageAdapter } from '../../../src/main/storage/adapter';
-import type { StorageSnapshot } from '../../../src/main/storage/schema';
-import type { CustomAppItem } from '../../../src/shared/domain/models';
+import { createDefaultStorageSnapshot, type StorageSnapshot } from '../../../src/main/storage/schema';
 
 class MockStorageAdapter implements StorageAdapter {
   private snapshot: StorageSnapshot;
@@ -48,12 +47,9 @@ describe('CustomAppsRepository', () => {
 
   beforeEach(() => {
     adapter = new MockStorageAdapter({
-      version: 1,
-      benches: [],
-      sites: [],
+      ...createDefaultStorageSnapshot([]),
       customApps: [mockApp],
-      settings: null,
-    } as any);
+    });
     repository = new CustomAppsRepository(adapter);
   });
 

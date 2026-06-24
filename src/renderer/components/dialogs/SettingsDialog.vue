@@ -53,7 +53,9 @@
                 <div class="flex flex-col">
                   <div class="pb-5 space-y-1.5">
                     <div>
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Default Frappe Version</p>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Default Frappe Version
+                      </p>
                       <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
                         Select the Frappe version to use when creating new benches.
                       </p>
@@ -61,7 +63,7 @@
                     <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
                   </div>
 
-                  <Divider/>
+                  <Divider />
 
                   <div class="py-5 space-y-1.5">
                     <div>
@@ -107,7 +109,9 @@
                 <div class="flex flex-col">
                   <div class="pb-5 flex items-center justify-between gap-6">
                     <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Auto Update</p>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Auto Update
+                      </p>
                       <p class="mt-1 text-sm leading-5 text-ink-gray-6">
                         Automatically check for and download updates in the background.
                       </p>
@@ -124,7 +128,9 @@
 
                   <div class="py-5 flex items-center justify-between gap-6">
                     <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Update Channel</p>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Update Channel
+                      </p>
                       <p class="mt-1 text-sm leading-5 text-ink-gray-6">
                         Choose how early you'd like to receive new updates.
                       </p>
@@ -144,10 +150,15 @@
 
                   <div class="py-5 flex items-center justify-between gap-6">
                     <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Check for Updates</p>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Check for Updates
+                      </p>
                       <p class="mt-1 text-sm leading-5 text-ink-gray-6">
                         Last checked: {{ formattedLastChecked }}
-                        <span v-if="updateMessage" class="block mt-0.5 text-ink-gray-5">{{ updateMessage }}</span>
+                        <span
+                          v-if="updateMessage"
+                          class="block mt-0.5 text-ink-gray-5"
+                        >{{ updateMessage }}</span>
                       </p>
                     </div>
                     <div class="shrink-0">
@@ -199,7 +210,9 @@
                 <div class="flex flex-col">
                   <div class="pb-5 flex items-center justify-between gap-6">
                     <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">Share SSH Keys with Benches</p>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Share SSH Keys with Benches
+                      </p>
                       <p class="mt-1 text-sm leading-5 text-ink-gray-6">
                         Mounts your local ~/.ssh directory into benches to fetch private GitHub repos.
                       </p>
@@ -214,53 +227,58 @@
 
                   <Divider />
 
-                  <div v-if="systemResources.podmanMachineRequired" class="py-5">
+                  <div
+                    v-if="systemResources.podmanMachineRequired"
+                    class="py-5"
+                  >
                     <div class="flex items-center justify-between gap-6">
                       <div class="min-w-0">
-                        <p class="font-medium leading-normal text-ink-gray-8 text-base">Memory</p>
+                        <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                          Memory
+                        </p>
                         <p class="mt-1 text-sm leading-5 text-ink-gray-6">
                           Set the memory available to local benches and sites.
                         </p>
                       </div>
                       <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
                         {{ formatMemory(form.podmanMemoryMb) }}
-                    </span>
-                  </div>
-
-                  <div class="mt-5">
-                    <Slider
-                      v-model="memorySliderValue"
-                      class="cursor-pointer [&_[role=slider]]:cursor-pointer"
-                      :min="MIN_PODMAN_MEMORY_MB"
-                      :max="systemResources.totalMemoryMb"
-                      :step="1024"
-                    />
-                    <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
-                      <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
-                      <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
+                      </span>
                     </div>
-                  </div>
 
-                  <div class="mt-2 flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="text-xs leading-5">
-                      <p class="font-medium text-ink-gray-7">
-                        Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
-                      </p>
-                      <p class="text-ink-gray-5">
-                        Saving a change briefly restarts Podman.
-                      </p>
+                    <div class="mt-5">
+                      <Slider
+                        v-model="memorySliderValue"
+                        class="cursor-pointer [&_[role=slider]]:cursor-pointer"
+                        :min="MIN_PODMAN_MEMORY_MB"
+                        :max="systemResources.totalMemoryMb"
+                        :step="1024"
+                      />
+                      <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
+                        <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
+                        <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="subtle"
-                      class="shrink-0"
-                      @click="useRecommendedMemory"
-                    >
-                      Use recommended
-                    </Button>
+
+                    <div class="mt-2 flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div class="text-xs leading-5">
+                        <p class="font-medium text-ink-gray-7">
+                          Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
+                        </p>
+                        <p class="text-ink-gray-5">
+                          Saving a change briefly restarts Podman.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="subtle"
+                        class="shrink-0"
+                        @click="useRecommendedMemory"
+                      >
+                        Use recommended
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
               </div>
             </form>
           </div>
@@ -298,9 +316,8 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog, FormLabel, Slider, TextInput, Switch, toast, Sidebar, ThemeSwitcher, Divider, Select } from 'frappe-ui';
-import { ref, watch, onMounted, computed, reactive } from 'vue';
-import { ConfirmDialog } from 'frappe-ui';
+import { Button, ConfirmDialog, Dialog, Divider, Select, Sidebar, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import StatePanel from '../ui/StatePanel.vue';
 import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
 import AppLogo from '../ui/AppLogo.vue';
@@ -346,8 +363,8 @@ const onCheckForUpdates = async () => {
     } else {
       updateMessage.value = result.message;
     }
-  } catch (error: any) {
-    updateMessage.value = error.message || 'Failed to check for updates.';
+  } catch (error) {
+    updateMessage.value = error instanceof Error ? error.message : 'Failed to check for updates.';
   } finally {
     isCheckingForUpdates.value = false;
   }

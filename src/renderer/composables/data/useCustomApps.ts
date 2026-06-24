@@ -1,5 +1,6 @@
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import type { CustomAppListItem } from '../../../shared/core/ipc';
+import type { CreateCustomAppInput, UpdateCustomAppInput } from '../../../shared/domain/models';
 import { useIpc } from '../system/useIpc';
 
 export const useCustomApps = () => {
@@ -24,7 +25,7 @@ export const useCustomApps = () => {
     }
   };
 
-  const create = async (input: any) => {
+  const create = async (input: CreateCustomAppInput) => {
     updating.value = true;
     error.value = null;
     try {
@@ -40,7 +41,7 @@ export const useCustomApps = () => {
     }
   };
 
-  const update = async (id: string, input: any) => {
+  const update = async (id: string, input: UpdateCustomAppInput) => {
     updating.value = true;
     error.value = null;
     try {

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { CreateCustomAppInput, UpdateCustomAppInput } from '../shared/domain/models';
 import type { RendererBridge } from '../shared/core/ipc';
 import { ipcChannels } from '../shared/core/ipc';
 
@@ -14,8 +15,8 @@ const rendererBridge: RendererBridge = {
 	findCatalogItem: async (id: string) => ipcRenderer.invoke(ipcChannels.catalogFindById, id),
 	searchCatalog: async (query: string) => ipcRenderer.invoke(ipcChannels.catalogSearch, query),
 	listCustomApps: async () => ipcRenderer.invoke(ipcChannels.customAppsList),
-	createCustomApp: async (input: any) => ipcRenderer.invoke(ipcChannels.customAppsCreate, input),
-	updateCustomApp: async (id: string, input: any) => ipcRenderer.invoke(ipcChannels.customAppsUpdate, id, input),
+	createCustomApp: async (input: CreateCustomAppInput) => ipcRenderer.invoke(ipcChannels.customAppsCreate, input),
+	updateCustomApp: async (id: string, input: UpdateCustomAppInput) => ipcRenderer.invoke(ipcChannels.customAppsUpdate, id, input),
 	deleteCustomApp: async (id: string) => ipcRenderer.invoke(ipcChannels.customAppsDelete, id),
 	extractCustomApp: async (type: 'github' | 'local', source: string) => ipcRenderer.invoke(ipcChannels.customAppsExtract, type, source),
 	listBenches: async () => ipcRenderer.invoke(ipcChannels.benchesList),

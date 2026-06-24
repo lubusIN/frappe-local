@@ -1,6 +1,10 @@
 import type { TaskProgressEvent } from '../domain/task-runner';
 import type { DiagnosticsReport } from '../domain/diagnostics';
-import type { AppCatalogItem } from '../domain/models';
+import type {
+  AppCatalogItem,
+  CreateCustomAppInput,
+  UpdateCustomAppInput,
+} from '../domain/models';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
@@ -82,6 +86,14 @@ export type CustomAppListItem = {
   readonly icon?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+};
+
+export type ExtractedCustomAppMetadata = {
+  readonly name: string;
+  readonly title: string;
+  readonly description: string;
+  readonly icon?: string;
+  readonly branch?: string;
 };
 
 export type BenchListItem = {
@@ -183,10 +195,10 @@ export type RendererBridge = {
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
   readonly listCustomApps: () => Promise<CustomAppListItem[]>;
-  readonly createCustomApp: (input: any) => Promise<CustomAppListItem>;
-  readonly updateCustomApp: (id: string, input: any) => Promise<CustomAppListItem | null>;
+  readonly createCustomApp: (input: CreateCustomAppInput) => Promise<CustomAppListItem>;
+  readonly updateCustomApp: (id: string, input: UpdateCustomAppInput) => Promise<CustomAppListItem | null>;
   readonly deleteCustomApp: (id: string) => Promise<boolean>;
-  readonly extractCustomApp: (type: 'github' | 'local', source: string) => Promise<any>;
+  readonly extractCustomApp: (type: 'github' | 'local', source: string) => Promise<ExtractedCustomAppMetadata>;
   readonly listBenches: () => Promise<BenchListItem[]>;
   readonly pickBenchFolder: () => Promise<string | null>;
   readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;

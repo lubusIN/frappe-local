@@ -33,20 +33,23 @@ import type { AppRuntimePaths } from './config';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import type { IpcMain } from 'electron';
 import { dialog, nativeTheme, BrowserWindow } from 'electron';
 import {
   CreateBenchInputSchema,
   CreateSiteInputSchema,
   SettingsSchema,
   UpdateBenchInputSchema,
-
+  CreateCustomAppInputSchema,
   UpdateSiteInputSchema,
   type Bench,
+  type CreateCustomAppInput,
+  type CustomAppItem,
   MIN_PODMAN_MEMORY_MB,
   DEFAULT_SETTINGS,
   type Settings,
   type Site,
+  type UpdateCustomAppInput,
+  UpdateCustomAppInputSchema,
 } from '../shared/domain/models';
 import {
   canTransitionSiteStatus,
@@ -120,10 +123,10 @@ export type IpcRepositories = {
     set?: (input: Partial<Settings>) => Promise<Settings>;
   };
   readonly customApps: {
-    findAll: () => Promise<any[]>;
-    findById: (id: string) => Promise<any | null>;
-    create: (input: any) => Promise<any>;
-    update: (id: string, input: any) => Promise<any | null>;
+    findAll: () => Promise<CustomAppItem[]>;
+    findById: (id: string) => Promise<CustomAppItem | null>;
+    create: (input: CreateCustomAppInput) => Promise<CustomAppItem>;
+    update: (id: string, input: UpdateCustomAppInput) => Promise<CustomAppItem | null>;
     delete: (id: string) => Promise<boolean>;
   };
 };
@@ -1061,11 +1064,11 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.customAppsCreate, async (_event: unknown, input: unknown) => {
-    return repositories.customApps.create(input);
+    return repositories.customApps.create(CreateCustomAppInputSchema.parse(input));
   });
 
   ipcMainLike.handle(ipcChannels.customAppsUpdate, async (_event: unknown, id: unknown, input: unknown) => {
-    return repositories.customApps.update(id as string, input);
+    return repositories.customApps.update(String(id), UpdateCustomAppInputSchema.parse(input));
   });
 
   ipcMainLike.handle(ipcChannels.customAppsDelete, async (_event: unknown, id: unknown) => {

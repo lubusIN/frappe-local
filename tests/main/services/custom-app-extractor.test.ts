@@ -49,7 +49,7 @@ app_description = "A test custom app"
 
   it('extracts metadata from a github app', async () => {
     // Mock execPromise to simulate cloning
-    vi.mocked(execPromise).mockImplementation(async (cmd, args, cwd) => {
+    vi.mocked(execPromise).mockImplementation(async (cmd, args) => {
       if (cmd === 'git' && args[0] === 'clone') {
         const dest = args[args.length - 1] as string;
         fs.mkdirSync(path.join(dest, 'github_app'), { recursive: true });

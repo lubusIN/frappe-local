@@ -49,7 +49,7 @@
 
         <div
           ref="logsContainer"
-          class="task-log-output max-h-[45vh] min-h-52 cursor-text select-text overflow-auto py-2 font-mono text-xs leading-5"
+          class="max-h-[45vh] min-h-52 cursor-text select-text overflow-auto py-2 font-mono text-xs leading-5 [-webkit-app-region:no-drag] [-webkit-user-select:text!important] [user-select:text!important] [&_*]:[-webkit-app-region:no-drag] [&_*]:[-webkit-user-select:text!important] [&_*]:[user-select:text!important]"
           tabindex="0"
           @mousedown.stop
           @click.stop
@@ -113,14 +113,10 @@
     <template #actions>
       <div class="flex items-center justify-between w-full">
         <div class="flex items-center gap-2">
-          <Switch v-model="autoScroll" />
-          <button
-            type="button"
-            class="text-sm text-ink-gray-6"
-            @click="autoScroll = !autoScroll"
-          >
-            Auto-scroll
-          </button>
+          <Switch
+            v-model="autoScroll"
+            label="Auto-scroll"
+          />
         </div>
         <div class="flex justify-end gap-2">
           <Button
@@ -400,12 +396,3 @@ const onCopyLogs = async () => {
   }
 };
 </script>
-
-<style scoped>
-.task-log-output,
-.task-log-output * {
-  user-select: text !important;
-  -webkit-user-select: text !important;
-  -webkit-app-region: no-drag;
-}
-</style>

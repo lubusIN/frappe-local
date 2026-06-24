@@ -4,7 +4,7 @@ import { getBinaryPath } from '../utils/binaries';
 import path from 'node:path';
 import fs from 'node:fs';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
-import type { Bench, Site } from '../../shared/domain/models';
+import type { Bench, CustomAppItem, Site } from '../../shared/domain/models';
 import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv } from './runtime-service';
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
 import { findNextAvailableTcpPort, isTcpPortFree } from '../utils/ports';
@@ -267,7 +267,7 @@ const normalizeBenchApps = (apps?: readonly string[] | null): string[] => {
   return Array.from(new Set(apps.map((app) => app.trim()).filter(Boolean)));
 };
 
-const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: { findAll?: () => Promise<any[]> }): Promise<Array<{ source: string; target: string }>> => {
+const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: { findAll?: () => Promise<CustomAppItem[]> }): Promise<Array<{ source: string; target: string }>> => {
   if (!customAppsRepo?.findAll) return [];
   const customAppsList = await customAppsRepo.findAll();
   const localVolumes: Array<{ source: string; target: string }> = [];
@@ -276,7 +276,7 @@ const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: 
     ? appNames 
     : (typeof appNames === 'string' ? [appNames] : []);
   for (const app of safeAppNames) {
-    const customApp = customAppsList.find((c: any) => c.name === app);
+    const customApp = customAppsList.find((candidate) => candidate.name === app);
     if (customApp && customApp.type === 'local' && customApp.source) {
       localVolumes.push({
         source: customApp.source,
@@ -308,7 +308,7 @@ const fetchBenchApps = async (
     apps: readonly string[];
     bench: Bench;
     appCatalogRepo?: { findById?: (id: string) => Promise<AppCatalogItem | null> };
-    customAppsRepo?: { findAll?: () => Promise<any[]> };
+    customAppsRepo?: { findAll?: () => Promise<CustomAppItem[]> };
     projectName: string;
     runtimeCmd: string;
     runtimeEnv: NodeJS.ProcessEnv;
@@ -329,7 +329,7 @@ const fetchBenchApps = async (
     onAttemptedInstall(app);
     
     // Check if it's a custom app
-    const customApp = customAppsList.find((c: any) => c.name === app);
+    const customApp = customAppsList.find((candidate) => candidate.name === app);
     let getAppArgs: string[] = [];
 
     if (customApp) {
@@ -421,7 +421,7 @@ export const orchestrateBenchCreation = (
     findById?: (id: string) => Promise<AppCatalogItem | null>;
   },
     customAppsRepo?: {
-      findAll?: () => Promise<any[]>;
+      findAll?: () => Promise<CustomAppItem[]>;
     },
     shareSshKeys: boolean = false
 ): void => {
@@ -667,7 +667,7 @@ export const orchestrateBenchAppChanges = (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
   appCatalogRepo: { findById?: (id: string) => Promise<AppCatalogItem | null> } | undefined,
-  customAppsRepo: { findAll?: () => Promise<any[]> } | undefined,
+  customAppsRepo: { findAll?: () => Promise<CustomAppItem[]> } | undefined,
   shareSshKeys: boolean = false,
   previousApps: readonly string[],
   nextApps: readonly string[]
@@ -949,7 +949,7 @@ export const orchestrateBenchAppChanges = (
 export const orchestrateBenchStart = (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
-  customAppsRepo?: { findAll?: () => Promise<any[]> },
+  customAppsRepo?: { findAll?: () => Promise<CustomAppItem[]> },
   shareSshKeys: boolean = false,
   isRestart = false
 ): void => {

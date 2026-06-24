@@ -98,13 +98,13 @@
                     :hover-delay="0.2"
                   >
                     <template #target>
-                      <button
+                      <Button
                         type="button"
-                        class="flex size-5 shrink-0 items-center justify-center rounded text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8"
-                        aria-label="Show check details"
-                      >
-                        <IconInfo class="size-3.5" />
-                      </button>
+                        variant="ghost"
+                        size="xs"
+                        label="Show check details"
+                        :icon="IconInfo"
+                      />
                     </template>
                     <template #body-main>
                       <div class="space-y-3 p-3 text-sm leading-6 text-ink-gray-6">

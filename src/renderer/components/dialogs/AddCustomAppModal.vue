@@ -174,14 +174,14 @@
 </template>
 
 <script setup lang="ts">
-import { Dialog, TextInput, Button, TabButtons, Switch, toast, ConfirmDialog, Alert } from 'frappe-ui';
-import { debounce } from 'frappe-ui';
-import { ref, computed, watch, onMounted } from 'vue';
+import { Alert, Button, ConfirmDialog, debounce, Dialog, Switch, TabButtons, TextInput, toast } from 'frappe-ui';
+import { computed, onMounted, ref, watch } from 'vue';
+import type { CustomAppListItem, ExtractedCustomAppMetadata } from '../../../shared/core/ipc';
 import { useSshKeys } from '../../composables/system/useSshKeys';
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'added', app: any): void;
+  (e: 'added', app: CustomAppListItem): void;
 }>();
 
 const appType = ref<'github' | 'local'>('github');
@@ -297,7 +297,7 @@ const onConfirm = async () => {
   // For GitHub, if it's HTTPS, keep it for extraction, but we might want SSH later. 
   // Let's do extraction first.
   isExtracting.value = true;
-  let metadata: any = null;
+  let metadata: ExtractedCustomAppMetadata;
   try {
     metadata = await window.frappeLocal.extractCustomApp(appType.value, cleanSource);
   } catch (err) {

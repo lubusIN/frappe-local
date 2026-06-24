@@ -159,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, TextInput, Badge } from 'frappe-ui';
+import { Badge, Button, TextInput } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
 import { computed, ref } from 'vue';
 import { useCustomApps } from '../composables/data/useCustomApps';

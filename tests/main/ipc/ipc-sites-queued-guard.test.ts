@@ -81,7 +81,13 @@ describe('sites:update queued guard', () => {
       customApps: {
         findAll: async () => [],
         findById: async () => null,
-        create: async () => ({} as any),
+        create: async () => ({
+          id: 'custom-app',
+          name: 'custom_app',
+          type: 'github' as const,
+          source: 'https://example.test/custom_app',
+          timestamps: { createdAt: '2024-01-01T00:00:00.000Z', updatedAt: '2024-01-01T00:00:00.000Z' },
+        }),
         update: async () => null,
         delete: async () => false,
       },

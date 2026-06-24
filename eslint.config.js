@@ -27,6 +27,7 @@ export default tseslint.config(
       globals: {
         ...globals.node,
         ...globals.browser,
+        __APP_VERSION__: 'readonly',
       },
     },
     rules: {
