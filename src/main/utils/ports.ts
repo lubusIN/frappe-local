@@ -5,7 +5,7 @@ const MAX_PORT = 65535;
 
 const normalizePort = (port: number): number => Math.trunc(port);
 
-export const isTcpPortFree = async (port: number, host = '0.0.0.0'): Promise<boolean> => {
+export const isTcpPortFree = async (port: number, host = '127.0.0.1'): Promise<boolean> => {
   const normalizedPort = normalizePort(port);
   if (normalizedPort < MIN_PORT || normalizedPort > MAX_PORT) {
     return false;
