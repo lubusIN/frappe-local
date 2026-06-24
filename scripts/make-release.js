@@ -21,7 +21,7 @@ if (!expectedExtensions) {
 }
 
 const releaseVersion = process.env.RELEASE_TAG?.replace(/^v/, '');
-if (releaseVersion && releaseVersion !== appPackage.version) {
+if (releaseVersion && releaseVersion !== appPackage.version && releaseVersion !== 'nightly') {
   throw new Error(
     `Release tag ${process.env.RELEASE_TAG} does not match package version ${appPackage.version}`
   );
@@ -68,7 +68,7 @@ for (const artifact of artifacts) {
 console.log(`Prepared ${artifacts.length} artifact(s) in ${releaseDirectory}`);
 
 // Generate electron-updater manifest
-const finalVersion = releaseVersion || appPackage.version;
+const finalVersion = appPackage.version;
 let channel = 'latest';
 if (finalVersion.includes('nightly')) channel = 'nightly';
 else if (finalVersion.includes('-alpha')) channel = 'alpha';
