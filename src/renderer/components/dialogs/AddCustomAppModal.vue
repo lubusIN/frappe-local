@@ -235,26 +235,19 @@ watch(source, (newVal) => {
   checkVisibility(newVal);
 });
 
-const { showSshConfirmation, pendingSshValue, performSshSave } = useSshKeys();
+const { showSshConfirmation, pendingSshValue, handleSshToggle, performSshSave } = useSshKeys();
 
 const onToggleSshKeys = async () => {
   const settings = await window.frappeLocal.getSettings();
   if (settings && settings.shareSshKeys === shareSshKeysEnabled.value) {
     return; // Ignore if the value hasn't actually changed in the backend
   }
-  const benches = await window.frappeLocal.listBenches();
-  const runningBenches = benches.filter(b => b.status === 'running');
-  if (runningBenches.length > 0) {
-    pendingSshValue.value = shareSshKeysEnabled.value;
-    showSshConfirmation.value = true;
-  } else {
-    await performSshSave(shareSshKeysEnabled.value);
-  }
+  await handleSshToggle(shareSshKeysEnabled.value);
 };
 
 const onConfirmSshSave = async () => {
-  await performSshSave(pendingSshValue.value);
   showSshConfirmation.value = false;
+  await performSshSave(pendingSshValue.value, true);
 };
 
 const onCancelSshSave = () => {

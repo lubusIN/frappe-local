@@ -443,7 +443,7 @@ const useRecommendedMemory = (): void => {
   form.value.podmanMemoryMb = systemResources.recommendedPodmanMemoryMb;
 };
 
-const { showSshConfirmation, pendingSshValue, performSshSave } = useSshKeys();
+const { showSshConfirmation, pendingSshValue, handleSshToggle, performSshSave } = useSshKeys();
 
 const performSave = async () => {
   await save();
@@ -454,8 +454,10 @@ const performSave = async () => {
 
 const onSave = async () => {
   if (originalSettings.value && form.value.shareSshKeys !== originalSettings.value.shareSshKeys) {
-    pendingSshValue.value = form.value.shareSshKeys;
-    showSshConfirmation.value = true;
+    await handleSshToggle(form.value.shareSshKeys, async () => {
+      await performSave();
+      await performSshSave(form.value.shareSshKeys, false);
+    });
   } else {
     await performSave();
   }
@@ -464,7 +466,7 @@ const onSave = async () => {
 const onConfirmSshSave = async () => {
   showSshConfirmation.value = false;
   await performSave();
-  await performSshSave(pendingSshValue.value);
+  await performSshSave(pendingSshValue.value, true);
 };
 
 const onCancelSshSave = () => {
