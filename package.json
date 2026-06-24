@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
-    "frappe-ui": "^1.0.0-beta.11",
+    "frappe-ui": "^1.0.0-beta.12",
     "vue": "^3.5.13",
     "zod": "^3.24.2"
   }
