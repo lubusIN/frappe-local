@@ -1,4 +1,4 @@
-import type { StorageSnapshot } from '@frappe-local/main/storage/schema';
+import type { StorageSnapshot } from '@frappe-local/main/storage';
 
 const isBenchInterrupted = (status: 'queued' | 'running' | 'stopped' | 'success' | 'failure'): boolean =>
   status === 'queued';

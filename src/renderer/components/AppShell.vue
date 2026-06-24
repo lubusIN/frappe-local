@@ -115,19 +115,18 @@ import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
 import IconZap from '~icons/lucide/zap';
 import IconBlocks from '~icons/lucide/blocks';
-import { computed, onMounted, ref, watch, type Component } from 'vue';
+import { computed, onMounted, ref, type Component, watch } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
 import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
-import { isIpcBridgeAvailable } from '@frappe-local/renderer/composables/system/useIpc';
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
-import { useSettingsDialog } from '@frappe-local/renderer/composables/ui/useSettingsDialog';
+import { isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
+import { usePageHeaderActions, useSettingsDialog } from '@frappe-local/renderer/composables/ui';
+
 import { navigationItems } from '@frappe-local/renderer/router/routes';
-import { useProgressCenter } from '@frappe-local/renderer/composables/system/useProgressCenter';
-import { useFrontDoorStatus } from '@frappe-local/renderer/composables/system/useFrontDoorStatus';
-import { findUnhandledFailedTask } from '@frappe-local/renderer/controllers/progress';
+
+import { findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
 
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());

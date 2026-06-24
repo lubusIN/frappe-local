@@ -1,4 +1,4 @@
-import type { SiteCreateInput } from '@frappe-local/shared/core/ipc';
+import type { SiteCreateInput } from '@frappe-local/shared/core';
 
 export type SiteWizardStep = 1 | 2 | 3;
 
@@ -23,8 +23,6 @@ export const toSiteDomain = (slugOrName: string): string => {
   const slug = normalizeSiteSlug(slugOrName);
   return slug.endsWith('.localhost') ? slug : `${slug}.localhost`;
 };
-
-
 
 export const isValidSiteName = (siteName: string): boolean => SITE_SLUG_PATTERN.test(normalizeSiteSlug(siteName));
 

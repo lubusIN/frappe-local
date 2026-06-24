@@ -1,10 +1,4 @@
-import type { TaskProgressEvent } from '@frappe-local/shared/domain/task-runner';
-import type { DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
-import type {
-  AppCatalogItem,
-  CreateCustomAppInput,
-  UpdateCustomAppInput,
-} from '@frappe-local/shared/domain/models';
+import type { AppCatalogItem, CreateCustomAppInput, DiagnosticsReport, TaskProgressEvent, UpdateCustomAppInput } from '@frappe-local/shared/domain';
 
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
@@ -60,8 +54,6 @@ export type AppHealthResponse = {
   readonly electronVersion: string;
   readonly timestamp: string;
 };
-
-
 
 export type UpdateCheckResult = {
   readonly checkedAt: string;

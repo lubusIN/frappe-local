@@ -162,7 +162,7 @@
 import { Badge, Button, TextInput } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
 import { computed, ref } from 'vue';
-import { useCustomApps } from '@frappe-local/renderer/composables/data/useCustomApps';
+import { useCustomApps } from '@frappe-local/renderer/composables/data';
 
 const props = withDefaults(
   defineProps<{

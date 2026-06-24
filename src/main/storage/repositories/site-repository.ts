@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { StorageAdapter } from '@frappe-local/main/storage/adapter';
-import {
-  type Site,
-  type CreateSiteInput,
-  type UpdateSiteInput,
-} from '@frappe-local/shared/domain/models';
+import type { StorageAdapter } from '@frappe-local/main/storage';
+import { type CreateSiteInput, type Site, type UpdateSiteInput } from '@frappe-local/shared/domain';
 
 export class SiteRepository {
   constructor(private readonly adapter: StorageAdapter) {}

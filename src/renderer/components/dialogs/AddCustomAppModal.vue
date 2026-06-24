@@ -175,10 +175,10 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, ConfirmDialog, debounce, Dialog, Switch, TabButtons, TextInput, toast } from 'frappe-ui';
+import { Alert, Button, ConfirmDialog, Dialog, Switch, TabButtons, TextInput, debounce, toast } from 'frappe-ui';
 import { computed, onMounted, ref, watch } from 'vue';
-import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core/ipc';
-import { useSshKeys } from '@frappe-local/renderer/composables/system/useSshKeys';
+import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core';
+import { useSshKeys } from '@frappe-local/renderer/composables/system';
 
 const emit = defineEmits<{
   (e: 'close'): void;

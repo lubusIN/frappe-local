@@ -1,4 +1,4 @@
-import type { StorageSnapshot } from '@frappe-local/main/storage/schema';
+import type { StorageSnapshot } from '@frappe-local/main/storage';
 
 export type StorageMigrationContext = {
   readonly now: () => string;

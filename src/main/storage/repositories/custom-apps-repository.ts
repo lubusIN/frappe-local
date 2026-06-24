@@ -1,12 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { StorageAdapter } from '@frappe-local/main/storage/adapter';
-import {
-  type CustomAppItem,
-  type CreateCustomAppInput,
-  type UpdateCustomAppInput,
-  mapCustomAppRecordToDomain,
-  mapCustomAppDomainToRecord,
-} from '@frappe-local/shared/domain/models';
+import type { StorageAdapter } from '@frappe-local/main/storage';
+import { mapCustomAppDomainToRecord, mapCustomAppRecordToDomain, type CreateCustomAppInput, type CustomAppItem, type UpdateCustomAppInput } from '@frappe-local/shared/domain';
 
 export class CustomAppsRepository {
   constructor(private readonly adapter: StorageAdapter) {}

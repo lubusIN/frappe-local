@@ -1,4 +1,4 @@
-import type { LifecycleLogItem } from '@frappe-local/shared/core/ipc';
+import type { LifecycleLogItem } from '@frappe-local/shared/core';
 
 export type LogLevelFilter = 'all' | LifecycleLogItem['level'];
 

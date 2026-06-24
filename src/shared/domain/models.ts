@@ -3,7 +3,6 @@ import { z } from 'zod';
 const nonEmptyString = z.string().trim().min(1);
 const isoDateString = z.string().datetime();
 
-
 export const BenchStatusSchema = z.enum(['queued', 'running', 'stopped', 'success', 'failure']);
 export const SiteStatusSchema = z.enum(['queued', 'ready', 'failure']);
 
@@ -33,8 +32,6 @@ export const SiteSchema = z.object({
   path: nonEmptyString,
   timestamps: TimestampsSchema,
 });
-
-
 
 export const AppCompatibilitySchema = z.object({
   minimumFrappeVersion: nonEmptyString.optional(),
@@ -127,8 +124,6 @@ export const CreateSiteInputSchema = SiteSchema.omit({
 export const UpdateSiteInputSchema = CreateSiteInputSchema.partial().extend({
   status: SiteStatusSchema.optional(),
 });
-
-
 
 export const UpdateSettingsInputSchema = SettingsSchema.partial();
 

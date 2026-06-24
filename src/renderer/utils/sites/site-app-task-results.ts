@@ -1,4 +1,4 @@
-import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers/progress';
+import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 
 const SITE_APPS_TASK_NAME_PATTERN = /^(install|uninstall) app .* on /i;
 const SITE_CREATION_TASK_NAME_PATTERN = 'create site ';

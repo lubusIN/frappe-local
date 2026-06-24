@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { StorageSnapshot } from '@frappe-local/main/storage/schema';
+import type { StorageSnapshot } from '@frappe-local/main/storage';
 
 export type StorageAdapter = {
   connect: () => Promise<void>;

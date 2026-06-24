@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { Button } from 'frappe-ui';
 import { computed } from 'vue';
-import { toSelectorFrappeVersion } from '@frappe-local/renderer/utils/frappe-version';
+import { toSelectorFrappeVersion } from '@frappe-local/renderer/utils';
 
 const model = defineModel<string>();
 const selectedValue = computed(() => toSelectorFrappeVersion(model.value));

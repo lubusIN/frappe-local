@@ -1,6 +1,6 @@
-import { ref, watch, type Ref } from 'vue';
-import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers/progress';
-import { formatStatus, statusTheme } from '@frappe-local/renderer/utils/format';
+import { ref, type Ref, watch } from 'vue';
+import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
+import { formatStatus, statusTheme } from '@frappe-local/renderer/utils';
 
 export type ResourceType = 'bench' | 'site';
 

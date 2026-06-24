@@ -1,4 +1,4 @@
-import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain/models';
+import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 
 export const getRecommendedPodmanMemoryMb = (totalMemoryMb: number): number => {
   const normalizedTotalMemoryMb = Math.max(MIN_PODMAN_MEMORY_MB, Math.floor(totalMemoryMb));

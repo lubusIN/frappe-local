@@ -1,6 +1,6 @@
 import { computed, ref, type Ref } from 'vue';
-import type { CatalogAppItem } from '@frappe-local/shared/core/ipc';
-import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
+import type { CatalogAppItem } from '@frappe-local/shared/core';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data';
 import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '@frappe-local/renderer/utils/catalog/catalog-query';
 import { evaluateCatalogCompatibility } from '@frappe-local/renderer/utils/catalog/catalog-compatibility';
 

@@ -3,13 +3,13 @@ import fs from 'node:fs/promises';
 import dns from 'node:dns/promises';
 import type { AppRuntimePaths } from '@frappe-local/main/config';
 
-import type { DiagnosticsCheckResult, DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
-import type { Settings } from '@frappe-local/shared/domain/models';
+import type { DiagnosticsCheckResult, DiagnosticsReport, Settings } from '@frappe-local/shared/domain';
+
 import { createMainLogger } from '@frappe-local/main/logger';
-import { execPromise } from '@frappe-local/main/utils/exec';
-import { getBinaryPath } from '@frappe-local/main/utils/binaries';
-import { isPodmanMachineRequired, getPodmanMachines } from '@frappe-local/main/utils/podman/podman';
-import { getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from '@frappe-local/main/services/runtime-service';
+import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
+
+import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
+import { FRAPPE_LOCAL_MACHINE_NAME, getRuntimeEnv } from '@frappe-local/main/services';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
@@ -113,8 +113,6 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
   }
 };
 
-
-
 const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
   
@@ -144,7 +142,6 @@ const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => 
 
   return checks;
 };
-
 
 const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];

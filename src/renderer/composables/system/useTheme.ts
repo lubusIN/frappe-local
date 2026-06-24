@@ -1,5 +1,5 @@
 import { onMounted, watch } from 'vue';
-import { useSettings } from '@frappe-local/renderer/composables/data/useSettings';
+import { useSettings } from '@frappe-local/renderer/composables/data';
 import { useTheme as useFrappeTheme } from 'frappe-ui';
 
 export const useTheme = () => {

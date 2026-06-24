@@ -79,18 +79,12 @@
 import { FormLabel, Select, Switch, TextInput } from 'frappe-ui';
 import { computed, reactive, ref, watch } from 'vue';
 import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
-import { useSites } from '@frappe-local/renderer/composables/data/useSites';
-import { useBenches } from '@frappe-local/renderer/composables/data/useBenches';
-import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
-import {
-  buildSiteCreatePayload,
-  getSiteWizardStepErrors,
-  toSiteDomain,
-  suggestSitePath,
-  type SiteWizardStep,
-} from '@frappe-local/renderer/controllers/site-wizard';
+import { useBenches, useSites } from '@frappe-local/renderer/composables/data';
 
-import type { SiteListItem } from '@frappe-local/shared/domain/domain-models';
+import { useIpc } from '@frappe-local/renderer/composables/system';
+import { buildSiteCreatePayload, getSiteWizardStepErrors, suggestSitePath, toSiteDomain, type SiteWizardStep } from '@frappe-local/renderer/controllers';
+
+import type { SiteListItem } from '@frappe-local/shared/domain';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{

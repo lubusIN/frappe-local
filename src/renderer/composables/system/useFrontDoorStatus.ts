@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted, ref } from 'vue';
-import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { useIpc } from '@frappe-local/renderer/composables/system';
 
 export const useFrontDoorStatus = () => {
   const isFrontDoorAvailable = ref(true);

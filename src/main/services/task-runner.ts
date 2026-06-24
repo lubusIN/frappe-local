@@ -2,12 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
 import path from 'node:path';
-import type {
-  TaskProgressEvent,
-  TaskSnapshot,
-  TaskLogLevel,
-  TaskResourceContext,
-} from '@frappe-local/shared/domain/task-runner';
+import type { TaskLogLevel, TaskProgressEvent, TaskResourceContext, TaskSnapshot } from '@frappe-local/shared/domain';
 
 type ManagedTask = {
   readonly id: string;

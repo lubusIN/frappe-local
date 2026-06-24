@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execPromise } from '@frappe-local/main/utils/exec';
+import { execPromise } from '@frappe-local/main/utils';
 import { randomUUID } from 'node:crypto';
 import { createMainLogger } from '@frappe-local/main/logger';
 

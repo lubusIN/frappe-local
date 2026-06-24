@@ -1,4 +1,4 @@
-import type { AppCatalogItem, BenchRecord, Settings, Site, CustomAppRecord } from '@frappe-local/shared/domain/models';
+import type { AppCatalogItem, BenchRecord, CustomAppRecord, Settings, Site } from '@frappe-local/shared/domain';
 
 export const CURRENT_STORAGE_SCHEMA_VERSION = 1;
 

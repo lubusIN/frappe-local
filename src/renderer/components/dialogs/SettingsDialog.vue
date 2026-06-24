@@ -321,10 +321,10 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
-import { useSettings } from '@frappe-local/renderer/composables/data/useSettings';
-import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
-import { useSshKeys } from '@frappe-local/renderer/composables/system/useSshKeys';
-import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain/models';
+import { useSettings } from '@frappe-local/renderer/composables/data';
+import { useIpc, useSshKeys } from '@frappe-local/renderer/composables/system';
+
+import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 
 const props = defineProps<{
   open: boolean;

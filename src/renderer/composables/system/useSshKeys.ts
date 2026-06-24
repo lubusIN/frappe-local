@@ -1,8 +1,8 @@
 import { ref } from 'vue';
 import { toast } from 'frappe-ui';
 
-import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
-import type { BenchListItem } from '@frappe-local/shared/core/ipc';
+import { useIpc } from '@frappe-local/renderer/composables/system';
+import type { BenchListItem } from '@frappe-local/shared/core';
 
 export const useSshKeys = () => {
   const ipc = useIpc();

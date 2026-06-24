@@ -3,33 +3,21 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import type { IpcMain } from 'electron';
-import { app, BrowserWindow, nativeTheme, shell } from 'electron';
+import { BrowserWindow, app, nativeTheme, shell } from 'electron';
 import type { AppRepositories } from '@frappe-local/main/ipc';
 import { registerIpcHandlers } from '@frappe-local/main/ipc';
 import { createMainLogger } from '@frappe-local/main/logger';
 import type { AppRuntimePaths } from '@frappe-local/main/config';
 import { resolveAppRuntimePaths } from '@frappe-local/main/config';
-import { JsonStorageAdapter } from '@frappe-local/main/storage/adapter';
-import { initializeStorage } from '@frappe-local/main/storage/bootstrap';
-import { AppCatalogRepository } from '@frappe-local/main/storage/repositories/app-catalog-repository';
-import { BenchRepository } from '@frappe-local/main/storage/repositories/bench-repository';
-import { SettingsRepository } from '@frappe-local/main/storage/repositories/settings-repository';
-import { SiteRepository } from '@frappe-local/main/storage/repositories/site-repository';
-import { CustomAppsRepository } from '@frappe-local/main/storage/repositories/custom-apps-repository';
-import { analytics } from '@frappe-local/main/services/analytics';
-import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from '@frappe-local/main/services/catalog-provider';
-import { runDiagnostics } from '@frappe-local/main/services/diagnostics-service';
-import { getAppIconPath } from '@frappe-local/main/utils/app-icon';
-import {
-  initializeCaddyFrontDoor,
-  isCaddyFrontDoorRunning,
-  isCaddyFrontDoorSecure,
-} from '@frappe-local/main/services/caddy-front-door';
-import {
-  applyPodmanMachineMemory,
-  configurePodmanMemoryProvider,
-} from '@frappe-local/main/services/runtime-service';
-import { getRecommendedPodmanMemoryMb } from '@frappe-local/shared/core/system-resources';
+import { JsonStorageAdapter, initializeStorage } from '@frappe-local/main/storage';
+
+import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
+
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorRunning, isCaddyFrontDoorSecure, runDiagnostics } from '@frappe-local/main/services';
+
+import { getAppIconPath } from '@frappe-local/main/utils';
+
+import { getRecommendedPodmanMemoryMb } from '@frappe-local/shared/core';
 import { initializeUpdater } from '@frappe-local/main/updater';
 
 type BootstrapContext = {

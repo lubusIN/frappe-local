@@ -1,12 +1,6 @@
 import { computed, onMounted, onUnmounted, reactive, toRefs, watch } from 'vue';
-import {
-  createDefaultProgressCenterState,
-  createProgressCenterController,
-  filterProgressTasks,
-  reconcileSavedProgressTasks,
-  type ProgressTaskSummary,
-} from '@frappe-local/renderer/controllers/progress';
-import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { createDefaultProgressCenterState, createProgressCenterController, filterProgressTasks, reconcileSavedProgressTasks, type ProgressTaskSummary } from '@frappe-local/renderer/controllers';
+import { useIpc } from '@frappe-local/renderer/composables/system';
 
 export const ACTIVITIES_STORAGE_KEY = 'frappe-local:activities';
 export const ACKNOWLEDGED_TASKS_KEY = 'frappe-local:acknowledged-tasks';

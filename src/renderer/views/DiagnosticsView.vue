@@ -87,9 +87,8 @@ import DiagnosticsPanel from '@frappe-local/renderer/components/DiagnosticsPanel
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import Logo from '@frappe-local/renderer/components/ui/Logo.vue';
 import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
-import { useDiagnostics } from '@frappe-local/renderer/composables/system/useDiagnostics';
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
-import { ACTIVITIES_STORAGE_KEY } from '@frappe-local/renderer/composables/system/useProgressCenter';
+import { ACTIVITIES_STORAGE_KEY, useDiagnostics } from '@frappe-local/renderer/composables/system';
+import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 
 const { report, running, fixing, resetting, error, run, fix, Reset } = useDiagnostics();
 const { setActions, clearActions } = usePageHeaderActions();

@@ -1,4 +1,4 @@
-import type { BenchListItem } from '@frappe-local/shared/core/ipc';
+import type { BenchListItem } from '@frappe-local/shared/core';
 
 /**
  * Check if a bench can be started from the UI

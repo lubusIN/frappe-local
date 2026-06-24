@@ -1,31 +1,14 @@
-import type {
-  AppHealthResponse,
-  BenchCreateInput,
-  BenchListItem,
-  BenchUpdateInput,
-  CatalogAppItem,
-  LifecycleLogItem,
-  SettingsItem,
-  SystemResources,
-  SiteCreateInput,
-  SiteListItem,
-  SiteUpdateInput,
-  UpdateCheckResult,
-} from '@frappe-local/shared/core/ipc';
-import type { DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
-import { runDiagnostics, getLastDiagnosticsReport } from '@frappe-local/main/services/diagnostics-service';
-import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from '@frappe-local/main/services/runtime-service';
-import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman/podman';
-import { getRecommendedPodmanMemoryMb } from '@frappe-local/shared/core/system-resources';
-import { getBinaryPath } from '@frappe-local/main/utils/binaries';
-import { execPromise } from '@frappe-local/main/utils/exec';
-import { ipcChannels } from '@frappe-local/shared/core/ipc';
-import type { TaskProgressEvent } from '@frappe-local/shared/domain/task-runner';
-import { getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services/task-runner';
+import type { AppHealthResponse, BenchCreateInput, BenchListItem, BenchUpdateInput, CatalogAppItem, LifecycleLogItem, SettingsItem, SiteCreateInput, SiteListItem, SiteUpdateInput, SystemResources, UpdateCheckResult } from '@frappe-local/shared/core';
+import type { DiagnosticsReport, TaskProgressEvent } from '@frappe-local/shared/domain';
+import { APP_CATALOG_SEED_VERSION, FRAPPE_LOCAL_MACHINE_NAME, ensureRuntimeRunning, extractCustomApp, getDefaultAppCatalogSeed, getLastDiagnosticsReport, getLastRuntimeError, getRuntimeEnv, getTaskRunner, orchestrateBenchAppChanges, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, resetAllBenchContainers, runDiagnostics, type TaskExecutionContext } from '@frappe-local/main/services';
+
+import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
+import { getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
+import { DEFAULT_HTTP_PORT, execPromise, findNextAvailableTcpPort, getBinaryPath, resolveBenchHttpPort } from '@frappe-local/main/utils';
+
 import { createMainLogger } from '@frappe-local/main/logger';
-import { findNextAvailableTcpPort } from '@frappe-local/main/utils/ports';
+
 import { normalizeSiteHost } from '@frappe-local/shared/utils/site-hostname';
-import { resolveBenchHttpPort, DEFAULT_HTTP_PORT } from '@frappe-local/main/utils/bench-http-port';
 
 const mainLogger = createMainLogger('ipc');
 
@@ -33,41 +16,17 @@ import type { AppRuntimePaths } from '@frappe-local/main/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { dialog, nativeTheme, BrowserWindow } from 'electron';
-import {
-  CreateBenchInputSchema,
-  CreateSiteInputSchema,
-  SettingsSchema,
-  UpdateBenchInputSchema,
-  CreateCustomAppInputSchema,
-  UpdateSiteInputSchema,
-  type Bench,
-  type CreateCustomAppInput,
-  type CustomAppItem,
-  MIN_PODMAN_MEMORY_MB,
-  DEFAULT_SETTINGS,
-  type Settings,
-  type Site,
-  type UpdateCustomAppInput,
-  UpdateCustomAppInputSchema,
-} from '@frappe-local/shared/domain/models';
-import {
-  canTransitionSiteStatus,
-  isBenchReadyForSiteStatus,
-} from '@frappe-local/shared/domain/site-lifecycle';
-import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from '@frappe-local/main/services/catalog-provider';
-import { createDefaultStorageSnapshot } from '@frappe-local/main/storage/schema';
-import type { LifecycleOperation } from '@frappe-local/main/services/analytics';
-import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from '@frappe-local/main/services/site-orchestration';
-import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from '@frappe-local/main/services/bench-orchestration';
-import { extractCustomApp } from '@frappe-local/main/services/custom-app-extractor';
+import { BrowserWindow, dialog, nativeTheme } from 'electron';
+import { CreateBenchInputSchema, CreateCustomAppInputSchema, CreateSiteInputSchema, DEFAULT_SETTINGS, MIN_PODMAN_MEMORY_MB, SettingsSchema, UpdateBenchInputSchema, UpdateCustomAppInputSchema, UpdateSiteInputSchema, canTransitionSiteStatus, isBenchReadyForSiteStatus, type Bench, type CreateCustomAppInput, type CustomAppItem, type Settings, type Site, type UpdateCustomAppInput } from '@frappe-local/shared/domain';
+
+import { createDefaultStorageSnapshot } from '@frappe-local/main/storage';
+import type { LifecycleOperation } from '@frappe-local/main/services';
 
 import { triggerManualUpdateCheck } from '@frappe-local/main/updater';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
 };
-
 
 type TaskRunnerLike = {
   onEvent?: (listener: (event: TaskProgressEvent) => void) => () => void;
@@ -204,8 +163,6 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   shareSshKeys: settings.shareSshKeys,
   theme: settings.theme,
 });
-
-
 
 const toLifecycleLogs = (
   entityId: string,
@@ -682,8 +639,8 @@ export const registerIpcHandlers = (
     }
 
     try {
-      const { getComposeProjectName } = await import('@frappe-local/main/utils/podman/compose-args');
-      const { openBenchShell } = await import('@frappe-local/main/utils/terminal');
+      const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
+      const { openBenchShell } = await import('@frappe-local/main/utils');
       const projectName = getComposeProjectName(bench.id);
       const runtimeEnv = await getRuntimeEnv();
       await openBenchShell(bench.path, projectName, runtimeEnv);
@@ -847,7 +804,6 @@ export const registerIpcHandlers = (
     if (!isBenchReadyForSiteStatus(bench.status, targetSiteStatus)) {
       throw new Error(`Bench "${bench.name}" is not running. Please start the bench before updating its sites.`);
     }
-
 
     const requestedApps = Array.isArray(payload.apps)
       ? Array.from(new Set(payload.apps.map((app) => app.trim()).filter(Boolean)))
@@ -1039,7 +995,6 @@ export const registerIpcHandlers = (
     };
   });
 
-
   ipcMainLike.handle(ipcChannels.utilsPathExists, async (_event: unknown, targetPath: unknown) => {
     if (typeof targetPath !== 'string') {
       return false;
@@ -1053,7 +1008,6 @@ export const registerIpcHandlers = (
     }
     return operations.openExternal(url);
   });
-
 
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
     return triggerManualUpdateCheck();

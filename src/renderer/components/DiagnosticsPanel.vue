@@ -186,9 +186,9 @@ import IconRoute from '~icons/lucide/route';
 import IconWrench from '~icons/lucide/wrench';
 import IconX from '~icons/lucide/x';
 import { computed, type Component } from 'vue';
-import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
+import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '@frappe-local/shared/domain';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
-import { formatStatus, statusTheme } from '@frappe-local/renderer/utils/format';
+import { formatStatus, statusTheme } from '@frappe-local/renderer/utils';
 
 const props = defineProps<{
   report: DiagnosticsReport | null;

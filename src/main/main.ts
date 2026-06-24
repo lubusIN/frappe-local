@@ -1,10 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, type MenuItemConstructorOptions } from 'electron';
+import { BrowserWindow, Menu, app, dialog, ipcMain, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBootstrapContext, runApplicationBootstrap } from '@frappe-local/main/bootstrap';
 import { createMainLogger } from '@frappe-local/main/logger';
-import { getAppIconPath } from '@frappe-local/main/utils/app-icon';
-import { stopCaddyFrontDoor } from '@frappe-local/main/services/caddy-front-door';
+import { getAppIconPath } from '@frappe-local/main/utils';
+import { stopCaddyFrontDoor } from '@frappe-local/main/services';
 
 let isQuitting = false;
 const APP_DISPLAY_NAME = 'Frappe Local';

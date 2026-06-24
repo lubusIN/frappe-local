@@ -1,16 +1,15 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { errorMessage } from '@frappe-local/shared/core/utils';
-import { execPromise } from '@frappe-local/main/utils/exec';
-import { getBinaryPath } from '@frappe-local/main/utils/binaries';
-import type { Bench, Site } from '@frappe-local/shared/domain/models';
-import type { SiteCreateInput } from '@frappe-local/shared/core/ipc';
-import { canAttachSiteToBench } from '@frappe-local/shared/domain/site-lifecycle';
-import { getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services/task-runner';
-import { getRuntimeEnv } from '@frappe-local/main/services/runtime-service';
+import { errorMessage, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
+import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
+
+import type { Bench, Site } from '@frappe-local/shared/domain';
+import type { SiteCreateInput } from '@frappe-local/shared/core';
+import { canAttachSiteToBench } from '@frappe-local/shared/domain';
+import { getRuntimeEnv, getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services';
+
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
-import { getComposeProjectName, composeBenchArgs, composeBenchSiteArgs } from '@frappe-local/main/utils/podman/compose-args';
-import { humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core/runtime-errors';
+import { composeBenchArgs, composeBenchSiteArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
 
 /** Shared execution context for running bench commands against a site. */
 export type SiteCommandEnv = {

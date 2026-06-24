@@ -238,7 +238,7 @@ import IconFolderOpen from '~icons/lucide/folder-open';
 import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 
@@ -249,19 +249,14 @@ import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListV
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
-import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
-import { useSites } from '@frappe-local/renderer/composables/data/useSites';
-import { useProgressCenter } from '@frappe-local/renderer/composables/system/useProgressCenter';
-import { useResourceTaskState } from '@frappe-local/renderer/composables/system/useResourceTaskState';
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
-import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
-import { useBenches } from '@frappe-local/renderer/composables/data/useBenches';
-import { filterSites } from '@frappe-local/renderer/utils/sites/site-filters';
-import {
-  isCompletedSiteAppUpdateTask,
-  isCompletedSiteCreationTask,
-} from '@frappe-local/renderer/utils/sites/site-app-task-results';
-import type { BenchListItem, SiteListItem } from '@frappe-local/shared/core/ipc';
+import { useIpc, useProgressCenter, useResourceTaskState } from '@frappe-local/renderer/composables/system';
+import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
+
+import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
+
+import { filterSites, isCompletedSiteAppUpdateTask, isCompletedSiteCreationTask } from '@frappe-local/renderer/utils/sites';
+
+import type { BenchListItem, SiteListItem } from '@frappe-local/shared/core';
 
 const ipc = useIpc();
 const route = useRoute();
@@ -822,12 +817,9 @@ const onDeactivateSiteApp = async (appId: string) => {
   }
 };
 
-
-
 const confirmDeleteSiteOpen = ref(false);
 const deleteSiteId = ref<string | null>(null);
 const deleteSiteName = ref('');
-
 
 const confirmDeleteSite = (id: string, name: string) => {
   deleteSiteId.value = id;

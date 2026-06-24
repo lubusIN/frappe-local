@@ -167,10 +167,9 @@ import IconTerminal from '~icons/lucide/terminal';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
-import { computed, onBeforeUnmount, ref, watch, watchEffect, type Component } from 'vue';
+import { computed, onBeforeUnmount, ref, type Component, watch, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
-
 
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
@@ -178,15 +177,14 @@ import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListV
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 
-import { useConfirmAction } from '@frappe-local/renderer/composables/ui/useConfirmAction';
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
-import { useProgressCenter } from '@frappe-local/renderer/composables/system/useProgressCenter';
-import { useResourceTaskState } from '@frappe-local/renderer/composables/system/useResourceTaskState';
-import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
-import { useBenches } from '@frappe-local/renderer/composables/data/useBenches';
-import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
-import type { BenchListItem } from '@frappe-local/shared/core/ipc';
+import { useConfirmAction, usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 
+import { useProgressCenter, useResourceTaskState } from '@frappe-local/renderer/composables/system';
+
+import { useAppCatalog, useBenches } from '@frappe-local/renderer/composables/data';
+
+import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
+import type { BenchListItem } from '@frappe-local/shared/core';
 
 const {
   benches,
@@ -343,7 +341,6 @@ const onManageBench = (id: string) => {
   router.push({ name: 'sites', query: { benchId: id } });
 };
 
-
 const formatPath = (path: string) => {
   if (!path) return '';
   return path.replace(/^\/Users\/[^/]+/, '~');
@@ -452,7 +449,6 @@ const getBenchActions = (bench: BenchListItem) => {
 
   return actions.filter(a => !a.hidden);
 };
-
 
 const selectedTaskId = ref<string | null>(null);
 

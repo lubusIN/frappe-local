@@ -1,12 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { StorageAdapter } from '@frappe-local/main/storage/adapter';
-import {
-  type Bench,
-  type CreateBenchInput,
-  type UpdateBenchInput,
-  mapBenchRecordToDomain,
-  mapBenchDomainToRecord,
-} from '@frappe-local/shared/domain/models';
+import type { StorageAdapter } from '@frappe-local/main/storage';
+import { mapBenchDomainToRecord, mapBenchRecordToDomain, type Bench, type CreateBenchInput, type UpdateBenchInput } from '@frappe-local/shared/domain';
 
 export class BenchRepository {
   constructor(private readonly adapter: StorageAdapter) {}

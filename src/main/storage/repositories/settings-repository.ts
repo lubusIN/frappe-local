@@ -1,9 +1,5 @@
-import type { StorageAdapter } from '@frappe-local/main/storage/adapter';
-import {
-  type Settings,
-  type UpdateSettingsInput,
-  SettingsSchema,
-} from '@frappe-local/shared/domain/models';
+import type { StorageAdapter } from '@frappe-local/main/storage';
+import { SettingsSchema, type Settings, type UpdateSettingsInput } from '@frappe-local/shared/domain';
 
 export class SettingsRepository {
   constructor(private readonly adapter: StorageAdapter) {}

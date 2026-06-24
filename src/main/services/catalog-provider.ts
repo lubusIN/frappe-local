@@ -1,6 +1,6 @@
-import { AppSchema, type AppCatalogItem } from '@frappe-local/shared/domain/models';
+import { AppSchema, type AppCatalogItem } from '@frappe-local/shared/domain';
 import fs from 'node:fs';
-import { getBinaryPath } from '@frappe-local/main/utils/binaries';
+import { getBinaryPath } from '@frappe-local/main/utils';
 
 export const APP_CATALOG_SEED_VERSION = 14;
 

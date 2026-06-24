@@ -1,8 +1,8 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { getBinaryPath } from '@frappe-local/main/utils/binaries';
+import { getBinaryPath } from '@frappe-local/main/utils';
 
-import { writeFileSync, chmodSync } from 'node:fs';
+import { chmodSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 

@@ -1,4 +1,4 @@
-import type { RendererBridge } from '@frappe-local/shared/core/ipc';
+import type { RendererBridge } from '@frappe-local/shared/core';
 
 const IPC_UNAVAILABLE_MESSAGE =
   'IPC bridge is unavailable. Ensure the preload script is loaded before using renderer features.';

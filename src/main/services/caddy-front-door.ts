@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createHash, X509Certificate } from 'node:crypto';
-import { execFile, execFileSync } from 'node:child_process';
-import { spawn, type ChildProcess } from 'node:child_process';
-import type { Bench, Site } from '@frappe-local/shared/domain/models';
+import { X509Certificate, createHash } from 'node:crypto';
+import { execFile, execFileSync, spawn, type ChildProcess } from 'node:child_process';
+
+import type { Bench, Site } from '@frappe-local/shared/domain';
 import { createMainLogger } from '@frappe-local/main/logger';
-import { getBinaryPath } from '@frappe-local/main/utils/binaries';
-import { resolveBenchHttpPort } from '@frappe-local/main/utils/bench-http-port';
+import { getBinaryPath, resolveBenchHttpPort } from '@frappe-local/main/utils';
+
 import { normalizeSiteHost } from '@frappe-local/shared/utils/site-hostname';
 import { BAD_GATEWAY_ERROR_PAGE } from '@frappe-local/main/pages/bad-gateway/page';
 
@@ -357,8 +357,6 @@ const stopPidFromFile = (): void => {
     }
   }
 };
-
-
 
 const buildFrontDoorRoutes = async (repositories: FrontDoorRepositories): Promise<FrontDoorRoute[]> => {
   const [benches, sites] = await Promise.all([

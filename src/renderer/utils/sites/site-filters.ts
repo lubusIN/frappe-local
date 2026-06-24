@@ -1,4 +1,4 @@
-import type { SiteListItem } from '@frappe-local/shared/core/ipc';
+import type { SiteListItem } from '@frappe-local/shared/core';
 
 export type SiteFilterInput = {
   readonly benchId: string;

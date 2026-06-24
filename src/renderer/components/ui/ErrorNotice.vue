@@ -70,7 +70,7 @@ import { Button } from 'frappe-ui';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { ErrorRemediationNotice } from '@frappe-local/renderer/utils/error-remediation';
+import type { ErrorRemediationNotice } from '@frappe-local/renderer/utils';
 
 defineProps<{
   notice: ErrorRemediationNotice;

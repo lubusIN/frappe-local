@@ -1,4 +1,4 @@
-import type { CatalogAppItem } from '@frappe-local/shared/core/ipc';
+import type { CatalogAppItem } from '@frappe-local/shared/core';
 
 export type CatalogSort = 'name-asc' | 'name-desc' | 'version-desc';
 

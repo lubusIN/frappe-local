@@ -136,17 +136,17 @@ import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
-import { ref, watchEffect, onBeforeUnmount } from 'vue';
+import { onBeforeUnmount, ref, watchEffect } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import AddCustomAppModal from '@frappe-local/renderer/components/dialogs/AddCustomAppModal.vue';
 
-import { useConfirmAction } from '@frappe-local/renderer/composables/ui/useConfirmAction';
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
-import { useCustomApps } from '@frappe-local/renderer/composables/data/useCustomApps';
-import type { CustomAppListItem } from '@frappe-local/shared/core/ipc';
+import { useConfirmAction, usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
+
+import { useCustomApps } from '@frappe-local/renderer/composables/data';
+import type { CustomAppListItem } from '@frappe-local/shared/core';
 
 const {
   customApps,
