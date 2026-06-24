@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 
 console.log('Running typecheck for renderer...');
-const result = spawnSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsc', '--noEmit', '-p', 'tsconfig.renderer.json'], { 
+const result = spawnSync('npx', ['tsc', '--noEmit', '-p', 'tsconfig.renderer.json'], { 
   encoding: 'utf-8',
+  shell: process.platform === 'win32',
 });
 
 if (result.error) {
