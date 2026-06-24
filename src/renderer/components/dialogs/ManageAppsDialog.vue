@@ -78,9 +78,9 @@
 import { Alert, Button, Dialog, Tabs } from 'frappe-ui';
 import IconPackage from '~icons/lucide/package';
 import { computed, ref } from 'vue';
-import AppManager from '../AppManager.vue';
-import CustomAppManager from '../CustomAppManager.vue';
-import EmptyState from '../ui/EmptyState.vue';
+import AppManager from '@frappe-local/renderer/components/AppManager.vue';
+import CustomAppManager from '@frappe-local/renderer/components/CustomAppManager.vue';
+import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 
 const props = defineProps<{
   open: boolean;

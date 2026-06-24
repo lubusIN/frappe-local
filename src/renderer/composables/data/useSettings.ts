@@ -1,7 +1,7 @@
 import { onMounted, ref } from 'vue';
-import type { SettingsItem } from '../../../shared/core/ipc';
-import { useIpc } from '../system/useIpc';
-import { DEFAULT_SETTINGS } from '../../../shared/domain/models';
+import type { SettingsItem } from '@frappe-local/shared/core/ipc';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { DEFAULT_SETTINGS } from '@frappe-local/shared/domain/models';
 
 const defaultSettings = (): SettingsItem => ({ ...DEFAULT_SETTINGS });
 

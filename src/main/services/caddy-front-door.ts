@@ -4,12 +4,12 @@ import path from 'node:path';
 import { createHash, X509Certificate } from 'node:crypto';
 import { execFile, execFileSync } from 'node:child_process';
 import { spawn, type ChildProcess } from 'node:child_process';
-import type { Bench, Site } from '../../shared/domain/models';
-import { createMainLogger } from '../logger';
-import { getBinaryPath } from '../utils/binaries';
-import { resolveBenchHttpPort } from '../utils/bench-http-port';
-import { normalizeSiteHost } from '../../shared/utils/site-hostname';
-import { BAD_GATEWAY_ERROR_PAGE } from '../pages/bad-gateway/page';
+import type { Bench, Site } from '@frappe-local/shared/domain/models';
+import { createMainLogger } from '@frappe-local/main/logger';
+import { getBinaryPath } from '@frappe-local/main/utils/binaries';
+import { resolveBenchHttpPort } from '@frappe-local/main/utils/bench-http-port';
+import { normalizeSiteHost } from '@frappe-local/shared/utils/site-hostname';
+import { BAD_GATEWAY_ERROR_PAGE } from '@frappe-local/main/pages/bad-gateway/page';
 
 const logger = createMainLogger('caddy-front-door');
 

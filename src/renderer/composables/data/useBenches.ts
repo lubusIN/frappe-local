@@ -1,8 +1,8 @@
 import { ref } from 'vue';
-import { useStatusPolling } from '../system/useStatusPolling';
-import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '../../../shared/core/ipc';
-import { useIpc } from '../system/useIpc';
-import { humanizeCreateFailure, stripIpcPrefix } from '../../../shared/core/runtime-errors';
+import { useStatusPolling } from '@frappe-local/renderer/composables/system/useStatusPolling';
+import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '@frappe-local/shared/core/ipc';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { humanizeCreateFailure, stripIpcPrefix } from '@frappe-local/shared/core/runtime-errors';
 
 export const useBenches = () => {
   const benches = ref<BenchListItem[]>([]);

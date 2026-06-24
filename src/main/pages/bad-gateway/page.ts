@@ -1,5 +1,5 @@
-import template from './index.html?raw';
-import tailwindCss from './styles.css?inline';
+import template from '@frappe-local/main/pages/bad-gateway/index.html?raw';
+import tailwindCss from '@frappe-local/main/pages/bad-gateway/styles.css?inline';
 
 const STYLES_PLACEHOLDER = '/* FRAPPE_LOCAL_TAILWIND_CSS */';
 

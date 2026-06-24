@@ -137,16 +137,16 @@ import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import { ref, watchEffect, onBeforeUnmount } from 'vue';
-import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
-import StatePanel from '../components/ui/StatePanel.vue';
-import EmptyState from '../components/ui/EmptyState.vue';
-import ResourceListView from '../components/ui/ResourceListView.vue';
-import AddCustomAppModal from '../components/dialogs/AddCustomAppModal.vue';
+import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
+import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
+import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
+import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
+import AddCustomAppModal from '@frappe-local/renderer/components/dialogs/AddCustomAppModal.vue';
 
-import { useConfirmAction } from '../composables/ui/useConfirmAction';
-import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
-import { useCustomApps } from '../composables/data/useCustomApps';
-import type { CustomAppListItem } from '../../shared/core/ipc';
+import { useConfirmAction } from '@frappe-local/renderer/composables/ui/useConfirmAction';
+import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
+import { useCustomApps } from '@frappe-local/renderer/composables/data/useCustomApps';
+import type { CustomAppListItem } from '@frappe-local/shared/core/ipc';
 
 const {
   customApps,

@@ -1,6 +1,6 @@
 import { onMounted, ref } from 'vue';
-import type { DiagnosticsReport } from '../../../shared/domain/diagnostics';
-import { useIpc } from './useIpc';
+import type { DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
 export const useDiagnostics = () => {
   const report = ref<DiagnosticsReport | null>(null);

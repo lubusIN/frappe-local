@@ -1,5 +1,5 @@
-import type { RendererBridge } from '../../shared/core/ipc';
-import type { TaskProgressEvent, TaskStatus } from '../../shared/domain/task-runner';
+import type { RendererBridge } from '@frappe-local/shared/core/ipc';
+import type { TaskProgressEvent, TaskStatus } from '@frappe-local/shared/domain/task-runner';
 
 export type ProgressTaskResource = 'bench' | 'site' | 'runtime' | 'system';
 

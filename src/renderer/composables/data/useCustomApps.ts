@@ -1,7 +1,7 @@
 import { onMounted, ref } from 'vue';
-import type { CustomAppListItem } from '../../../shared/core/ipc';
-import type { CreateCustomAppInput, UpdateCustomAppInput } from '../../../shared/domain/models';
-import { useIpc } from '../system/useIpc';
+import type { CustomAppListItem } from '@frappe-local/shared/core/ipc';
+import type { CreateCustomAppInput, UpdateCustomAppInput } from '@frappe-local/shared/domain/models';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
 export const useCustomApps = () => {
   const customApps = ref<CustomAppListItem[]>([]);

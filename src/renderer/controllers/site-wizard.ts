@@ -1,4 +1,4 @@
-import type { SiteCreateInput } from '../../shared/core/ipc';
+import type { SiteCreateInput } from '@frappe-local/shared/core/ipc';
 
 export type SiteWizardStep = 1 | 2 | 3;
 

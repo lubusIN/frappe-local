@@ -11,25 +11,25 @@ import type {
   SiteListItem,
   SiteUpdateInput,
   UpdateCheckResult,
-} from '../shared/core/ipc';
-import type { DiagnosticsReport } from '../shared/domain/diagnostics';
-import { runDiagnostics, getLastDiagnosticsReport } from './services/diagnostics-service';
-import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from './services/runtime-service';
-import { getPodmanMachines, isPodmanMachineRequired } from './utils/podman/podman';
-import { getRecommendedPodmanMemoryMb } from '../shared/core/system-resources';
-import { getBinaryPath } from './utils/binaries';
-import { execPromise } from './utils/exec';
-import { ipcChannels } from '../shared/core/ipc';
-import type { TaskProgressEvent } from '../shared/domain/task-runner';
-import { getTaskRunner, type TaskExecutionContext } from './services/task-runner';
-import { createMainLogger } from './logger';
-import { findNextAvailableTcpPort } from './utils/ports';
-import { normalizeSiteHost } from '../shared/utils/site-hostname';
-import { resolveBenchHttpPort, DEFAULT_HTTP_PORT } from './utils/bench-http-port';
+} from '@frappe-local/shared/core/ipc';
+import type { DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
+import { runDiagnostics, getLastDiagnosticsReport } from '@frappe-local/main/services/diagnostics-service';
+import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from '@frappe-local/main/services/runtime-service';
+import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman/podman';
+import { getRecommendedPodmanMemoryMb } from '@frappe-local/shared/core/system-resources';
+import { getBinaryPath } from '@frappe-local/main/utils/binaries';
+import { execPromise } from '@frappe-local/main/utils/exec';
+import { ipcChannels } from '@frappe-local/shared/core/ipc';
+import type { TaskProgressEvent } from '@frappe-local/shared/domain/task-runner';
+import { getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services/task-runner';
+import { createMainLogger } from '@frappe-local/main/logger';
+import { findNextAvailableTcpPort } from '@frappe-local/main/utils/ports';
+import { normalizeSiteHost } from '@frappe-local/shared/utils/site-hostname';
+import { resolveBenchHttpPort, DEFAULT_HTTP_PORT } from '@frappe-local/main/utils/bench-http-port';
 
 const mainLogger = createMainLogger('ipc');
 
-import type { AppRuntimePaths } from './config';
+import type { AppRuntimePaths } from '@frappe-local/main/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -50,19 +50,19 @@ import {
   type Site,
   type UpdateCustomAppInput,
   UpdateCustomAppInputSchema,
-} from '../shared/domain/models';
+} from '@frappe-local/shared/domain/models';
 import {
   canTransitionSiteStatus,
   isBenchReadyForSiteStatus,
-} from '../shared/domain/site-lifecycle';
-import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from './services/catalog-provider';
-import { createDefaultStorageSnapshot } from './storage/schema';
-import type { LifecycleOperation } from './services/analytics';
-import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from './services/site-orchestration';
-import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from './services/bench-orchestration';
-import { extractCustomApp } from './services/custom-app-extractor';
+} from '@frappe-local/shared/domain/site-lifecycle';
+import { APP_CATALOG_SEED_VERSION, getDefaultAppCatalogSeed } from '@frappe-local/main/services/catalog-provider';
+import { createDefaultStorageSnapshot } from '@frappe-local/main/storage/schema';
+import type { LifecycleOperation } from '@frappe-local/main/services/analytics';
+import { orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from '@frappe-local/main/services/site-orchestration';
+import { orchestrateBenchAppChanges, orchestrateBenchCreation, orchestrateBenchStart, orchestrateBenchStop, orchestrateBenchCleaning, orchestrateBenchDeletion, resetAllBenchContainers } from '@frappe-local/main/services/bench-orchestration';
+import { extractCustomApp } from '@frappe-local/main/services/custom-app-extractor';
 
-import { triggerManualUpdateCheck } from './updater';
+import { triggerManualUpdateCheck } from '@frappe-local/main/updater';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -682,8 +682,8 @@ export const registerIpcHandlers = (
     }
 
     try {
-      const { getComposeProjectName } = await import('./utils/podman/compose-args');
-      const { openBenchShell } = await import('./utils/terminal');
+      const { getComposeProjectName } = await import('@frappe-local/main/utils/podman/compose-args');
+      const { openBenchShell } = await import('@frappe-local/main/utils/terminal');
       const projectName = getComposeProjectName(bench.id);
       const runtimeEnv = await getRuntimeEnv();
       await openBenchShell(bench.path, projectName, runtimeEnv);

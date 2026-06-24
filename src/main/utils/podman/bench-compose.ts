@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { DATABASE_CREDENTIALS } from '../../constants';
+import { DATABASE_CREDENTIALS } from '@frappe-local/main/constants';
 
 /** Hidden folder inside the bench directory that stores infrastructure files. */
 export const FRAPPE_LOCAL_DIR = '.frappe-local';

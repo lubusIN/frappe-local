@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execPromise } from '../utils/exec';
+import { execPromise } from '@frappe-local/main/utils/exec';
 import { randomUUID } from 'node:crypto';
-import { createMainLogger } from '../logger';
+import { createMainLogger } from '@frappe-local/main/logger';
 
 const logger = createMainLogger('custom-app-extractor');
 

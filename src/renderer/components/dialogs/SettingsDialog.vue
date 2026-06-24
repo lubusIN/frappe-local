@@ -318,13 +318,13 @@
 <script setup lang="ts">
 import { Button, ConfirmDialog, Dialog, Divider, Select, Sidebar, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import StatePanel from '../ui/StatePanel.vue';
-import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
-import AppLogo from '../ui/AppLogo.vue';
-import { useSettings } from '../../composables/data/useSettings';
-import { useIpc } from '../../composables/system/useIpc';
-import { useSshKeys } from '../../composables/system/useSshKeys';
-import { MIN_PODMAN_MEMORY_MB } from '../../../shared/domain/models';
+import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
+import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
+import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
+import { useSettings } from '@frappe-local/renderer/composables/data/useSettings';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { useSshKeys } from '@frappe-local/renderer/composables/system/useSshKeys';
+import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain/models';
 
 const props = defineProps<{
   open: boolean;

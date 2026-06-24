@@ -155,11 +155,11 @@ import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-u
 import IconTerminal from '~icons/lucide/terminal';
 import IconCopy from '~icons/lucide/copy';
 import { computed, nextTick, ref, watch } from 'vue';
-import type { ProgressTaskSummary } from '../../controllers/progress';
-import type { TaskLogLevel, TaskProgressEvent } from '../../../shared/domain/task-runner';
-import { formatStatus, statusTheme } from '../../utils/format';
-import { useIpc } from '../../composables/system/useIpc';
-import TaskTimer from '../ui/TaskTimer.vue';
+import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers/progress';
+import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domain/task-runner';
+import { formatStatus, statusTheme } from '@frappe-local/renderer/utils/format';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
 
 const props = defineProps<{
   task: ProgressTaskSummary | null;

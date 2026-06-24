@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { getActiveTaskSignal } from '../services/task-runner';
+import { getActiveTaskSignal } from '@frappe-local/main/services/task-runner';
 
 export type ExecResult = {
   stdout: string;

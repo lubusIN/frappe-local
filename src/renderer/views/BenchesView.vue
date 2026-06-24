@@ -169,23 +169,23 @@ import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import { computed, onBeforeUnmount, ref, watch, watchEffect, type Component } from 'vue';
 import { useRouter } from 'vue-router';
-import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
+import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 
 
-import StatePanel from '../components/ui/StatePanel.vue';
-import EmptyState from '../components/ui/EmptyState.vue';
-import ResourceListView from '../components/ui/ResourceListView.vue';
-import ManageAppsDialog from '../components/dialogs/ManageAppsDialog.vue';
-import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
+import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
+import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
+import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
+import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
+import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 
-import { useConfirmAction } from '../composables/ui/useConfirmAction';
-import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
-import { useProgressCenter } from '../composables/system/useProgressCenter';
-import { useResourceTaskState } from '../composables/system/useResourceTaskState';
-import { useAppCatalog } from '../composables/data/useAppCatalog';
-import { useBenches } from '../composables/data/useBenches';
-import BenchWizardDialog from '../components/dialogs/BenchWizardDialog.vue';
-import type { BenchListItem } from '../../shared/core/ipc';
+import { useConfirmAction } from '@frappe-local/renderer/composables/ui/useConfirmAction';
+import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
+import { useProgressCenter } from '@frappe-local/renderer/composables/system/useProgressCenter';
+import { useResourceTaskState } from '@frappe-local/renderer/composables/system/useResourceTaskState';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
+import { useBenches } from '@frappe-local/renderer/composables/data/useBenches';
+import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
+import type { BenchListItem } from '@frappe-local/shared/core/ipc';
 
 
 const {

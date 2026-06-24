@@ -1,20 +1,20 @@
-import { execPromise } from '../utils/exec';
-import { errorMessage } from '../../shared/core/utils';
-import { getBinaryPath } from '../utils/binaries';
+import { execPromise } from '@frappe-local/main/utils/exec';
+import { errorMessage } from '@frappe-local/shared/core/utils';
+import { getBinaryPath } from '@frappe-local/main/utils/binaries';
 import path from 'node:path';
 import fs from 'node:fs';
-import { getTaskRunner, type TaskExecutionContext } from './task-runner';
-import type { Bench, CustomAppItem, Site } from '../../shared/domain/models';
-import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv } from './runtime-service';
-import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '../constants';
-import { findNextAvailableTcpPort, isTcpPortFree } from '../utils/ports';
-import { humanizeCreateFailure, isLikelyOutOfMemory } from '../../shared/core/runtime-errors';
-import { ensureBenchComposeWritten, getBenchComposePath } from '../utils/podman/bench-compose';
-import { benchComposeArgs, getComposeProjectName, composeBenchArgs, composeExecArgs } from '../utils/podman/compose-args';
-import { cleanupPodmanResources, projectFilterArgs, nameFilterArgs } from '../utils/podman/podman-cleanup';
-import type { AppCatalogItem } from '../../shared/domain/models';
-import { getDefaultAppCatalogSeed } from './catalog-provider';
-import { DEFAULT_HTTP_PORT } from '../utils/bench-http-port';
+import { getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services/task-runner';
+import type { Bench, CustomAppItem, Site } from '@frappe-local/shared/domain/models';
+import { ensureRuntimeRunning, getLastRuntimeError, getRuntimeEnv } from '@frappe-local/main/services/runtime-service';
+import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
+import { findNextAvailableTcpPort, isTcpPortFree } from '@frappe-local/main/utils/ports';
+import { humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core/runtime-errors';
+import { ensureBenchComposeWritten, getBenchComposePath } from '@frappe-local/main/utils/podman/bench-compose';
+import { benchComposeArgs, getComposeProjectName, composeBenchArgs, composeExecArgs } from '@frappe-local/main/utils/podman/compose-args';
+import { cleanupPodmanResources, projectFilterArgs, nameFilterArgs } from '@frappe-local/main/utils/podman/podman-cleanup';
+import type { AppCatalogItem } from '@frappe-local/shared/domain/models';
+import { getDefaultAppCatalogSeed } from '@frappe-local/main/services/catalog-provider';
+import { DEFAULT_HTTP_PORT } from '@frappe-local/main/utils/bench-http-port';
 
 const resolveAndPersistBenchPort = async (
   bench: Bench,

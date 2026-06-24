@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
-import type { AppCatalogItem } from '../../shared/domain/models';
-import { createMainLogger } from '../logger';
-import type { StorageAdapter } from './adapter';
-import { runStorageMigrations, storageMigrations, type StorageMigration } from './migrations';
-import { reconcileLifecycleSnapshot } from './reconcile';
-import { CURRENT_STORAGE_SCHEMA_VERSION, createDefaultStorageSnapshot, type StorageSnapshot } from './schema';
+import type { AppCatalogItem } from '@frappe-local/shared/domain/models';
+import { createMainLogger } from '@frappe-local/main/logger';
+import type { StorageAdapter } from '@frappe-local/main/storage/adapter';
+import { runStorageMigrations, storageMigrations, type StorageMigration } from '@frappe-local/main/storage/migrations';
+import { reconcileLifecycleSnapshot } from '@frappe-local/main/storage/reconcile';
+import { CURRENT_STORAGE_SCHEMA_VERSION, createDefaultStorageSnapshot, type StorageSnapshot } from '@frappe-local/main/storage/schema';
 
 type InitializeStorageOptions = {
   readonly appCatalogSeed: AppCatalogItem[];

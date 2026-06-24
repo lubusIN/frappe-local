@@ -21,8 +21,8 @@ const renderFatalScreen = (title: string, detail: unknown): void => {
 const bootstrapRenderer = async (): Promise<void> => {
 	try {
 		const [{ default: App }, { default: router }] = await Promise.all([
-			import('./App.vue'),
-			import('./router'),
+			import('@frappe-local/renderer/App.vue'),
+			import('@frappe-local/renderer/router'),
 		]);
 
 		const app = createApp(App);

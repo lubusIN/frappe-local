@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue';
-import type { DiagnosticsReport } from '../../shared/domain/diagnostics';
-import type { RendererBridge } from '../../shared/core/ipc';
-import { createRendererLogger } from '../utils/logger';
+import type { DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
+import type { RendererBridge } from '@frappe-local/shared/core/ipc';
+import { createRendererLogger } from '@frappe-local/renderer/utils/logger';
 
 const diagnosticsLogger = createRendererLogger('diagnostics');
 

@@ -1,12 +1,12 @@
-import { execPromise } from '../utils/exec';
-import { isPodmanMachineRequired, getPodmanMachines, cleanupStaleMacPodmanProcesses } from '../utils/podman/podman';
-import { getBinaryPath } from '../utils/binaries';
-import { createMainLogger } from '../logger';
+import { execPromise } from '@frappe-local/main/utils/exec';
+import { isPodmanMachineRequired, getPodmanMachines, cleanupStaleMacPodmanProcesses } from '@frappe-local/main/utils/podman/podman';
+import { getBinaryPath } from '@frappe-local/main/utils/binaries';
+import { createMainLogger } from '@frappe-local/main/logger';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { MIN_PODMAN_MEMORY_MB } from '../../shared/domain/models';
-import { PODMAN_RUNTIME_TIMEOUTS } from '../constants';
+import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain/models';
+import { PODMAN_RUNTIME_TIMEOUTS } from '@frappe-local/main/constants';
 
 const logger = createMainLogger('runtime');
 

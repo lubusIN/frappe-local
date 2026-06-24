@@ -109,9 +109,9 @@
 
 <script setup lang="ts">
 import { Badge, Button } from 'frappe-ui';
-import type { UpdateCheckResult, UpdateStrategyStatus } from '../../shared/core/ipc';
+import type { UpdateCheckResult, UpdateStrategyStatus } from '@frappe-local/shared/core/ipc';
 import { computed } from 'vue';
-import StatePanel from './ui/StatePanel.vue';
+import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 
 const props = defineProps<{
   status: UpdateStrategyStatus | null;

@@ -103,12 +103,13 @@
         >
           <label class="text-sm font-medium text-ink-gray-9">Local Folder Path</label>
           <div class="flex gap-2">
-            <TextInput
-              v-model="source"
-              class="flex-1"
-              placeholder="/Users/username/projects/my-app"
-              :disabled="isExtracting || isSaving"
-            />
+            <div class="flex-1">
+              <TextInput
+                v-model="source"
+                placeholder="/Users/username/projects/my-app"
+                :disabled="isExtracting || isSaving"
+              />
+            </div>
             <Button
               variant="outline"
               :disabled="isExtracting || isSaving"
@@ -176,8 +177,8 @@
 <script setup lang="ts">
 import { Alert, Button, ConfirmDialog, debounce, Dialog, Switch, TabButtons, TextInput, toast } from 'frappe-ui';
 import { computed, onMounted, ref, watch } from 'vue';
-import type { CustomAppListItem, ExtractedCustomAppMetadata } from '../../../shared/core/ipc';
-import { useSshKeys } from '../../composables/system/useSshKeys';
+import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core/ipc';
+import { useSshKeys } from '@frappe-local/renderer/composables/system/useSshKeys';
 
 const emit = defineEmits<{
   (e: 'close'): void;

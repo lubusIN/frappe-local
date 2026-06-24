@@ -1,15 +1,15 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import dns from 'node:dns/promises';
-import type { AppRuntimePaths } from '../config';
+import type { AppRuntimePaths } from '@frappe-local/main/config';
 
-import type { DiagnosticsCheckResult, DiagnosticsReport } from '../../shared/domain/diagnostics';
-import type { Settings } from '../../shared/domain/models';
-import { createMainLogger } from '../logger';
-import { execPromise } from '../utils/exec';
-import { getBinaryPath } from '../utils/binaries';
-import { isPodmanMachineRequired, getPodmanMachines } from '../utils/podman/podman';
-import { getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from './runtime-service';
+import type { DiagnosticsCheckResult, DiagnosticsReport } from '@frappe-local/shared/domain/diagnostics';
+import type { Settings } from '@frappe-local/shared/domain/models';
+import { createMainLogger } from '@frappe-local/main/logger';
+import { execPromise } from '@frappe-local/main/utils/exec';
+import { getBinaryPath } from '@frappe-local/main/utils/binaries';
+import { isPodmanMachineRequired, getPodmanMachines } from '@frappe-local/main/utils/podman/podman';
+import { getRuntimeEnv, FRAPPE_LOCAL_MACHINE_NAME } from '@frappe-local/main/services/runtime-service';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;

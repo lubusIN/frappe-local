@@ -1,4 +1,4 @@
-import type { BenchCreateInput } from '../../shared/core/ipc';
+import type { BenchCreateInput } from '@frappe-local/shared/core/ipc';
 export type BenchWizardStep = 1 | 2;
 
 export type BenchWizardDraft = {

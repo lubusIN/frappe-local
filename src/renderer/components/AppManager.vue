@@ -200,8 +200,8 @@
 import { Badge, Button, Select, TextInput } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
 import { computed, ref } from 'vue';
-import type { CatalogAppItem } from '../../shared/core/ipc';
-import { useAppCatalogFilters } from '../composables/data/useAppCatalogFilters';
+import type { CatalogAppItem } from '@frappe-local/shared/core/ipc';
+import { useAppCatalogFilters } from '@frappe-local/renderer/composables/data/useAppCatalogFilters';
 
 const props = withDefaults(
   defineProps<{

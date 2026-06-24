@@ -5,8 +5,8 @@ import {
   filterProgressTasks,
   reconcileSavedProgressTasks,
   type ProgressTaskSummary,
-} from '../../controllers/progress';
-import { useIpc } from './useIpc';
+} from '@frappe-local/renderer/controllers/progress';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
 export const ACTIVITIES_STORAGE_KEY = 'frappe-local:activities';
 export const ACKNOWLEDGED_TASKS_KEY = 'frappe-local:acknowledged-tasks';

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Bench } from '../../shared/domain/models';
+import type { Bench } from '@frappe-local/shared/domain/models';
 
 export const DEFAULT_HTTP_PORT = 8080;
 

@@ -1,5 +1,5 @@
-import type { StorageAdapter } from '../adapter';
-import type { AppCatalogItem } from '../../../shared/domain/models';
+import type { StorageAdapter } from '@frappe-local/main/storage/adapter';
+import type { AppCatalogItem } from '@frappe-local/shared/domain/models';
 
 export class AppCatalogRepository {
   constructor(private readonly adapter: StorageAdapter) {}

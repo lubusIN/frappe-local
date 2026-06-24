@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { routes } from './routes';
+import { routes } from '@frappe-local/renderer/router/routes';
 
 const router = createRouter({
   history: createWebHashHistory(),

@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       electron: path.join(currentDirectory, 'tests/mocks/electron.ts'),
+      '@frappe-local': path.join(currentDirectory, 'src'),
     },
   },
   test: {

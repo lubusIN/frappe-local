@@ -1,4 +1,4 @@
-import type { CatalogAppItem } from '../../../shared/core/ipc';
+import type { CatalogAppItem } from '@frappe-local/shared/core/ipc';
 
 /**
  * Normalizes Frappe version identifiers used in the bench creation form

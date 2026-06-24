@@ -6,8 +6,8 @@
 
 <script setup lang="ts">
 import { FrappeUIProvider } from 'frappe-ui';
-import AppShell from './components/AppShell.vue';
-import { useTheme } from './composables/system/useTheme';
+import AppShell from '@frappe-local/renderer/components/AppShell.vue';
+import { useTheme } from '@frappe-local/renderer/composables/system/useTheme';
 
 useTheme();
 </script>

@@ -1,9 +1,9 @@
 import { app } from 'electron';
 import path from 'node:path';
 import { autoUpdater } from 'electron-updater';
-import type { UpdateCheckResult } from '../shared/core/ipc';
-import { createMainLogger } from './logger';
-import type { SettingsRepository } from './storage/repositories/settings-repository';
+import type { UpdateCheckResult } from '@frappe-local/shared/core/ipc';
+import { createMainLogger } from '@frappe-local/main/logger';
+import type { SettingsRepository } from '@frappe-local/main/storage/repositories/settings-repository';
 
 const updaterLogger = createMainLogger('updater');
 

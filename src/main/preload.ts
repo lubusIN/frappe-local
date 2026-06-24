@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CreateCustomAppInput, UpdateCustomAppInput } from '../shared/domain/models';
-import type { RendererBridge } from '../shared/core/ipc';
-import { ipcChannels } from '../shared/core/ipc';
+import type { CreateCustomAppInput, UpdateCustomAppInput } from '@frappe-local/shared/domain/models';
+import type { RendererBridge } from '@frappe-local/shared/core/ipc';
+import { ipcChannels } from '@frappe-local/shared/core/ipc';
 
 const rendererBridge: RendererBridge = {
 	checkAppHealth: async () => ipcRenderer.invoke(ipcChannels.appHealthCheck),

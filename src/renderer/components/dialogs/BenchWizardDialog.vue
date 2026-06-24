@@ -81,19 +81,19 @@
 <script setup lang="ts">
 import { Button, FormLabel, TextInput } from 'frappe-ui';
 import { reactive, ref, watch } from 'vue';
-import WizardDialog from './WizardDialog.vue';
-import FrappeVersionSelect from '../ui/FrappeVersionSelect.vue';
-import { useBenches } from '../../composables/data/useBenches';
-import { useIpc } from '../../composables/system/useIpc';
-import { useSettings } from '../../composables/data/useSettings';
+import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
+import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
+import { useBenches } from '@frappe-local/renderer/composables/data/useBenches';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { useSettings } from '@frappe-local/renderer/composables/data/useSettings';
 import {
   buildBenchCreatePayload,
   getBenchWizardStepErrors,
   type BenchWizardStep,
-} from '../../controllers/bench-wizard';
-import { toSelectorFrappeVersion } from '../../utils/frappe-version';
+} from '@frappe-local/renderer/controllers/bench-wizard';
+import { toSelectorFrappeVersion } from '@frappe-local/renderer/utils/frappe-version';
 
-import type { BenchListItem } from '../../../shared/domain/domain-models';
+import type { BenchListItem } from '@frappe-local/shared/domain/domain-models';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{

@@ -1,8 +1,8 @@
 import { computed, ref, type Ref } from 'vue';
-import type { CatalogAppItem } from '../../../shared/core/ipc';
-import { useAppCatalog } from './useAppCatalog';
-import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '../../utils/catalog/catalog-query';
-import { evaluateCatalogCompatibility } from '../../utils/catalog/catalog-compatibility';
+import type { CatalogAppItem } from '@frappe-local/shared/core/ipc';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
+import { filterAndSortCatalog, getCatalogCategories, type CatalogSort } from '@frappe-local/renderer/utils/catalog/catalog-query';
+import { evaluateCatalogCompatibility } from '@frappe-local/renderer/utils/catalog/catalog-compatibility';
 
 export function useAppCatalogFilters(options?: { frappeVersion?: Ref<string | undefined> }) {
   const query = ref('');

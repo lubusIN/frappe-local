@@ -7,7 +7,7 @@ import type {
   TaskSnapshot,
   TaskLogLevel,
   TaskResourceContext,
-} from '../../shared/domain/task-runner';
+} from '@frappe-local/shared/domain/task-runner';
 
 type ManagedTask = {
   readonly id: string;

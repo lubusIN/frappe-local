@@ -1,4 +1,4 @@
-import type { Bench, Site } from './models';
+import type { Bench, Site } from '@frappe-local/shared/domain/models';
 
 type SiteStatus = Site['status'];
 type BenchStatus = Bench['status'];

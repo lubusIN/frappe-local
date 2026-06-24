@@ -1,5 +1,5 @@
-import { execPromise } from '../exec';
-import { errorMessage } from '../../../shared/core/utils';
+import { execPromise } from '@frappe-local/main/utils/exec';
+import { errorMessage } from '@frappe-local/shared/core/utils';
 
 type CleanupLogger = {
   info: (msg: string) => void;

@@ -127,17 +127,17 @@ import { Badge, LoadingIndicator, Select } from 'frappe-ui';
 import IconActivity from '~icons/lucide/activity';
 import IconTrash2 from '~icons/lucide/trash2';
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import ConfirmationDialog from '../components/dialogs/ConfirmationDialog.vue';
-import EmptyState from '../components/ui/EmptyState.vue';
-import ErrorNotice from '../components/ui/ErrorNotice.vue';
-import ResourceListView from '../components/ui/ResourceListView.vue';
-import TaskLogDialog from '../components/dialogs/TaskLogDialog.vue';
-import TaskTimer from '../components/ui/TaskTimer.vue';
-import { useProgressCenter } from '../composables/system/useProgressCenter';
-import { usePageHeaderActions } from '../composables/ui/usePageHeaderActions';
-import { buildErrorRemediationNotice } from '../utils/error-remediation';
-import { formatStatus, statusTheme } from '../utils/format';
-import type { ProgressTaskSummary } from '../controllers/progress';
+import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
+import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
+import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
+import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
+import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
+import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
+import { useProgressCenter } from '@frappe-local/renderer/composables/system/useProgressCenter';
+import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui/usePageHeaderActions';
+import { buildErrorRemediationNotice } from '@frappe-local/renderer/utils/error-remediation';
+import { formatStatus, statusTheme } from '@frappe-local/renderer/utils/format';
+import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers/progress';
 
 const {
   filteredTasks,

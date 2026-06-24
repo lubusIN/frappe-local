@@ -1,5 +1,5 @@
-import { execPromise } from '../exec';
-import { getBinaryPath } from '../binaries';
+import { execPromise } from '@frappe-local/main/utils/exec';
+import { getBinaryPath } from '@frappe-local/main/utils/binaries';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const parsePodmanJson = (output: string): any => {

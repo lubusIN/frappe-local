@@ -40,10 +40,10 @@ import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
 import IconSettings from '~icons/lucide/settings';
 import { computed, onMounted, reactive } from 'vue';
-import FirstRunGuide, { type FirstRunGuideLink } from '../components/FirstRunGuide.vue';
-import ShortcutCard from '../components/ui/ShortcutCard.vue';
-import { useIpc } from '../composables/system/useIpc';
-import { useSettingsDialog } from '../composables/ui/useSettingsDialog';
+import FirstRunGuide, { type FirstRunGuideLink } from '@frappe-local/renderer/components/FirstRunGuide.vue';
+import ShortcutCard from '@frappe-local/renderer/components/ui/ShortcutCard.vue';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { useSettingsDialog } from '@frappe-local/renderer/composables/ui/useSettingsDialog';
 
 const ipc = useIpc();
 const { open: openSettings } = useSettingsDialog();
