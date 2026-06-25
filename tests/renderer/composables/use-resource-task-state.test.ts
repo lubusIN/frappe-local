@@ -11,6 +11,7 @@ const makeTask = (overrides: Partial<ProgressTaskSummary> = {}): ProgressTaskSum
   message: overrides.message ?? 'Failed to fetch app',
   logs: overrides.logs ?? [],
   stepName: overrides.stepName ?? null,
+  createdAt: overrides.createdAt ?? overrides.timestamp ?? '2026-06-07T08:00:00.000Z',
   timestamp: overrides.timestamp ?? '2026-06-07T08:00:00.000Z',
   errorCode: overrides.errorCode ?? null,
   resource: overrides.resource ?? 'bench',

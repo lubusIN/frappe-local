@@ -23,7 +23,7 @@ if (result.status !== 0) {
     if (!line.trim()) continue;
     
     // Check if line starts a new error
-    const isNewError = /^[a-zA-Z0-9_./-]+:[0-9]+:[0-9]+ - error TS/.test(line);
+    const isNewError = /error TS[0-9]+:/.test(line);
     
     if (isNewError) {
       if (currentError.length > 0 && !isFrappeUiError) {

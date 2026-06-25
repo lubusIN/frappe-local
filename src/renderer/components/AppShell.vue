@@ -42,7 +42,7 @@
 
           <Alert
             v-if="updateState !== 'idle'"
-            class="mx-2 mb-2 transition-all duration-300"
+            class="mx-2 mb-2 transition-all duration-300 bg-surface-base"
             :class="isCollapsed ? 'hidden' : 'block'"
             theme="blue"
             :title="updateState === 'available' ? 'Update Available' : updateState === 'downloading' ? 'Downloading Update...' : 'Update Ready'"
@@ -58,7 +58,7 @@
                 <Button v-if="updateState === 'available'" size="xs" variant="solid" @click="triggerDownload">
                   Download
                 </Button>
-                <Button v-else-if="updateState === 'downloaded'" size="xs" variant="solid" @click="triggerInstall">
+                <Button v-else-if="updateState === 'downloaded'" size="xs" variant="subtle" @click="triggerInstall">
                   Restart & Install
                 </Button>
               </div>
@@ -124,9 +124,9 @@
     />
 
     <TaskLogDialog
-      v-if="selectedFailedTask"
-      :task="selectedFailedTask"
-      @close="selectedFailedTaskId = null"
+      v-if="selectedTaskLog"
+      :task="selectedTaskLog"
+      @close="activeLogTaskId = null"
     />
   </div>
 </template>
@@ -158,14 +158,13 @@ const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { actions: headerActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
-const { tasks } = useProgressCenter();
+const { tasks, activeLogTaskId } = useProgressCenter();
 const { isFrontDoorAvailable } = useFrontDoorStatus();
 const handledFailureTaskIds = new Set(
   tasks.value
     .filter((task) => task.type === 'task.failed')
     .map((task) => task.taskId)
 );
-const selectedFailedTaskId = ref<string | null>(null);
 const updateState = ref<'idle' | 'available' | 'downloading' | 'downloaded'>('idle');
 const updateVersion = ref<string>('');
 const appVersion = __APP_VERSION__;
@@ -188,9 +187,9 @@ const triggerInstall = async () => {
   await window.frappeLocal?.installUpdate?.();
 };
 
-const selectedFailedTask = computed(() => {
-  if (!selectedFailedTaskId.value) return null;
-  return tasks.value.find((task) => task.taskId === selectedFailedTaskId.value) ?? null;
+const selectedTaskLog = computed(() => {
+  if (!activeLogTaskId.value) return null;
+  return tasks.value.find((task) => task.taskId === activeLogTaskId.value) ?? null;
 });
 
 watch(
@@ -207,7 +206,7 @@ watch(
         label: 'View logs',
         altText: `View logs for ${task.taskName}`,
         onClick: () => {
-          selectedFailedTaskId.value = task.taskId;
+          activeLogTaskId.value = task.taskId;
         },
       },
     });

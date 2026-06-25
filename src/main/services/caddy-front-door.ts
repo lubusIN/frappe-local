@@ -613,6 +613,7 @@ class CaddyFrontDoor {
     this.process = null;
     this.running = false;
     this.secure = false;
+    this.available = true;
     this.configKey = '';
     stopPidFromFile();
 

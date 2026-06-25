@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, reactive, toRefs, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, toRefs, watch } from 'vue';
 import { createDefaultProgressCenterState, createProgressCenterController, filterProgressTasks, reconcileSavedProgressTasks, type ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import { useIpc } from '@frappe-local/renderer/composables/system';
 
@@ -60,6 +60,8 @@ watch(acknowledgedTasks, (tasks) => {
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
 
+const activeLogTaskId = ref<string | null>(null);
+
 export const useProgressCenter = () => {
   if (!globalController) {
     globalController = createProgressCenterController(useIpc(), globalState);
@@ -99,5 +101,6 @@ export const useProgressCenter = () => {
     reconnect,
     acknowledgedTasks,
     clearTasks,
+    activeLogTaskId,
   };
 };

@@ -816,8 +816,8 @@ export const registerIpcHandlers = (
       : null;
 
     if (requestedApps) {
-      if (existing.status !== 'ready') {
-        throw new Error('Site must be ready before activating apps.');
+      if (existing.status !== 'ready' && existing.status !== 'failure') {
+        throw new Error('Site must be ready or in failure state before activating apps.');
       }
 
       const unavailableApps = requestedApps.filter((app) => app !== 'frappe' && !bench.apps.includes(app));

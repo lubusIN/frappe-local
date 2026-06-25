@@ -11,6 +11,7 @@ export type ProgressTaskSummary = {
   readonly message: string;
   readonly logs: Array<{ message: string; timestamp: string; level: TaskProgressEvent['logLevel'] }>;
   readonly stepName: string | null;
+  readonly createdAt: string;
   readonly timestamp: string;
   readonly errorCode: string | null;
   readonly resource: ProgressTaskResource;
@@ -46,16 +47,19 @@ export const createDefaultProgressCenterState = (): ProgressCenterState => ({
 
 export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[]): ProgressTaskSummary[] =>
   tasks.map((task) => {
+    const createdAt = (task as any).createdAt ?? task.timestamp;
     const logs = Array.isArray(task.logs) ? task.logs.slice(-MAX_LOGS_PER_TASK) : [];
     if (task.status !== 'queued' && task.status !== 'running') {
       return {
         ...task,
+        createdAt,
         logs,
       };
     }
 
     return {
       ...task,
+      createdAt,
       status: 'failure' as const,
       type: 'task.failed' as const,
       message: 'Task was interrupted when the app closed.',
@@ -111,6 +115,7 @@ export const upsertProgressTask = (
     message: event.message,
     logs: logs.slice(-MAX_LOGS_PER_TASK),
     stepName: event.stepName,
+    createdAt: existing?.createdAt ?? event.timestamp,
     timestamp: event.timestamp,
     errorCode: event.errorCode ?? existing?.errorCode ?? null,
     resource: payloadResource ?? detectProgressTaskResource(event.taskName),

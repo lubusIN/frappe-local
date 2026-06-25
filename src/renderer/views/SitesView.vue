@@ -171,11 +171,7 @@
       @cancel="cancelDeleteSite"
     />
 
-    <TaskLogDialog
-      v-if="selectedTask"
-      :task="selectedTask"
-      @close="selectedTaskId = null"
-    />
+
 
     <ManageAppsDialog
       v-model:open="showSiteAppsDialog"
@@ -238,6 +234,7 @@ import IconFolderOpen from '~icons/lucide/folder-open';
 import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
+import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -247,7 +244,6 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
-import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -280,8 +276,7 @@ onBeforeUnmount(() => {
   clearPageHeaderActions();
 });
 
-const { tasks, acknowledgedTasks } = useProgressCenter();
-const selectedTaskId = ref<string | null>(null);
+const { tasks, acknowledgedTasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
 const showSiteAppsDialog = ref(false);
 const selectedSiteForAppsId = ref<string | null>(null);
 const activatingSiteAppId = ref<string | null>(null);
@@ -291,6 +286,7 @@ const refresh = async (force = false) => {
 };
 
 const onSiteCreated = async (site: SiteListItem) => {
+  void refresh(true);
   const promise = runAndWaitForTask(() => Promise.resolve(), 'site', site.id, /^Create Site/i).then(() => refresh(true));
   const toastId = toast.loading(`Creating site ${site.name}`, {
     action: {
@@ -345,10 +341,7 @@ watch(error, (err) => {
   }
 });
 
-const selectedTask = computed(() => {
-  if (!selectedTaskId.value) return null;
-  return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
-});
+
 
 const {
   getPendingAction: getPendingSiteAction,
@@ -417,7 +410,7 @@ const getSiteActions = (site: SiteListItem) => {
     onClick: () => void | Promise<void>;
   }> = [];
 
-  if (site.status === 'ready') {
+  if (site.status === 'ready' || site.status === 'failure') {
     actions.push({
       label: 'View',
       icon: IconExternalLink,
@@ -446,9 +439,21 @@ const getSiteActions = (site: SiteListItem) => {
   actions.push({
     label: 'Apps',
     icon: IconPackage,
-    disabled: !isBenchRunning || updating.value || isBusy || site.status !== 'ready',
+    disabled: !isBenchRunning || updating.value || isBusy || (site.status !== 'ready' && site.status !== 'failure'),
     onClick: () => onShowSiteApps(site),
   });
+
+  if (site.status === 'failure') {
+    actions.push({
+      label: 'Reset status',
+      icon: IconRotateCcw,
+      disabled: !isBenchRunning || updating.value || isBusy,
+      onClick: async () => {
+        await update(site.id, { status: 'ready' });
+        toast.success(`Site "${site.name}" status reset to ready.`);
+      },
+    });
+  }
 
   actions.push({
     label: 'Delete',
@@ -601,11 +606,10 @@ const onAddParentBenchApp = async (appId: string) => {
       label: 'View logs',
       onClick: (e?: Event) => {
         e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
+        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
       },
     },
   });
-  
   closeBenchAppsDialog();
 };
 
@@ -659,11 +663,10 @@ const onConfirmRemoveParentBenchApp = async () => {
       label: 'View logs',
       onClick: (e?: Event) => {
         e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
+        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
       },
     },
   });
-  
   closeBenchAppsDialog();
 };
 
@@ -671,7 +674,7 @@ const siteAppsWarningMessage = computed(() => {
   const site = selectedSiteForApps.value;
   if (!site) return null;
   
-  const siteReady = site.status === 'ready';
+  const siteReady = site.status === 'ready' || site.status === 'failure';
   if (!siteReady) return 'Wait for site to be ready before managing apps.';
   
   if (isResourceBusy(site.id)) return 'Site app management is currently in progress. Please wait.';
@@ -714,8 +717,8 @@ const onActivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  if (site.status !== 'ready') {
-    toast.error('Wait for site to be ready before installing apps.');
+  if (site.status !== 'ready' && site.status !== 'failure') {
+    toast.error('Wait for site to be ready or in failure state before installing apps.');
     return;
   }
 
@@ -755,10 +758,10 @@ const onActivateSiteApp = async (appId: string) => {
       },
     },
   });
+  closeSiteAppsDialog();
 
   try {
     await promise;
-    closeSiteAppsDialog();
   } catch {
     // Error is handled by toast
   } finally {
@@ -799,8 +802,8 @@ const onDeactivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  if (site.status !== 'ready') {
-    toast.error('Wait for site to be ready before uninstalling apps.');
+  if (site.status !== 'ready' && site.status !== 'failure') {
+    toast.error('Wait for site to be ready or in failure state before uninstalling apps.');
     return;
   }
 
@@ -834,10 +837,10 @@ const onDeactivateSiteApp = async (appId: string) => {
       },
     },
   });
+  closeSiteAppsDialog();
 
   try {
     await promise;
-    closeSiteAppsDialog();
   } catch {
     // Error handled by toast
   } finally {

@@ -106,12 +106,6 @@
       </template>
     </ResourceListView>
 
-    <TaskLogDialog
-      v-if="selectedTask"
-      :task="selectedTask"
-      @close="selectedTask = null"
-    />
-
     <ConfirmationDialog
       :open="showClearConfirm"
       title="Clear Activities"
@@ -131,7 +125,6 @@ import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/Confir
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
-import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
 import { useProgressCenter } from '@frappe-local/renderer/composables/system';
 import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
@@ -145,12 +138,11 @@ const {
   error: progressError,
   statusFilter,
   resourceFilter,
-  reconnect,
   clearTasks,
+  activeLogTaskId,
 } = useProgressCenter();
 
 const { setActions, clearActions } = usePageHeaderActions();
-const selectedTask = ref<ProgressTaskSummary | null>(null);
 const showClearConfirm = ref(false);
 
 const onConfirmClear = () => {
@@ -265,7 +257,7 @@ const formatFullActivityTime = (value: string): string => {
 };
 
 const onActivityRowClick = (row: object) => {
-  selectedTask.value = row as ProgressTaskSummary;
+  activeLogTaskId.value = (row as ProgressTaskSummary).taskId;
 };
 
 const errorNotice = computed(() =>

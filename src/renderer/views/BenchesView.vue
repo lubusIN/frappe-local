@@ -122,12 +122,6 @@
       @created="onBenchCreated"
     />
 
-    <TaskLogDialog
-      v-if="selectedTask"
-      :task="selectedTask"
-      @close="selectedTaskId = null"
-    />
-
     <ManageAppsDialog
       v-model:open="showAppsDialog"
       :resource-name="selectedBenchForApps?.name || 'Bench'"
@@ -175,7 +169,6 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
-import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 
 import { useConfirmAction, usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 
@@ -295,7 +288,6 @@ const onAddBenchApp = async (appId: string) => {
       },
     },
   });
-  
   closeAppsDialog();
 };
 
@@ -354,7 +346,6 @@ const onConfirmRemoveBenchApp = async () => {
       },
     },
   });
-  
   closeAppsDialog();
 };
 
@@ -376,7 +367,7 @@ const benchColumns = [
   { label: '', key: 'actions', width: '48px', align: 'right' },
 ] satisfies object[];
 
-const { tasks, acknowledgedTasks } = useProgressCenter();
+const { tasks, acknowledgedTasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
 
 const {
   setPendingAction: setPendingBenchAction,
@@ -473,12 +464,7 @@ const getBenchActions = (bench: BenchListItem) => {
   return actions.filter(a => !a.hidden);
 };
 
-const selectedTaskId = ref<string | null>(null);
 
-const selectedTask = computed(() => {
-  if (!selectedTaskId.value) return null;
-  return tasks.value.find(t => t.taskId === selectedTaskId.value) || null;
-});
 
 const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
@@ -615,6 +601,7 @@ const onOpenBenchFolder = async (id: string) => {
 };
 
 const onBenchCreated = async (bench: BenchListItem) => {
+  void refresh(true);
   // For onBenchCreated we don't trigger the create action here, it was already triggered in the wizard
   // So we just pass a no-op Promise.resolve()
   const promise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
