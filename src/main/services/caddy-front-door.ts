@@ -484,10 +484,15 @@ class CaddyFrontDoor {
   private process: ChildProcess | null = null;
   private running = false;
   private secure = false;
+  private available = true;
   private configKey = '';
 
   public isRunning(): boolean {
     return this.running;
+  }
+
+  public isAvailable(): boolean {
+    return this.available;
   }
 
   public isSecure(): boolean {
@@ -498,13 +503,15 @@ class CaddyFrontDoor {
     const routes = await buildFrontDoorRoutes(repositories);
     if (routes.length === 0) {
       await this.stop();
-      return false;
+      this.available = true;
+      return true;
     }
 
     const siteHostsKey = routes.map((route) => `${route.siteHost}:${route.benchPort}`).join('|');
     const desiredConfig = buildCaddyfile(routes);
     if (this.running && this.configKey === siteHostsKey && canReuseManagedFrontDoor(desiredConfig)) {
       this.secure = await ensureCaddyRootTrusted();
+      this.available = true;
       return true;
     }
 
@@ -512,6 +519,7 @@ class CaddyFrontDoor {
       this.process = null;
       this.running = true;
       this.secure = await ensureCaddyRootTrusted();
+      this.available = true;
       this.configKey = siteHostsKey;
       logger.info('Reusing existing managed Caddy front door process with unchanged config.');
       return true;
@@ -524,6 +532,7 @@ class CaddyFrontDoor {
 
     fs.mkdirSync(CADDY_RUNTIME_DIR, { recursive: true });
     fs.writeFileSync(CADDY_CONFIG_PATH, desiredConfig, 'utf8');
+    this.available = true;
 
     return await new Promise<boolean>((resolve) => {
       const child = spawn(getBinaryPath('caddy'), ['run', '--config', CADDY_CONFIG_PATH, '--adapter', 'caddyfile'], {
@@ -554,6 +563,7 @@ class CaddyFrontDoor {
         }
         this.secure = secure;
         this.running = true;
+        this.available = true;
         this.configKey = siteHostsKey;
         settle(true);
       }, 1000);
@@ -571,6 +581,7 @@ class CaddyFrontDoor {
         this.process = null;
         this.running = false;
         this.secure = false;
+        this.available = false;
         this.configKey = '';
         stopPidFromFile();
         logger.error(`Caddy front door failed to start: ${error}`);
@@ -586,6 +597,7 @@ class CaddyFrontDoor {
         stopPidFromFile();
 
         if (!settled) {
+          this.available = false;
           logger.error(`Caddy front door exited before becoming ready (code=${code ?? 'null'}, signal=${signal ?? 'null'})`);
           settle(false);
           return;
@@ -635,4 +647,5 @@ export const stopCaddyFrontDoor = async (): Promise<void> => {
 };
 
 export const isCaddyFrontDoorRunning = (): boolean => caddyFrontDoor.isRunning();
+export const isCaddyFrontDoorAvailable = (): boolean => caddyFrontDoor.isAvailable();
 export const isCaddyFrontDoorSecure = (): boolean => caddyFrontDoor.isSecure();

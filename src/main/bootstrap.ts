@@ -13,7 +13,7 @@ import { JsonStorageAdapter, initializeStorage } from '@frappe-local/main/storag
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
 
-import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorRunning, isCaddyFrontDoorSecure, runDiagnostics } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorAvailable, isCaddyFrontDoorRunning, isCaddyFrontDoorSecure, runDiagnostics } from '@frappe-local/main/services';
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 
@@ -160,7 +160,7 @@ export const runApplicationBootstrap = async (
         return openInEditor(targetPath, editorPreference);
       },
       pathExists: (targetPath: string) => fs.existsSync(targetPath),
-      isFrontDoorAvailable: () => isCaddyFrontDoorRunning(),
+      isFrontDoorAvailable: () => isCaddyFrontDoorAvailable(),
       isFrontDoorSecure: () => isCaddyFrontDoorSecure(),
       refreshFrontDoorHosts: async () => {
         try {
