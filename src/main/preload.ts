@@ -7,6 +7,23 @@ const rendererBridge: RendererBridge = {
 	checkAppHealth: async () => ipcRenderer.invoke(ipcChannels.appHealthCheck),
 
 	checkForUpdates: async () => ipcRenderer.invoke(ipcChannels.updateCheckNow),
+	downloadUpdate: async () => ipcRenderer.invoke(ipcChannels.updateDownload),
+	installUpdate: async () => ipcRenderer.invoke(ipcChannels.updateInstall),
+	onUpdateAvailable: (listener) => {
+		const internalListener = (_event: unknown, version: string) => listener(version);
+		ipcRenderer.on(ipcChannels.updateAvailable, internalListener);
+		return () => ipcRenderer.removeListener(ipcChannels.updateAvailable, internalListener);
+	},
+	onUpdateDownloading: (listener) => {
+		const internalListener = () => listener();
+		ipcRenderer.on(ipcChannels.updateDownloading, internalListener);
+		return () => ipcRenderer.removeListener(ipcChannels.updateDownloading, internalListener);
+	},
+	onUpdateDownloaded: (listener) => {
+		const internalListener = (_event: unknown, version: string) => listener(version);
+		ipcRenderer.on(ipcChannels.updateDownloaded, internalListener);
+		return () => ipcRenderer.removeListener(ipcChannels.updateDownloaded, internalListener);
+	},
 	runDiagnostics: async () => ipcRenderer.invoke(ipcChannels.diagnosticsRun),
 	getLastDiagnosticsReport: async () => ipcRenderer.invoke(ipcChannels.diagnosticsGetLast),
 	resetDevState: async () => ipcRenderer.invoke(ipcChannels.diagnosticsResetDevState),

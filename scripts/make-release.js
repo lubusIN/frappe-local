@@ -56,13 +56,14 @@ for (const artifact of artifacts) {
     throw new Error(`Artifact is empty: ${artifact}`);
   }
 
-  const destination = path.join(releaseDirectory, path.basename(artifact));
+  const sanitizedBasename = path.basename(artifact).replace(/\s+/g, '.');
+  const destination = path.join(releaseDirectory, sanitizedBasename);
   if (fs.existsSync(destination)) {
-    throw new Error(`Duplicate release filename: ${path.basename(artifact)}`);
+    throw new Error(`Duplicate release filename: ${sanitizedBasename}`);
   }
 
   fs.copyFileSync(artifact, destination);
-  console.log(`Release artifact: ${path.basename(destination)} (${size} bytes)`);
+  console.log(`Release artifact: ${sanitizedBasename} (${size} bytes)`);
 }
 
 console.log(`Prepared ${artifacts.length} artifact(s) in ${releaseDirectory}`);
@@ -90,7 +91,7 @@ if (!isMac && !isWin && !targetFile) targetFile = artifacts.find(f => path.extna
 
 if (targetFile) {
   const filePath = targetFile; // it's the absolute path from Forge
-  const destinationFileName = path.basename(filePath);
+  const destinationFileName = path.basename(filePath).replace(/\s+/g, '.');
   const destinationFilePath = path.join(releaseDirectory, destinationFileName);
   
   const stat = fs.statSync(destinationFilePath);

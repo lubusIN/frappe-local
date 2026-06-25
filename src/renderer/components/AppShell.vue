@@ -40,6 +40,31 @@
             </template>
           </Alert>
 
+          <Alert
+            v-if="updateState !== 'idle'"
+            class="mx-2 mb-2 transition-all duration-300"
+            :class="isCollapsed ? 'hidden' : 'block'"
+            theme="blue"
+            :title="updateState === 'available' ? 'Update Available' : updateState === 'downloading' ? 'Downloading Update...' : 'Update Ready'"
+            variant="outline"
+            :dismissible="updateState === 'available'"
+            @update:dismissed="dismissUpdate"
+          >
+            <template #footer>
+              <div class="col-span-full -mt-1.5 flex flex-col gap-2">
+                <p class="text-xs text-ink-gray-7 leading-tight">
+                  v{{ updateVersion }}
+                </p>
+                <Button v-if="updateState === 'available'" size="xs" variant="solid" @click="triggerDownload">
+                  Download
+                </Button>
+                <Button v-else-if="updateState === 'downloaded'" size="xs" variant="solid" @click="triggerInstall">
+                  Restart & Install
+                </Button>
+              </div>
+            </template>
+          </Alert>
+
           <SidebarItem
             label="Settings"
             :icon="IconSettings"
@@ -141,7 +166,27 @@ const handledFailureTaskIds = new Set(
     .map((task) => task.taskId)
 );
 const selectedFailedTaskId = ref<string | null>(null);
+const updateState = ref<'idle' | 'available' | 'downloading' | 'downloaded'>('idle');
+const updateVersion = ref<string>('');
 const appVersion = __APP_VERSION__;
+
+const dismissUpdate = () => {
+  updateState.value = 'idle';
+};
+
+const triggerDownload = async () => {
+  updateState.value = 'downloading';
+  try {
+    await window.frappeLocal?.downloadUpdate?.();
+  } catch {
+    toast.error('Failed to download update package.');
+    updateState.value = 'available';
+  }
+};
+
+const triggerInstall = async () => {
+  await window.frappeLocal?.installUpdate?.();
+};
 
 const selectedFailedTask = computed(() => {
   if (!selectedFailedTaskId.value) return null;
@@ -197,6 +242,20 @@ const sidebarSections = computed(() => [
 const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Local'));
 
 onMounted(async () => {
+  window.frappeLocal?.onUpdateAvailable?.((version) => {
+    updateVersion.value = version;
+    if (updateState.value === 'idle') updateState.value = 'available';
+  });
+
+  window.frappeLocal?.onUpdateDownloading?.(() => {
+    updateState.value = 'downloading';
+  });
+
+  window.frappeLocal?.onUpdateDownloaded?.((version) => {
+    updateVersion.value = version;
+    updateState.value = 'downloaded';
+  });
+
   try {
     await window.frappeLocal?.getSettings();
   } catch {

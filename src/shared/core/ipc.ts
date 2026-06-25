@@ -3,6 +3,11 @@ import type { AppCatalogItem, CreateCustomAppInput, DiagnosticsReport, TaskProgr
 export const ipcChannels = {
   appHealthCheck: 'app:health:check',
   updateCheckNow: 'update:check-now',
+  updateAvailable: 'update:available',
+  updateDownload: 'update:download',
+  updateInstall: 'update:install',
+  updateDownloaded: 'update:downloaded',
+  updateDownloading: 'update:downloading',
   catalogList: 'catalog:list',
   catalogSync: 'catalog:sync',
   diagnosticsRun: 'diagnostics:run',
@@ -179,6 +184,11 @@ export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
 
   readonly checkForUpdates: () => Promise<UpdateCheckResult>;
+  readonly downloadUpdate: () => Promise<void>;
+  readonly installUpdate: () => Promise<void>;
+  readonly onUpdateAvailable: (listener: (version: string) => void) => () => void;
+  readonly onUpdateDownloading: (listener: () => void) => () => void;
+  readonly onUpdateDownloaded: (listener: (version: string) => void) => () => void;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
   readonly resetDevState: () => Promise<boolean>;

@@ -177,11 +177,9 @@ export const runApplicationBootstrap = async (
     await context.createMainWindow();
 
     // Initialize auto-updater
-    if (app.isPackaged) {
-      setTimeout(() => {
-        initializeUpdater(settingsRepository).catch((err) => bootstrapLogger.error('Failed to initialize updater', err));
-      }, 3000);
-    }
+    setTimeout(() => {
+      initializeUpdater(settingsRepository).catch((err) => bootstrapLogger.error('Failed to initialize updater', err));
+    }, 3000);
 
     bootstrapLogger.info('startup sequence completed');
 

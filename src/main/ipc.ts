@@ -22,7 +22,7 @@ import { CreateBenchInputSchema, CreateCustomAppInputSchema, CreateSiteInputSche
 import { createDefaultStorageSnapshot } from '@frappe-local/main/storage';
 import type { LifecycleOperation } from '@frappe-local/main/services';
 
-import { triggerManualUpdateCheck } from '@frappe-local/main/updater';
+import { configureUpdater, triggerManualUpdateCheck, triggerUpdateDownload, triggerUpdateInstall } from '@frappe-local/main/updater';
 
 type IpcMainLike = {
   handle: (channel: string, listener: (...args: unknown[]) => unknown) => void;
@@ -986,6 +986,9 @@ export const registerIpcHandlers = (
     
     nativeTheme.themeSource = updated.theme ?? 'system';
     
+    // dynamically reconfigure updater in case update channel or autoUpdateEnabled changed
+    configureUpdater(updated);
+    
     return toSettingsItem(updated);
   });
 
@@ -1016,7 +1019,15 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
-    return triggerManualUpdateCheck();
+    return await triggerManualUpdateCheck();
+  });
+
+  ipcMainLike.handle(ipcChannels.updateDownload, async (): Promise<void> => {
+    return await triggerUpdateDownload();
+  });
+
+  ipcMainLike.handle(ipcChannels.updateInstall, async (): Promise<void> => {
+    return await triggerUpdateInstall();
   });
 
   ipcMainLike.handle(ipcChannels.customAppsList, async () => {
