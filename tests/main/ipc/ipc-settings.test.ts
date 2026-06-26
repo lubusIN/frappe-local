@@ -113,7 +113,7 @@ describe('settings IPC handlers', () => {
     const result = await handlers.get(ipcChannels.settingsGet)?.();
     expect(result).toMatchObject({
       defaultFrappeVersion: '16.0.0',
-      updateChannel: 'stable',
+      updateChannel: 'nightly',
       autoUpdateEnabled: true,
     });
   });

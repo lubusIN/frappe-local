@@ -47,7 +47,7 @@ describe('SettingsRepository', () => {
   it('set creates settings and returns the full object', async () => {
     const saved = await repo.set(fullSettings);
     expect(saved.defaultFrappeVersion).toBe('16.0.0');
-    expect(saved.updateChannel).toBe('stable');
+    expect(saved.updateChannel).toBe('nightly');
   });
 
   it('set persists settings to the snapshot', async () => {

@@ -12,8 +12,12 @@ export const configureUpdater = (settings: Settings | null): void => {
   try {
     if (!settings) return;
 
-    if (!settings.autoUpdateEnabled) {
-      updaterLogger.info('auto updates are disabled in settings');
+    if (!app.isPackaged || !settings.autoUpdateEnabled) {
+      if (!app.isPackaged) {
+        updaterLogger.info('dev mode: disabling auto download');
+      } else {
+        updaterLogger.info('auto updates are disabled in settings');
+      }
       autoUpdater.autoDownload = false;
     } else {
       autoUpdater.autoDownload = true;
@@ -139,6 +143,15 @@ export const triggerUpdateDownload = async (): Promise<void> => {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(ipcChannels.updateDownloading);
   });
+  if (!app.isPackaged) {
+    updaterLogger.info('Dev mode: Simulating update download...');
+    setTimeout(() => {
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(ipcChannels.updateDownloaded, autoUpdater.currentVersion.version);
+      });
+    }, 1500);
+    return;
+  }
   try {
     await autoUpdater.downloadUpdate();
   } catch (error) {
@@ -149,5 +162,9 @@ export const triggerUpdateDownload = async (): Promise<void> => {
 
 export const triggerUpdateInstall = async (): Promise<void> => {
   updaterLogger.info('Triggering update installation via IPC...');
+  if (!app.isPackaged) {
+    updaterLogger.info('Dev mode: Cannot quit and install update in un-packaged development build.');
+    return;
+  }
   autoUpdater.quitAndInstall();
 };
