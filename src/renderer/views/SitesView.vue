@@ -592,12 +592,16 @@ const onAddParentBenchApp = async (appId: string) => {
   }
 
   const nextApps = normalizeSelection([...bench.apps, appId]);
-  pendingRemoveBenchAppId.value = appId;
-  
+
   const promise = runAndWaitForTask(
     () => queueParentBenchAppsUpdate(bench, nextApps),
     'bench', bench.id, /^(Get) app .* on /i
-  );
+  ).then(async (res) => {
+    await refreshBenches(true);
+    return res;
+  });
+  closeBenchAppsDialog();
+
   toast.promise(promise, {
     loading: `Getting app ${appId} for bench ${bench.name}`,
     success: `Got app ${appId} on bench ${bench.name}`,
@@ -610,7 +614,6 @@ const onAddParentBenchApp = async (appId: string) => {
       },
     },
   });
-  closeBenchAppsDialog();
 };
 
 const onRequestRemoveParentBenchApp = (appId: string) => {
@@ -650,11 +653,16 @@ const onConfirmRemoveParentBenchApp = async () => {
 
   removeBenchAppConfirmOpen.value = false;
   const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
-  
+
   const promise = runAndWaitForTask(
     () => queueParentBenchAppsUpdate(bench, nextApps),
     'bench', bench.id, /^(Remove) app .* on /i
-  );
+  ).then(async (res) => {
+    await refreshBenches(true);
+    return res;
+  });
+  closeBenchAppsDialog();
+
   toast.promise(promise, {
     loading: `Removing app from bench ${bench.name}`,
     success: `Removed app from bench ${bench.name}`,
@@ -667,7 +675,6 @@ const onConfirmRemoveParentBenchApp = async () => {
       },
     },
   });
-  closeBenchAppsDialog();
 };
 
 const siteAppsWarningMessage = computed(() => {
@@ -741,11 +748,16 @@ const onActivateSiteApp = async (appId: string) => {
 
   activatingSiteAppId.value = appId;
   const nextApps = Array.from(new Set([...existingApps, appId]));
-  
+
   const promise = runAndWaitForTask(
     () => update(site.id, { apps: nextApps }),
     'site', site.id, /^Install app/i
-  );
+  ).then(async (res) => {
+    await load(true);
+    return res;
+  });
+  closeSiteAppsDialog();
+
   toast.promise(promise, {
     loading: `Installing app ${appId} on ${site.name}`,
     success: `Installed app ${appId} on ${site.name}`,
@@ -758,12 +770,9 @@ const onActivateSiteApp = async (appId: string) => {
       },
     },
   });
-  closeSiteAppsDialog();
 
   try {
     await promise;
-  } catch {
-    // Error is handled by toast
   } finally {
     activatingSiteAppId.value = null;
   }
@@ -820,11 +829,16 @@ const onDeactivateSiteApp = async (appId: string) => {
 
   activatingSiteAppId.value = appId;
   const nextApps = existingApps.filter((x) => x !== appId);
-  
+
   const promise = runAndWaitForTask(
     () => update(site.id, { apps: nextApps }),
     'site', site.id, /^Uninstall app/i
-  );
+  ).then(async (res) => {
+    await load(true);
+    return res;
+  });
+  closeSiteAppsDialog();
+
   toast.promise(promise, {
     loading: `Uninstalling app ${appId} from ${site.name}`,
     success: `Uninstalled app ${appId} from ${site.name}`,
@@ -837,12 +851,9 @@ const onDeactivateSiteApp = async (appId: string) => {
       },
     },
   });
-  closeSiteAppsDialog();
 
   try {
     await promise;
-  } catch {
-    // Error handled by toast
   } finally {
     activatingSiteAppId.value = null;
     pendingRemoveSiteAppName.value = '';

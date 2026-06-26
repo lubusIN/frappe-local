@@ -269,13 +269,16 @@ const onAddBenchApp = async (appId: string) => {
   }
 
   const nextApps = normalizeSelection([...bench.apps, appId]);
-  pendingRemoveBenchAppId.value = appId;
-  
+
   const promise = runAndWaitForTask(
     () => queueBenchAppsUpdate(nextApps),
     'bench', bench.id, /^(Get) app .* on /i
-  );
-  
+  ).then(async (res) => {
+    await refresh(true);
+    return res;
+  });
+  closeAppsDialog();
+
   toast.promise(promise, {
     loading: `Getting app ${appId} for bench ${bench.name}`,
     success: `Got app ${appId} on bench ${bench.name}`,
@@ -288,7 +291,6 @@ const onAddBenchApp = async (appId: string) => {
       },
     },
   });
-  closeAppsDialog();
 };
 
 const onRequestRemoveBenchApp = (appId: string) => {
@@ -329,10 +331,15 @@ const onConfirmRemoveBenchApp = async () => {
   removeAppConfirmOpen.value = false;
 
   const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
+
   const promise = runAndWaitForTask(
     () => queueBenchAppsUpdate(nextApps),
     'bench', bench.id, /^(Remove) app .* on /i
-  );
+  ).then(async (res) => {
+    await refresh(true);
+    return res;
+  });
+  closeAppsDialog();
 
   toast.promise(promise, {
     loading: `Removing app from bench ${bench.name}`,
@@ -346,7 +353,6 @@ const onConfirmRemoveBenchApp = async () => {
       },
     },
   });
-  closeAppsDialog();
 };
 
 const router = useRouter();
