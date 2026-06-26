@@ -14,6 +14,7 @@ const getBinaryPathMock = vi.fn((name: string) => `/mock/${name}`);
 const getPodmanMachinesMock = vi.fn<
   () => Promise<Array<{ Name?: string; State?: string }>>
 >(async () => []);
+const isPodmanMachineRequiredMock = vi.fn(() => true);
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const execPromiseMock = vi.fn(async (...args: unknown[]) => ({ code: 0, stdout: '', stderr: '' }));
 
@@ -30,7 +31,7 @@ vi.mock('../../../src/main/utils/binaries', () => ({
 
 vi.mock('../../../src/main/utils/podman/podman', () => ({
   getPodmanMachines: () => getPodmanMachinesMock(),
-  isPodmanMachineRequired: () => true,
+  isPodmanMachineRequired: () => isPodmanMachineRequiredMock(),
 }));
 
 vi.mock('../../../src/main/utils/exec', () => ({
@@ -272,10 +273,10 @@ describe('diagnostics IPC handlers', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('reset performs compose and podman teardown for frappe-local resources', async () => {
+  it('reset performs compose and podman teardown for frappe-local resources on native Linux', async () => {
+    isPodmanMachineRequiredMock.mockReturnValue(false);
     ensureRuntimeRunningMock.mockResolvedValue(true);
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    getPodmanMachinesMock.mockResolvedValue([{ Name: 'frappe-local', State: 'running' }]);
 
     const bench = {
       id: '1adb2eedabcdef',
@@ -383,6 +384,43 @@ describe('diagnostics IPC handlers', () => {
       expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
 
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  it('reset destroys dedicated Podman VM on Mac/Windows without container teardown', async () => {
+    isPodmanMachineRequiredMock.mockReturnValue(true);
+    ensureRuntimeRunningMock.mockClear();
+    getPodmanMachinesMock.mockResolvedValue([{ Name: 'frappe-local', State: 'running' }]);
+
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-reset-vm-clean-test-'));
+    const storagePath = path.join(tempRoot, 'storage');
+    const configPath = path.join(tempRoot, 'config');
+    fs.mkdirSync(storagePath, { recursive: true });
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
+      },
+      undefined,
+      undefined,
+      '0.1.0',
+      {
+        userDataPath: tempRoot,
+        logsPath: path.join(tempRoot, 'logs'),
+        configPath,
+        storagePath,
+      }
+    );
+
+    const resetResult = await handlers.get(ipcChannels.diagnosticsResetDevState)?.();
+    expect(resetResult).toBe(true);
+    expect(ensureRuntimeRunningMock).not.toHaveBeenCalled();
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
       ['machine', 'rm', '--force', 'frappe-local']
@@ -431,6 +469,43 @@ describe('diagnostics IPC handlers', () => {
       handlers.get(ipcChannels.diagnosticsResetDevState)?.()
     ).rejects.toThrow("Failed to destroy Podman machine 'frappe-local': machine is locked");
     expect(fs.existsSync(path.join(storagePath, 'storage.json'))).toBe(true);
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  it('skips runtime init and container teardown when Podman machine does not exist or is stopped', async () => {
+    ensureRuntimeRunningMock.mockClear();
+    getPodmanMachinesMock.mockResolvedValue([]);
+
+    const handlers = new Map<string, (..._args: unknown[]) => Promise<unknown> | unknown>();
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-reset-skip-test-'));
+    const storagePath = path.join(tempRoot, 'storage');
+    const configPath = path.join(tempRoot, 'config');
+    fs.mkdirSync(storagePath, { recursive: true });
+
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(),
+        customApps: makeStubCustomAppsRepo(),
+      },
+      undefined,
+      undefined,
+      '0.1.0',
+      {
+        userDataPath: tempRoot,
+        logsPath: path.join(tempRoot, 'logs'),
+        configPath,
+        storagePath,
+      }
+    );
+
+    const result = await handlers.get(ipcChannels.diagnosticsResetDevState)?.();
+    expect(result).toBe(true);
+    expect(ensureRuntimeRunningMock).not.toHaveBeenCalled();
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });

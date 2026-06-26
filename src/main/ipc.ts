@@ -350,34 +350,63 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.diagnosticsResetDevState, async (): Promise<boolean> => {
+    mainLogger.info('RESET initiated. Evaluating system state...');
     const benches = await repositories.benches.findAll();
     let podmanMachineRemovalError: Error | null = null;
 
-    let runtimeEnv: NodeJS.ProcessEnv | undefined;
-    try {
-      const runtimeReady = await ensureRuntimeRunning();
-      if (runtimeReady) {
-        runtimeEnv = await getRuntimeEnv();
+    let hasPodmanMachine = false;
+    if (isPodmanMachineRequired()) {
+      try {
+        const machines = await getPodmanMachines();
+        hasPodmanMachine = machines.some((m) => m.Name === FRAPPE_LOCAL_MACHINE_NAME);
+      } catch (error) {
+        mainLogger.warn(`Failed to inspect Podman machine status during reset evaluation: ${error}`);
       }
-    } catch (error) {
-      mainLogger.warn(`Runtime not available during reset operation: ${error}`);
     }
 
-    if (runtimeEnv) {
-      await resetAllBenchContainers(benches, runtimeEnv, mainLogger);
+    // On native Linux (!isPodmanMachineRequired()), Podman runs directly on the host OS,
+    // so we must explicitly tear down containers and volumes.
+    // On Mac/Windows (isPodmanMachineRequired()), all containers live inside the dedicated VM;
+    // destroying the VM obliterates all containers and volumes instantly.
+    const shouldCleanContainers = !isPodmanMachineRequired();
+
+    if (shouldCleanContainers) {
+      let runtimeEnv: NodeJS.ProcessEnv | undefined;
+      try {
+        const runtimeReady = await ensureRuntimeRunning();
+        if (runtimeReady) {
+          runtimeEnv = await getRuntimeEnv();
+        }
+      } catch (error) {
+        mainLogger.warn(`Runtime not available during reset operation: ${error}`);
+      }
+
+      if (runtimeEnv) {
+        mainLogger.info('RESET Cleaning: Resetting bench containers and orphaned podman resources...');
+        await resetAllBenchContainers(benches, runtimeEnv, mainLogger);
+      }
+    } else {
+      mainLogger.info(`RESET Evaluation: Skipping container teardown (on VM platforms, destroying VM '${FRAPPE_LOCAL_MACHINE_NAME}' wipes all containers).`);
     }
 
-     // Remove all bench folders and their sites from the filesystem
-     for (const bench of benches) {
-       try {
-         if (fs.existsSync(bench.path)) {
-           await fs.promises.rm(bench.path, { recursive: true, force: true });
-           mainLogger.info(`Removed bench folder: ${bench.path}`);
-         }
-       } catch (error) {
-         mainLogger.warn(`Failed to remove bench folder ${bench.path}: ${error}`);
-       }
-     }
+    // Remove all bench folders and their sites from the filesystem
+    if (benches.length > 0) {
+      mainLogger.info(`RESET Cleaning: Evaluating ${benches.length} recorded bench folder(s) for removal...`);
+      for (const bench of benches) {
+        try {
+          if (fs.existsSync(bench.path)) {
+            await fs.promises.rm(bench.path, { recursive: true, force: true });
+            mainLogger.info(`Removed bench folder: ${bench.path}`);
+          } else {
+            mainLogger.info(`RESET Evaluation: Bench folder already skipped (not found on disk): ${bench.path}`);
+          }
+        } catch (error) {
+          mainLogger.warn(`Failed to remove bench folder ${bench.path}: ${error}`);
+        }
+      }
+    } else {
+      mainLogger.info('RESET Evaluation: Skipping recorded bench folders removal (no benches in database).');
+    }
 
     const settings = await getCurrentSettings(repositories.settings);
     const managedBenchesDirectories = new Set([
@@ -392,6 +421,8 @@ export const registerIpcHandlers = (
         if (fs.existsSync(benchesDir)) {
           await fs.promises.rm(benchesDir, { recursive: true, force: true });
           mainLogger.info(`Removed dormant benches folder: ${benchesDir}`);
+        } else {
+          mainLogger.info(`RESET Evaluation: Dormant benches folder already skipped (not found): ${benchesDir}`);
         }
       } catch (error) {
         mainLogger.warn(`Failed to remove benches folder ${benchesDir}: ${error}`);
@@ -399,13 +430,8 @@ export const registerIpcHandlers = (
     }
 
     if (isPodmanMachineRequired()) {
-      try {
-        const machines = await getPodmanMachines();
-        const machineExists = machines.some(
-          (machine) => machine.Name === FRAPPE_LOCAL_MACHINE_NAME
-        );
-
-        if (machineExists) {
+      if (hasPodmanMachine) {
+        try {
           mainLogger.info(`Destroying dedicated podman machine: ${FRAPPE_LOCAL_MACHINE_NAME}`);
           const result = await execPromise(
             getBinaryPath('podman'),
@@ -416,13 +442,15 @@ export const registerIpcHandlers = (
             throw new Error(reason);
           }
           mainLogger.info(`Successfully destroyed podman machine: ${FRAPPE_LOCAL_MACHINE_NAME}`);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          podmanMachineRemovalError = new Error(
+            `Failed to destroy Podman machine '${FRAPPE_LOCAL_MACHINE_NAME}': ${reason}`
+          );
+          mainLogger.warn(podmanMachineRemovalError.message);
         }
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        podmanMachineRemovalError = new Error(
-          `Failed to destroy Podman machine '${FRAPPE_LOCAL_MACHINE_NAME}': ${reason}`
-        );
-        mainLogger.warn(podmanMachineRemovalError.message);
+      } else {
+        mainLogger.info(`RESET Evaluation: Skipping podman machine destruction (machine '${FRAPPE_LOCAL_MACHINE_NAME}' does not exist).`);
       }
     }
 
@@ -444,6 +472,7 @@ export const registerIpcHandlers = (
       throw podmanMachineRemovalError;
     }
 
+    mainLogger.info('RESET completed successfully.');
     return true;
   });
 

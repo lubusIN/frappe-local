@@ -13,6 +13,10 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mainLogger = createMainLogger('main');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+if (isDev) {
+  process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+}
+
 const binPath = isDev 
   ? path.resolve(currentDirectory, '../../bin') 
   : path.join(process.resourcesPath, 'bin');
