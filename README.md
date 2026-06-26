@@ -18,7 +18,11 @@ Frappe Local is a cross-platform desktop app that lets anyone create local Frapp
 ### macOS
 
 #### Download
-Download the latest release .dmg directly from [releases](https://github.com/lubusIN/frappe-local/releases). After download open and drag the app to the applications folder.
+Download the latest release .dmg directly from [releases](https://github.com/lubusIN/frappe-local/releases). Pick the file that matches your macOS version/Architecture:
+- Apple Silicon (M1/M2/M3...): Frappe.Local-*-arm64.dmg
+- Intel (Core i5/i7/i9...): Frappe.Local-*-x64.dmg
+
+After download open and drag the app to the applications folder.
 
 #### Unblock Gatekeeper
 Apple blocks apps not from Mac App Store or signed by trusted developers. Open terminal and run the following command:
