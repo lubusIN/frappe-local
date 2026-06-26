@@ -1,5 +1,6 @@
 import { ref } from 'vue';
-import { useIpc, useStatusPolling } from '@frappe-local/renderer/composables/system';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { useStatusPolling } from '@frappe-local/renderer/composables/system/useStatusPolling';
 import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '@frappe-local/shared/core';
 
 import { humanizeCreateFailure, stripIpcPrefix } from '@frappe-local/shared/core';
@@ -27,7 +28,7 @@ export const useBenches = () => {
       const newList = await ipc.listBenches();
 
       // Check for completed deletions
-      for (const [id, name] of deletingIds.value.entries()) {
+      for (const [id] of deletingIds.value.entries()) {
         if (!newList.some((b) => b.id === id)) {
           deletingIds.value.delete(id);
         }

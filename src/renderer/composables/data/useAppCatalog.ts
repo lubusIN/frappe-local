@@ -1,6 +1,6 @@
 import { onMounted, ref } from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
-import { useIpc } from '@frappe-local/renderer/composables/system';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
 export type AsyncState<T> = {
   data: T | null;

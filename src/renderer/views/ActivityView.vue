@@ -140,6 +140,7 @@ const {
   resourceFilter,
   clearTasks,
   activeLogTaskId,
+  reconnect,
 } = useProgressCenter();
 
 const { setActions, clearActions } = usePageHeaderActions();

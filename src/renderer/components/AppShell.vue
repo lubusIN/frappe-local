@@ -55,10 +55,20 @@
                 <p class="text-xs text-ink-gray-7 leading-tight">
                   v{{ updateVersion }}
                 </p>
-                <Button v-if="updateState === 'available'" size="xs" variant="solid" @click="triggerDownload">
+                <Button
+                  v-if="updateState === 'available'"
+                  size="xs"
+                  variant="solid"
+                  @click="triggerDownload"
+                >
                   Download
                 </Button>
-                <Button v-else-if="updateState === 'downloaded'" size="xs" variant="subtle" @click="triggerInstall">
+                <Button
+                  v-else-if="updateState === 'downloaded'"
+                  size="xs"
+                  variant="subtle"
+                  @click="triggerInstall"
+                >
                   Restart & Install
                 </Button>
               </div>

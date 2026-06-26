@@ -1,6 +1,6 @@
 import { onMounted, ref } from 'vue';
 import type { SettingsItem } from '@frappe-local/shared/core';
-import { useIpc } from '@frappe-local/renderer/composables/system';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 import { DEFAULT_SETTINGS } from '@frappe-local/shared/domain';
 
 const defaultSettings = (): SettingsItem => ({ ...DEFAULT_SETTINGS });

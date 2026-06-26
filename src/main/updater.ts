@@ -1,4 +1,4 @@
-import { app, dialog, BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { autoUpdater } from 'electron-updater';
 import { ipcChannels, type UpdateCheckResult } from '@frappe-local/shared/core';
@@ -12,12 +12,13 @@ export const configureUpdater = (settings: Settings | null): void => {
   try {
     if (!settings) return;
 
-    if (!app.isPackaged || !settings.autoUpdateEnabled) {
-      if (!app.isPackaged) {
-        updaterLogger.info('dev mode: disabling auto download');
-      } else {
-        updaterLogger.info('auto updates are disabled in settings');
-      }
+    if (!app.isPackaged) {
+      updaterLogger.info('dev mode: skipping auto updater configuration');
+      return;
+    }
+
+    if (!settings.autoUpdateEnabled) {
+      updaterLogger.info('auto updates are disabled in settings');
       autoUpdater.autoDownload = false;
     } else {
       autoUpdater.autoDownload = true;
@@ -106,6 +107,15 @@ export const initializeUpdater = async (settingsRepository: SettingsRepository):
 };
 
 export const triggerManualUpdateCheck = async (): Promise<UpdateCheckResult> => {
+  if (!app.isPackaged) {
+    return {
+      checkedAt: new Date().toISOString(),
+      source: 'manual',
+      status: 'not-configured',
+      message: 'Update checks are only available in packaged builds.',
+    };
+  }
+
   try {
     const result = await autoUpdater.checkForUpdates();
     updaterLogger.info('Manual update check result: ' + JSON.stringify(result?.updateInfo));

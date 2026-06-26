@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
   clearPageHeaderActions();
 });
 
-const { tasks, acknowledgedTasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
+const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
 const showSiteAppsDialog = ref(false);
 const selectedSiteForAppsId = ref<string | null>(null);
 const activatingSiteAppId = ref<string | null>(null);
@@ -359,8 +359,6 @@ const {
 const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
-
-// watch for specific status updates removed in favor of toast.promise
 
 const SELECT_ALL = '__all__';
 
@@ -610,7 +608,7 @@ const onAddParentBenchApp = async (appId: string) => {
       label: 'View logs',
       onClick: (e?: Event) => {
         e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
+        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
       },
     },
   });
@@ -671,7 +669,7 @@ const onConfirmRemoveParentBenchApp = async () => {
       label: 'View logs',
       onClick: (e?: Event) => {
         e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantTaskId(bench.id);
+        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
       },
     },
   });

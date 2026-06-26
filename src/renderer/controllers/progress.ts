@@ -47,7 +47,7 @@ export const createDefaultProgressCenterState = (): ProgressCenterState => ({
 
 export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[]): ProgressTaskSummary[] =>
   tasks.map((task) => {
-    const createdAt = (task as any).createdAt ?? task.timestamp;
+    const createdAt = ('createdAt' in task && typeof (task as Record<string, unknown>).createdAt === 'string' ? (task as Record<string, unknown>).createdAt as string : task.timestamp);
     const logs = Array.isArray(task.logs) ? task.logs.slice(-MAX_LOGS_PER_TASK) : [];
     if (task.status !== 'queued' && task.status !== 'running') {
       return {

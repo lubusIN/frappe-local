@@ -1,20 +1,11 @@
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const parsePodmanJson = (output: string): any => {
+export const parsePodmanJson = (output: string): unknown => {
   try {
-    // Podman might output warnings before JSON
-    const jsonStart = output.indexOf('[');
-    const jsonStartObj = output.indexOf('{');
-    let start = -1;
-
-    if (jsonStart !== -1 && (jsonStartObj === -1 || jsonStart < jsonStartObj)) {
-      start = jsonStart;
-    } else {
-      start = jsonStartObj;
-    }
-
+    const jsonStarts = [output.indexOf('['), output.indexOf('{')].filter((index) => index !== -1);
+    const start = jsonStarts.length > 0 ? Math.min(...jsonStarts) : -1;
     if (start === -1) return [];
+
     return JSON.parse(output.substring(start));
   } catch {
     return [];

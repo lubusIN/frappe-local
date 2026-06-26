@@ -1,5 +1,5 @@
 import { onMounted, ref } from 'vue';
-import { useIpc } from '@frappe-local/renderer/composables/system';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
 export type AppHealthState = {
   appName: string;

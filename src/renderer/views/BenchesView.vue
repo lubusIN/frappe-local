@@ -373,7 +373,7 @@ const benchColumns = [
   { label: '', key: 'actions', width: '48px', align: 'right' },
 ] satisfies object[];
 
-const { tasks, acknowledgedTasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
+const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
 
 const {
   setPendingAction: setPendingBenchAction,
@@ -475,8 +475,6 @@ const getBenchActions = (bench: BenchListItem) => {
 const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
-
-// watch for specific status updates removed in favor of toast.promise
 
 const showCreateBenchModal = ref(false);
 
@@ -587,18 +585,19 @@ const onConfirmDeleteBench = async () => {
       },
     });
     await promise;
-  } catch (err) {
-    console.error(err);
+  } catch {
+    // handled by toast
   }
 };
 
 const onConfirmCleanBench = async () => {
   if (!cleanBenchId.value) return;
+  const id = cleanBenchId.value;
+  cancelCleanBench();
   try {
-    await cleanBench(cleanBenchId.value);
-    cancelCleanBench();
-  } catch (err) {
-    console.error(err);
+    await cleanBench(id);
+  } catch {
+    // handled by store
   }
 };
 

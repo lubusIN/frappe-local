@@ -1,7 +1,8 @@
 import { ref } from 'vue';
 import { toast } from 'frappe-ui';
 
-import { useIpc, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { runAndWaitForTask } from '@frappe-local/renderer/composables/system/waitForTask';
 import type { BenchListItem } from '@frappe-local/shared/core';
 
 export const useSshKeys = () => {

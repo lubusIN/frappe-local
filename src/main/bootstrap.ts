@@ -3,7 +3,7 @@ import os from 'node:os';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import type { IpcMain } from 'electron';
-import { BrowserWindow, app, nativeTheme, shell } from 'electron';
+import { BrowserWindow, nativeTheme, shell } from 'electron';
 import type { AppRepositories } from '@frappe-local/main/ipc';
 import { registerIpcHandlers } from '@frappe-local/main/ipc';
 import { createMainLogger } from '@frappe-local/main/logger';
@@ -13,7 +13,7 @@ import { JsonStorageAdapter, initializeStorage } from '@frappe-local/main/storag
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
 
-import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorAvailable, isCaddyFrontDoorRunning, isCaddyFrontDoorSecure, runDiagnostics } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, runDiagnostics } from '@frappe-local/main/services';
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 

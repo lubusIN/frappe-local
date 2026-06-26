@@ -1,7 +1,7 @@
-import { onMounted, ref } from 'vue';
+import { getCurrentInstance, onMounted, ref } from 'vue';
 import type { CustomAppListItem } from '@frappe-local/shared/core';
 import type { CreateCustomAppInput, UpdateCustomAppInput } from '@frappe-local/shared/domain';
-import { useIpc } from '@frappe-local/renderer/composables/system';
+import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
 export const useCustomApps = () => {
   const customApps = ref<CustomAppListItem[]>([]);
@@ -13,15 +13,19 @@ export const useCustomApps = () => {
 
   const ipc = useIpc();
 
-  const load = async () => {
-    loading.value = true;
+  const load = async (silent = false) => {
+    if (!silent) {
+      loading.value = true;
+    }
     error.value = null;
     try {
       customApps.value = await ipc.listCustomApps();
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e);
     } finally {
-      loading.value = false;
+      if (!silent) {
+        loading.value = false;
+      }
     }
   };
 
@@ -77,16 +81,11 @@ export const useCustomApps = () => {
     }
   };
 
-  const refresh = async (silent = false) => {
-    if (!silent) {
-      loading.value = true;
-    }
-    await load();
-  };
-
-  onMounted(() => {
-    void load();
-  });
+  if (getCurrentInstance()) {
+    onMounted(() => {
+      void load();
+    });
+  }
 
   return {
     customApps,
@@ -98,6 +97,6 @@ export const useCustomApps = () => {
     create,
     update,
     remove,
-    refresh,
+    refresh: load,
   };
 };

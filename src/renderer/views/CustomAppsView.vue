@@ -187,6 +187,7 @@ const onConfirmDelete = async () => {
   if (!deleteAppId.value) return;
   const id = deleteAppId.value;
   const name = deleteAppName.value;
+  cancelDelete();
   try {
     const promise = deleteApp(id);
     toast.promise(promise, {
@@ -195,9 +196,8 @@ const onConfirmDelete = async () => {
       error: `Failed to remove app ${name}`
     });
     await promise;
-    cancelDelete();
-  } catch (err) {
-    console.error(err);
+  } catch {
+    // handled by toast
   }
 };
 
