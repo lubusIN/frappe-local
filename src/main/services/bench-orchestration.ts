@@ -313,6 +313,18 @@ const fetchBenchApps = async (
 
   context.startStep(stepId, stepStartDesc);
   
+  const appsTxtPath = path.join(bench.path, 'sites', 'apps.txt');
+  if (fs.existsSync(appsTxtPath)) {
+    try {
+      const existing = fs.readFileSync(appsTxtPath, 'utf8');
+      if (existing.length > 0 && !existing.endsWith('\n') && !existing.endsWith('\r')) {
+        fs.writeFileSync(appsTxtPath, `${existing}\n`, 'utf8');
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const benchBranch = resolveBenchBranch(bench.frappeVersion);
 
   const customAppsList = customAppsRepo?.findAll ? await customAppsRepo.findAll() : [];
@@ -337,13 +349,27 @@ const fetchBenchApps = async (
         const pipResult = await execPromise(runtimeCmd, pipArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 5 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
         if (pipResult.code !== 0) throw new Error(`Failed to pip install local app ${app}`);
 
+        // Add to apps.txt reliably via Node filesystem BEFORE building
+        try {
+          const existingApps = fs.existsSync(appsTxtPath) ? fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
+          if (!existingApps.includes(app)) {
+            fs.writeFileSync(appsTxtPath, `${[...existingApps, app].join('\n')}\n`, 'utf8');
+          }
+        } catch {
+          // ignore
+        }
+
         // Try yarn install if package.json exists
         const yarnArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', `if [ -f apps/${app}/package.json ]; then cd apps/${app} && yarn install; fi`]);
         await execPromise(runtimeCmd, yarnArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 5 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
         
-        // Add to apps.txt if not present
-        const appsTxtArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', `grep -qFx "${app}" sites/apps.txt || echo "${app}" >> sites/apps.txt`]);
-        await execPromise(runtimeCmd, appsTxtArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
+        // Build frontend assets for local app
+        context.log('info', `Building assets for local app ${app}...`, stepId);
+        const buildArgs = composeBenchArgs(projectName, ['build', '--app', app]);
+        const buildRes = await execPromise(runtimeCmd, buildArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 10 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
+        if (buildRes.code !== 0) {
+          context.log('warning', `Failed to build assets for local app ${app}: ${buildRes.stderr}`, stepId);
+        }
         continue;
       } else {
         // GitHub Custom App
@@ -800,7 +826,7 @@ export const orchestrateBenchAppChanges = (
             );
 
             if (code !== 0) {
-              if (stderr.includes('AppNotInstalledError') || stdout?.includes('AppNotInstalledError')) {
+              if (stderr.includes('AppNotInstalledError') || stdout?.includes('AppNotInstalledError') || stderr.includes('No app named') || stdout?.includes('No app named')) {
                 context.log('info', `App ${app} is already not installed.`, 'remove-apps');
               } else {
                 throw new Error(`Failed to remove app ${app}: ${stderr || stdout}`);
@@ -808,6 +834,7 @@ export const orchestrateBenchAppChanges = (
             }
           }
 
+          await cleanupBenchAppArtifacts(bench.path, delta.remove, context, 'remove-apps');
           context.completeStep('remove-apps', 'Selected apps removed');
         }
 

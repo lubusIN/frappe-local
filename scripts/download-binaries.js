@@ -4,9 +4,11 @@ import path from 'node:path';
 import https from 'node:https';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 // Constants
 const BIN_DIR = path.resolve(__dirname, '../bin');
@@ -214,6 +216,20 @@ const maybeBundleMachineImage = () => {
   console.log(`Bundled Podman machine image: ${imageDestination}`);
 };
 
+const bundleEmbeddedGit = () => {
+  const dugitePackageJson = require.resolve('dugite/package.json');
+  const dugiteGitDirectory = path.join(path.dirname(dugitePackageJson), 'git');
+  const gitDestination = path.join(BIN_DIR, 'git');
+
+  if (!fs.existsSync(dugiteGitDirectory)) {
+    throw new Error(`Dugite embedded Git directory not found: ${dugiteGitDirectory}`);
+  }
+
+  fs.rmSync(gitDestination, { recursive: true, force: true });
+  fs.cpSync(dugiteGitDirectory, gitDestination, { recursive: true });
+  console.log(`Bundled embedded Git: ${gitDestination}`);
+};
+
 async function main() {
   if (!fs.existsSync(BIN_DIR)) {
     fs.mkdirSync(BIN_DIR, { recursive: true });
@@ -370,6 +386,8 @@ function fetchImageBuffer(url) {
       fs.writeFileSync(appsJsonTarget, JSON.stringify(appsData, null, 2));
       console.log(`Successfully cached ${imagesCached} app icons!`);
     }
+
+    bundleEmbeddedGit();
   } catch (error) {
     console.error('Failed to bundle dependencies:', error);
     process.exit(1);
