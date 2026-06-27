@@ -179,7 +179,7 @@ const getAppActions = (app: CustomAppListItem) => [
     label: 'Delete',
     icon: IconTrash2,
     theme: 'red' as const,
-    onClick: () => confirmDelete(app.id, app.name),
+    onClick: () => confirmDelete(app.id, app.title || app.name),
   },
 ];
 

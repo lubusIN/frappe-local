@@ -34,7 +34,7 @@ export const useCustomApps = () => {
     error.value = null;
     try {
       const created = await ipc.createCustomApp(input);
-      successMessage.value = `Created custom app ${created.name}`;
+      successMessage.value = `Created custom app ${created.title || created.name}`;
       await load();
       return created;
     } catch (e) {
@@ -51,7 +51,7 @@ export const useCustomApps = () => {
     try {
       const updated = await ipc.updateCustomApp(id, input);
       if (updated) {
-        successMessage.value = `Updated custom app ${updated.name}`;
+        successMessage.value = `Updated custom app ${updated.title || updated.name}`;
         await load();
       }
       return updated;

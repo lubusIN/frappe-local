@@ -1,6 +1,7 @@
 import { onMounted, ref } from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
+import { useCustomApps } from '@frappe-local/renderer/composables/data/useCustomApps';
 
 export type AsyncState<T> = {
   data: T | null;
@@ -10,6 +11,7 @@ export type AsyncState<T> = {
 
 export const useAppCatalog = () => {
   const state = ref<AsyncState<CatalogAppItem[]>>({ data: null, loading: false, error: null });
+  const { customApps } = useCustomApps();
 
   const load = async (query = '') => {
     state.value = { data: null, loading: true, error: null };
@@ -25,7 +27,19 @@ export const useAppCatalog = () => {
   onMounted(() => { void load(); });
 
   const getAppInfo = (appId: string) => {
-    return state.value.data?.find((app) => app.id === appId) || { name: appId };
+    const catalogApp = state.value.data?.find((app) => app.id === appId);
+    if (catalogApp) return catalogApp;
+
+    const customApp = customApps.value.find((app) => app.name === appId);
+    if (customApp) {
+      return {
+        ...customApp,
+        id: customApp.name,
+        name: customApp.title || customApp.name,
+      };
+    }
+
+    return { name: appId };
   };
 
   return { state, reload: load, getAppInfo };

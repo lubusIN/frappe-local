@@ -359,16 +359,20 @@ const fetchBenchApps = async (
           // ignore
         }
 
-        // Try yarn install if package.json exists
-        const yarnArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', `if [ -f apps/${app}/package.json ]; then cd apps/${app} && yarn install; fi`]);
-        await execPromise(runtimeCmd, yarnArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 5 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
+        // Try yarn install and build if package.json exists in root or frontend/ directory
+        const yarnCmds = [
+          `if [ -f apps/${app}/package.json ]; then cd apps/${app} && yarn install && (yarn build || true); fi`,
+          `if [ -f apps/${app}/frontend/package.json ]; then cd /workspace/apps/${app}/frontend && yarn install && yarn build; fi`
+        ].join(' && ');
+        const yarnArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', yarnCmds]);
+        await execPromise(runtimeCmd, yarnArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 10 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
         
-        // Build frontend assets for local app
-        context.log('info', `Building assets for local app ${app}...`, stepId);
+        // Build standard Frappe assets (public/js, public/css) for local app
+        context.log('info', `Building standard assets for local app ${app}...`, stepId);
         const buildArgs = composeBenchArgs(projectName, ['build', '--app', app]);
         const buildRes = await execPromise(runtimeCmd, buildArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 10 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
         if (buildRes.code !== 0) {
-          context.log('warning', `Failed to build assets for local app ${app}: ${buildRes.stderr}`, stepId);
+          context.log('warning', `Failed to build standard assets for local app ${app}: ${buildRes.stderr}`, stepId);
         }
         continue;
       } else {

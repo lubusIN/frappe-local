@@ -313,7 +313,7 @@ const onConfirm = async () => {
       icon: metadata.icon,
     });
     
-    toast.success(`App ${created.name} added successfully`);
+    toast.success(`App ${created.title || created.name} added successfully`);
     emit('added', created);
     close();
   } catch (err) {
