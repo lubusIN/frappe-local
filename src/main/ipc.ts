@@ -788,7 +788,13 @@ export const registerIpcHandlers = (
       throw new Error(`Cannot create site. Bench "${bench.name}" is not running. Please start the bench first.`);
     }
 
-    const unavailableApps = payload.apps.filter((app) => app !== 'frappe' && !bench.apps.includes(app));
+    const customAppsList = await repositories.customApps.findAll();
+    const isAppOnBench = (app: string) => {
+      if (bench.apps.includes(app)) return true;
+      const customApp = customAppsList.find((c) => c.id === app);
+      return customApp ? bench.apps.includes(customApp.id) : false;
+    };
+    const unavailableApps = payload.apps.filter((app) => app !== 'frappe' && !isAppOnBench(app));
     if (unavailableApps.length > 0) {
       throw new Error(`Cannot create site with apps not installed on bench: ${unavailableApps.join(', ')}`);
     }
@@ -849,7 +855,13 @@ export const registerIpcHandlers = (
         throw new Error('Site must be ready or in failure state before activating apps.');
       }
 
-      const unavailableApps = requestedApps.filter((app) => app !== 'frappe' && !bench.apps.includes(app));
+      const customAppsList = await repositories.customApps.findAll();
+      const isAppOnBench = (app: string) => {
+        if (bench.apps.includes(app)) return true;
+        const customApp = customAppsList.find((c) => c.id === app);
+        return customApp ? bench.apps.includes(customApp.id) : false;
+      };
+      const unavailableApps = requestedApps.filter((app) => app !== 'frappe' && !isAppOnBench(app));
       if (unavailableApps.length > 0) {
         throw new Error(`Cannot activate apps not installed on bench: ${unavailableApps.join(', ')}`);
       }

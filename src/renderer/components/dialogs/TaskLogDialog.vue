@@ -12,7 +12,7 @@
         <div class="min-w-0">
           <div class="flex items-center min-w-0 gap-2">
             <h3 class="m-0 text-base-semibold truncate text-ink-gray-9">
-              {{ task.taskName }}
+              {{ formatTaskTitle(task.taskName) }}
             </h3>
             <Badge
               class="shrink-0"
@@ -176,7 +176,10 @@ import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domain';
 import { formatStatus, statusTheme } from '@frappe-local/renderer/utils';
 import { useIpc } from '@frappe-local/renderer/composables/system';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data';
 import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
+
+const { formatTaskTitle } = useAppCatalog();
 
 const props = defineProps<{
   task: ProgressTaskSummary | null;
@@ -257,7 +260,13 @@ const fullLogLines = computed(() => {
     .map(parseFullLogLine);
 });
 
-const displayedLogs = computed(() => fullLogLoaded.value ? fullLogLines.value : props.task?.logs ?? []);
+const displayedLogs = computed(() => {
+  const raw = fullLogLoaded.value ? fullLogLines.value : props.task?.logs ?? [];
+  return raw.map((log) => ({
+    ...log,
+    message: formatTaskTitle(log.message),
+  }));
+});
 const visibleLogs = computed(() => displayedLogs.value.slice(-MAX_RENDERED_LOGS));
 const hiddenLogCount = computed(() => Math.max(0, displayedLogs.value.length - visibleLogs.value.length));
 const entryCountLabel = computed(() => {
@@ -399,7 +408,8 @@ const onCopyLogs = async () => {
   if (displayedLogs.value.length === 0 || copied.value) return;
 
   const text = fullLogText.value
-    ?? displayedLogs.value
+    ? formatTaskTitle(fullLogText.value)
+    : displayedLogs.value
       .map((log) => `[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`)
       .join('\n');
 

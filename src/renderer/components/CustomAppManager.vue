@@ -205,7 +205,7 @@ const allowedAppIds = computed(() => {
 
 const visibleItems = computed(() =>
   customApps.value.filter((item) => {
-    if (allowedAppIds.value && !allowedAppIds.value.has(item.name)) {
+    if (allowedAppIds.value && !allowedAppIds.value.has(item.name) && !allowedAppIds.value.has(item.id)) {
       return false;
     }
 
@@ -222,13 +222,13 @@ const visibleItems = computed(() =>
 
 const rows = computed(() =>
   visibleItems.value.map((item) => {
-    const isActive = props.activeAppIds.includes(item.name);
+    const isActive = props.activeAppIds.includes(item.id);
 
     return {
       ...item,
-      appId: item.name,
-      appName: item.name,
-      name: item.name,
+      appId: item.id,
+      appName: item.title || item.name,
+      name: item.title || item.name,
       disabled: props.disabled,
       isActive,
     };

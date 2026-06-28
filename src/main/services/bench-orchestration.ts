@@ -268,7 +268,7 @@ const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: 
     ? appNames 
     : (typeof appNames === 'string' ? [appNames] : []);
   for (const app of safeAppNames) {
-    const customApp = customAppsList.find((candidate) => candidate.name === app);
+    const customApp = customAppsList.find((candidate) => candidate.id === app);
     if (customApp && customApp.type === 'local' && customApp.source) {
       localVolumes.push({
         source: customApp.source,
@@ -333,27 +333,28 @@ const fetchBenchApps = async (
     onAttemptedInstall(app);
     
     // Check if it's a custom app
-    const customApp = customAppsList.find((candidate) => candidate.name === app);
+    const customApp = customAppsList.find((candidate) => candidate.id === app);
+    const appSlug = customApp ? customApp.name : app;
     let getAppArgs: string[] = [];
 
     if (customApp) {
       if (customApp.type === 'local') {
         // For local apps, we don't fetch them using get-app with URL.
-        // Instead, we just pip install -e /workspace/apps/${app} or whatever path they are mapped to.
+        // Instead, we just pip install -e /workspace/apps/${appSlug} or whatever path they are mapped to.
         // Wait, Frappe uses standard python paths. 
         // We will just tell bench to install it if it's not already installed.
-        // Actually `bench get-app` clones it. If it's already mapped via docker-compose into `/workspace/apps/${app}`, we just need to install it.
-        context.log('info', `[${index + 1}/${apps.length}] Installing local app ${app}`, stepId);
+        // Actually `bench get-app` clones it. If it's already mapped via docker-compose into `/workspace/apps/${appSlug}`, we just need to install it.
+        context.log('info', `[${index + 1}/${apps.length}] Installing local app ${appSlug}`, stepId);
         // We use pip install -e and yarn install in the app folder
-        const pipArgs = composeExecArgs(projectName, 'frappe', ['bench', 'pip', 'install', '-e', `apps/${app}`]);
+        const pipArgs = composeExecArgs(projectName, 'frappe', ['bench', 'pip', 'install', '-e', `apps/${appSlug}`]);
         const pipResult = await execPromise(runtimeCmd, pipArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 5 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
-        if (pipResult.code !== 0) throw new Error(`Failed to pip install local app ${app}`);
+        if (pipResult.code !== 0) throw new Error(`Failed to pip install local app ${appSlug}`);
 
         // Add to apps.txt reliably via Node filesystem BEFORE building
         try {
           const existingApps = fs.existsSync(appsTxtPath) ? fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
-          if (!existingApps.includes(app)) {
-            fs.writeFileSync(appsTxtPath, `${[...existingApps, app].join('\n')}\n`, 'utf8');
+          if (!existingApps.includes(appSlug)) {
+            fs.writeFileSync(appsTxtPath, `${[...existingApps, appSlug].join('\n')}\n`, 'utf8');
           }
         } catch {
           // ignore
@@ -361,25 +362,25 @@ const fetchBenchApps = async (
 
         // Try yarn install and build if package.json exists in root or frontend/ directory
         const yarnCmds = [
-          `if [ -f apps/${app}/package.json ]; then cd apps/${app} && yarn install && (yarn build || true); fi`,
-          `if [ -f apps/${app}/frontend/package.json ]; then cd /workspace/apps/${app}/frontend && yarn install && yarn build; fi`
+          `if [ -f apps/${appSlug}/package.json ]; then cd apps/${appSlug} && yarn install && (yarn build || true); fi`,
+          `if [ -f apps/${appSlug}/frontend/package.json ]; then cd /workspace/apps/${appSlug}/frontend && yarn install && yarn build; fi`
         ].join(' && ');
         const yarnArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', yarnCmds]);
         await execPromise(runtimeCmd, yarnArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 10 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
         
         // Build standard Frappe assets (public/js, public/css) for local app
-        context.log('info', `Building standard assets for local app ${app}...`, stepId);
-        const buildArgs = composeBenchArgs(projectName, ['build', '--app', app]);
+        context.log('info', `Building standard assets for local app ${appSlug}...`, stepId);
+        const buildArgs = composeBenchArgs(projectName, ['build', '--app', appSlug]);
         const buildRes = await execPromise(runtimeCmd, buildArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 10 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
         if (buildRes.code !== 0) {
-          context.log('warning', `Failed to build standard assets for local app ${app}: ${buildRes.stderr}`, stepId);
+          context.log('warning', `Failed to build standard assets for local app ${appSlug}: ${buildRes.stderr}`, stepId);
         }
         continue;
       } else {
         // GitHub Custom App
         const appSource = customApp.source;
         const appBranch = customApp.branch || benchBranch;
-        context.log('info', `[${index + 1}/${apps.length}] Fetching custom app ${app} via bench get-app (${appBranch})`, stepId);
+        context.log('info', `[${index + 1}/${apps.length}] Fetching custom app ${appSlug} via bench get-app (${appBranch})`, stepId);
         getAppArgs = ['get-app', '--overwrite', '--branch', appBranch, appSource];
       }
     } else {
@@ -754,7 +755,7 @@ export const orchestrateBenchAppChanges = (
         context.startStep('bench-service', 'Ensuring bench containers are running');
         const serviceResult = await execPromise(
           command,
-          [...commonArgs, 'up', '-d', '--remove-orphans', 'frappe'],
+          [...commonArgs, 'up', '-d', '--force-recreate', '--remove-orphans', 'frappe'],
           bench.path,
           (out) => context.log('info', out, 'bench-service'),
           runtimeEnv,

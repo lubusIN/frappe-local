@@ -157,12 +157,14 @@ import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDi
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import { isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data';
 import { usePageHeaderActions, useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
 import { navigationItems } from '@frappe-local/renderer/router/routes';
 
 import { findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
 
+const { formatTaskTitle } = useAppCatalog();
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { actions: headerActions } = usePageHeaderActions();
@@ -210,11 +212,11 @@ watch(
     if (!task) return;
 
     handledFailureTaskIds.add(task.taskId);
-    toast.error(`${task.taskName} failed.`, {
+    toast.error(`${formatTaskTitle(task.taskName)} failed.`, {
       duration: 10000,
       action: {
         label: 'View logs',
-        altText: `View logs for ${task.taskName}`,
+        altText: `View logs for ${formatTaskTitle(task.taskName)}`,
         onClick: () => {
           activeLogTaskId.value = task.taskId;
         },

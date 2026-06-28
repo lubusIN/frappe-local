@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { errorMessage, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 
-import type { Bench, Site } from '@frappe-local/shared/domain';
+import type { Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 import type { SiteCreateInput } from '@frappe-local/shared/core';
 import { canAttachSiteToBench } from '@frappe-local/shared/domain';
 import { getRuntimeEnv, getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services';
@@ -142,6 +142,9 @@ export type SiteCreationDependencies = {
     }) => Promise<Site | null>;
     delete?: (id: string) => Promise<boolean>;
   };
+  readonly customApps?: {
+    findAll?: () => Promise<CustomAppItem[]>;
+  };
 };
 
 /**
@@ -230,6 +233,7 @@ export const orchestrateSiteCreation = async (
         const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
         const adminPassword = DATABASE_CREDENTIALS.ADMIN_PASSWORD;
 
+        const customAppsList = dependencies.customApps?.findAll ? await dependencies.customApps.findAll() : [];
         const runtimeEnv = await getRuntimeEnv();
         const args = composeBenchArgs(projectName, [
           'new-site',
@@ -239,7 +243,10 @@ export const orchestrateSiteCreation = async (
           '--admin-password', adminPassword,
           '--db-root-password', dbPassword,
           '--install-app', 'frappe',
-          ...input.apps.filter(app => app !== 'frappe').flatMap(app => ['--install-app', app]),
+          ...input.apps.filter(app => app !== 'frappe').flatMap(app => {
+            const customApp = customAppsList.find((c) => c.id === app);
+            return ['--install-app', customApp ? customApp.name : app];
+          }),
           input.name
         ].filter(Boolean));
 
@@ -426,6 +433,9 @@ export const orchestrateSiteAppsUpdate = (
     sites: {
       update: (id: string, input: { apps?: string[]; status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
     };
+    customApps?: {
+      findAll?: () => Promise<CustomAppItem[]>;
+    };
   },
   site: Site,
   targetApps: readonly string[],
@@ -457,6 +467,8 @@ export const orchestrateSiteAppsUpdate = (
           throw new Error('Cannot update site apps: parent bench was not found.');
         }
 
+        const customAppsList = dependencies.customApps?.findAll ? await dependencies.customApps.findAll() : [];
+
         const runtimeCmd = getBinaryPath('docker-compose');
         const projectName = getComposeProjectName(site.benchId);
         const runtimeEnv = await getRuntimeEnv();
@@ -469,9 +481,11 @@ export const orchestrateSiteAppsUpdate = (
           for (const app of installDelta) {
             context.throwIfCancelled();
             attemptedInstalls.push(app);
-            context.log('info', `Installing app ${app} on ${site.name}`, 'install-apps');
+            const customApp = customAppsList.find((c) => c.id === app);
+            const appSlug = customApp ? customApp.name : app;
+            context.log('info', `Installing app ${appSlug} on ${site.name}`, 'install-apps');
 
-            const args = composeBenchSiteArgs(projectName, site.name, ['install-app', app]);
+            const args = composeBenchSiteArgs(projectName, site.name, ['install-app', appSlug]);
 
             const { code, stderr } = await execPromise(
               runtimeCmd,
@@ -496,7 +510,9 @@ export const orchestrateSiteAppsUpdate = (
           for (const app of uninstallDelta) {
             context.throwIfCancelled();
             attemptedUninstalls.push(app);
-            context.log('info', `Uninstalling app ${app} from ${site.name}`, 'uninstall-apps');
+            const customApp = customAppsList.find((c) => c.id === app);
+            const appSlug = customApp ? customApp.name : app;
+            context.log('info', `Uninstalling app ${appSlug} from ${site.name}`, 'uninstall-apps');
 
             // Proactively purge pending jobs to avoid QueueOverloaded errors in local dev environments
             const purgeArgs = composeBenchSiteArgs(projectName, site.name, ['purge-jobs']);
@@ -516,7 +532,7 @@ export const orchestrateSiteAppsUpdate = (
               context.log('warning', `Failed to purge jobs: ${String(err)}`, 'uninstall-apps');
             }
 
-            const args = composeBenchSiteArgs(projectName, site.name, ['uninstall-app', app, '--yes']);
+            const args = composeBenchSiteArgs(projectName, site.name, ['uninstall-app', appSlug, '--yes']);
 
             const { code, stderr } = await execPromise(
               runtimeCmd,

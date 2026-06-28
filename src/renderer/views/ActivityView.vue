@@ -58,7 +58,7 @@
               >
                 {{ row.resource }}
               </Badge>
-              <span class="truncate text-sm text-ink-gray-9">{{ row.taskName }}</span>
+              <span class="truncate text-sm text-ink-gray-9">{{ formatTaskTitle(row.taskName) }}</span>
             </div>
           </div>
         </template>
@@ -127,10 +127,13 @@ import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
 import { useProgressCenter } from '@frappe-local/renderer/composables/system';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data';
 import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 import { buildErrorRemediationNotice, formatStatus, statusTheme } from '@frappe-local/renderer/utils';
 
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
+
+const { formatTaskTitle } = useAppCatalog();
 
 const {
   filteredTasks,

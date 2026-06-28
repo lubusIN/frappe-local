@@ -600,10 +600,11 @@ const onAddParentBenchApp = async (appId: string) => {
   });
   closeBenchAppsDialog();
 
+  const appTitle = getAppTitle(appId);
   toast.promise(promise, {
-    loading: `Getting app ${appId} for bench ${bench.name}`,
-    success: `Got app ${appId} on bench ${bench.name}`,
-    error: `Failed to get app ${appId}`,
+    loading: `Getting app ${appTitle} for bench ${bench.name}`,
+    success: `Got app ${appTitle} on bench ${bench.name}`,
+    error: `Failed to get app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
@@ -622,7 +623,7 @@ const onRequestRemoveParentBenchApp = (appId: string) => {
 
   const appInfo = getAppInfo(appId);
   pendingRemoveBenchAppId.value = appId;
-  pendingRemoveBenchAppName.value = appInfo.name;
+  pendingRemoveBenchAppName.value = getAppTitle(appId);
   removeBenchAppConfirmOpen.value = true;
 };
 
@@ -644,6 +645,7 @@ const removeBenchAppConfirmMessage = computed(() => {
 const onConfirmRemoveParentBenchApp = async () => {
   const bench = selectedBenchForParentApps.value;
   const appId = pendingRemoveBenchAppId.value;
+  const appTitle = pendingRemoveBenchAppName.value || appId;
   if (!bench || !appId || !canMutateParentBenchApps.value) {
     onCancelRemoveParentBenchApp();
     return;
@@ -662,9 +664,9 @@ const onConfirmRemoveParentBenchApp = async () => {
   closeBenchAppsDialog();
 
   toast.promise(promise, {
-    loading: `Removing app from bench ${bench.name}`,
-    success: `Removed app from bench ${bench.name}`,
-    error: 'Failed to remove app',
+    loading: `Removing app ${appTitle} from bench ${bench.name}`,
+    success: `Removed app ${appTitle} from bench ${bench.name}`,
+    error: `Failed to remove app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
@@ -697,7 +699,7 @@ const siteAppsWarningMessage = computed(() => {
 const canActivateSelectedSiteApps = computed(() => siteAppsWarningMessage.value === null);
 
 const appsToInstall = ref<string[]>([]);
-const { getAppInfo } = useAppCatalog();
+const { getAppInfo, getAppTitle } = useAppCatalog();
 
 const removeSiteAppConfirmOpen = ref(false);
 const pendingRemoveSiteAppId = ref<string | null>(null);
@@ -733,9 +735,10 @@ const onActivateSiteApp = async (appId: string) => {
     return;
   }
 
+  const appTitle = getAppTitle(appId);
   const benchApps = selectedBenchForSiteApps.value?.apps ?? [];
   if (!benchApps.includes(appId)) {
-    toast.error(`App ${appId} is not installed on this bench.`);
+    toast.error(`App ${appTitle} is not installed on this bench.`);
     return;
   }
 
@@ -757,9 +760,9 @@ const onActivateSiteApp = async (appId: string) => {
   closeSiteAppsDialog();
 
   toast.promise(promise, {
-    loading: `Installing app ${appId} on ${site.name}`,
-    success: `Installed app ${appId} on ${site.name}`,
-    error: `Failed to install app ${appId}`,
+    loading: `Installing app ${appTitle} on ${site.name}`,
+    success: `Installed app ${appTitle} on ${site.name}`,
+    error: `Failed to install app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
@@ -782,7 +785,7 @@ const onRequestDeactivateSiteApp = (appId: string) => {
 
   const appInfo = getAppInfo(appId);
   pendingRemoveSiteAppId.value = appId;
-  pendingRemoveSiteAppName.value = appInfo.name;
+  pendingRemoveSiteAppName.value = getAppTitle(appId);
   removeSiteAppConfirmOpen.value = true;
 };
 
@@ -837,10 +840,11 @@ const onDeactivateSiteApp = async (appId: string) => {
   });
   closeSiteAppsDialog();
 
+  const appTitle = pendingRemoveSiteAppName.value || getAppTitle(appId);
   toast.promise(promise, {
-    loading: `Uninstalling app ${appId} from ${site.name}`,
-    success: `Uninstalled app ${appId} from ${site.name}`,
-    error: `Failed to uninstall app ${appId}`,
+    loading: `Uninstalling app ${appTitle} from ${site.name}`,
+    success: `Uninstalled app ${appTitle} from ${site.name}`,
+    error: `Failed to uninstall app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {

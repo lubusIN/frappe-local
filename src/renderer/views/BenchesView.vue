@@ -209,7 +209,7 @@ watch(error, (err) => {
   }
 });
 
-const { getAppInfo } = useAppCatalog();
+const { getAppInfo, getAppTitle } = useAppCatalog();
 const showAppsDialog = ref(false);
 const selectedBenchForAppsId = ref<string | null>(null);
 const removeAppConfirmOpen = ref(false);
@@ -279,10 +279,11 @@ const onAddBenchApp = async (appId: string) => {
   });
   closeAppsDialog();
 
+  const appTitle = getAppTitle(appId);
   toast.promise(promise, {
-    loading: `Getting app ${appId} for bench ${bench.name}`,
-    success: `Got app ${appId} on bench ${bench.name}`,
-    error: `Failed to get app ${appId}`,
+    loading: `Getting app ${appTitle} for bench ${bench.name}`,
+    success: `Got app ${appTitle} on bench ${bench.name}`,
+    error: `Failed to get app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
@@ -301,7 +302,7 @@ const onRequestRemoveBenchApp = (appId: string) => {
 
   const appInfo = getAppInfo(appId);
   pendingRemoveBenchAppId.value = appId;
-  pendingRemoveBenchAppName.value = appInfo.name;
+  pendingRemoveBenchAppName.value = getAppTitle(appId);
   removeAppConfirmOpen.value = true;
 };
 
@@ -323,6 +324,7 @@ const removeAppConfirmMessage = computed(() => {
 const onConfirmRemoveBenchApp = async () => {
   const bench = selectedBenchForApps.value;
   const appId = pendingRemoveBenchAppId.value;
+  const appTitle = pendingRemoveBenchAppName.value || appId;
   if (!bench || !appId || !canMutateApps.value) {
     onCancelRemoveBenchApp();
     return;
@@ -342,9 +344,9 @@ const onConfirmRemoveBenchApp = async () => {
   closeAppsDialog();
 
   toast.promise(promise, {
-    loading: `Removing app from bench ${bench.name}`,
-    success: `Removed app from bench ${bench.name}`,
-    error: 'Failed to remove app',
+    loading: `Removing app ${appTitle} from bench ${bench.name}`,
+    success: `Removed app ${appTitle} from bench ${bench.name}`,
+    error: `Failed to remove app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
