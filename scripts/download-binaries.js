@@ -226,7 +226,7 @@ const bundleEmbeddedGit = () => {
   }
 
   fs.rmSync(gitDestination, { recursive: true, force: true });
-  fs.cpSync(dugiteGitDirectory, gitDestination, { recursive: true });
+  fs.cpSync(dugiteGitDirectory, gitDestination, { recursive: true, verbatimSymlinks: true });
   console.log(`Bundled embedded Git: ${gitDestination}`);
 };
 

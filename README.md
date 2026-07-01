@@ -28,7 +28,7 @@ After download open and drag the app to the applications folder.
 Apple blocks apps not from Mac App Store or signed by trusted developers. Open terminal and run the following command:
 
 ```shell
-xattr -rd com.apple.quarantine /Applications/Frappe\ Local.app
+xattr -rds com.apple.quarantine /Applications/Frappe\ Local.app
 ```
 this will remove the quarantine attribute from the app and you can open it normally.
 
