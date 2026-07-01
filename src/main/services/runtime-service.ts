@@ -40,8 +40,8 @@ const getConfiguredPodmanMemoryMb = async (): Promise<number> => {
   }
 };
 
-export async function ensureRuntimeRunning(): Promise<boolean> {
-  return ensurePodmanRunning();
+export async function ensureRuntimeRunning(onLog?: (message: string) => void): Promise<boolean> {
+  return ensurePodmanRunning(onLog);
 }
 
 const errorMessage = (error: unknown): string => {
@@ -63,16 +63,21 @@ const runPodman = async (
   operation: string,
   timeoutConfig: { idleTimeout?: number; maxTimeout?: number } = {
     idleTimeout: PODMAN_RUNTIME_TIMEOUTS.MACHINE_COMMAND,
-  }
+  },
+  onLog?: (message: string) => void
 ): Promise<{ stdout: string; stderr: string; code: number | null }> => {
+  const logHandler = (output: string) => {
+    const message = output.trim();
+    if (message) {
+      logger.info(message);
+      onLog?.(message);
+    }
+  };
   const result = await execPromise(
     getBinaryPath('podman'),
     args,
     undefined,
-    (output) => {
-      const message = output.trim();
-      if (message) logger.info(message);
-    },
+    logHandler,
     undefined,
     timeoutConfig
   );
@@ -166,12 +171,13 @@ const isMachineRunning = (machine: {
     (machine?.State || machine?.Status || '').toLowerCase() === 'running';
 };
 
-const readMachineMemoryMb = async (): Promise<number | null> => {
+const readMachineMemoryMb = async (onLog?: (message: string) => void): Promise<number | null> => {
   try {
     const { stdout } = await runPodman(
       ['machine', 'inspect', FRAPPE_LOCAL_MACHINE_NAME, '--format', '{{.Resources.Memory}}'],
       'Inspecting Podman machine memory',
-      { idleTimeout: 10000 }
+      { idleTimeout: 10000 },
+      onLog
     );
     const memoryMb = Number.parseInt(stdout.trim(), 10);
     return Number.isInteger(memoryMb) ? memoryMb : null;
@@ -180,7 +186,7 @@ const readMachineMemoryMb = async (): Promise<number | null> => {
   }
 };
 
-const applyPodmanMachineMemoryUnlocked = async (memoryMb: number): Promise<void> => {
+const applyPodmanMachineMemoryUnlocked = async (memoryMb: number, onLog?: (message: string) => void): Promise<void> => {
   if (!isPodmanMachineRequired()) {
     return;
   }
@@ -192,40 +198,46 @@ const applyPodmanMachineMemoryUnlocked = async (memoryMb: number): Promise<void>
   }
 
   const normalizedMemoryMb = normalizePodmanMemoryMb(memoryMb);
-  const currentMemoryMb = await readMachineMemoryMb();
+  const currentMemoryMb = await readMachineMemoryMb(onLog);
   if (currentMemoryMb === normalizedMemoryMb) {
     return;
   }
 
   const wasRunning = isMachineRunning(machine);
   if (wasRunning) {
-    logger.info(`Stopping ${FRAPPE_LOCAL_MACHINE_NAME} to update memory allocation...`);
-    await runPodman(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME], 'Stopping Podman machine');
+    const msg = `Stopping ${FRAPPE_LOCAL_MACHINE_NAME} to update memory allocation...`;
+    logger.info(msg);
+    onLog?.(msg);
+    await runPodman(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME], 'Stopping Podman machine', undefined, onLog);
   }
 
   try {
-    logger.info(`Setting ${FRAPPE_LOCAL_MACHINE_NAME} memory to ${normalizedMemoryMb} MiB...`);
+    const msg = `Setting ${FRAPPE_LOCAL_MACHINE_NAME} memory to ${normalizedMemoryMb} MiB...`;
+    logger.info(msg);
+    onLog?.(msg);
     await runPodman(
       ['machine', 'set', '--memory', String(normalizedMemoryMb), FRAPPE_LOCAL_MACHINE_NAME],
-      'Updating Podman machine memory'
+      'Updating Podman machine memory',
+      undefined,
+      onLog
     );
   } finally {
     if (wasRunning) {
-      await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Restarting Podman machine');
+      await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Restarting Podman machine', undefined, onLog);
     }
   }
 };
 
-export const applyPodmanMachineMemory = async (memoryMb: number): Promise<void> => {
+export const applyPodmanMachineMemory = async (memoryMb: number, onLog?: (message: string) => void): Promise<void> => {
   const release = await acquireMachineOperationLock();
   try {
-    await applyPodmanMachineMemoryUnlocked(memoryMb);
+    await applyPodmanMachineMemoryUnlocked(memoryMb, onLog);
   } finally {
     release();
   }
 };
 
-const waitForPodmanEngine = async (): Promise<void> => {
+const waitForPodmanEngine = async (onLog?: (message: string) => void): Promise<void> => {
   const deadline = Date.now() + PODMAN_RUNTIME_TIMEOUTS.ENGINE_READY;
   let lastError = 'Podman engine did not become ready.';
 
@@ -234,7 +246,8 @@ const waitForPodmanEngine = async (): Promise<void> => {
       await runPodman(
         ['--connection', `${FRAPPE_LOCAL_MACHINE_NAME}-root`, 'ps'],
         'Checking Podman engine',
-        { idleTimeout: 15000 }
+        { idleTimeout: 15000 },
+        onLog
       );
       return;
     } catch (error) {
@@ -248,15 +261,24 @@ const waitForPodmanEngine = async (): Promise<void> => {
   throw new Error(`${lastError} Timed out waiting for the Podman engine.`);
 };
 
-async function ensurePodmanRunning(): Promise<boolean> {
+async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<boolean> {
+  const logMsg = (msg: string) => {
+    logger.info(msg);
+    onLog?.(msg);
+  };
+  const logWarn = (msg: string) => {
+    logger.warn(msg);
+    onLog?.(`WARN: ${msg}`);
+  };
+
   const release = await acquireMachineOperationLock();
 
   try {
     lastRuntimeError = null;
-    logger.info('Acquired machine operation lock');
+    logMsg('Acquired machine operation lock');
     
     // 1. Check if podman binary is available
-    await runPodman(['--version'], 'Checking bundled Podman');
+    await runPodman(['--version'], 'Checking bundled Podman', undefined, onLog);
 
     // 2. On Mac/Windows, check machine status
     if (isPodmanMachineRequired()) {
@@ -265,17 +287,18 @@ async function ensurePodmanRunning(): Promise<boolean> {
       
       if (!machine) {
         const memoryMb = await getConfiguredPodmanMemoryMb();
-        logger.info(`No podman machine named ${FRAPPE_LOCAL_MACHINE_NAME} found, initializing...`);
+        logMsg(`No podman machine named ${FRAPPE_LOCAL_MACHINE_NAME} found, initializing...`);
         await runPodman(
           ['machine', 'init', '--now', '--cpus', '4', '--memory', String(memoryMb), FRAPPE_LOCAL_MACHINE_NAME],
           'Initializing Podman machine',
           {
             idleTimeout: PODMAN_RUNTIME_TIMEOUTS.MACHINE_INIT_IDLE,
             maxTimeout: PODMAN_RUNTIME_TIMEOUTS.MACHINE_INIT_MAX,
-          }
+          },
+          onLog
         );
       } else {
-        await applyPodmanMachineMemoryUnlocked(await getConfiguredPodmanMemoryMb());
+        await applyPodmanMachineMemoryUnlocked(await getConfiguredPodmanMemoryMb(), onLog);
       }
 
       // Check machine status
@@ -286,7 +309,7 @@ async function ensurePodmanRunning(): Promise<boolean> {
       const isStarting = machine?.Starting === true || (machine?.State || machine?.Status || '').toLowerCase() === 'starting';
 
       if (isStarting) {
-        logger.info('Podman machine is currently starting, waiting for it to be ready...');
+        logMsg('Podman machine is currently starting, waiting for it to be ready...');
         // Wait up to 30 seconds for it to transition to running
         for (let i = 0; i < 30; i++) {
           await new Promise(r => setTimeout(r, 1000));
@@ -294,33 +317,33 @@ async function ensurePodmanRunning(): Promise<boolean> {
           const pollMachine = pollMachines.find((m) => m.Name === FRAPPE_LOCAL_MACHINE_NAME);
           const pollState = (pollMachine?.State || pollMachine?.Status || '').toLowerCase();
           if (pollState === 'running') {
-            logger.info('Podman machine is now running.');
-            await waitForPodmanEngine();
+            logMsg('Podman machine is now running.');
+            await waitForPodmanEngine(onLog);
             return true;
           }
         }
       }
 
       if (!isRunning) {
-        logger.info(`Podman machine is not running, starting ${FRAPPE_LOCAL_MACHINE_NAME}...`);
+        logMsg(`Podman machine is not running, starting ${FRAPPE_LOCAL_MACHINE_NAME}...`);
         try {
-          await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine');
+          await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           const normalizedMessage = message.toLowerCase();
           if (normalizedMessage.includes('proxy already running')) {
-            logger.warn('Podman proxy already running but machine state is not running. Cleaning up stale proxy...');
+            logWarn('Podman proxy already running but machine state is not running. Cleaning up stale proxy...');
             await cleanupStaleMacPodmanProcesses(logger);
-            logger.info('Retrying podman machine start after stale proxy cleanup...');
-            await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine');
+            logMsg('Retrying podman machine start after stale proxy cleanup...');
+            await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
           } else if (normalizedMessage.includes('only one vm can be active')) {
-            logger.warn('Another Podman VM is active. Stopping default machine to allow frappe-local to run...');
+            logWarn('Another Podman VM is active. Stopping default machine to allow frappe-local to run...');
             try {
-              await runPodman(['machine', 'stop', 'podman-machine-default'], 'Stopping another Podman machine');
+              await runPodman(['machine', 'stop', 'podman-machine-default'], 'Stopping another Podman machine', undefined, onLog);
             } catch {
-              logger.warn('Default Podman machine could not be stopped.');
+              logWarn('Default Podman machine could not be stopped.');
             }
-            await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine');
+            await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
           } else {
             throw err;
           }
@@ -328,25 +351,25 @@ async function ensurePodmanRunning(): Promise<boolean> {
       }
 
       try {
-        await waitForPodmanEngine();
+        await waitForPodmanEngine(onLog);
       } catch (err) {
-        logger.warn(`Podman health check failed (timeout or error): ${err}. Auto-healing...`);
+        logWarn(`Podman health check failed (timeout or error): ${err}. Auto-healing...`);
         await cleanupStaleMacPodmanProcesses(logger);
         try {
-          await runPodman(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME], 'Stopping Podman machine');
+          await runPodman(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME], 'Stopping Podman machine', undefined, onLog);
         } catch {
-          logger.warn('Podman machine stop failed during auto-heal.');
+          logWarn('Podman machine stop failed during auto-heal.');
         }
         
-        logger.info('Restarting podman machine after auto-heal...');
+        logMsg('Restarting podman machine after auto-heal...');
         try {
-          await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Restarting Podman machine');
-          await waitForPodmanEngine();
+          await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Restarting Podman machine', undefined, onLog);
+          await waitForPodmanEngine(onLog);
         } catch (startErr) {
           const msg = startErr instanceof Error ? startErr.message : String(startErr);
           if (msg.toLowerCase().includes('proxy already running')) {
-            logger.info('Proxy already running after restart; waiting for the engine.');
-            await waitForPodmanEngine();
+            logMsg('Proxy already running after restart; waiting for the engine.');
+            await waitForPodmanEngine(onLog);
           } else {
             throw startErr;
           }
@@ -358,9 +381,10 @@ async function ensurePodmanRunning(): Promise<boolean> {
   } catch (err) {
     lastRuntimeError = errorMessage(err);
     logger.error(`Failed to ensure podman runtime: ${lastRuntimeError}`);
+    onLog?.(`ERROR: Failed to ensure podman runtime: ${lastRuntimeError}`);
     return false;
   } finally {
-    logger.info('Releasing machine operation lock');
+    logMsg('Releasing machine operation lock');
     release();
   }
 }

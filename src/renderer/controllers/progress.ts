@@ -9,7 +9,14 @@ export type ProgressTaskSummary = {
   readonly status: TaskStatus;
   readonly type: TaskProgressEvent['type'];
   readonly message: string;
-  readonly logs: Array<{ message: string; timestamp: string; level: TaskProgressEvent['logLevel'] }>;
+  readonly logs: Array<{
+    message: string;
+    timestamp: string;
+    level: TaskProgressEvent['logLevel'];
+    stepId?: string | null;
+    stepName?: string | null;
+    type?: TaskProgressEvent['type'];
+  }>;
   readonly stepName: string | null;
   readonly createdAt: string;
   readonly timestamp: string;
@@ -69,6 +76,9 @@ export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[
           message: 'Task was interrupted when the app closed.',
           timestamp: new Date().toISOString(),
           level: 'warning' as const,
+          stepId: null,
+          stepName: null,
+          type: 'task.failed' as const,
         },
       ].slice(-MAX_LOGS_PER_TASK),
       errorCode: 'task-interrupted',
@@ -104,6 +114,9 @@ export const upsertProgressTask = (
     message: event.message,
     timestamp: event.timestamp,
     level: event.logLevel,
+    stepId: event.stepId ?? null,
+    stepName: event.stepName ?? null,
+    type: event.type,
   };
   const logs = existing ? [...existing.logs, newLogEntry] : [newLogEntry];
 

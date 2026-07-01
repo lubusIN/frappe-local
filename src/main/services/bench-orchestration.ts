@@ -461,7 +461,7 @@ export const orchestrateBenchCreation = (
 
         failingStepId = 'runtime';
         context.startStep('runtime', `Checking podman status`);
-        const isRuntimeReady = await ensureRuntimeRunning();
+        const isRuntimeReady = await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
         if (!isRuntimeReady) {
           throw new Error(
             getLastRuntimeError() ||
@@ -474,14 +474,22 @@ export const orchestrateBenchCreation = (
         // Ensure bench directory exists
         context.startStep('init', `Initializing bench directory at ${bench.path}`);
         if (!fs.existsSync(bench.path)) {
+          context.log('info', `Creating directory: ${bench.path}`, 'init');
           fs.mkdirSync(bench.path, { recursive: true });
+        } else {
+          context.log('info', `Using existing directory: ${bench.path}`, 'init');
         }
         context.completeStep('init', 'Bench directory initialized');
 
         context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveAndPersistBenchPort(bench, benchesRepo, context, true);
         const localVolumes = await getLocalAppVolumes(bench.apps ?? [], customAppsRepo);
+        context.log('info', `Configuring HTTP port: ${benchWithPort.httpPort ?? DEFAULT_HTTP_PORT}`, 'env');
+        if (localVolumes.length > 0) {
+          context.log('info', `Mounting ${localVolumes.length} custom app volume(s) into containers`, 'env');
+        }
         ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
+        context.log('info', `Wrote docker-compose.yml for Frappe ${bench.frappeVersion}`, 'env');
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
@@ -730,7 +738,7 @@ export const orchestrateBenchAppChanges = (
         }
 
         context.startStep('runtime', 'Checking podman status');
-        const runtimeReady = await ensureRuntimeRunning();
+        const runtimeReady = await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
         if (!runtimeReady) {
           throw new Error(
             getLastRuntimeError() ||
@@ -1024,7 +1032,7 @@ export const orchestrateBenchStart = (
         context.log('info', `Orchestrating ${isRestart ? 'restart' : 'start'} for bench ${bench.name} (${bench.id})`);
 
         context.startStep('runtime', 'Checking podman status');
-        const isRuntimeReady = await ensureRuntimeRunning();
+        const isRuntimeReady = await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
         if (!isRuntimeReady) {
           throw new Error(
             getLastRuntimeError() ||
@@ -1036,9 +1044,14 @@ export const orchestrateBenchStart = (
         context.startStep('env', 'Generating docker-compose configuration');
         const benchWithPort = await resolveAndPersistBenchPort(bench, benchesRepo, context, !isRestart);
         const localVolumes = await getLocalAppVolumes(bench.apps, customAppsRepo);
+        context.log('info', `Configuring HTTP port: ${benchWithPort.httpPort ?? DEFAULT_HTTP_PORT}`, 'env');
+        if (localVolumes.length > 0) {
+          context.log('info', `Mounting ${localVolumes.length} custom app volume(s) into containers`, 'env');
+        }
         ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
         ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
         ensureBenchProcfile(bench.path, context, 'env');
+        context.log('info', `Wrote docker-compose.yml for Frappe ${bench.frappeVersion}`, 'env');
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 
         const command = getBinaryPath('docker-compose');
@@ -1348,7 +1361,7 @@ export const orchestrateBenchDeletion = (
         await benchesRepo.update(bench.id, { status: 'queued' });
 
         context.startStep('runtime', 'Checking podman status');
-        const runtimeReady = await ensureRuntimeRunning();
+        const runtimeReady = await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
         if (runtimeReady) {
           context.completeStep('runtime', 'Podman is ready');
         } else {
@@ -1372,12 +1385,12 @@ export const orchestrateBenchDeletion = (
               podmanCommand,
               projectFilterArgs(projectName),
               runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS },
-              { info: (msg) => context.log('info', msg, 'stop'), warn: (msg) => context.log('warning', msg, 'stop') }
+              { info: (msg) => context.log('info', msg, 'deleting'), warn: (msg) => context.log('warning', msg, 'deleting') }
             );
           };
 
           try {
-            const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
+            const { code, stderr } = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'deleting'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
             if (code !== 0) {
               throw new Error(`Docker cleanup failed with code ${code}: ${stderr}`);
             }
@@ -1389,11 +1402,11 @@ export const orchestrateBenchDeletion = (
 
             if (daemonUnavailable) {
               context.log('warning', 'Docker daemon is unavailable. Attempting to start podman and retry cleanup once.');
-              const runtimeRecovered = await ensureRuntimeRunning();
+              const runtimeRecovered = await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
               if (runtimeRecovered) {
                 runtimeEnv = await getRuntimeEnv();
                 try {
-                  const retryResult = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'stop'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
+                  const retryResult = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'deleting'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
                   if (retryResult.code === 0) {
                     await runProjectCleanup();
                     context.completeStep('deleting', 'Docker cleanup finished after runtime recovery');

@@ -34,67 +34,148 @@
     </template>
 
     <template #default>
-      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-base">
-        <div class="flex items-center justify-between border-b border-outline-gray-2 px-4 py-2.5">
+      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-base flex flex-col">
+        <!-- Header Bar with Steps count & Search field -->
+        <div class="flex flex-wrap items-center justify-between border-b border-outline-gray-2 px-4 py-2.5 gap-3 bg-surface-gray-1">
           <div class="flex items-center gap-2">
-            <span class="rounded-full size-2 bg-surface-red-7" />
-            <span class="rounded-full size-2 bg-surface-amber-7" />
-            <span class="rounded-full size-2 bg-surface-green-7" />
-            <span class="ml-1 text-xs-medium text-ink-gray-4">Output</span>
+            <span class="text-xs-medium text-ink-gray-7">
+              {{ filteredStepGroups.length }} {{ filteredStepGroups.length === 1 ? 'step' : 'steps' }}
+            </span>
+            <span class="text-ink-gray-3">•</span>
+            <span class="text-xs text-ink-gray-5">
+              {{ entryCountLabel }}
+            </span>
           </div>
-          <span class="text-xs tabular-nums text-ink-gray-4">
-            {{ entryCountLabel }}
-          </span>
+
+          <div class="flex items-center gap-2 flex-1 justify-end min-w-[220px]">
+            <div class="w-64 max-w-full">
+              <TextInput
+                v-model="searchQuery"
+                type="search"
+                placeholder="Search logs…"
+                variant="outline"
+              >
+                <template #prefix>
+                  <IconSearch class="w-3.5 text-ink-gray-5" />
+                </template>
+              </TextInput>
+            </div>
+            <Button
+              size="sm"
+              variant="subtle"
+              @click="toggleExpandAll"
+            >
+              {{ allExpanded ? 'Collapse all' : 'Expand all' }}
+            </Button>
+          </div>
         </div>
 
+        <!-- Grouped Steps Container -->
         <div
           ref="logsContainer"
-          class="max-h-[45vh] min-h-52 cursor-text select-text overflow-auto py-2 font-mono text-xs leading-5 [-webkit-app-region:no-drag] [-webkit-user-select:text!important] [user-select:text!important] [&_*]:[-webkit-app-region:no-drag] [&_*]:[-webkit-user-select:text!important] [&_*]:[user-select:text!important]"
+          class="max-h-[55vh] min-h-[320px] overflow-y-auto divide-y divide-outline-gray-2 [-webkit-app-region:no-drag]"
           tabindex="0"
           @mousedown.stop
-          @click.stop
         >
           <div
-            v-if="displayedLogs.length === 0"
-            class="flex items-center justify-center min-h-48 text-ink-gray-4"
+            v-if="filteredStepGroups.length === 0"
+            class="flex items-center justify-center min-h-48 text-ink-gray-4 text-xs"
           >
-            Waiting for log output...
+            {{ searchQuery ? 'No log lines match your search.' : 'Waiting for log output...' }}
           </div>
+
           <div
-            v-else-if="hiddenLogCount > 0"
-            class="px-4 py-2 text-ink-gray-5"
+            v-for="group in filteredStepGroups"
+            :key="group.id"
+            class="flex flex-col"
           >
-            Showing latest {{ visibleLogs.length }} entries. {{ hiddenLogCount }} older
-            {{ hiddenLogCount === 1 ? 'entry is' : 'entries are' }} kept out of view to keep the app responsive.
-          </div>
-          <div
-            v-for="(log, index) in visibleLogs"
-            :key="`${log.timestamp}-${index}`"
-            class="grid grid-cols-[72px_58px_minmax(0,1fr)] gap-3 px-4 py-1 transition-colors hover:bg-surface-gray-2"
-          >
-            <time
-              class="tabular-nums text-ink-gray-4"
-              :datetime="log.timestamp"
-              :title="formatFullTime(log.timestamp)"
+            <!-- Step Header -->
+            <div
+              class="flex items-center justify-between px-4 py-2.5 cursor-pointer select-none transition-colors sticky top-0 z-10"
+              :class="[
+                isStepExpanded(group.id)
+                  ? 'bg-surface-gray-2 font-medium text-ink-gray-9 border-b border-outline-gray-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+                  : 'bg-surface-base hover:bg-surface-gray-1 text-ink-gray-8'
+              ]"
+              @click="toggleStep(group.id)"
             >
-              {{ formatTime(log.timestamp) }}
-            </time>
-            <span
-              class="font-semibold"
-              :class="levelClass(log.level)"
+              <div class="flex items-center min-w-0 gap-2.5">
+                <IconChevronDown
+                  v-if="isStepExpanded(group.id)"
+                  class="size-4 shrink-0 text-ink-gray-5 transition-transform"
+                />
+                <IconChevronRight
+                  v-else
+                  class="size-4 shrink-0 text-ink-gray-5 transition-transform"
+                />
+
+                <span class="flex items-center justify-center shrink-0">
+                  <IconCheckCircle2 v-if="group.status === 'success'" class="size-4 text-ink-green-6" />
+                  <LoadingIndicator v-else-if="group.status === 'running'" class="size-3.5 text-ink-blue-6" />
+                  <IconXCircle v-else-if="group.status === 'failure'" class="size-4 text-ink-red-6" />
+                  <IconCircle v-else class="size-4 text-ink-gray-4" />
+                </span>
+
+                <span class="text-xs-medium truncate">
+                  {{ group.name }}
+                </span>
+
+                <Badge
+                  v-if="searchQuery && group.matchCount !== undefined"
+                  variant="subtle"
+                  theme="gray"
+                  class="text-[10px]"
+                >
+                  {{ group.matchCount }} {{ group.matchCount === 1 ? 'match' : 'matches' }}
+                </Badge>
+              </div>
+
+              <div class="flex items-center gap-3 shrink-0 ml-2">
+                <TaskTimer
+                  :start-time="group.startTime"
+                  :end-time="group.endTime"
+                  :running="group.status === 'running' && isBusy"
+                  :show-label="false"
+                  size-class="text-xs"
+                  :color-class="group.status === 'failure' ? 'text-ink-red-6 font-semibold' : 'text-ink-gray-5'"
+                />
+              </div>
+            </div>
+
+            <!-- Step Log Lines (when expanded) -->
+            <div
+              v-if="isStepExpanded(group.id)"
+              class="bg-surface-base py-1.5 overflow-x-auto font-mono text-xs leading-5 cursor-text select-text"
             >
-              {{ formatLevel(log.level) }}
-            </span>
-            <span
-              class="min-w-0 break-words whitespace-pre-wrap text-ink-gray-7"
-              :class="messageClass(log.level)"
-            >{{ log.message }}</span>
+              <div
+                v-for="log in group.displayLogs"
+                :key="`${group.id}-${log.lineNumber}`"
+                class="grid grid-cols-[48px_minmax(0,1fr)] gap-3 px-4 py-0.5 hover:bg-surface-gray-1 transition-colors"
+              >
+                <span
+                  class="text-right tabular-nums text-ink-gray-4 select-none pr-2.5 border-r border-outline-gray-2"
+                  :title="formatFullTime(log.timestamp)"
+                >
+                  {{ log.lineNumber }}
+                </span>
+                <div class="min-w-0 break-words whitespace-pre-wrap flex items-start gap-2">
+                  <span
+                    v-if="log.level && log.level !== 'info'"
+                    class="shrink-0 uppercase text-[10px] font-semibold px-1 rounded mt-0.5"
+                    :class="levelBadgeClass(log.level)"
+                  >
+                    {{ log.level }}
+                  </span>
+                  <span :class="messageClass(log.level)">{{ log.message }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div
           v-if="displayedLogs.length > 0"
-          class="flex items-center justify-between border-t border-outline-gray-2 px-4 py-2.5"
+          class="flex items-center justify-between border-t border-outline-gray-2 px-4 py-2.5 bg-surface-base"
         >
           <span class="text-xs text-ink-gray-4">
             {{ footerStatusLabel }}
@@ -168,9 +249,15 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, ConfirmDialog, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
+import { Badge, Button, ConfirmDialog, Dialog, LoadingIndicator, Switch, TextInput, toast } from 'frappe-ui';
 import IconTerminal from '~icons/lucide/terminal';
 import IconCopy from '~icons/lucide/copy';
+import IconSearch from '~icons/lucide/search';
+import IconChevronDown from '~icons/lucide/chevron-down';
+import IconChevronRight from '~icons/lucide/chevron-right';
+import IconCheckCircle2 from '~icons/lucide/check-circle-2';
+import IconXCircle from '~icons/lucide/x-circle';
+import IconCircle from '~icons/lucide/circle';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domain';
@@ -195,14 +282,35 @@ const fullLogText = ref<string | null>(null);
 const loadingFullLog = ref(false);
 const showCancelConfirm = ref(false);
 const isCancelling = ref(false);
-const MAX_RENDERED_LOGS = 400;
-const FULL_LOG_LINE_PATTERN = /^\[([^\]]+)\] \[([A-Z]+)\] (.*)$/;
+const searchQuery = ref('');
+const expandedSteps = ref<Set<string>>(new Set());
+const initializedTask = ref<string | null>(null);
+
+const FULL_LOG_LINE_PATTERN = /^\[([^\]]+)\] \[([A-Z]+)\] (?:\[([^|\]]*)\|([^|\]]*)\|([^\]]*)\] )?(.*)$/;
 const ipc = useIpc();
 
 type DisplayLog = {
   readonly message: string;
   readonly timestamp: string;
   readonly level: TaskLogLevel | null;
+  readonly stepId: string | null;
+  readonly stepName: string | null;
+  readonly type?: TaskProgressEvent['type'];
+};
+
+type StepGroup = {
+  readonly id: string;
+  readonly name: string;
+  status: 'running' | 'success' | 'failure' | 'skipped';
+  readonly startTime: string;
+  endTime?: string;
+  completionSummary?: string;
+  logs: Array<{
+    readonly lineNumber: number;
+    readonly message: string;
+    readonly timestamp: string;
+    readonly level: TaskLogLevel | null;
+  }>;
 };
 
 const LOCAL_STORAGE_KEY = 'frappe-local:task-log-auto-scroll';
@@ -223,7 +331,6 @@ const isOpen = computed({
 });
 
 const isBusy = computed(() => props.task?.status === 'running' || props.task?.status === 'queued');
-
 const fullLogLoaded = computed(() => fullLogText.value !== null);
 
 const parseFullLogLine = (line: string): DisplayLog => {
@@ -235,6 +342,8 @@ const parseFullLogLine = (line: string): DisplayLog => {
       message: line,
       timestamp: fallbackTimestamp,
       level: null,
+      stepId: null,
+      stepName: null,
     };
   }
 
@@ -246,9 +355,12 @@ const parseFullLogLine = (line: string): DisplayLog => {
   const timestamp = Number.isNaN(Date.parse(match[1])) ? fallbackTimestamp : match[1];
 
   return {
-    message: match[3],
+    message: match[6],
     timestamp,
     level,
+    type: (match[3] as TaskProgressEvent['type']) || undefined,
+    stepId: match[4] || null,
+    stepName: match[5] || null,
   };
 };
 
@@ -267,13 +379,164 @@ const displayedLogs = computed(() => {
     message: formatTaskTitle(log.message),
   }));
 });
-const visibleLogs = computed(() => displayedLogs.value.slice(-MAX_RENDERED_LOGS));
-const hiddenLogCount = computed(() => Math.max(0, displayedLogs.value.length - visibleLogs.value.length));
-const entryCountLabel = computed(() => {
-  const count = displayedLogs.value.length;
-  const suffix = count === 1 ? 'entry' : 'entries';
-  return fullLogLoaded.value ? `${count} full ${suffix}` : `${count} ${suffix}`;
+
+const stepGroups = computed(() => {
+  const logs = displayedLogs.value;
+  if (!logs.length) return [];
+
+  const groups: StepGroup[] = [];
+  let currentGroup: StepGroup | null = null;
+  let lineNumber = 1;
+
+  for (const log of logs) {
+    const targetStepId = log.stepId || (log.type === 'task.queued' || log.type === 'task.started' ? 'init' : 'general');
+    const targetStepName = log.stepName || (targetStepId === 'init' ? 'Setup task' : formatTaskTitle(props.task?.taskName || 'Execution Output'));
+
+    if (!currentGroup || (log.stepId && currentGroup.id !== log.stepId) || (log.type === 'task.step.started' && currentGroup.id !== log.stepId)) {
+      let existing = groups.find((g) => g.id === targetStepId);
+      if (!existing) {
+        existing = {
+          id: targetStepId,
+          name: targetStepName,
+          status: 'running',
+          startTime: log.timestamp,
+          logs: [],
+        };
+        groups.push(existing);
+      }
+      currentGroup = existing;
+      lineNumber = currentGroup.logs.length + 1;
+    }
+
+    const isBoilerplateStart = log.type === 'task.step.started' && log.message === `${log.stepName} started.`;
+    const isBoilerplateComplete = log.type === 'task.step.completed' && log.message === `${log.stepName} completed.`;
+
+    if (log.type === 'task.step.completed') {
+      currentGroup.endTime = log.timestamp;
+      const summaryText = log.message.endsWith(' completed.')
+        ? log.message.slice(0, -11)
+        : log.message;
+      if (summaryText && summaryText !== currentGroup.name) {
+        currentGroup.completionSummary = summaryText;
+      }
+    }
+
+    if (!isBoilerplateStart && !isBoilerplateComplete) {
+      currentGroup.logs.push({
+        lineNumber: lineNumber++,
+        message: log.message,
+        timestamp: log.timestamp,
+        level: log.level ?? null,
+      });
+      currentGroup.endTime = log.timestamp;
+    }
+  }
+
+  const isTaskRunning = isBusy.value;
+  const isTaskFailed = props.task?.status === 'failure';
+
+  return groups.map((g, index) => {
+    const isLast = index === groups.length - 1;
+    const hasError = g.logs.some((l) => l.level === 'error');
+
+    let status: StepGroup['status'] = 'success';
+    if (hasError || (isLast && isTaskFailed)) {
+      status = 'failure';
+    } else if (isLast && isTaskRunning) {
+      status = 'running';
+    }
+
+    const logs = g.logs.length > 0 ? g.logs : [
+      {
+        lineNumber: 1,
+        message: g.completionSummary || (status === 'success' ? `${g.name} completed.` : status === 'running' ? `Running ${g.name}...` : `${g.name} failed.`),
+        timestamp: g.endTime || g.startTime,
+        level: status === 'failure' ? ('error' as const) : null,
+      }
+    ];
+
+    return {
+      ...g,
+      status,
+      logs,
+    };
+  });
 });
+
+const filteredStepGroups = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) {
+    return stepGroups.value.map((g) => ({ ...g, displayLogs: g.logs, matchCount: undefined }));
+  }
+
+  return stepGroups.value
+    .map((g) => {
+      const nameMatches = g.name.toLowerCase().includes(q);
+      const matchingLogs = g.logs.filter((l) => l.message.toLowerCase().includes(q));
+      if (!nameMatches && matchingLogs.length === 0) {
+        return null;
+      }
+      return {
+        ...g,
+        displayLogs: matchingLogs.length > 0 ? matchingLogs : g.logs,
+        matchCount: matchingLogs.length,
+      };
+    })
+    .filter((g): g is NonNullable<typeof g> => g !== null);
+});
+
+watch(
+  () => [props.task?.taskId, stepGroups.value.length] as const,
+  ([currentTaskId]) => {
+    if (!currentTaskId) return;
+    if (initializedTask.value !== currentTaskId) {
+      initializedTask.value = currentTaskId;
+      expandedSteps.value.clear();
+    }
+
+    stepGroups.value.forEach((group, index) => {
+      const isLast = index === stepGroups.value.length - 1;
+      if (isLast && (isBusy.value || group.status === 'failure')) {
+        expandedSteps.value.add(group.id);
+      }
+    });
+  },
+  { immediate: true }
+);
+
+const isStepExpanded = (stepId: string) => {
+  if (searchQuery.value.trim() !== '') return true;
+  return expandedSteps.value.has(stepId);
+};
+
+const toggleStep = (stepId: string) => {
+  if (searchQuery.value.trim() !== '') return;
+  if (expandedSteps.value.has(stepId)) {
+    expandedSteps.value.delete(stepId);
+  } else {
+    expandedSteps.value.add(stepId);
+  }
+};
+
+const allExpanded = computed(() =>
+  stepGroups.value.length > 0 && stepGroups.value.every((g) => expandedSteps.value.has(g.id))
+);
+
+const toggleExpandAll = () => {
+  if (allExpanded.value) {
+    expandedSteps.value.clear();
+  } else {
+    stepGroups.value.forEach((g) => expandedSteps.value.add(g.id));
+  }
+};
+
+const totalLineCount = computed(() => displayedLogs.value.length);
+const entryCountLabel = computed(() => {
+  const count = totalLineCount.value;
+  const suffix = count === 1 ? 'entry' : 'entries';
+  return fullLogLoaded.value ? `${count} full ${suffix}` : `${count} total ${suffix}`;
+});
+
 const footerStatusLabel = computed(() => {
   if (fullLogLoaded.value) return 'Full task log loaded';
   if (isBusy.value) return 'Task is still running';
@@ -335,17 +598,16 @@ const formatLevel = (level: TaskProgressEvent['logLevel']) => {
   return 'EVENT';
 };
 
-const levelClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'text-ink-red-5';
-  if (level === 'warning') return 'text-ink-amber-6';
-  if (level === 'info') return 'text-ink-blue-5';
-  return 'text-ink-gray-4';
+const levelBadgeClass = (level: TaskProgressEvent['logLevel']) => {
+  if (level === 'error') return 'bg-surface-red-2 text-ink-red-6';
+  if (level === 'warning') return 'bg-surface-amber-2 text-ink-amber-6';
+  return 'bg-surface-gray-3 text-ink-gray-6';
 };
 
 const messageClass = (level: TaskProgressEvent['logLevel']) => {
   if (level === 'error') return 'text-ink-red-5';
   if (level === 'warning') return 'text-ink-amber-5';
-  return '';
+  return 'text-ink-gray-7';
 };
 
 const scrollToBottom = () => {
@@ -381,6 +643,7 @@ watch(
   () => {
     fullLogText.value = null;
     copied.value = false;
+    searchQuery.value = '';
   }
 );
 
@@ -409,9 +672,13 @@ const onCopyLogs = async () => {
 
   const text = fullLogText.value
     ? formatTaskTitle(fullLogText.value)
-    : displayedLogs.value
-      .map((log) => `[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`)
-      .join('\n');
+    : stepGroups.value
+      .map((g) => {
+        const header = `=== ${g.name} (${g.status.toUpperCase()}) ===`;
+        const lines = g.logs.map((log) => `${log.lineNumber}\t[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`).join('\n');
+        return `${header}\n${lines}`;
+      })
+      .join('\n\n');
 
   try {
     await navigator.clipboard.writeText(text);

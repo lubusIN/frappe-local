@@ -373,9 +373,10 @@ export class TaskRunner {
       const safeTaskId = event.taskId.replace(/[^a-zA-Z0-9_.-]/g, '_');
       const logPath = path.join(taskLogsDirectory, `${safeTaskId}.log`);
       const level = event.logLevel ?? 'event';
+      const stepMeta = `[${event.type}|${event.stepId ?? ''}|${event.stepName ?? ''}]`;
       fs.appendFileSync(
         logPath,
-        `[${event.timestamp}] [${level.toUpperCase()}] ${event.message}\n`,
+        `[${event.timestamp}] [${level.toUpperCase()}] ${stepMeta} ${event.message}\n`,
         'utf8'
       );
     } catch {
