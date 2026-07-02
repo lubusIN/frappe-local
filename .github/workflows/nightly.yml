@@ -58,8 +58,11 @@ jobs:
           # Delete the old nightly release and tag if they exist
           gh release delete nightly --cleanup-tag -y || true
           
-          # Create new tag locally and push
-          git tag nightly
+          # Ensure remote tag is cleaned up even if release deletion failed (e.g., if release did not exist)
+          git push origin :refs/tags/nightly || true
+          
+          # Force create new tag locally (overwrites tag fetched during checkout) and push
+          git tag -f nightly
           git push origin nightly --force
           
           # Create a fresh release
