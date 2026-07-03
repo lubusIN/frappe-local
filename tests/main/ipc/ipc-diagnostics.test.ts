@@ -361,7 +361,7 @@ describe('diagnostics IPC handlers', () => {
       '/mock/podman',
       ['rm', '-f', 'container-1'],
       undefined,
-      undefined,
+      expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
@@ -370,7 +370,7 @@ describe('diagnostics IPC handlers', () => {
       '/mock/podman',
       ['volume', 'rm', '-f', 'volume-1'],
       undefined,
-      undefined,
+      expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.objectContaining({ idleTimeout: expect.any(Number) })
     );
@@ -379,7 +379,7 @@ describe('diagnostics IPC handlers', () => {
       '/mock/podman',
       ['network', 'rm', 'network-1'],
       undefined,
-      undefined,
+      expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
       expect.objectContaining({ idleTimeout: expect.any(Number) })
     );

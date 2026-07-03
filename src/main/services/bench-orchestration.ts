@@ -1352,6 +1352,7 @@ export const orchestrateBenchDeletion = (
         context.startStep('fs', 'Removing bench directory');
         try {
           if (fs.existsSync(bench.path)) {
+            context.log('info', `Removing directory: ${bench.path}`, 'fs');
             await fs.promises.rm(bench.path, { recursive: true, force: true });
           }
           context.completeStep('fs', 'Bench directory removed');
@@ -1378,6 +1379,7 @@ export const orchestrateBenchDeletion = (
         const command = getBinaryPath('docker-compose');
         const projectName = getComposeProjectName(bench.id);
         const args = ['-p', projectName, 'down', '-v', '--remove-orphans'];
+        context.log('info', `Running: ${command} ${args.join(' ')}`, 'deleting');
 
         if (!runtimeReady) {
           context.completeStep('deleting', 'Docker cleanup skipped (runtime unavailable)');

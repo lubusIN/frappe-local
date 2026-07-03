@@ -33,7 +33,7 @@ export const cleanupPodmanResources = async (
   const containerIds = await listPodmanResources(podmanBinary, filterArgs.containers, runtimeEnv, timeoutConfig);
   if (containerIds.length > 0) {
     try {
-      await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, undefined, runtimeEnv, timeoutConfig);
+      await execPromise(podmanBinary, ['rm', '-f', ...containerIds], undefined, (out) => logger?.info(out), runtimeEnv, timeoutConfig);
       logger?.info(`Removed ${containerIds.length} lingering containers`);
     } catch (error) {
       logger?.warn(`Failed to remove lingering containers: ${errorMessage(error)}`);
@@ -43,7 +43,7 @@ export const cleanupPodmanResources = async (
   const volumeNames = await listPodmanResources(podmanBinary, filterArgs.volumes, runtimeEnv, timeoutConfig);
   if (volumeNames.length > 0) {
     try {
-      await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, undefined, runtimeEnv, timeoutConfig);
+      await execPromise(podmanBinary, ['volume', 'rm', '-f', ...volumeNames], undefined, (out) => logger?.info(out), runtimeEnv, timeoutConfig);
       logger?.info(`Removed ${volumeNames.length} lingering volumes`);
     } catch (error) {
       logger?.warn(`Failed to remove lingering volumes: ${errorMessage(error)}`);
@@ -53,7 +53,7 @@ export const cleanupPodmanResources = async (
   const networkNames = await listPodmanResources(podmanBinary, filterArgs.networks, runtimeEnv, timeoutConfig);
   if (networkNames.length > 0) {
     try {
-      await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, undefined, runtimeEnv, timeoutConfig);
+      await execPromise(podmanBinary, ['network', 'rm', ...networkNames], undefined, (out) => logger?.info(out), runtimeEnv, timeoutConfig);
       logger?.info(`Removed ${networkNames.length} lingering networks`);
     } catch (error) {
       logger?.warn(`Failed to remove lingering networks: ${errorMessage(error)}`);
