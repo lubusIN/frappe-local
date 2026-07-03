@@ -21,7 +21,7 @@ if (!expectedExtensions) {
 }
 
 const releaseVersion = process.env.RELEASE_TAG?.replace(/^v/, '');
-if (releaseVersion && releaseVersion !== appPackage.version && releaseVersion !== 'nightly') {
+if (releaseVersion && releaseVersion !== appPackage.version && releaseVersion !== 'dev' && releaseVersion !== 'nightly') {
   throw new Error(
     `Release tag ${process.env.RELEASE_TAG} does not match package version ${appPackage.version}`
   );
@@ -71,9 +71,7 @@ console.log(`Prepared ${artifacts.length} artifact(s) in ${releaseDirectory}`);
 // Generate electron-updater manifest
 const finalVersion = appPackage.version;
 let channel = 'latest';
-if (finalVersion.includes('nightly')) channel = 'nightly';
-else if (finalVersion.includes('-alpha')) channel = 'alpha';
-else if (finalVersion.includes('-beta')) channel = 'beta';
+if (finalVersion.includes('-dev') || finalVersion.includes('nightly') || process.env.RELEASE_TAG === 'dev') channel = 'dev';
 
 const isMac = process.platform === 'darwin';
 const isWin = process.platform === 'win32';

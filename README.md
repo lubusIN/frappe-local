@@ -2,7 +2,7 @@
 
 <img src=".github/assets/banner.png" />
 
-[![Release](https://github.com/lubusIN/frappe-local/actions/workflows/release.yml/badge.svg)](https://github.com/lubusIN/frappe-local/actions/workflows/release.yml) [![Nightly Build](https://github.com/lubusIN/frappe-local/actions/workflows/nightly.yml/badge.svg)](https://github.com/lubusIN/frappe-local/actions/workflows/nightly.yml)
+[![Release](https://github.com/lubusIN/frappe-local/actions/workflows/release.yml/badge.svg)](https://github.com/lubusIN/frappe-local/actions/workflows/release.yml) [![Dev Rolling Build](https://github.com/lubusIN/frappe-local/actions/workflows/dev.yml/badge.svg)](https://github.com/lubusIN/frappe-local/actions/workflows/dev.yml)
 
 # Frappe Local
 

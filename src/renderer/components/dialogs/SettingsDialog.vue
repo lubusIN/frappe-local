@@ -139,9 +139,7 @@
                       v-model="form.updateChannel"
                       :options="[
                         { label: 'Stable', value: 'stable' },
-                        { label: 'Beta', value: 'beta' },
-                        { label: 'Alpha', value: 'alpha' },
-                        { label: 'Nightly', value: 'nightly' }
+                        { label: 'Dev', value: 'dev' }
                       ]"
                     />
                   </div>

@@ -26,29 +26,20 @@ export const configureUpdater = (settings: Settings | null): void => {
 
     if (settings.updateChannel === 'stable') {
       autoUpdater.channel = 'latest';
-      autoUpdater.allowPrerelease = false;
+      autoUpdater.allowPrerelease = true;
       autoUpdater.setFeedURL({
         provider: 'github',
         owner: 'lubusIN',
         repo: 'frappe-local',
       });
     } else {
-      autoUpdater.channel = settings.updateChannel;
+      autoUpdater.channel = 'dev';
       autoUpdater.allowPrerelease = true;
-
-      if (settings.updateChannel === 'nightly') {
-        autoUpdater.setFeedURL({
-          provider: 'generic',
-          url: 'https://github.com/lubusIN/frappe-local/releases/download/nightly',
-          channel: 'nightly'
-        });
-      } else {
-        autoUpdater.setFeedURL({
-          provider: 'github',
-          owner: 'lubusIN',
-          repo: 'frappe-local',
-        });
-      }
+      autoUpdater.setFeedURL({
+        provider: 'generic',
+        url: 'https://github.com/lubusIN/frappe-local/releases/download/dev',
+        channel: 'dev'
+      });
     }
 
     updaterLogger.info(`configured updater on channel: ${autoUpdater.channel}`);

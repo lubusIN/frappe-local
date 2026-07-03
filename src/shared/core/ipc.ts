@@ -166,7 +166,7 @@ export type SettingsItem = {
   readonly defaultFrappeVersion: string;
   readonly storagePath: string;
   readonly editorPreference: string;
-  readonly updateChannel: 'stable' | 'beta' | 'alpha' | 'nightly';
+  readonly updateChannel: 'stable' | 'dev';
   readonly autoUpdateEnabled: boolean;
   readonly sidebarCompact: boolean;
   readonly podmanMemoryMb: number;

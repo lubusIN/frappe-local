@@ -1,4 +1,4 @@
-name: Nightly Build
+name: Dev Rolling Build
 
 on:
   schedule:
@@ -9,10 +9,10 @@ permissions:
   contents: write
 
 jobs:
-  nightly-release:
+  dev-release:
     runs-on: ubuntu-latest
     outputs:
-      nightly_version: ${{ steps.version.outputs.version }}
+      dev_version: ${{ steps.version.outputs.version }}
       skip: ${{ steps.version.outputs.skip }}
     steps:
       - name: Checkout repository
@@ -36,7 +36,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             COMMITS=$(git log --since="24 hours ago" --oneline)
             if [ -z "$COMMITS" ]; then
-              echo "No changes in the last 24 hours. Skipping nightly build."
+              echo "No changes in the last 24 hours. Skipping dev build."
               echo "skip=true" >> $GITHUB_OUTPUT
               exit 0
             fi
@@ -45,36 +45,38 @@ jobs:
           # Get the current base version from package.json
           CURRENT_VERSION=$(node -e "console.log(require('./package.json').version.split('-')[0])")
           DATE=$(date +'%Y%m%d')
-          NIGHTLY_VERSION="${CURRENT_VERSION}-nightly.${DATE}"
+          DEV_VERSION="${CURRENT_VERSION}-dev.${DATE}"
           
-          echo "version=$NIGHTLY_VERSION" >> $GITHUB_OUTPUT
-          echo "Created version $NIGHTLY_VERSION"
+          echo "version=$DEV_VERSION" >> $GITHUB_OUTPUT
+          echo "Created version $DEV_VERSION"
 
       - name: Recreate Rolling Release
         if: steps.version.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Delete the old nightly release and tag if they exist
+          # Delete the old dev and nightly releases and tags if they exist
+          gh release delete dev --cleanup-tag -y || true
           gh release delete nightly --cleanup-tag -y || true
           
-          # Ensure remote tag is cleaned up even if release deletion failed (e.g., if release did not exist)
+          # Ensure remote tags are cleaned up even if release deletion failed
+          git push origin :refs/tags/dev || true
           git push origin :refs/tags/nightly || true
           
           # Force create new tag locally (overwrites tag fetched during checkout) and push
-          git tag -f nightly
-          git push origin nightly --force
+          git tag -f dev
+          git push origin dev --force
           
           # Create a fresh release
-          gh release create nightly \
-            --title "Nightly Build v${{ steps.version.outputs.version }}" \
+          gh release create dev \
+            --title "Dev Rolling Build v${{ steps.version.outputs.version }}" \
             --prerelease \
-            --notes "Rolling nightly build containing the latest changes."
+            --notes "Rolling dev build containing the latest changes."
 
   build-and-upload:
-    needs: nightly-release
-    if: needs.nightly-release.outputs.skip != 'true'
+    needs: dev-release
+    if: needs.dev-release.outputs.skip != 'true'
     uses: ./.github/workflows/release.yml
     with:
-      tag_name: nightly
-      override_version: ${{ needs.nightly-release.outputs.nightly_version }}
+      tag_name: dev
+      override_version: ${{ needs.dev-release.outputs.dev_version }}
