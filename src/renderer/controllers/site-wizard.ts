@@ -32,7 +32,11 @@ export const suggestSitePath = (benchPath: string, siteName: string): string => 
   return `${base}/sites/${safeSiteName}`;
 };
 
-export const getSiteWizardStepErrors = (step: SiteWizardStep, draft: SiteWizardDraft): string[] => {
+export const getSiteWizardStepErrors = (
+  step: SiteWizardStep,
+  draft: SiteWizardDraft,
+  existingSites: readonly { readonly name: string; readonly status?: string }[] = []
+): string[] => {
   const errors: string[] = [];
 
   if (step === 1) {
@@ -46,6 +50,16 @@ export const getSiteWizardStepErrors = (step: SiteWizardStep, draft: SiteWizardD
       errors.push('Enter a site name.');
     } else if (!isValidSiteName(draft.name)) {
       errors.push('Site name must be a lowercase slug with letters, numbers, and hyphens only.');
+    } else {
+      const siteDomain = toSiteDomain(draft.name);
+      const duplicate = existingSites.find((s) => toSiteDomain(s.name) === siteDomain);
+      if (duplicate) {
+        if (duplicate.status === 'queued') {
+          errors.push(`Site "${siteDomain}" is currently being processed (e.g. deleted). Please wait a moment before recreating.`);
+        } else {
+          errors.push(`A site named "${siteDomain}" already exists. Please choose a unique site name.`);
+        }
+      }
     }
 
     if (!draft.path.trim()) {
@@ -56,10 +70,13 @@ export const getSiteWizardStepErrors = (step: SiteWizardStep, draft: SiteWizardD
   return errors;
 };
 
-export const buildSiteCreatePayload = (draft: SiteWizardDraft): SiteWizardBuildResult => {
+export const buildSiteCreatePayload = (
+  draft: SiteWizardDraft,
+  existingSites: readonly { readonly name: string; readonly status?: string }[] = []
+): SiteWizardBuildResult => {
   const errors = [
-    ...getSiteWizardStepErrors(1, draft),
-    ...getSiteWizardStepErrors(2, draft),
+    ...getSiteWizardStepErrors(1, draft, existingSites),
+    ...getSiteWizardStepErrors(2, draft, existingSites),
   ];
 
   if (errors.length > 0) {

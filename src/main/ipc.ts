@@ -773,11 +773,7 @@ export const registerIpcHandlers = (
     const existingSites = await repositories.sites.findAll();
     const duplicateSite = existingSites.find(s => normalizeSiteHost(s.name) === normalizeSiteHost(payload.name));
     if (duplicateSite) {
-      if (payload.force) {
-        await repositories.sites.delete(duplicateSite.id);
-      } else {
-        throw new Error(`A site host "${normalizeSiteHost(payload.name)}" already exists. Use a unique site name.`);
-      }
+      throw new Error(`A site host "${normalizeSiteHost(payload.name)}" already exists. Use a unique site name.`);
     }
 
     const bench = await repositories.benches.findById(payload.benchId);

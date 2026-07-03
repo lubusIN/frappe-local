@@ -84,7 +84,7 @@ import { useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import { useIpc } from '@frappe-local/renderer/composables/system';
 import { buildSiteCreatePayload, getSiteWizardStepErrors, suggestSitePath, toSiteDomain, type SiteWizardStep } from '@frappe-local/renderer/controllers';
 
-import type { SiteListItem } from '@frappe-local/shared/domain';
+import type { SiteListItem } from '@frappe-local/shared/core';
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{
@@ -131,35 +131,33 @@ watch(
   (isOpen) => {
     if (isOpen) {
       refresh();
-      if (!createForm.benchId && creatableBenches.value.length === 1) {
-        createForm.benchId = creatableBenches.value[0].id;
+      const [onlyBench] = creatableBenches.value;
+      if (!createForm.benchId && onlyBench && creatableBenches.value.length === 1) {
+        createForm.benchId = onlyBench.id;
       }
     }
   }
 );
 
 watch(
-  () => createForm.name,
-  (newName) => {
+  () => [createForm.name, wizardStep.value] as const,
+  ([newName, step]) => {
     if (selectedBench.value && !createForm.force) {
       const sanitizedName = toSiteDomain(newName);
       createForm.path = suggestSitePath(selectedBench.value.path, sanitizedName);
+    }
+    if (step === 2 && newName.trim()) {
+      const errors = getSiteWizardStepErrors(2, createForm, sites.value);
+      wizardErrors.value = errors;
+    } else {
+      wizardErrors.value = [];
     }
   }
 );
 
 const onNextStep = async () => {
-  const errors = getSiteWizardStepErrors(wizardStep.value, createForm);
+  const errors = getSiteWizardStepErrors(wizardStep.value, createForm, sites.value);
   if (wizardStep.value === 2) {
-    const siteDomain = toSiteDomain(createForm.name);
-    const duplicateInDb = sites.value.find(s => s.name === siteDomain);
-    if (duplicateInDb && !createForm.force) {
-      if (duplicateInDb.status === 'queued') {
-        errors.push(`Site "${siteDomain}" is currently being processed (e.g. deleted). Please wait a moment before recreating.`);
-      } else {
-        errors.push(`A site named "${siteDomain}" already exists in the database. Enable "Force create" to overwrite.`);
-      }
-    }
     if (!createForm.force && createForm.path) {
       const exists = await ipc.pathExists(createForm.path);
       if (exists) {

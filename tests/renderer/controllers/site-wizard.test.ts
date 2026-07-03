@@ -48,6 +48,18 @@ describe('site wizard helpers', () => {
     expect(getSiteWizardStepErrors(3, draft)).toEqual([]);
   });
 
+  it('detects duplicate site host against existingSites', () => {
+    const draft = {
+      benchId: 'bench-001',
+      name: 'demo-site',
+      path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
+    };
+
+    expect(getSiteWizardStepErrors(2, draft, [{ name: 'demo-site.localhost' }])).toEqual([
+      'A site named "demo-site.localhost" already exists. Please choose a unique site name.',
+    ]);
+  });
+
   it('builds create payload when draft is valid', () => {
     const draft = {
       benchId: 'bench-001',
