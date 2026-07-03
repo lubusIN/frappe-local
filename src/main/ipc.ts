@@ -791,8 +791,8 @@ export const registerIpcHandlers = (
     const customAppsList = await repositories.customApps.findAll();
     const isAppOnBench = (app: string) => {
       if (bench.apps.includes(app)) return true;
-      const customApp = customAppsList.find((c) => c.id === app);
-      return customApp ? bench.apps.includes(customApp.id) : false;
+      const customApp = customAppsList.find((c) => c.id === app || c.name === app);
+      return customApp ? bench.apps.includes(customApp.id) || bench.apps.includes(customApp.name) : false;
     };
     const unavailableApps = payload.apps.filter((app) => app !== 'frappe' && !isAppOnBench(app));
     if (unavailableApps.length > 0) {
@@ -858,8 +858,8 @@ export const registerIpcHandlers = (
       const customAppsList = await repositories.customApps.findAll();
       const isAppOnBench = (app: string) => {
         if (bench.apps.includes(app)) return true;
-        const customApp = customAppsList.find((c) => c.id === app);
-        return customApp ? bench.apps.includes(customApp.id) : false;
+        const customApp = customAppsList.find((c) => c.id === app || c.name === app);
+        return customApp ? bench.apps.includes(customApp.id) || bench.apps.includes(customApp.name) : false;
       };
       const unavailableApps = requestedApps.filter((app) => app !== 'frappe' && !isAppOnBench(app));
       if (unavailableApps.length > 0) {

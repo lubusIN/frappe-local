@@ -244,7 +244,7 @@ export const orchestrateSiteCreation = async (
           '--db-root-password', dbPassword,
           '--install-app', 'frappe',
           ...input.apps.filter(app => app !== 'frappe').flatMap(app => {
-            const customApp = customAppsList.find((c) => c.id === app);
+            const customApp = customAppsList.find((c) => c.id === app || c.name === app);
             return ['--install-app', customApp ? customApp.name : app];
           }),
           input.name
@@ -480,9 +480,9 @@ export const orchestrateSiteAppsUpdate = (
 
           for (const app of installDelta) {
             context.throwIfCancelled();
-            attemptedInstalls.push(app);
-            const customApp = customAppsList.find((c) => c.id === app);
+            const customApp = customAppsList.find((c) => c.id === app || c.name === app);
             const appSlug = customApp ? customApp.name : app;
+            attemptedInstalls.push(appSlug);
             context.log('info', `Installing app ${appSlug} on ${site.name}`, 'install-apps');
 
             const args = composeBenchSiteArgs(projectName, site.name, ['install-app', appSlug]);
@@ -509,9 +509,9 @@ export const orchestrateSiteAppsUpdate = (
 
           for (const app of uninstallDelta) {
             context.throwIfCancelled();
-            attemptedUninstalls.push(app);
-            const customApp = customAppsList.find((c) => c.id === app);
+            const customApp = customAppsList.find((c) => c.id === app || c.name === app);
             const appSlug = customApp ? customApp.name : app;
+            attemptedUninstalls.push(appSlug);
             context.log('info', `Uninstalling app ${appSlug} from ${site.name}`, 'uninstall-apps');
 
             // Proactively purge pending jobs to avoid QueueOverloaded errors in local dev environments

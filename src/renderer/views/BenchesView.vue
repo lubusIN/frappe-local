@@ -332,7 +332,8 @@ const onConfirmRemoveBenchApp = async () => {
 
   removeAppConfirmOpen.value = false;
 
-  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
+  const info = getAppInfo(appId);
+  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId && existingAppId !== (info as any).id && existingAppId !== info.name);
 
   const promise = runAndWaitForTask(
     () => queueBenchAppsUpdate(nextApps),

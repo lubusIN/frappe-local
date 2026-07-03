@@ -652,7 +652,8 @@ const onConfirmRemoveParentBenchApp = async () => {
   }
 
   removeBenchAppConfirmOpen.value = false;
-  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId);
+  const info = getAppInfo(appId);
+  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId && existingAppId !== (info as any).id && existingAppId !== info.name);
 
   const promise = runAndWaitForTask(
     () => queueParentBenchAppsUpdate(bench, nextApps),
@@ -824,12 +825,13 @@ const onDeactivateSiteApp = async (appId: string) => {
   }
 
   const existingApps = site.apps ?? [];
-  if (!existingApps.includes(appId)) {
+  const info = getAppInfo(appId);
+  if (!existingApps.includes(appId) && !existingApps.includes((info as any).id) && !existingApps.includes(info.name)) {
     return;
   }
 
   activatingSiteAppId.value = appId;
-  const nextApps = existingApps.filter((x) => x !== appId);
+  const nextApps = existingApps.filter((x) => x !== appId && x !== (info as any).id && x !== info.name);
 
   const promise = runAndWaitForTask(
     () => update(site.id, { apps: nextApps }),

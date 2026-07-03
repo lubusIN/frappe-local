@@ -268,7 +268,7 @@ const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: 
     ? appNames 
     : (typeof appNames === 'string' ? [appNames] : []);
   for (const app of safeAppNames) {
-    const customApp = customAppsList.find((candidate) => candidate.id === app);
+    const customApp = customAppsList.find((candidate) => candidate.id === app || candidate.name === app);
     if (customApp && customApp.type === 'local' && customApp.source) {
       localVolumes.push({
         source: customApp.source,
@@ -330,11 +330,10 @@ const fetchBenchApps = async (
   const customAppsList = customAppsRepo?.findAll ? await customAppsRepo.findAll() : [];
 
   for (const [index, app] of apps.entries()) {
-    onAttemptedInstall(app);
-    
     // Check if it's a custom app
-    const customApp = customAppsList.find((candidate) => candidate.id === app);
+    const customApp = customAppsList.find((candidate) => candidate.id === app || candidate.name === app);
     const appSlug = customApp ? customApp.name : app;
+    onAttemptedInstall(appSlug);
     let getAppArgs: string[] = [];
 
     if (customApp) {
@@ -827,12 +826,18 @@ export const orchestrateBenchAppChanges = (
 
         if (delta.remove.length > 0) {
           context.startStep('remove-apps', `Removing ${delta.remove.length} app${delta.remove.length === 1 ? '' : 's'}`);
+          const customAppsList = customAppsRepo?.findAll ? await customAppsRepo.findAll() : [];
+          const removedAppSlugs: string[] = [];
 
           for (const app of delta.remove) {
-            context.log('info', `Removing app ${app} from bench`, 'remove-apps');
+            const customApp = customAppsList.find((c) => c.id === app || c.name === app);
+            const appSlug = customApp ? customApp.name : app;
+            removedAppSlugs.push(appSlug);
+
+            context.log('info', `Removing app ${appSlug} from bench`, 'remove-apps');
             const { code, stderr, stdout } = await execPromise(
               command,
-              composeBenchArgs(projectName, ['remove-app', app]),
+              composeBenchArgs(projectName, ['remove-app', appSlug]),
               bench.path,
               (out) => context.log('info', out, 'remove-apps'),
               runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
@@ -840,14 +845,14 @@ export const orchestrateBenchAppChanges = (
 
             if (code !== 0) {
               if (stderr.includes('AppNotInstalledError') || stdout?.includes('AppNotInstalledError') || stderr.includes('No app named') || stdout?.includes('No app named')) {
-                context.log('info', `App ${app} is already not installed.`, 'remove-apps');
+                context.log('info', `App ${appSlug} is already not installed.`, 'remove-apps');
               } else {
-                throw new Error(`Failed to remove app ${app}: ${stderr || stdout}`);
+                throw new Error(`Failed to remove app ${appSlug}: ${stderr || stdout}`);
               }
             }
           }
 
-          await cleanupBenchAppArtifacts(bench.path, delta.remove, context, 'remove-apps');
+          await cleanupBenchAppArtifacts(bench.path, removedAppSlugs, context, 'remove-apps');
           context.completeStep('remove-apps', 'Selected apps removed');
         }
 

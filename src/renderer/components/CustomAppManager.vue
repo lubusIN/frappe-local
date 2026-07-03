@@ -222,13 +222,13 @@ const visibleItems = computed(() =>
 
 const rows = computed(() =>
   visibleItems.value.map((item) => {
-    const isActive = props.activeAppIds.includes(item.id);
+    const isActive = props.activeAppIds.includes(item.id) || props.activeAppIds.includes(item.name);
 
     return {
       ...item,
       appId: item.id,
       appName: item.title || item.name,
-      name: item.title || item.name,
+      name: item.name,
       disabled: props.disabled,
       isActive,
     };

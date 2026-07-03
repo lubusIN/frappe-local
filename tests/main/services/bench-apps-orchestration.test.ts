@@ -527,6 +527,61 @@ describe('bench app orchestration', () => {
     expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe', 'erpnext'] });
   });
 
+  it('removes custom app resolving ID to slug with bench remove-app', async () => {
+    const customAppUuid = '831df96f-a840-482d-80f3-fe3fa5810cb2';
+    const bench: Bench = {
+      id: 'bench-apps-custom-rm',
+      name: 'bench-apps',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe', customAppUuid],
+      status: 'running',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+
+    const updateMock = vi.fn(async () => bench);
+    const customAppsRepoMock = {
+      findAll: vi.fn(async () => [
+        {
+          id: customAppUuid,
+          name: 'frappe_vault',
+          title: 'Frappe Vault',
+          type: 'local' as const,
+          source: '/path/to/frappe_vault',
+          timestamps: {
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      ]),
+    };
+
+    orchestrateBenchAppChanges(
+      bench,
+      { update: updateMock },
+      undefined,
+      customAppsRepoMock, false,
+      bench.apps,
+      ['frappe']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(execPromiseMock).toHaveBeenCalledWith(
+      '/mock/docker-compose',
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'remove-app', 'frappe_vault']),
+      benchPath,
+      expect.any(Function),
+      expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+      expect.objectContaining({ idleTimeout: expect.any(Number) })
+    );
+  });
+
   it('retries app fetch once when get-app times out', async () => {
     const bench: Bench = {
       id: 'bench-apps-005',

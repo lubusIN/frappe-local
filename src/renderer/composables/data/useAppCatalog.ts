@@ -32,15 +32,16 @@ export const useAppCatalog = () => {
   }
 
   const getAppInfo = (appId: string) => {
-    const catalogApp = state.value.data?.find((app) => app.id === appId);
+    const catalogApp = state.value.data?.find((app) => app.id === appId || app.name === appId);
     if (catalogApp) return catalogApp;
 
-    const customApp = customApps.value.find((app) => app.id === appId);
+    const customApp = customApps.value.find((app) => app.id === appId || app.name === appId);
     if (customApp) {
       return {
         ...customApp,
         id: customApp.id,
-        name: customApp.title || customApp.name,
+        name: customApp.name,
+        title: customApp.title || customApp.name,
         slug: customApp.name,
       };
     }
