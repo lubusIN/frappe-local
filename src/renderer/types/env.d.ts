@@ -5,9 +5,8 @@ declare module '*.vue' {
   export default component;
 }
 
-declare global {
-  interface Window {
-    readonly frappeLocal?: import('@frappe-local/shared/core').RendererBridge;
-  }
-  const __APP_VERSION__: string;
+interface Window {
+  readonly frappeLocal?: import('@frappe-local/shared/core').RendererBridge;
 }
+
+declare const __APP_VERSION__: string;

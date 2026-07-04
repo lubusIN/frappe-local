@@ -70,7 +70,8 @@
           >
             <Dropdown
               :options="getBenchActions(row)"
-              placement="right"
+              side="bottom"
+              align="end"
             >
               <template #default>
                 <Button

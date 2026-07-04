@@ -17,8 +17,8 @@ export const useSites = () => {
   const successMessage = ref<string | null>(null);
   const deletingIds = ref<Map<string, string>>(new Map());
 
-  const load = async () => {
-    const isInitialLoad = sites.value.length === 0;
+  const load = async (silent = false) => {
+    const isInitialLoad = !silent && sites.value.length === 0;
     if (isInitialLoad) {
       loading.value = true;
       error.value = null;

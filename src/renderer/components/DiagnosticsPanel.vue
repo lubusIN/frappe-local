@@ -90,14 +90,14 @@
                     class="size-3.5 shrink-0 text-ink-gray-5"
                   />
                   <span class="min-w-0 truncate">{{ displayTitle(check) }}</span>
-                  <Popover
+                  <HoverCard
                     v-if="hasMoreDetails(check)"
-                    trigger="hover"
-                    placement="top-end"
-                    popover-class="w-80"
+                    side="top"
+                    align="end"
+                    class="w-80"
                     :hover-delay="0.2"
                   >
-                    <template #target>
+                    <template #trigger>
                       <Button
                         type="button"
                         variant="ghost"
@@ -106,7 +106,7 @@
                         :icon="IconInfo"
                       />
                     </template>
-                    <template #body-main>
+                    <template #default>
                       <div class="space-y-3 p-3 text-sm leading-6 text-ink-gray-6">
                         <div
                           v-for="detail in infoDetails(check)"
@@ -121,7 +121,7 @@
                         </div>
                       </div>
                     </template>
-                  </Popover>
+                  </HoverCard>
                 </h3>
                 <p class="mt-1 text-sm leading-5 text-ink-gray-6">
                   {{ conciseDescription(check) }}
@@ -172,7 +172,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Popover } from 'frappe-ui';
+import { Badge, Button, HoverCard } from 'frappe-ui';
 import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import IconCheck from '~icons/lucide/check';
 import IconCircleDashed from '~icons/lucide/circle-dashed';

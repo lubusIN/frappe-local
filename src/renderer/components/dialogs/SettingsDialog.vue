@@ -7,10 +7,21 @@
     <div class="flex flex-col md:flex-row h-[75vh] sm:h-[80vh] w-full bg-surface-base rounded-xl overflow-hidden shadow-2xl">
       <!-- Sidebar -->
       <Sidebar
-        :sections="sidebarSections"
         disable-collapse
         class="shrink-0 border-r border-outline-gray-2 bg-surface-gray-1"
-      />
+      >
+        <div class="flex h-full flex-col p-2 gap-0.5">
+          <div class="px-2 py-1.5 text-xs-medium text-ink-gray-5">User Preferences</div>
+          <SidebarItem
+            v-for="tab in settingsTabs"
+            :key="tab.id"
+            :label="tab.label"
+            :icon="tab.icon"
+            :active="activeTab === tab.id"
+            @click="activeTab = tab.id"
+          />
+        </div>
+      </Sidebar>
 
       <!-- Main Content Area -->
       <div class="flex-1 flex flex-col min-w-0">
@@ -328,22 +339,28 @@
     </div>
   </Dialog>
 
-  <ConfirmDialog
-    v-model="showSshConfirmation"
+  <ConfirmationDialog
+    :open="showSshConfirmation"
     title="Restart Running Benches?"
     message="Changing SSH Key sharing requires a restart of all running benches to apply the new volume mounts. Are you sure you want to proceed?"
+    confirm-label="Restart & Proceed"
     @confirm="onConfirmSshSave"
     @cancel="onCancelSshSave"
   />
 </template>
 
 <script setup lang="ts">
-import { Button, ConfirmDialog, Dialog, Divider, Select, Sidebar, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
+import { Button, Dialog, Divider, Select, Sidebar, SidebarItem, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
+import IconSettings from '~icons/lucide/settings';
+import IconPalette from '~icons/lucide/palette';
+import IconSlidersHorizontal from '~icons/lucide/sliders-horizontal';
+import IconDownload from '~icons/lucide/download';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { AvailableTerminal } from '@frappe-local/shared/core';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
+import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import { useSettings } from '@frappe-local/renderer/composables/data';
 import { useIpc, useSshKeys } from '@frappe-local/renderer/composables/system';
 
@@ -357,6 +374,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+const ipc = useIpc();
 const activeTab = ref('general');
 
 const isCheckingForUpdates = ref(false);
@@ -375,7 +393,7 @@ const onCheckForUpdates = async () => {
   isCheckingForUpdates.value = true;
   updateMessage.value = null;
   try {
-    const result = await window.frappeLocal.checkForUpdates();
+    const result = await ipc.checkForUpdates();
     lastCheckedAt.value = result.checkedAt;
     localStorage.setItem('frappeLocal:lastUpdateCheck', result.checkedAt);
     
@@ -393,40 +411,14 @@ const onCheckForUpdates = async () => {
   }
 };
 
-const sidebarSections = computed(() => [
-  {
-    label: 'User Preferences',
-    items: [
-      { 
-        label: 'General', 
-        isActive: activeTab.value === 'general',
-        onClick: () => activeTab.value = 'general',
-        icon: 'lucide-settings'
-      },
-      { 
-        label: 'Appearance', 
-        isActive: activeTab.value === 'appearance',
-        onClick: () => activeTab.value = 'appearance',
-        icon: 'lucide-palette'
-      },
-      { 
-        label: 'Advanced', 
-        isActive: activeTab.value === 'advanced',
-        onClick: () => activeTab.value = 'advanced',
-        icon: 'lucide-sliders-horizontal'
-      },
-      { 
-        label: 'Updates', 
-        isActive: activeTab.value === 'updates',
-        onClick: () => activeTab.value = 'updates',
-        icon: 'lucide-download'
-      },
-    ]
-  }
-]);
+const settingsTabs = [
+  { id: 'general', label: 'General', icon: IconSettings },
+  { id: 'appearance', label: 'Appearance', icon: IconPalette },
+  { id: 'advanced', label: 'Advanced', icon: IconSlidersHorizontal },
+  { id: 'updates', label: 'Updates', icon: IconDownload },
+];
 
 const { form, loading, saving, error, originalSettings, refresh, save, configured } = useSettings();
-const ipc = useIpc();
 const systemResources = reactive({
   totalMemoryMb: MIN_PODMAN_MEMORY_MB,
   recommendedPodmanMemoryMb: MIN_PODMAN_MEMORY_MB,

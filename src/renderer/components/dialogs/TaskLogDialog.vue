@@ -240,16 +240,19 @@
     </template>
   </Dialog>
 
-  <ConfirmDialog
-    v-model="showCancelConfirm"
+  <ConfirmationDialog
+    :open="showCancelConfirm"
     title="Cancel Task"
     message="Are you sure you want to cancel this task? It will be forcefully aborted, which may leave resources in an inconsistent state."
+    confirm-label="Cancel Task"
     @confirm="onCancelTask"
+    @cancel="showCancelConfirm = false"
   />
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, ConfirmDialog, Dialog, LoadingIndicator, Switch, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, LoadingIndicator, Switch, TextInput, toast } from 'frappe-ui';
+import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import IconTerminal from '~icons/lucide/terminal';
 import IconCopy from '~icons/lucide/copy';
 import IconSearch from '~icons/lucide/search';

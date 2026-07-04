@@ -84,7 +84,8 @@
           >
             <Dropdown
               :options="getAppActions(row)"
-              placement="right"
+              side="bottom"
+              align="end"
             >
               <template #default>
                 <Button

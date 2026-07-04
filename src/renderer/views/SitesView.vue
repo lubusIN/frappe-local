@@ -147,7 +147,8 @@
           >
             <Dropdown
               :options="getSiteActions(row)"
-              placement="right"
+              side="bottom"
+              align="end"
             >
               <template #default>
                 <Button
@@ -621,7 +622,6 @@ const onRequestRemoveParentBenchApp = (appId: string) => {
     return;
   }
 
-  const appInfo = getAppInfo(appId);
   pendingRemoveBenchAppId.value = appId;
   pendingRemoveBenchAppName.value = getAppTitle(appId);
   removeBenchAppConfirmOpen.value = true;
@@ -786,7 +786,6 @@ const onRequestDeactivateSiteApp = (appId: string) => {
   const site = selectedSiteForApps.value;
   if (!site) return;
 
-  const appInfo = getAppInfo(appId);
   pendingRemoveSiteAppId.value = appId;
   pendingRemoveSiteAppName.value = getAppTitle(appId);
   removeSiteAppConfirmOpen.value = true;

@@ -134,7 +134,7 @@
           <Switch
             v-model="shareSshKeysEnabled"
             size="sm"
-            @change="onToggleSshKeys"
+            @update:model-value="onToggleSshKeys"
           />
           <div class="flex flex-col">
             <span class="text-sm font-medium text-ink-gray-9">Share SSH Keys with Benches</span>
@@ -165,17 +165,19 @@
     </template>
   </Dialog>
   
-  <ConfirmDialog
-    v-model="showSshConfirmation"
+  <ConfirmationDialog
+    :open="showSshConfirmation"
     title="Restart Running Benches?"
     message="Changing SSH Key sharing requires a restart of all running benches to apply the new volume mounts. Are you sure you want to proceed?"
+    confirm-label="Restart & Proceed"
     @confirm="onConfirmSshSave"
     @cancel="onCancelSshSave"
   />
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, ConfirmDialog, Dialog, Switch, TabButtons, TextInput, debounce, toast } from 'frappe-ui';
+import { Alert, Button, Dialog, Switch, TabButtons, TextInput, debounce, toast } from 'frappe-ui';
+import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core';
 import { useSshKeys } from '@frappe-local/renderer/composables/system';

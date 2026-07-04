@@ -4,12 +4,12 @@
     <div class="flex flex-1 min-h-0">
       <Sidebar
         v-model:collapsed="isCollapsed"
-        class="border-r border-outline-gray-1"
+        class="border-r border-outline-gray-1 bg-surface-gray-1"
       >
-        <div class="flex h-full flex-col p-2">
+        <div class="flex h-full flex-col py-2">
           <!-- Header -->
           <div
-            class="flex items-center p-3 pt-8 transition-all duration-300 [-webkit-app-region:drag]"
+            class="flex items-center mx-2 p-3 pt-8 transition-all duration-300 [-webkit-app-region:drag]"
             :class="isCollapsed ? 'justify-center' : ''"
           >
             <AppLogo />
@@ -23,19 +23,24 @@
           </div>
 
           <!-- Navigation -->
-          <div class="flex-1 overflow-y-auto overflow-x-hidden">
-            <SidebarSection
-              v-for="(section, idx) in sidebarSections"
-              :key="idx"
-              :items="section.items"
-            />
-          </div>
+          <ScrollArea class="min-h-0 flex-1" viewport-class="px-2">
+            <div class="flex flex-col gap-0.5 py-0.5">
+              <SidebarItem
+                v-for="item in mainNavItems"
+                :key="item.path"
+                :label="item.label"
+                :icon="iconComponentMap[item.path] || IconHome"
+                :to="item.path"
+                :active="item.path === '/' ? route.path === '/' : route.path.startsWith(item.path)"
+              />
+            </div>
+          </ScrollArea>
 
           <!-- Footer items -->
-          <div class="mt-auto flex flex-col gap-1">
+          <div class="mt-auto flex flex-col gap-1 px-2">
             <Alert
               v-if="!isFrontDoorAvailable"
-              class="mx-2 mb-2 transition-all duration-300"
+              class="mb-2 transition-all duration-300"
               :class="isCollapsed ? 'hidden' : 'block'"
               theme="yellow"
               title="Port 80 Unavailable"
@@ -51,7 +56,7 @@
 
             <Alert
               v-if="updateState !== 'idle'"
-              class="mx-2 mb-2 transition-all duration-300 bg-surface-base"
+              class="mb-2 transition-all duration-300 bg-surface-base"
               :class="isCollapsed ? 'hidden' : 'block'"
               theme="blue"
               :title="updateState === 'available' ? 'Update Available' : updateState === 'downloading' ? 'Downloading Update...' : 'Update Ready'"
@@ -87,9 +92,20 @@
             <SidebarItem
               label="Settings"
               :icon="IconSettings"
+              :active="isSettingsOpen"
               @click="openSettings"
             />
-            <SidebarCollapseToggle />
+            <SidebarItem
+              :label="isCollapsed ? 'Expand' : 'Collapse'"
+              @click="isCollapsed = !isCollapsed"
+            >
+              <template #prefix>
+                <IconPanelRightOpen
+                  class="size-4 text-ink-gray-6 transition-transform duration-300 ease-in-out"
+                  :class="{ 'rotate-180': isCollapsed }"
+                />
+              </template>
+            </SidebarItem>
           </div>
         </div>
       </Sidebar>
@@ -153,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, Sidebar, SidebarCollapseToggle, SidebarItem, SidebarSection, toast } from 'frappe-ui';
+import { Alert, Button, ScrollArea, Sidebar, SidebarItem, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
 import IconHome from '~icons/lucide/home';
 import IconActivity from '~icons/lucide/activity';
@@ -161,6 +177,7 @@ import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
 import IconZap from '~icons/lucide/zap';
 import IconBlocks from '~icons/lucide/blocks';
+import IconPanelRightOpen from '~icons/lucide/panel-right-open';
 import { computed, onMounted, ref, type Component, watch } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
@@ -249,17 +266,6 @@ const iconComponentMap: Record<string, Component> = {
 const mainNavItems = computed(() =>
   navigationItems.filter((item) => item.path !== '/settings')
 );
-
-const sidebarSections = computed(() => [
-  {
-    items: mainNavItems.value.map((item) => ({
-      label: item.label,
-      icon: iconComponentMap[item.path] || IconHome,
-      to: item.path,
-      isActive: route.path === item.path,
-    })),
-  },
-]);
 
 const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Local'));
 
