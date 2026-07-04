@@ -56,6 +56,7 @@ const unavailableBridge: RendererBridge = {
   deleteCustomApp: () => rejectUnavailable(),
   extractCustomApp: () => rejectUnavailable(),
   checkGithubRepoVisibility: () => rejectUnavailable(),
+  getAvailableTerminals: () => rejectUnavailable(),
   getFrontDoorStatus: () => rejectUnavailable(),
 };
 

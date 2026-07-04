@@ -92,6 +92,30 @@
                       </Button>
                     </div>
                   </div>
+
+                  <Divider />
+
+                  <div class="py-5 space-y-1.5">
+                    <div>
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Terminal
+                      </p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
+                        Select the terminal application to use when opening bench shells.
+                      </p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <Select
+                        v-model="selectedTerminalOption"
+                        :options="terminalOptions"
+                      />
+                      <TextInput
+                        v-if="selectedTerminalOption === 'custom'"
+                        v-model="form.terminalPreference"
+                        placeholder="Custom command or binary path (e.g., /usr/local/bin/my-term)"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -316,6 +340,7 @@
 <script setup lang="ts">
 import { Button, ConfirmDialog, Dialog, Divider, Select, Sidebar, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import type { AvailableTerminal } from '@frappe-local/shared/core';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
@@ -432,6 +457,27 @@ const onPickStoragePath = async () => {
   }
 };
 
+const availableTerminals = ref<AvailableTerminal[]>([{ id: 'default', name: 'System Default' }]);
+const terminalOptions = computed(() => [
+  ...availableTerminals.value.map((t) => ({ label: t.name, value: t.id })),
+  { label: 'Custom...', value: 'custom' },
+]);
+
+const selectedTerminalOption = computed({
+  get: () => {
+    const pref = form.value.terminalPreference ?? 'default';
+    const exists = availableTerminals.value.some((t) => t.id === pref);
+    return exists ? pref : 'custom';
+  },
+  set: (val: string) => {
+    if (val !== 'custom') {
+      form.value.terminalPreference = val;
+    } else if (availableTerminals.value.some((t) => t.id === form.value.terminalPreference)) {
+      form.value.terminalPreference = '';
+    }
+  },
+});
+
 const formatMemory = (memoryMb: number): string => {
   const memoryGb = memoryMb / 1024;
   return `${Number.isInteger(memoryGb) ? memoryGb : memoryGb.toFixed(1)} GB`;
@@ -479,6 +525,12 @@ onMounted(async () => {
     systemResourcesLoaded.value = true;
   } catch {
     // Keep the safe 4 GB fallback when host resource detection is unavailable.
+  }
+
+  try {
+    availableTerminals.value = await ipc.getAvailableTerminals();
+  } catch {
+    availableTerminals.value = [{ id: 'default', name: 'System Default' }];
   }
 });
 

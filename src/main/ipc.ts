@@ -157,6 +157,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   defaultFrappeVersion: settings.defaultFrappeVersion,
   storagePath: settings.storagePath,
   editorPreference: settings.editorPreference,
+  terminalPreference: settings.terminalPreference,
   updateChannel: settings.updateChannel,
   autoUpdateEnabled: settings.autoUpdateEnabled,
   sidebarCompact: settings.sidebarCompact,
@@ -678,7 +679,8 @@ export const registerIpcHandlers = (
       const { openBenchShell } = await import('@frappe-local/main/utils');
       const projectName = getComposeProjectName(bench.id);
       const runtimeEnv = await getRuntimeEnv();
-      await openBenchShell(bench.path, projectName, runtimeEnv);
+      const settings = await getCurrentSettings(repositories.settings);
+      await openBenchShell(bench.path, projectName, runtimeEnv, settings?.terminalPreference || 'default');
       operations.trackBenchOperation?.(bench.id, 'open-folder'); // Optional: reuse this or add new 'open-shell'
       return true;
     } catch (error) {
@@ -1053,6 +1055,11 @@ export const registerIpcHandlers = (
       return false;
     }
     return operations.openExternal(url);
+  });
+
+  ipcMainLike.handle(ipcChannels.utilsGetAvailableTerminals, async () => {
+    const { detectAvailableTerminals } = await import('@frappe-local/main/utils');
+    return await detectAvailableTerminals();
   });
 
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {

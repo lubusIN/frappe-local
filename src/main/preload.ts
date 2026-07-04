@@ -71,6 +71,7 @@ const rendererBridge: RendererBridge = {
 	pathExists: async (path: string) => ipcRenderer.invoke(ipcChannels.utilsPathExists, path),
 	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
 	checkGithubRepoVisibility: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsCheckGithubRepoVisibility, url),
+	getAvailableTerminals: async () => ipcRenderer.invoke(ipcChannels.utilsGetAvailableTerminals),
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 	getFrontDoorStatus: async () => ipcRenderer.invoke(ipcChannels.frontDoorStatus),
 };

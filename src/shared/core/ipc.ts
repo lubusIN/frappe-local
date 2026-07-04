@@ -49,6 +49,7 @@ export const ipcChannels = {
   utilsPathExists: 'utils:path-exists',
   utilsOpenExternal: 'utils:open-external',
   utilsCheckGithubRepoVisibility: 'utils:check-github-repo-visibility',
+  utilsGetAvailableTerminals: 'utils:get-available-terminals',
   uiReady: 'app:ui-ready',
   frontDoorStatus: 'app:front-door-status',
 } as const;
@@ -166,6 +167,7 @@ export type SettingsItem = {
   readonly defaultFrappeVersion: string;
   readonly storagePath: string;
   readonly editorPreference: string;
+  readonly terminalPreference: string;
   readonly updateChannel: 'stable' | 'dev';
   readonly autoUpdateEnabled: boolean;
   readonly sidebarCompact: boolean;
@@ -178,6 +180,11 @@ export type SystemResources = {
   readonly totalMemoryMb: number;
   readonly recommendedPodmanMemoryMb: number;
   readonly podmanMachineRequired: boolean;
+};
+
+export type AvailableTerminal = {
+  readonly id: string;
+  readonly name: string;
 };
 
 export type RendererBridge = {
@@ -230,6 +237,7 @@ export type RendererBridge = {
   readonly pathExists: (path: string) => Promise<boolean>;
   readonly openExternal: (url: string) => Promise<void>;
   readonly checkGithubRepoVisibility: (url: string) => Promise<boolean>;
+  readonly getAvailableTerminals: () => Promise<AvailableTerminal[]>;
   readonly uiReady: () => Promise<void>;
   readonly getFrontDoorStatus: () => Promise<{ available: boolean; secure: boolean }>;
 };

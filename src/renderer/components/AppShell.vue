@@ -4,10 +4,10 @@
     <div class="flex flex-1 min-h-0">
       <Sidebar
         v-model:collapsed="isCollapsed"
-        :sections="sidebarSections"
         class="border-r border-outline-gray-1"
       >
-        <template #header>
+        <div class="flex h-full flex-col p-2">
+          <!-- Header -->
           <div
             class="flex items-center p-3 pt-8 transition-all duration-300 [-webkit-app-region:drag]"
             :class="isCollapsed ? 'justify-center' : ''"
@@ -21,66 +21,77 @@
               <span class="text-xs-medium text-ink-gray-5 leading-tight mt-0.5">v{{ appVersion }}</span>
             </div>
           </div>
-        </template>
-        
-        <template #footer-items>
-          <Alert
-            v-if="!isFrontDoorAvailable"
-            class="mx-2 mb-2 transition-all duration-300"
-            :class="isCollapsed ? 'hidden' : 'block'"
-            theme="yellow"
-            title="Port 80 Unavailable"
-            variant="outline"
-            :dismissible="false"
-          >
-            <template #footer>
-              <p class="col-span-full -mt-1.5 text-xs text-ink-gray-7 leading-tight">
-                using port based urls.
-              </p>
-            </template>
-          </Alert>
 
-          <Alert
-            v-if="updateState !== 'idle'"
-            class="mx-2 mb-2 transition-all duration-300 bg-surface-base"
-            :class="isCollapsed ? 'hidden' : 'block'"
-            theme="blue"
-            :title="updateState === 'available' ? 'Update Available' : updateState === 'downloading' ? 'Downloading Update...' : 'Update Ready'"
-            variant="outline"
-            :dismissible="updateState === 'available'"
-            @update:dismissed="dismissUpdate"
-          >
-            <template #footer>
-              <div class="col-span-full -mt-1.5 flex flex-col gap-2">
-                <p class="text-xs text-ink-gray-7 leading-tight">
-                  v{{ updateVersion }}
+          <!-- Navigation -->
+          <div class="flex-1 overflow-y-auto overflow-x-hidden">
+            <SidebarSection
+              v-for="(section, idx) in sidebarSections"
+              :key="idx"
+              :items="section.items"
+            />
+          </div>
+
+          <!-- Footer items -->
+          <div class="mt-auto flex flex-col gap-1">
+            <Alert
+              v-if="!isFrontDoorAvailable"
+              class="mx-2 mb-2 transition-all duration-300"
+              :class="isCollapsed ? 'hidden' : 'block'"
+              theme="yellow"
+              title="Port 80 Unavailable"
+              variant="outline"
+              :dismissible="false"
+            >
+              <template #footer>
+                <p class="col-span-full -mt-1.5 text-xs text-ink-gray-7 leading-tight">
+                  using port based urls.
                 </p>
-                <Button
-                  v-if="updateState === 'available'"
-                  size="xs"
-                  variant="solid"
-                  @click="triggerDownload"
-                >
-                  Download
-                </Button>
-                <Button
-                  v-else-if="updateState === 'downloaded'"
-                  size="xs"
-                  variant="subtle"
-                  @click="triggerInstall"
-                >
-                  Restart & Install
-                </Button>
-              </div>
-            </template>
-          </Alert>
+              </template>
+            </Alert>
 
-          <SidebarItem
-            label="Settings"
-            :icon="IconSettings"
-            @click="openSettings"
-          />
-        </template>
+            <Alert
+              v-if="updateState !== 'idle'"
+              class="mx-2 mb-2 transition-all duration-300 bg-surface-base"
+              :class="isCollapsed ? 'hidden' : 'block'"
+              theme="blue"
+              :title="updateState === 'available' ? 'Update Available' : updateState === 'downloading' ? 'Downloading Update...' : 'Update Ready'"
+              variant="outline"
+              :dismissible="updateState === 'available'"
+              @update:dismissed="dismissUpdate"
+            >
+              <template #footer>
+                <div class="col-span-full -mt-1.5 flex flex-col gap-2">
+                  <p class="text-xs text-ink-gray-7 leading-tight">
+                    v{{ updateVersion }}
+                  </p>
+                  <Button
+                    v-if="updateState === 'available'"
+                    size="xs"
+                    variant="solid"
+                    @click="triggerDownload"
+                  >
+                    Download
+                  </Button>
+                  <Button
+                    v-else-if="updateState === 'downloaded'"
+                    size="xs"
+                    variant="subtle"
+                    @click="triggerInstall"
+                  >
+                    Restart & Install
+                  </Button>
+                </div>
+              </template>
+            </Alert>
+
+            <SidebarItem
+              label="Settings"
+              :icon="IconSettings"
+              @click="openSettings"
+            />
+            <SidebarCollapseToggle />
+          </div>
+        </div>
       </Sidebar>
 
       <div class="flex flex-col flex-1 min-w-0 bg-surface-base">
@@ -142,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, Sidebar, SidebarItem, toast } from 'frappe-ui';
+import { Alert, Button, Sidebar, SidebarCollapseToggle, SidebarItem, SidebarSection, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
 import IconHome from '~icons/lucide/home';
 import IconActivity from '~icons/lucide/activity';

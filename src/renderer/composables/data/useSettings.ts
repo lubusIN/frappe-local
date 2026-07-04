@@ -1,17 +1,16 @@
 import { onMounted, ref } from 'vue';
-import type { SettingsItem } from '@frappe-local/shared/core';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
-import { DEFAULT_SETTINGS } from '@frappe-local/shared/domain';
+import { DEFAULT_SETTINGS, type Settings } from '@frappe-local/shared/domain';
 
-const defaultSettings = (): SettingsItem => ({ ...DEFAULT_SETTINGS });
+const defaultSettings = (): Settings => ({ ...DEFAULT_SETTINGS });
 
 export const useSettings = () => {
-  const form = ref<SettingsItem>(defaultSettings());
+  const form = ref<Settings>(defaultSettings());
   const loading = ref(false);
   const saving = ref(false);
   const error = ref<string | null>(null);
   const configured = ref(false);
-  const originalSettings = ref<SettingsItem | null>(null);
+  const originalSettings = ref<Settings | null>(null);
 
   const load = async () => {
     loading.value = true;
