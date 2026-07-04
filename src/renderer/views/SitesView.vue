@@ -775,6 +775,8 @@ const onActivateSiteApp = async (appId: string) => {
 
   try {
     await promise;
+  } catch {
+    // Error handled by toast
   } finally {
     activatingSiteAppId.value = null;
   }
@@ -858,6 +860,8 @@ const onDeactivateSiteApp = async (appId: string) => {
 
   try {
     await promise;
+  } catch {
+    // Error handled by toast
   } finally {
     activatingSiteAppId.value = null;
     pendingRemoveSiteAppName.value = '';
