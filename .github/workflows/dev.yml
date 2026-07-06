@@ -55,21 +55,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Delete the old dev and nightly releases and tags if they exist
+          # 1. Delete existing dev release and tag via GitHub API
           gh release delete dev --cleanup-tag -y || true
-          gh release delete nightly --cleanup-tag -y || true
           
-          # Ensure remote tags are cleaned up even if release deletion failed
-          git push origin :refs/tags/dev || true
-          git push origin :refs/tags/nightly || true
-          
-          # Force create new tag locally (overwrites tag fetched during checkout) and push
-          git tag -f dev
-          git push origin dev --force
-          
-          # Create a fresh release
+          # 2. Create fresh release and atomically anchor 'dev' tag to current commit via API
           gh release create dev \
             --title "Dev Rolling Build v${{ steps.version.outputs.version }}" \
+            --target "${{ github.sha }}" \
             --prerelease \
             --notes "Rolling dev build containing the latest changes."
 
