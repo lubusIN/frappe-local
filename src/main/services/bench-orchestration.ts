@@ -198,7 +198,7 @@ const ensureBenchProcfile = (
   }
 };
 
-const getFirstBenchSiteName = (benchPath: string): string | null => {
+export const getFirstBenchSiteName = (benchPath: string): string | null => {
   const sitesPath = path.join(benchPath, 'sites');
   if (!fs.existsSync(sitesPath)) {
     return null;
@@ -208,7 +208,7 @@ const getFirstBenchSiteName = (benchPath: string): string | null => {
     const siteNames = fs.readdirSync(sitesPath, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .filter((name) => !['assets', 'common_site_config.json'].includes(name))
+      .filter((name) => !['assets', 'archived_sites', 'common_site_config.json'].includes(name))
       .sort((left, right) => left.localeCompare(right));
 
     return siteNames[0] ?? null;
@@ -217,7 +217,7 @@ const getFirstBenchSiteName = (benchPath: string): string | null => {
   }
 };
 
-const ensureBenchSocketioPort = (
+export const ensureBenchSocketioPort = (
   benchPath: string,
   _httpPort: number,
   context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
@@ -240,6 +240,11 @@ const ensureBenchSocketioPort = (
       changed = true;
     }
 
+    if (!configData.dns_multitenant) {
+      configData.dns_multitenant = true;
+      changed = true;
+    }
+
     const defaultSite = getFirstBenchSiteName(benchPath);
     if (defaultSite && configData.default_site !== defaultSite) {
       configData.default_site = defaultSite;
@@ -248,6 +253,25 @@ const ensureBenchSocketioPort = (
 
     if (changed) {
       fs.writeFileSync(configPath, JSON.stringify(configData, null, 1), 'utf8');
+    }
+
+    try {
+      const currentSitePath = path.join(benchPath, 'sites', 'currentsite.txt');
+      if (fs.existsSync(currentSitePath)) {
+        const currentSite = fs.readFileSync(currentSitePath, 'utf8').trim();
+        const siteFolderPath = path.join(benchPath, 'sites', currentSite);
+        if (!fs.existsSync(siteFolderPath) || (defaultSite && currentSite !== defaultSite)) {
+          if (defaultSite) {
+            fs.writeFileSync(currentSitePath, defaultSite, 'utf8');
+          } else {
+            fs.unlinkSync(currentSitePath);
+          }
+        }
+      } else if (defaultSite) {
+        fs.writeFileSync(currentSitePath, defaultSite, 'utf8');
+      }
+    } catch (csErr) {
+      context.log('warning', `Failed to update currentsite.txt: ${errorMessage(csErr)}`, stepId);
     }
   } catch (error) {
     context.log('warning', `Failed to configure socketio port: ${errorMessage(error)}`, stepId);

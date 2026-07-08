@@ -185,6 +185,7 @@ describe('site orchestration command execution', () => {
       '-T',
       'frappe',
       'pkill',
+      '-f',
       'honcho',
     ]);
 
@@ -320,6 +321,7 @@ describe('site orchestration command execution', () => {
       '-T',
       'frappe',
       'pkill',
+      '-f',
       'honcho',
     ]);
 

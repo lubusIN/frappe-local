@@ -6,7 +6,7 @@ import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 import type { Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 import type { SiteCreateInput } from '@frappe-local/shared/core';
 import { canAttachSiteToBench } from '@frappe-local/shared/domain';
-import { getRuntimeEnv, getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services';
+import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services';
 
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
 import { composeBenchArgs, composeBenchSiteArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
@@ -101,7 +101,7 @@ const restartBenchServices = async (
   // Kill existing honcho/bench start process
   await execPromise(
     env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', 'honcho'],
+    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
     env.benchPath,
     undefined,
     env.runtimeEnv,
@@ -274,6 +274,7 @@ export const orchestrateSiteCreation = async (
         const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
         await migrateSite(context, input.name, siteEnv);
         await clearSiteCaches(context, input.name, siteEnv);
+        ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'new-site');
         await restartBenchServices(context, siteEnv);
 
         const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'ready' });
@@ -393,6 +394,13 @@ export const orchestrateSiteDeletion = async (
           const siteFolderPath = path.join(bench.path, 'sites', site.name);
           if (fs.existsSync(siteFolderPath)) {
             await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
+          }
+          ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'rm-dir');
+          if (bench.status === 'running') {
+            const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
+            await restartBenchServices(context, siteEnv).catch((err) =>
+              context.log('warning', `Failed to restart bench services: ${errorMessage(err)}`)
+            );
           }
           context.completeStep('rm-dir', `Site directory removed`);
         } catch (fsError) {
