@@ -198,6 +198,98 @@ const ensureBenchProcfile = (
   }
 };
 
+export const ensureBenchDevcontainer = async (
+  benchPath: string,
+  context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
+  stepId: string,
+  envOverride?: NodeJS.ProcessEnv,
+  benchId?: string
+): Promise<void> => {
+  const devcontainerDir = path.join(benchPath, '.devcontainer');
+  const devcontainerBinDir = path.join(devcontainerDir, 'bin');
+  const vscodeDir = path.join(benchPath, '.vscode');
+  const devcontainerPath = path.join(devcontainerDir, 'devcontainer.json');
+  const settingsPath = path.join(vscodeDir, 'settings.json');
+
+  const content = JSON.stringify({
+    name: 'Frappe Local Bench',
+    dockerComposeFile: ['../.frappe-local/docker-compose.yml'],
+    service: 'frappe',
+    workspaceFolder: '/workspace',
+    customizations: {
+      vscode: {
+        settings: {
+          'python.defaultInterpreterPath': '/workspace/env/bin/python',
+          'python.terminal.activateEnvironment': true,
+        },
+        extensions: [
+          'ms-python.python',
+          'dbaeumer.vscode-eslint',
+          'Vue.volar',
+          'bradlc.vscode-tailwindcss',
+        ],
+      },
+    },
+  }, null, 2) + '\n';
+
+  try {
+    if (!fs.existsSync(devcontainerDir)) {
+      fs.mkdirSync(devcontainerDir, { recursive: true });
+    }
+    if (!fs.existsSync(devcontainerBinDir)) {
+      fs.mkdirSync(devcontainerBinDir, { recursive: true });
+    }
+    if (!fs.existsSync(vscodeDir)) {
+      fs.mkdirSync(vscodeDir, { recursive: true });
+    }
+
+    fs.writeFileSync(devcontainerPath, content, 'utf8');
+
+    const runtimeEnv = envOverride ?? (await getRuntimeEnv().catch(() => ({})));
+    const podmanPath = getBinaryPath('podman');
+    const composePath = getBinaryPath('docker-compose');
+    const dockerHost = runtimeEnv.DOCKER_HOST || process.env.DOCKER_HOST || '';
+    const dockerConfig = runtimeEnv.DOCKER_CONFIG || process.env.DOCKER_CONFIG || '';
+    const composeProjectName = benchId ? getComposeProjectName(benchId) : '';
+
+    if (process.platform === 'win32') {
+      const composeProjectBat = composeProjectName ? `if not defined COMPOSE_PROJECT_NAME set COMPOSE_PROJECT_NAME=${composeProjectName}\r\n` : '';
+      const dockerBat = `@echo off\r\nif not defined DOCKER_HOST set DOCKER_HOST=${dockerHost}\r\nif not defined CONTAINER_HOST set CONTAINER_HOST=%DOCKER_HOST%\r\nif not defined DOCKER_CONFIG set DOCKER_CONFIG=${dockerConfig}\r\n"${podmanPath}" %*\r\n`;
+      const composeBat = `@echo off\r\nif not defined DOCKER_HOST set DOCKER_HOST=${dockerHost}\r\nif not defined CONTAINER_HOST set CONTAINER_HOST=%DOCKER_HOST%\r\nif not defined DOCKER_CONFIG set DOCKER_CONFIG=${dockerConfig}\r\n${composeProjectBat}"${composePath}" %*\r\n`;
+      fs.writeFileSync(path.join(devcontainerBinDir, 'docker.bat'), dockerBat, 'utf8');
+      fs.writeFileSync(path.join(devcontainerBinDir, 'docker-compose.bat'), composeBat, 'utf8');
+    } else {
+      const composeProjectSh = composeProjectName ? `export COMPOSE_PROJECT_NAME="\${COMPOSE_PROJECT_NAME:-${composeProjectName}}"\n` : '';
+      const dockerSh = `#!/bin/sh\nexport DOCKER_HOST="\${DOCKER_HOST:-${dockerHost}}"\nexport CONTAINER_HOST="\${CONTAINER_HOST:-$DOCKER_HOST}"\nexport DOCKER_CONFIG="\${DOCKER_CONFIG:-${dockerConfig}}"\nexec "${podmanPath}" "$@"\n`;
+      const composeSh = `#!/bin/sh\nexport DOCKER_HOST="\${DOCKER_HOST:-${dockerHost}}"\nexport CONTAINER_HOST="\${CONTAINER_HOST:-$DOCKER_HOST}"\nexport DOCKER_CONFIG="\${DOCKER_CONFIG:-${dockerConfig}}"\n${composeProjectSh}exec "${composePath}" "$@"\n`;
+      const dockerShPath = path.join(devcontainerBinDir, 'docker');
+      const composeShPath = path.join(devcontainerBinDir, 'docker-compose');
+      fs.writeFileSync(dockerShPath, dockerSh, 'utf8');
+      fs.writeFileSync(composeShPath, composeSh, 'utf8');
+      fs.chmodSync(dockerShPath, '755');
+      fs.chmodSync(composeShPath, '755');
+    }
+
+    let settings: Record<string, unknown> = {};
+    if (fs.existsSync(settingsPath)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      } catch {
+        settings = {};
+      }
+    }
+
+    const dockerBinName = process.platform === 'win32' ? 'docker.bat' : 'docker';
+    const composeBinName = process.platform === 'win32' ? 'docker-compose.bat' : 'docker-compose';
+    settings['dev.containers.dockerPath'] = path.join(devcontainerBinDir, dockerBinName);
+    settings['dev.containers.dockerComposePath'] = path.join(devcontainerBinDir, composeBinName);
+
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
+  } catch (error) {
+    context.log('warning', `Failed to write managed devcontainer.json: ${errorMessage(error)}`, stepId);
+  }
+};
+
 export const getFirstBenchSiteName = (benchPath: string): string | null => {
   const sitesPath = path.join(benchPath, 'sites');
   if (!fs.existsSync(sitesPath)) {
@@ -621,6 +713,7 @@ export const orchestrateBenchCreation = (
         // socket traffic on the Caddy HTTPS front door, which proxies /socket.io.
         ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'setup');
         ensureBenchProcfile(bench.path, context, 'setup');
+        await ensureBenchDevcontainer(bench.path, context, 'setup', undefined, bench.id);
         
         context.completeStep('setup', 'Bench initialized and configured');
 
@@ -801,6 +894,7 @@ export const orchestrateBenchAppChanges = (
         recoveryEnv = { command, projectName, runtimeEnv };
         ensureBenchSocketioPort(bench.path, bench.httpPort ?? DEFAULT_HTTP_PORT, context, 'bench-service');
         ensureBenchProcfile(bench.path, context, 'bench-service');
+        await ensureBenchDevcontainer(bench.path, context, 'bench-service', undefined, bench.id);
 
         // Temporarily pause background bench processes (watch, workers, web) to free up the 4GB VM memory
         // and avoid file lock collisions during yarn install and bench build.
@@ -1080,6 +1174,7 @@ export const orchestrateBenchStart = (
         ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
         ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
         ensureBenchProcfile(bench.path, context, 'env');
+        await ensureBenchDevcontainer(bench.path, context, 'env', undefined, bench.id);
         context.log('info', `Wrote docker-compose.yml for Frappe ${bench.frappeVersion}`, 'env');
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
 

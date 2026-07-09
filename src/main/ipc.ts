@@ -689,6 +689,115 @@ export const registerIpcHandlers = (
     }
   });
 
+  ipcMainLike.handle(ipcChannels.benchesOpenInEditor, async (_event: unknown, id: unknown, inContainer: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench || !fs.existsSync(bench.path)) {
+      return false;
+    }
+
+    if (!Boolean(inContainer)) {
+      const opened = await operations.openInEditor(bench.path);
+      if (opened && bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
+      return opened;
+    }
+
+    try {
+      const { ensureBenchDevcontainer } = await import('@frappe-local/main/services/bench-orchestration');
+      const { execPromise, getBinaryPath } = await import('@frappe-local/main/utils');
+      const { getRuntimeEnv } = await import('@frappe-local/main/services/runtime-service');
+      const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
+      const runtimeEnv = await getRuntimeEnv().catch(() => ({}));
+      await ensureBenchDevcontainer(bench.path, { log: () => {} }, 'open-editor', runtimeEnv, bench.id);
+      const hexPath = Buffer.from(bench.path, 'utf8').toString('hex');
+      const uri = `vscode-remote://dev-container+${hexPath}/workspace`;
+      const devcontainerBinDir = path.join(bench.path, '.devcontainer', 'bin');
+      const podmanBinDir = path.dirname(getBinaryPath('podman'));
+      const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${process.env.PATH || ''}`;
+      const composeProjectName = getComposeProjectName(bench.id);
+      const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv.DOCKER_HOST || process.env.DOCKER_HOST || process.env.CONTAINER_HOST || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
+      await execPromise('code', ['--folder-uri', uri], bench.path, undefined, execEnv);
+      if (bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
+      return true;
+    } catch (error) {
+      mainLogger.error(`Failed to open Dev Container for bench ${bench.name}:`, error);
+      return false;
+    }
+  });
+
+  ipcMainLike.handle(ipcChannels.appsOpenInEditor, async (_event: unknown, benchId: unknown, appName: unknown, inContainer: unknown) => {
+    if (typeof appName !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    let bench = typeof benchId === 'string' ? benches.find((b) => b.id === benchId) ?? null : null;
+
+    if (!bench && Boolean(inContainer)) {
+      bench = benches.find((b) => b.status === 'running' && (b.apps?.includes(appName) || b.apps?.some((a) => a === appName))) ?? null;
+      if (!bench) {
+        bench = benches.find((b) => b.apps?.includes(appName) || b.apps?.some((a) => a === appName)) ?? null;
+      }
+    }
+
+    if (Boolean(inContainer)) {
+      if (!bench) {
+        mainLogger.warn(`Cannot open Dev Container for app ${appName}: no bench found with this app.`);
+        return false;
+      }
+      try {
+        const { ensureBenchDevcontainer } = await import('@frappe-local/main/services/bench-orchestration');
+        const { execPromise, getBinaryPath } = await import('@frappe-local/main/utils');
+        const { getRuntimeEnv } = await import('@frappe-local/main/services/runtime-service');
+        const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
+        const runtimeEnv = await getRuntimeEnv().catch(() => ({}));
+        await ensureBenchDevcontainer(bench.path, { log: () => {} }, 'open-editor', runtimeEnv, bench.id);
+        const hexPath = Buffer.from(bench.path, 'utf8').toString('hex');
+        const uri = `vscode-remote://dev-container+${hexPath}/workspace/apps/${appName}`;
+        const devcontainerBinDir = path.join(bench.path, '.devcontainer', 'bin');
+        const podmanBinDir = path.dirname(getBinaryPath('podman'));
+        const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${process.env.PATH || ''}`;
+        const composeProjectName = getComposeProjectName(bench.id);
+        const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv.DOCKER_HOST || process.env.DOCKER_HOST || process.env.CONTAINER_HOST || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
+        await execPromise('code', ['--folder-uri', uri], bench.path, undefined, execEnv);
+        if (bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
+        return true;
+      } catch (error) {
+        mainLogger.error(`Failed to open Dev Container for app ${appName}:`, error);
+        return false;
+      }
+    }
+
+    if (bench) {
+      const appFolderPath = path.join(bench.path, 'apps', appName);
+      if (fs.existsSync(appFolderPath)) {
+        return operations.openInEditor(appFolderPath);
+      }
+    }
+
+    const customApps = await repositories.customApps.findAll();
+    const customApp = customApps.find((a) => a.id === appName || a.name === appName || a.title === appName);
+    if (customApp && customApp.type === 'local' && customApp.source && fs.existsSync(customApp.source)) {
+      return operations.openInEditor(customApp.source);
+    }
+
+    if (!bench) {
+      const fallbackBench = benches.find((b) => b.apps?.includes(appName) || b.apps?.some((a) => a === appName));
+      if (fallbackBench) {
+        const appFolderPath = path.join(fallbackBench.path, 'apps', appName);
+        if (fs.existsSync(appFolderPath)) {
+          return operations.openInEditor(appFolderPath);
+        }
+      }
+    }
+
+    return false;
+  });
+
   ipcMainLike.handle(ipcChannels.benchesCleanSites, async (_event: unknown, id: unknown) => {
     if (typeof id !== 'string') {
       return false;

@@ -25,6 +25,8 @@ describe('ipc contract', () => {
   it('uses stable channel names for bench logs and folder actions', () => {
     expect(ipcChannels.benchesLogs).toBe('benches:logs');
     expect(ipcChannels.benchesOpenFolder).toBe('benches:open-folder');
+    expect(ipcChannels.benchesOpenInEditor).toBe('benches:open-in-editor');
+    expect(ipcChannels.appsOpenInEditor).toBe('apps:open-in-editor');
   });
 
   it('uses a stable channel name for sites listing', () => {

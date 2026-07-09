@@ -1,5 +1,6 @@
 import { getCurrentInstance, onMounted, ref } from 'vue';
 import type { CustomAppListItem } from '@frappe-local/shared/core';
+import { stripIpcPrefix } from '@frappe-local/shared/core';
 import type { CreateCustomAppInput, UpdateCustomAppInput } from '@frappe-local/shared/domain';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
@@ -87,6 +88,25 @@ export const useCustomApps = () => {
     });
   }
 
+  const openInEditor = async (appName: string, inContainer = false) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const opened = await ipc.openAppInEditor(null, appName, inContainer);
+      if (!opened) {
+        error.value = inContainer
+          ? `Unable to open app ${appName} in Dev Container. Verify a bench with this app is running.`
+          : `Unable to open app ${appName} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
+        return;
+      }
+      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appName}.`;
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+    }
+  };
+
   return {
     customApps,
     loading,
@@ -97,6 +117,7 @@ export const useCustomApps = () => {
     create,
     update,
     remove,
+    openInEditor,
     refresh: load,
   };
 };

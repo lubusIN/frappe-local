@@ -176,7 +176,9 @@
 
     <ManageAppsDialog
       v-model:open="showSiteAppsDialog"
+      :resource-id="selectedBenchForSiteApps?.id"
       :resource-name="selectedSiteForApps?.name || 'Site'"
+      :bench-status="selectedBenchForSiteApps?.status"
       context="site"
       :active-app-ids="Array.from(siteActivatedAppSet)"
       :allowed-app-ids="benchInstalledAppRows"
@@ -192,7 +194,9 @@
 
     <ManageAppsDialog
       v-model:open="showBenchAppsDialog"
+      :resource-id="selectedBenchForParentApps?.id"
       :resource-name="selectedBenchForParentApps?.name || 'Bench'"
+      :bench-status="selectedBenchForParentApps?.status"
       context="bench"
       :active-app-ids="selectedBenchForParentApps?.apps ?? []"
       :disabled="!canMutateParentBenchApps || benchUpdating"

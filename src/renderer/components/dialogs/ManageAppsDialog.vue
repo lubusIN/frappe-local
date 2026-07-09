@@ -43,6 +43,8 @@
               <div class="pt-4">
                 <component
                   :is="tab.value === 'catalog' ? AppManager : CustomAppManager"
+                  :resource-id="resourceId"
+                  :bench-status="benchStatus"
                   :context="context"
                   :active-app-ids="activeAppIds"
                   :allowed-app-ids="allowedAppIds"
@@ -84,7 +86,9 @@ import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 
 const props = defineProps<{
   open: boolean;
+  resourceId?: string;
   resourceName: string;
+  benchStatus?: string;
   context: 'bench' | 'site';
   activeAppIds: string[];
   allowedAppIds?: string[];

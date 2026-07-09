@@ -125,7 +125,9 @@
 
     <ManageAppsDialog
       v-model:open="showAppsDialog"
+      :resource-id="selectedBenchForApps?.id"
       :resource-name="selectedBenchForApps?.name || 'Bench'"
+      :bench-status="selectedBenchForApps?.status"
       context="bench"
       :active-app-ids="selectedBenchForApps?.apps ?? []"
       :disabled="!canMutateApps || updating"
@@ -158,10 +160,13 @@ import IconRotateCw from '~icons/lucide/rotate-cw';
 import IconPlay from '~icons/lucide/play';
 import IconSquare from '~icons/lucide/square';
 import IconFolder from '~icons/lucide/folder';
+import IconFolderOpen from '~icons/lucide/folder-open';
 import IconTerminal from '~icons/lucide/terminal';
 import IconBrushCleaning from '~icons/lucide/brush-cleaning';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
+import IconCode from '~icons/lucide/code';
+import IconBox from '~icons/lucide/box';
 import { computed, onBeforeUnmount, ref, type Component, watch, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -192,6 +197,7 @@ const {
   remove: deleteBench,
   openFolder,
   openShell,
+  openInEditor,
   cleanSites: cleanBench,
   refresh,
 } = useBenches();
@@ -414,7 +420,13 @@ const getBenchActions = (bench: BenchListItem) => {
     disabled?: boolean;
     theme?: 'gray' | 'red';
     hidden?: boolean;
-    onClick: () => void | Promise<void>;
+    onClick?: () => void | Promise<void>;
+    submenu?: Array<{
+      label: string;
+      icon?: Component;
+      disabled?: boolean;
+      onClick: () => void | Promise<void>;
+    }>;
   }> = [
       {
         label: 'Sites',
@@ -445,16 +457,33 @@ const getBenchActions = (bench: BenchListItem) => {
         onClick: () => onShowApps(bench),
       },
       {
-        label: 'Open Folder',
-        icon: IconFolder,
-        disabled: openingFolder.value,
-        onClick: () => onOpenBenchFolder(bench.id),
-      },
-      {
-        label: 'Open Shell',
-        icon: IconTerminal,
-        disabled: bench.status !== 'running',
-        onClick: () => onOpenBenchShell(bench.id),
+        label: 'Open In',
+        icon: IconFolderOpen,
+        submenu: [
+          {
+            label: 'Folder',
+            icon: IconFolder,
+            disabled: openingFolder.value,
+            onClick: () => onOpenBenchFolder(bench.id),
+          },
+          {
+            label: 'Shell',
+            icon: IconTerminal,
+            disabled: bench.status !== 'running',
+            onClick: () => onOpenBenchShell(bench.id),
+          },
+          {
+            label: 'VS Code',
+            icon: IconCode,
+            onClick: () => openInEditor(bench.id, false),
+          },
+          {
+            label: 'Dev Container',
+            icon: IconBox,
+            disabled: bench.status !== 'running',
+            onClick: () => openInEditor(bench.id, true),
+          },
+        ],
       },
       {
         label: 'Clean Bench',

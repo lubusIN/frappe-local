@@ -197,6 +197,47 @@ export const useBenches = () => {
     }
   };
 
+  const openInEditor = async (id: string, inContainer = false) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const opened = await ipc.openBenchInEditor(id, inContainer);
+      if (!opened) {
+        error.value = inContainer
+          ? 'Unable to open bench in Dev Container. Verify the bench is running.'
+          : 'Unable to open bench in VS Code. Verify VS Code ("code" CLI) is installed and path exists.';
+        return;
+      }
+      const bench = benches.value.find((b) => b.id === id);
+      successMessage.value = bench
+        ? `${inContainer ? 'Dev Container' : 'VS Code'} opened for ${bench.name}.`
+        : 'Bench opened in editor.';
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+    }
+  };
+
+  const openAppInEditor = async (benchId: string | null, appName: string, inContainer = false) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const opened = await ipc.openAppInEditor(benchId, appName, inContainer);
+      if (!opened) {
+        error.value = inContainer
+          ? `Unable to open app ${appName} in Dev Container. Verify a bench with this app is running.`
+          : `Unable to open app ${appName} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
+        return;
+      }
+      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appName}.`;
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+    }
+  };
+
   useStatusPolling(benches, deletingIds, load);
 
   return {
@@ -215,6 +256,8 @@ export const useBenches = () => {
     listLogs,
     openFolder,
     openShell,
+    openInEditor,
+    openAppInEditor,
     cleanSites,
     refresh: load,
   };

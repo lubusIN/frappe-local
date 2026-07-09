@@ -29,6 +29,8 @@ export const ipcChannels = {
   benchesLogs: 'benches:logs',
   benchesOpenFolder: 'benches:open-folder',
   benchesOpenShell: 'benches:open-shell',
+  benchesOpenInEditor: 'benches:open-in-editor',
+  appsOpenInEditor: 'apps:open-in-editor',
   benchesCleanSites: 'benches:clean-sites',
   sitesList: 'sites:list',
   sitesCreate: 'sites:create',
@@ -217,6 +219,8 @@ export type RendererBridge = {
   readonly listBenchLogs: (id: string) => Promise<LifecycleLogItem[]>;
   readonly openBenchFolder: (id: string) => Promise<boolean>;
   readonly openBenchShell: (id: string) => Promise<boolean>;
+  readonly openBenchInEditor: (id: string, inContainer: boolean) => Promise<boolean>;
+  readonly openAppInEditor: (benchId: string | null, appName: string, inContainer: boolean) => Promise<boolean>;
   readonly cleanBenchSites: (id: string) => Promise<boolean>;
   readonly listSites: () => Promise<SiteListItem[]>;
   readonly createSite: (input: SiteCreateInput) => Promise<SiteListItem>;

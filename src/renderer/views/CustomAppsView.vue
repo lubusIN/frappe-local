@@ -137,6 +137,7 @@ import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
+import IconCode from '~icons/lucide/code';
 import { onBeforeUnmount, ref, watchEffect } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
@@ -155,6 +156,7 @@ const {
   error,
   refresh,
   remove: deleteApp,
+  openInEditor,
 } = useCustomApps();
 
 const showAddModal = ref(false);
@@ -175,14 +177,26 @@ const {
   cancel: cancelDelete,
 } = useConfirmAction();
 
-const getAppActions = (app: CustomAppListItem) => [
-  {
+const getAppActions = (app: CustomAppListItem) => {
+  const actions: Array<any> = [];
+
+  if (app.type === 'local') {
+    actions.push({
+      label: 'Open in VS Code',
+      icon: IconCode,
+      onClick: () => openInEditor(app.id || app.name, false),
+    });
+  }
+
+  actions.push({
     label: 'Delete',
     icon: IconTrash2,
     theme: 'red' as const,
     onClick: () => confirmDelete(app.id, app.title || app.name),
-  },
-];
+  });
+
+  return actions;
+};
 
 const onConfirmDelete = async () => {
   if (!deleteAppId.value) return;

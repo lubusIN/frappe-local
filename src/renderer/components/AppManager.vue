@@ -73,6 +73,18 @@
 
             <!-- Top Right area -->
             <div class="flex items-center gap-2">
+              <Dropdown
+                v-if="context === 'bench' && (row.isActive || row.appId === 'frappe')"
+                :options="getAppOpenOptions(row.appId)"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                >
+                  Open In
+                </Button>
+              </Dropdown>
+
               <!-- Action Buttons -->
               <template v-if="row.appId === 'frappe'">
                 <Badge
@@ -197,16 +209,20 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Select, TextInput } from 'frappe-ui';
+import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
+import IconCode from '~icons/lucide/code';
+import IconBox from '~icons/lucide/box';
 import { computed, ref } from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
-import { useAppCatalogFilters } from '@frappe-local/renderer/composables/data';
+import { useAppCatalogFilters, useBenches } from '@frappe-local/renderer/composables/data';
 
 const props = withDefaults(
   defineProps<{
     // common
     disabled?: boolean;
+    resourceId?: string;
+    benchStatus?: string;
     frappeVersion?: string;
     allowedAppIds?: readonly string[];
     
@@ -230,6 +246,32 @@ const emit = defineEmits<{
   (e: 'install-app', appId: string): void;
   (e: 'uninstall-app', appId: string): void;
 }>();
+
+const { openAppInEditor, error: openError } = useBenches();
+
+const getAppOpenOptions = (appId: string) => [
+  {
+    label: 'VS Code',
+    icon: IconCode,
+    onClick: async () => {
+      await openAppInEditor(props.resourceId ?? null, appId, false);
+      if (openError.value) {
+        toast.error(openError.value);
+      }
+    },
+  },
+  {
+    label: 'Dev Container',
+    icon: IconBox,
+    disabled: props.benchStatus !== 'running',
+    onClick: async () => {
+      await openAppInEditor(props.resourceId ?? null, appId, true);
+      if (openError.value) {
+        toast.error(openError.value);
+      }
+    },
+  },
+];
 
 const frappeVersionRef = computed(() => props.frappeVersion);
 
