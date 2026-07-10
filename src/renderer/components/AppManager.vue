@@ -25,13 +25,13 @@
     </header>
 
     <div
-      v-if="state.error"
+      v-if="(state.error || customAppsError) && rows.length === 0"
       class="px-2 py-3 text-xs text-center text-ink-red-8"
     >
-      {{ state.error }}
+      {{ state.error || customAppsError }}
     </div>
     <div
-      v-else-if="state.loading"
+      v-else-if="(state.loading || customAppsLoading) && rows.length === 0"
       class="px-2 py-3 text-xs text-center text-ink-gray-6"
     >
       Loading apps…
@@ -68,14 +68,14 @@
               v-else
               class="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 text-sm-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
             >
-              {{ row.appName.charAt(0).toUpperCase() }}
+              {{ (row.appName || '').charAt(0).toUpperCase() }}
             </div>
 
             <!-- Top Right area -->
             <div class="flex items-center gap-2">
               <Dropdown
                 v-if="context === 'bench' && (row.isActive || row.appId === 'frappe')"
-                :options="getAppOpenOptions(row.appId)"
+                :options="getAppOpenOptions(row)"
               >
                 <Button
                   variant="outline"
@@ -154,7 +154,7 @@
               class="text-xs text-ink-gray-5 leading-relaxed line-clamp-2"
               :title="row.description"
             >
-              {{ row.description }}
+              {{ row.description || 'No description provided' }}
             </p>
             
             <div
@@ -174,31 +174,25 @@
             </div>
           </div>
 
-          <!-- Divider removed as requested -->
-
-          <!-- Footer: Categories & Actions/License -->
+          <!-- Footer: Source Badge & Source/License Text -->
           <div class="flex items-center justify-between shrink-0 mt-auto">
-            <!-- Categories -->
+            <!-- Source Badge -->
             <div class="flex items-center gap-1.5 flex-wrap overflow-hidden h-5">
-              <span
-                v-for="(cat, i) in (row.categories || []).slice(0, 2)"
-                :key="i"
-                class="px-2 py-0.5 rounded-full bg-surface-gray-2 text-ink-gray-6 text-[10px] font-medium whitespace-nowrap"
+              <Badge
+                :theme="row.sourceBadgeTheme"
+                size="sm"
               >
-                {{ cat }}
-              </span>
-              <span
-                v-if="(row.categories || []).length > 2"
-                class="text-ink-gray-4 text-[10px] px-1 font-medium"
-              >
-                +{{ row.categories.length - 2 }}
-              </span>
+                {{ row.sourceBadgeLabel }}
+              </Badge>
             </div>
 
             <!-- Bottom Right -->
-            <div class="flex items-center gap-2 shrink-0">
-              <span class="text-[10px] uppercase text-ink-gray-4 font-medium tracking-wide">
-                {{ row.license || 'Unknown' }}
+            <div class="flex items-center gap-2 shrink-0 max-w-[45%]">
+              <span
+                class="text-[10px] uppercase text-ink-gray-4 font-medium tracking-wide truncate"
+                :title="row.sourceTitle"
+              >
+                {{ row.sourceText }}
               </span>
             </div>
           </div>
@@ -215,11 +209,10 @@ import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';
 import { computed, ref } from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
-import { useAppCatalogFilters, useBenches } from '@frappe-local/renderer/composables/data';
+import { useAppCatalogFilters, useBenches, useCustomApps } from '@frappe-local/renderer/composables/data';
 
 const props = withDefaults(
   defineProps<{
-    // common
     disabled?: boolean;
     resourceId?: string;
     benchStatus?: string;
@@ -249,29 +242,36 @@ const emit = defineEmits<{
 
 const { openAppInEditor, error: openError } = useBenches();
 
-const getAppOpenOptions = (appId: string) => [
-  {
-    label: 'VS Code',
-    icon: IconCode,
-    onClick: async () => {
-      await openAppInEditor(props.resourceId ?? null, appId, false);
-      if (openError.value) {
-        toast.error(openError.value);
-      }
+const getAppOpenOptions = (row: any) => {
+  const options: any[] = [
+    {
+      label: 'VS Code',
+      icon: IconCode,
+      onClick: async () => {
+        await openAppInEditor(props.resourceId ?? null, row.appId, false);
+        if (openError.value) {
+          toast.error(openError.value);
+        }
+      },
     },
-  },
-  {
-    label: 'Dev Container',
-    icon: IconBox,
-    disabled: props.benchStatus !== 'running',
-    onClick: async () => {
-      await openAppInEditor(props.resourceId ?? null, appId, true);
-      if (openError.value) {
-        toast.error(openError.value);
-      }
-    },
-  },
-];
+  ];
+
+  if (row.sourceBadgeLabel !== 'Local') {
+    options.push({
+      label: 'Dev Container',
+      icon: IconBox,
+      disabled: props.benchStatus !== 'running',
+      onClick: async () => {
+        await openAppInEditor(props.resourceId ?? null, row.appId, true);
+        if (openError.value) {
+          toast.error(openError.value);
+        }
+      },
+    });
+  }
+
+  return options;
+};
 
 const frappeVersionRef = computed(() => props.frappeVersion);
 
@@ -285,6 +285,8 @@ const {
   onSearch,
 } = useAppCatalogFilters({ frappeVersion: frappeVersionRef });
 
+const { customApps, loading: customAppsLoading, error: customAppsError } = useCustomApps();
+
 const imageErrors = ref<Record<string, boolean>>({});
 const allowedAppIds = computed(() => {
   if (!props.allowedAppIds) {
@@ -295,7 +297,6 @@ const allowedAppIds = computed(() => {
 
 const visibleItems = computed(() =>
   items.value.filter((item) => {
-
     if (allowedAppIds.value && !allowedAppIds.value.has(item.id)) {
       return false;
     }
@@ -309,7 +310,27 @@ const visibleItems = computed(() =>
   })
 );
 
-const rows = computed(() =>
+const visibleCustomApps = computed(() => {
+  if (categoryFilter.value) {
+    return [];
+  }
+  return customApps.value.filter((item) => {
+    if (allowedAppIds.value && !allowedAppIds.value.has(item.name) && !allowedAppIds.value.has(item.id)) {
+      return false;
+    }
+
+    if (query.value) {
+      const q = query.value.toLowerCase();
+      if (!item.name.toLowerCase().includes(q) && !(item.description || '').toLowerCase().includes(q) && !(item.title || '').toLowerCase().includes(q)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+});
+
+const catalogRows = computed(() =>
   visibleItems.value.map((item) => {
     const compatibility = evaluateCompatibility(item as CatalogAppItem);
     const isActive = props.activeAppIds.includes(item.id) || (props.context === 'site' && item.id === 'frappe');
@@ -323,7 +344,38 @@ const rows = computed(() =>
       isActive,
       compatibilityStatus: compatibility.status,
       supportText: compatibility.status === 'ok' ? '' : compatibility.message,
+      sourceBadgeLabel: 'Registry',
+      sourceBadgeTheme: 'gray' as const,
+      sourceText: item.license || 'Unknown',
+      sourceTitle: item.license || 'Unknown',
+      categories: item.categories || [],
     };
   })
 );
+
+const customRows = computed(() =>
+  visibleCustomApps.value.map((item) => {
+    const isActive = props.activeAppIds.includes(item.id) || props.activeAppIds.includes(item.name);
+    const catalogMatch = (state.value.data || []).find((app) => app.id === item.name || app.name === item.name);
+    const licenseText = item.license || catalogMatch?.license || 'Unknown';
+
+    return {
+      ...item,
+      appId: item.id,
+      appName: item.title || item.name,
+      name: item.name,
+      disabled: props.disabled,
+      isActive,
+      compatibilityStatus: 'ok' as const,
+      supportText: '',
+      sourceBadgeLabel: item.type === 'github' ? 'GitHub' : 'Local',
+      sourceBadgeTheme: 'gray' as const,
+      sourceText: licenseText,
+      sourceTitle: licenseText,
+      categories: [] as string[],
+    };
+  })
+);
+
+const rows = computed(() => [...catalogRows.value, ...customRows.value]);
 </script>

@@ -31,35 +31,22 @@
             Manage bench apps
           </Button>
         </EmptyState>
-        <div
+        <AppManager
           v-else
-          class="flex flex-col min-h-0 gap-3"
-        >
-          <Tabs
-            v-model="activeTabIndex"
-            :tabs="appTabs"
-          >
-            <template #tab-panel="{ tab }">
-              <div class="pt-4">
-                <component
-                  :is="tab.value === 'catalog' ? AppManager : CustomAppManager"
-                  :resource-id="resourceId"
-                  :bench-status="benchStatus"
-                  :context="context"
-                  :active-app-ids="activeAppIds"
-                  :allowed-app-ids="allowedAppIds"
-                  :disabled="disabled"
-                  :frappe-version="frappeVersion"
-                  :loading-app-id="loadingAppId"
-                  @add-app="$emit('add-app', $event)"
-                  @remove-app="$emit('remove-app', $event)"
-                  @install-app="$emit('add-app', $event)"
-                  @uninstall-app="$emit('remove-app', $event)"
-                />
-              </div>
-            </template>
-          </Tabs>
-        </div>
+          class="pt-2"
+          :resource-id="resourceId"
+          :bench-status="benchStatus"
+          :context="context"
+          :active-app-ids="activeAppIds"
+          :allowed-app-ids="allowedAppIds"
+          :disabled="disabled"
+          :frappe-version="frappeVersion"
+          :loading-app-id="loadingAppId"
+          @add-app="$emit('add-app', $event)"
+          @remove-app="$emit('remove-app', $event)"
+          @install-app="$emit('add-app', $event)"
+          @uninstall-app="$emit('remove-app', $event)"
+        />
       </div>
     </template>
     <template #actions>
@@ -77,11 +64,10 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, Dialog, Tabs } from 'frappe-ui';
+import { Alert, Button, Dialog } from 'frappe-ui';
 import IconPackage from '~icons/lucide/package';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
-import CustomAppManager from '@frappe-local/renderer/components/CustomAppManager.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 
 const props = defineProps<{
@@ -111,13 +97,6 @@ const showNoBenchAppsState = computed(() =>
   Array.isArray(props.allowedAppIds) &&
   props.allowedAppIds.filter((appId) => appId.trim() !== 'frappe').length === 0
 );
-
-const appTabs = [
-  { label: 'Brewery', value: 'catalog' },
-  { label: 'My Apps', value: 'custom' },
-];
-
-const activeTabIndex = ref(0);
 
 const onOpenChange = (value: boolean) => {
   emit('update:open', value);

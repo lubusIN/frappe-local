@@ -117,4 +117,24 @@ describe('CustomAppsRepository', () => {
     const snapshot = await adapter.readSnapshot();
     expect(snapshot.customApps).toHaveLength(1);
   });
+
+  it('should store and update app license correctly', async () => {
+    const app = await repository.create({
+      name: 'licensed_app',
+      title: 'Licensed App',
+      type: 'github',
+      source: 'https://github.com/frappe/licensed_app',
+      license: 'MIT',
+    });
+
+    expect(app.license).toBe('MIT');
+
+    const updated = await repository.update(app.id, {
+      license: 'GPL-3.0',
+    });
+
+    expect(updated?.license).toBe('GPL-3.0');
+    const snapshot = await adapter.readSnapshot();
+    expect(snapshot.customApps?.find((a) => a.id === app.id)?.license).toBe('GPL-3.0');
+  });
 });

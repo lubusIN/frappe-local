@@ -74,6 +74,7 @@ export const CustomAppSchema = z.object({
   source: nonEmptyString,
   branch: z.string().optional(),
   icon: z.string().optional(),
+  license: z.string().optional(),
   timestamps: TimestampsSchema,
 });
 
@@ -179,6 +180,7 @@ export type CustomAppRecord = {
   source: string;
   branch?: string;
   icon?: string;
+  license?: string;
   created_at: string;
   updated_at: string;
 };
@@ -227,6 +229,7 @@ export const mapCustomAppRecordToDomain = (record: CustomAppRecord): CustomAppIt
     source: record.source,
     branch: record.branch,
     icon: record.icon,
+    license: record.license,
     timestamps: {
       createdAt: normalizeTimestamp(record.created_at),
       updatedAt: normalizeTimestamp(record.updated_at),
@@ -242,6 +245,7 @@ export const mapCustomAppDomainToRecord = (app: CustomAppItem): CustomAppRecord 
   source: app.source,
   branch: app.branch,
   icon: app.icon,
+  license: app.license,
   created_at: normalizeTimestamp(app.timestamps.createdAt),
   updated_at: normalizeTimestamp(app.timestamps.updatedAt),
 });

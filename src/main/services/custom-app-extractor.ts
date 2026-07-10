@@ -14,6 +14,7 @@ export type ExtractedAppMetadata = {
   description: string;
   icon?: string;
   branch?: string; // the default branch from github
+  license?: string;
 };
 
 function extractAppTitle(content: string): string | null {
@@ -31,6 +32,28 @@ function extractAppDescription(content: string): string | null {
 function extractAppName(content: string): string | null {
   const hookMatch = content.match(/^[ \t]*app_name\s*=\s*["'](.+?)["']/m);
   if (hookMatch && hookMatch[1]) return hookMatch[1];
+  return null;
+}
+
+function extractAppLicense(content: string, dir: string): string | null {
+  const hookMatch = content.match(/^[ \t]*app_license\s*=\s*(?:_\()?["'](.+?)["']/m);
+  if (hookMatch && hookMatch[1]) {
+    return hookMatch[1].toUpperCase();
+  }
+  const pyproject = getLocalFileContent(dir, ['pyproject.toml']);
+  if (pyproject) {
+    const pyMatch = pyproject.match(/^[ \t]*license\s*=\s*(?:\{\s*text\s*=\s*)?["']([^"']+)["']/m);
+    if (pyMatch && pyMatch[1] && !pyMatch[0].includes('file')) {
+      return pyMatch[1].toUpperCase();
+    }
+  }
+  const licenseContent = getLocalFileContent(dir, ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'license.txt']);
+  if (licenseContent) {
+    if (/\bMIT\b/i.test(licenseContent)) return 'MIT';
+    if (/\bGNU General Public License\b/i.test(licenseContent) || /\bGPL\b/i.test(licenseContent)) return 'GPL-3.0';
+    if (/\bApache License\b/i.test(licenseContent)) return 'APACHE-2.0';
+    if (/\bBSD\b/i.test(licenseContent)) return 'BSD';
+  }
   return null;
 }
 
@@ -165,6 +188,7 @@ async function extractMetadataFromDirectory(dir: string, fallbackName: string, b
   const title = extractAppTitle(hooksContent) || canonicalName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   const description = extractAppDescription(hooksContent) || '';
   const icon = detectIconUrl(canonicalName, dir, hooksContent);
+  const license = extractAppLicense(hooksContent, dir);
 
   return {
     name: canonicalName,
@@ -172,6 +196,7 @@ async function extractMetadataFromDirectory(dir: string, fallbackName: string, b
     description,
     icon: icon || undefined,
     branch: branch || 'main',
+    license: license || undefined,
   };
 }
 

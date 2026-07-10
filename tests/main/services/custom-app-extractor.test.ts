@@ -59,6 +59,7 @@ app_name = "test_app"
 app_title = "Test App"
 app_publisher = "Test Publisher"
 app_description = "A test custom app"
+app_license = "mit"
     `);
     execGitMock.mockResolvedValue({ exitCode: 0, stdout: 'develop\n', stderr: '' });
 
@@ -68,6 +69,7 @@ app_description = "A test custom app"
     expect(result.description).toBe('A test custom app');
     expect(result.icon).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(result.branch).toBe('develop');
+    expect(result.license).toBe('MIT');
     expectGitCommand(['branch', '--show-current']);
   });
 
@@ -167,5 +169,31 @@ app_description = "App from github"
     const appDir = path.join(tmpDir, 'invalid_app');
 
     await expect(extractCustomApp('local', appDir)).rejects.toThrow('Local path does not exist:');
+  });
+
+  it('extracts license from pyproject.toml when app_license is not set in hooks.py', async () => {
+    const appDir = path.join(tmpDir, 'pyproject_app');
+    fs.mkdirSync(path.join(appDir, 'pyproject_app'), { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'pyproject_app', 'hooks.py'), 'app_title = "Pyproject App"');
+    fs.writeFileSync(path.join(appDir, 'pyproject.toml'), `
+[project]
+name = "pyproject_app"
+license = { text = "MIT" }
+    `);
+    execGitMock.mockResolvedValue({ exitCode: 0, stdout: 'main\n', stderr: '' });
+
+    const result = await extractCustomApp('local', appDir);
+    expect(result.license).toBe('MIT');
+  });
+
+  it('extracts license from LICENSE file when neither hooks.py nor pyproject.toml specifies license', async () => {
+    const appDir = path.join(tmpDir, 'license_file_app');
+    fs.mkdirSync(path.join(appDir, 'license_file_app'), { recursive: true });
+    fs.writeFileSync(path.join(appDir, 'license_file_app', 'hooks.py'), 'app_title = "License File App"');
+    fs.writeFileSync(path.join(appDir, 'LICENSE'), 'GNU General Public License v3.0\nCopyright 2026');
+    execGitMock.mockResolvedValue({ exitCode: 0, stdout: 'main\n', stderr: '' });
+
+    const result = await extractCustomApp('local', appDir);
+    expect(result.license).toBe('GPL-3.0');
   });
 });

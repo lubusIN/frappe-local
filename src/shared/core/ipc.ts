@@ -87,6 +87,7 @@ export type CustomAppListItem = {
   readonly source: string;
   readonly branch?: string;
   readonly icon?: string;
+  readonly license?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
@@ -97,6 +98,7 @@ export type ExtractedCustomAppMetadata = {
   readonly description: string;
   readonly icon?: string;
   readonly branch?: string;
+  readonly license?: string;
 };
 
 export type BenchListItem = {
