@@ -42,279 +42,303 @@
             body="Reading current preferences and runtime defaults."
           />
 
-          <div
+          <form
             v-else
-            class="min-h-full"
+            class="min-h-full space-y-6"
+            @submit.prevent="onSave"
           >
-            <form
+            <!-- General Tab -->
+            <div
+              v-if="activeTab === 'general'"
               class="space-y-6"
-              @submit.prevent="onSave"
             >
-              <!-- General Tab -->
-              <div v-if="activeTab === 'general'">
-                <div class="mb-6">
-                  <h2 class="text-lg font-semibold text-ink-gray-9">
-                    Preferences
-                  </h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">
-                    Choose how you want to use the application by setting your preferences.
-                  </p>
-                </div>
-                
-                <div class="flex flex-col">
-                  <div class="pb-5 space-y-1.5">
-                    <div>
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Default Frappe Version
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
-                        Select the Frappe version to use when creating new benches.
-                      </p>
-                    </div>
-                    <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
-                  </div>
-
-                  <Divider />
-
-                  <div class="py-5 space-y-1.5">
-                    <div>
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Storage Path
-                        <span class="text-red-500 ml-1">*</span>
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
-                        The directory where all your local benches and sites will be stored.
-                      </p>
-                    </div>
-                    <div class="flex gap-2">
-                      <div class="flex-1">
-                        <TextInput
-                          v-model="form.storagePath"
-                          placeholder="/path/to/storage"
-                          required
-                        />
-                      </div>
-                      <Button
-                        size="md"
-                        variant="subtle"
-                        @click="onPickStoragePath"
-                      >
-                        Browse
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Divider />
-
-                  <div class="py-5 space-y-1.5">
-                    <div>
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Terminal
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
-                        Select the terminal application to use when opening bench shells.
-                      </p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <Select
-                        v-model="selectedTerminalOption"
-                        :options="terminalOptions"
-                      />
-                      <TextInput
-                        v-if="selectedTerminalOption === 'custom'"
-                        v-model="form.terminalPreference"
-                        placeholder="Custom command or binary path (e.g., /usr/local/bin/my-term)"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <h2 class="text-lg font-semibold text-ink-gray-9">
+                  Preferences
+                </h2>
+                <p class="text-sm text-ink-gray-5 mt-1">
+                  Choose how you want to use the application by setting your preferences.
+                </p>
               </div>
 
-              <!-- Updates Tab -->
-              <div v-else-if="activeTab === 'updates'">
-                <div class="mb-6">
-                  <h2 class="text-lg font-semibold text-ink-gray-9">
-                    Updates
-                  </h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">
-                    Manage how Frappe Local receives updates.
-                  </p>
+              <div class="divide-y divide-outline-gray-2">
+                <div class="pb-5 space-y-1.5">
+                  <div>
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Default Frappe Version
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
+                      Select the Frappe version to use when creating new benches.
+                    </p>
+                  </div>
+                  <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
                 </div>
 
-                <div class="flex flex-col">
-                  <div class="pb-5 flex items-center justify-between gap-6">
-                    <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Auto Update
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
-                        Automatically check for and download updates in the background.
-                      </p>
-                    </div>
-                    <div class="shrink-0">
-                      <Switch
-                        v-model="form.autoUpdateEnabled"
-                        size="sm"
-                      />
-                    </div>
+                <div class="py-5 space-y-1.5">
+                  <div>
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Storage Path
+                      <span class="text-red-500 ml-1">*</span>
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
+                      The directory where all your local benches and sites will be stored.
+                    </p>
                   </div>
+                  <div class="flex gap-2">
+                    <TextInput
+                      v-model="form.storagePath"
+                      placeholder="/path/to/storage"
+                      required
+                      class="flex-1"
+                    />
+                    <Button
+                      size="md"
+                      variant="subtle"
+                      @click="onPickStoragePath"
+                    >
+                      Browse
+                    </Button>
+                  </div>
+                </div>
 
-                  <Divider />
-
-                  <div class="py-5 flex items-center justify-between gap-6">
-                    <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Update Channel
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
-                        Choose how early you'd like to receive new updates.
-                      </p>
-                    </div>
+                <div class="pt-5 space-y-1.5">
+                  <div>
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Terminal
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6 mb-2">
+                      Select the terminal application to use when opening bench shells.
+                    </p>
+                  </div>
+                  <div class="flex flex-col gap-2">
                     <Select
-                      v-model="form.updateChannel"
-                      :options="[
-                        { label: 'Stable', value: 'stable' },
-                        { label: 'Dev', value: 'dev' }
-                      ]"
+                      v-model="selectedTerminalOption"
+                      :options="terminalOptions"
+                    />
+                    <TextInput
+                      v-if="selectedTerminalOption === 'custom'"
+                      v-model="form.terminalPreference"
+                      placeholder="Custom command or binary path (e.g., /usr/local/bin/my-term)"
                     />
                   </div>
-
-                  <Divider />
-
-                  <div class="py-5 flex items-center justify-between gap-6">
-                    <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Check for Updates
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
-                        Last checked: {{ formattedLastChecked }}
-                        <span
-                          v-if="updateMessage"
-                          class="block mt-0.5 text-ink-gray-5"
-                        >{{ updateMessage }}</span>
-                      </p>
-                    </div>
-                    <div class="shrink-0">
-                      <Button
-                        size="sm"
-                        variant="subtle"
-                        :loading="isCheckingForUpdates"
-                        @click="onCheckForUpdates"
-                      >
-                        Check Now
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
+            </div>
 
-              <!-- Appearance Tab -->
-              <div
-                v-else-if="activeTab === 'appearance'"
-                class="space-y-8"
-              >
-                <div>
-                  <h2 class="text-lg font-semibold text-ink-gray-9">
-                    Appearance
-                  </h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">
-                    Customize the look and feel of the application.
-                  </p>
-                </div>
-
-                <ThemeSwitcher
-                  v-model="form.theme"
-                  name="Local"
-                  :logo="AppLogo"
-                />
+            <!-- Updates Tab -->
+            <div
+              v-else-if="activeTab === 'updates'"
+              class="space-y-6"
+            >
+              <div>
+                <h2 class="text-lg font-semibold text-ink-gray-9">
+                  Updates
+                </h2>
+                <p class="text-sm text-ink-gray-5 mt-1">
+                  Manage how Frappe Local receives updates.
+                </p>
               </div>
 
-              <!-- Advanced Tab -->
-              <div v-else-if="activeTab === 'advanced'">
-                <div class="mb-6">
-                  <h2 class="text-lg font-semibold text-ink-gray-9">
-                    Advanced
-                  </h2>
-                  <p class="text-sm text-ink-gray-5 mt-1">
-                    Manage technical and resource settings.
-                  </p>
+              <div class="divide-y divide-outline-gray-2">
+                <div class="pb-5 flex items-center justify-between gap-6">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Auto Update
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                      Automatically check for and download updates in the background.
+                    </p>
+                  </div>
+                  <Switch
+                    v-model="form.autoUpdateEnabled"
+                    size="sm"
+                    class="shrink-0"
+                  />
                 </div>
 
-                <div class="flex flex-col">
-                  <div class="pb-5 flex items-center justify-between gap-6">
-                    <div class="min-w-0 flex-1">
-                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                        Share SSH Keys with Benches
-                      </p>
-                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
-                        Mounts your local ~/.ssh directory into benches to fetch private GitHub repos.
-                      </p>
-                    </div>
-                    <div class="shrink-0">
-                      <Switch
-                        v-model="form.shareSshKeys"
-                        size="sm"
-                      />
-                    </div>
+                <div class="py-5 flex items-center justify-between gap-6">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Update Channel
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                      Choose how early you'd like to receive new updates.
+                    </p>
                   </div>
+                  <Select
+                    v-model="form.updateChannel"
+                    :options="[
+                      { label: 'Stable', value: 'stable' },
+                      { label: 'Dev', value: 'dev' }
+                    ]"
+                  />
+                </div>
 
-                  <Divider />
-
-                  <div
-                    v-if="systemResources.podmanMachineRequired"
-                    class="py-5"
+                <div class="pt-5 flex items-center justify-between gap-6">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Check for Updates
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                      Last checked: {{ formattedLastChecked }}
+                      <span
+                        v-if="updateMessage"
+                        class="block mt-0.5 text-ink-gray-5"
+                      >{{ updateMessage }}</span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    :loading="isCheckingForUpdates"
+                    class="shrink-0"
+                    @click="onCheckForUpdates"
                   >
-                    <div class="flex items-center justify-between gap-6">
-                      <div class="min-w-0">
-                        <p class="font-medium leading-normal text-ink-gray-8 text-base">
-                          Memory
-                        </p>
-                        <p class="mt-1 text-sm leading-5 text-ink-gray-6">
-                          Set the memory available to local benches and sites.
-                        </p>
-                      </div>
-                      <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
-                        {{ formatMemory(form.podmanMemoryMb) }}
-                      </span>
-                    </div>
+                    Check Now
+                  </Button>
+                </div>
+              </div>
+            </div>
 
-                    <div class="mt-5">
-                      <Slider
-                        v-model="memorySliderValue"
-                        class="cursor-pointer [&_[role=slider]]:cursor-pointer"
-                        :min="MIN_PODMAN_MEMORY_MB"
-                        :max="systemResources.totalMemoryMb"
-                        :step="1024"
-                      />
-                      <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
-                        <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
-                        <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
-                      </div>
-                    </div>
+            <!-- Appearance Tab -->
+            <div
+              v-else-if="activeTab === 'appearance'"
+              class="space-y-6"
+            >
+              <div>
+                <h2 class="text-lg font-semibold text-ink-gray-9">
+                  Appearance
+                </h2>
+                <p class="text-sm text-ink-gray-5 mt-1">
+                  Customize the look and feel of the application.
+                </p>
+              </div>
 
-                    <div class="mt-2 flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div class="text-xs leading-5">
-                        <p class="font-medium text-ink-gray-7">
-                          Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
-                        </p>
-                        <p class="text-ink-gray-5">
-                          Saving a change briefly restarts Podman.
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="subtle"
-                        class="shrink-0"
-                        @click="useRecommendedMemory"
-                      >
-                        Use recommended
-                      </Button>
+              <ThemeSwitcher
+                v-model="form.theme"
+                name="Local"
+                :logo="AppLogo"
+              />
+            </div>
+
+            <!-- Advanced Tab -->
+            <div
+              v-else-if="activeTab === 'advanced'"
+              class="space-y-6"
+            >
+              <div>
+                <h2 class="text-lg font-semibold text-ink-gray-9">
+                  Advanced
+                </h2>
+                <p class="text-sm text-ink-gray-5 mt-1">
+                  Manage technical and resource settings.
+                </p>
+              </div>
+
+              <div class="divide-y divide-outline-gray-2">
+                <div class="pb-5 space-y-2">
+                  <div>
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      App Registry URL
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                      Custom brewery URL to fetch apps from.
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <TextInput
+                      v-model="form.breweryUrl"
+                      placeholder="https://frappe-brewery.lubus.in/"
+                      class="flex-1"
+                      :disabled="saving || validatingBrewery"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      :disabled="!form.breweryUrl || form.breweryUrl === DEFAULT_BREWERY_URL || saving || validatingBrewery"
+                      @click="resetToDefaultBrewery"
+                    >
+                      Use Default
+                    </Button>
+                  </div>
+                  <p
+                    v-if="breweryValidationMessage"
+                    :class="breweryValidationSuccess ? 'text-sm text-green-600 font-medium' : 'text-sm text-red-600 font-medium'"
+                  >
+                    {{ breweryValidationMessage }}
+                  </p>
+                </div>
+
+                <div class="py-5 flex items-center justify-between gap-6">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                      Share SSH Keys with Benches
+                    </p>
+                    <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                      Mounts your local ~/.ssh directory into benches to fetch private GitHub repos.
+                    </p>
+                  </div>
+                  <Switch
+                    v-model="form.shareSshKeys"
+                    size="sm"
+                    class="shrink-0"
+                  />
+                </div>
+
+                <div
+                  v-if="systemResources.podmanMachineRequired"
+                  class="pt-5"
+                >
+                  <div class="flex items-center justify-between gap-6">
+                    <div class="min-w-0">
+                      <p class="font-medium leading-normal text-ink-gray-8 text-base">
+                        Memory
+                      </p>
+                      <p class="mt-1 text-sm leading-5 text-ink-gray-6">
+                        Set the memory available to local benches and sites.
+                      </p>
                     </div>
+                    <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
+                      {{ formatMemory(form.podmanMemoryMb) }}
+                    </span>
+                  </div>
+
+                  <div class="mt-5">
+                    <Slider
+                      v-model="memorySliderValue"
+                      class="cursor-pointer [&_[role=slider]]:cursor-pointer"
+                      :min="MIN_PODMAN_MEMORY_MB"
+                      :max="systemResources.totalMemoryMb"
+                      :step="1024"
+                    />
+                    <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
+                      <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
+                      <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-2 flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="text-xs leading-5">
+                      <p class="font-medium text-ink-gray-7">
+                        Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
+                      </p>
+                      <p class="text-ink-gray-5">
+                        Saving a change briefly restarts Podman.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      class="shrink-0"
+                      @click="useRecommendedMemory"
+                    >
+                      Use recommended
+                    </Button>
                   </div>
                 </div>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
 
         <!-- Footer Actions -->
@@ -350,7 +374,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog, Divider, Select, Sidebar, SidebarItem, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
+import { Button, Dialog, Select, Sidebar, SidebarItem, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
 import IconPalette from '~icons/lucide/palette';
 import IconSlidersHorizontal from '~icons/lucide/sliders-horizontal';
@@ -364,7 +388,7 @@ import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/Confir
 import { useSettings } from '@frappe-local/renderer/composables/data';
 import { useIpc, useSshKeys } from '@frappe-local/renderer/composables/system';
 
-import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
+import { DEFAULT_BREWERY_URL, MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 
 const props = defineProps<{
   open: boolean;
@@ -481,6 +505,15 @@ const useRecommendedMemory = (): void => {
 
 const { showSshConfirmation, pendingSshValue, handleSshToggle, performSshSave } = useSshKeys();
 
+const validatingBrewery = ref(false);
+const breweryValidationMessage = ref('');
+const breweryValidationSuccess = ref(true);
+
+const resetToDefaultBrewery = () => {
+  form.value.breweryUrl = DEFAULT_BREWERY_URL;
+  breweryValidationMessage.value = '';
+};
+
 const performSave = async () => {
   await save();
   if (!error.value) {
@@ -489,6 +522,30 @@ const performSave = async () => {
 };
 
 const onSave = async () => {
+  breweryValidationMessage.value = '';
+  if (form.value.breweryUrl && form.value.breweryUrl.trim() && form.value.breweryUrl !== originalSettings.value?.breweryUrl) {
+    validatingBrewery.value = true;
+    breweryValidationMessage.value = 'Validating app registry endpoint...';
+    try {
+      const validation = await ipc.validateBreweryUrl(form.value.breweryUrl.trim());
+      if (!validation.valid) {
+        breweryValidationSuccess.value = false;
+        breweryValidationMessage.value = `Validation failed: ${validation.error || 'Could not fetch app catalog from this URL.'}`;
+        validatingBrewery.value = false;
+        return;
+      }
+      breweryValidationSuccess.value = true;
+      breweryValidationMessage.value = `Verified! Found ${validation.appCount} apps.`;
+    } catch (err) {
+      breweryValidationSuccess.value = false;
+      breweryValidationMessage.value = `Validation error: ${err instanceof Error ? err.message : String(err)}`;
+      validatingBrewery.value = false;
+      return;
+    } finally {
+      validatingBrewery.value = false;
+    }
+  }
+
   if (originalSettings.value && form.value.shareSshKeys !== originalSettings.value.shareSshKeys) {
     await handleSshToggle(form.value.shareSshKeys, async () => {
       await performSave();

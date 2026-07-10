@@ -1,6 +1,6 @@
 import type { AppHealthResponse, BenchCreateInput, BenchListItem, BenchUpdateInput, CatalogAppItem, LifecycleLogItem, SettingsItem, SiteCreateInput, SiteListItem, SiteUpdateInput, SystemResources, UpdateCheckResult } from '@frappe-local/shared/core';
 import type { DiagnosticsReport, TaskProgressEvent } from '@frappe-local/shared/domain';
-import { APP_CATALOG_SEED_VERSION, FRAPPE_LOCAL_MACHINE_NAME, ensureRuntimeRunning, extractCustomApp, getDefaultAppCatalogSeed, getLastDiagnosticsReport, getLastRuntimeError, getRuntimeEnv, getTaskRunner, orchestrateBenchAppChanges, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, resetAllBenchContainers, runDiagnostics, type TaskExecutionContext } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, FRAPPE_LOCAL_MACHINE_NAME, ensureRuntimeRunning, extractCustomApp, fetchBreweryCatalog, getDefaultAppCatalogSeed, getLastDiagnosticsReport, getLastRuntimeError, getRuntimeEnv, getTaskRunner, orchestrateBenchAppChanges, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, resetAllBenchContainers, runDiagnostics, syncAppCatalogFromBrewery, type TaskExecutionContext } from '@frappe-local/main/services';
 
 import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
 import { getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
@@ -164,6 +164,7 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   podmanMemoryMb: settings.podmanMemoryMb,
   shareSshKeys: settings.shareSshKeys,
   theme: settings.theme,
+  breweryUrl: settings.breweryUrl,
 });
 
 const toLifecycleLogs = (
@@ -711,7 +712,7 @@ export const registerIpcHandlers = (
       const { execPromise, getBinaryPath } = await import('@frappe-local/main/utils');
       const { getRuntimeEnv } = await import('@frappe-local/main/services/runtime-service');
       const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
-      const runtimeEnv = await getRuntimeEnv().catch(() => ({}));
+      const runtimeEnv: Record<string, string | undefined> = await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>));
       await ensureBenchDevcontainer(bench.path, { log: () => {} }, 'open-editor', runtimeEnv, bench.id);
       const hexPath = Buffer.from(bench.path, 'utf8').toString('hex');
       const uri = `vscode-remote://dev-container+${hexPath}/workspace`;
@@ -719,7 +720,7 @@ export const registerIpcHandlers = (
       const podmanBinDir = path.dirname(getBinaryPath('podman'));
       const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${process.env.PATH || ''}`;
       const composeProjectName = getComposeProjectName(bench.id);
-      const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv.DOCKER_HOST || process.env.DOCKER_HOST || process.env.CONTAINER_HOST || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
+      const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv['DOCKER_HOST'] || process.env['DOCKER_HOST'] || process.env['CONTAINER_HOST'] || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
       await execPromise('code', ['--folder-uri', uri], bench.path, undefined, execEnv);
       if (bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
       return true;
@@ -754,7 +755,7 @@ export const registerIpcHandlers = (
         const { execPromise, getBinaryPath } = await import('@frappe-local/main/utils');
         const { getRuntimeEnv } = await import('@frappe-local/main/services/runtime-service');
         const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
-        const runtimeEnv = await getRuntimeEnv().catch(() => ({}));
+        const runtimeEnv: Record<string, string | undefined> = await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>));
         await ensureBenchDevcontainer(bench.path, { log: () => {} }, 'open-editor', runtimeEnv, bench.id);
         const hexPath = Buffer.from(bench.path, 'utf8').toString('hex');
         const uri = `vscode-remote://dev-container+${hexPath}/workspace/apps/${appName}`;
@@ -762,7 +763,7 @@ export const registerIpcHandlers = (
         const podmanBinDir = path.dirname(getBinaryPath('podman'));
         const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${process.env.PATH || ''}`;
         const composeProjectName = getComposeProjectName(bench.id);
-        const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv.DOCKER_HOST || process.env.DOCKER_HOST || process.env.CONTAINER_HOST || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
+        const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv['DOCKER_HOST'] || process.env['DOCKER_HOST'] || process.env['CONTAINER_HOST'] || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
         await execPromise('code', ['--folder-uri', uri], bench.path, undefined, execEnv);
         if (bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
         return true;
@@ -872,6 +873,27 @@ export const registerIpcHandlers = (
 
     await repositories.appCatalog.sync(apps as CatalogAppItem[]);
     return true;
+  });
+
+  ipcMainLike.handle(ipcChannels.catalogValidateBrewery, async (_event: unknown, url: unknown) => {
+    const targetUrl = typeof url === 'string' ? url : undefined;
+    const result = await fetchBreweryCatalog(targetUrl);
+    if (result.success) {
+      return { valid: true, appCount: result.apps.length };
+    }
+    return { valid: false, error: result.error };
+  });
+
+  ipcMainLike.handle(ipcChannels.catalogSyncBrewery, async (_event: unknown, url: unknown) => {
+    const targetUrl = typeof url === 'string' ? url : undefined;
+    if (!repositories.appCatalog.sync) {
+      return { success: false, error: 'Catalog repository sync unavailable' };
+    }
+    const result = await syncAppCatalogFromBrewery(targetUrl, { sync: repositories.appCatalog.sync });
+    if (result.success) {
+      return { success: true, appCount: result.apps.length };
+    }
+    return { success: false, error: result.error };
   });
 
   ipcMainLike.handle(ipcChannels.sitesList, async () => {
@@ -1136,6 +1158,16 @@ export const registerIpcHandlers = (
     
     // dynamically reconfigure updater in case update channel or autoUpdateEnabled changed
     configureUpdater(updated);
+    
+    if (
+      payload.breweryUrl !== undefined &&
+      payload.breweryUrl !== current?.breweryUrl &&
+      repositories.appCatalog.sync
+    ) {
+      syncAppCatalogFromBrewery(updated.breweryUrl, { sync: repositories.appCatalog.sync }).catch((err) => {
+        mainLogger.warn(`Background brewery catalog sync on settings change failed: ${err}`);
+      });
+    }
     
     return toSettingsItem(updated);
   });

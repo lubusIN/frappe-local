@@ -13,7 +13,7 @@ import { JsonStorageAdapter, initializeStorage } from '@frappe-local/main/storag
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
 
-import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, runDiagnostics } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 
@@ -139,6 +139,10 @@ export const runApplicationBootstrap = async (
     // Initialize Caddy front door asynchronously in the background so it doesn't block window creation
     refreshCaddyFrontDoorHosts().catch((error) => {
       bootstrapLogger.warn(`Caddy front door background initialization failed: ${error}`);
+    });
+
+    syncAppCatalogFromBrewery(currentSettings?.breweryUrl, repositories.appCatalog).catch((error) => {
+      bootstrapLogger.warn(`Brewery catalog background initialization failed: ${error}`);
     });
 
     context.registerHandlers(ipcMain, repositories, {

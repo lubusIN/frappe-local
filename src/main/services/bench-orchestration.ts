@@ -245,11 +245,11 @@ export const ensureBenchDevcontainer = async (
 
     fs.writeFileSync(devcontainerPath, content, 'utf8');
 
-    const runtimeEnv = envOverride ?? (await getRuntimeEnv().catch(() => ({})));
+    const runtimeEnv: Record<string, string | undefined> = envOverride ?? (await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>)));
     const podmanPath = getBinaryPath('podman');
     const composePath = getBinaryPath('docker-compose');
-    const dockerHost = runtimeEnv.DOCKER_HOST || process.env.DOCKER_HOST || '';
-    const dockerConfig = runtimeEnv.DOCKER_CONFIG || process.env.DOCKER_CONFIG || '';
+    const dockerHost = runtimeEnv['DOCKER_HOST'] || process.env['DOCKER_HOST'] || '';
+    const dockerConfig = runtimeEnv['DOCKER_CONFIG'] || process.env['DOCKER_CONFIG'] || '';
     const composeProjectName = benchId ? getComposeProjectName(benchId) : '';
 
     if (process.platform === 'win32') {

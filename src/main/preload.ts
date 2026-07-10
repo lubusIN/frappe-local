@@ -57,6 +57,8 @@ const rendererBridge: RendererBridge = {
 	setSettings: async (settings) => ipcRenderer.invoke(ipcChannels.settingsSet, settings),
 	getSystemResources: async () => ipcRenderer.invoke(ipcChannels.systemResourcesGet),
 	syncCatalog: async (apps) => ipcRenderer.invoke(ipcChannels.catalogSync, apps),
+	validateBreweryUrl: async (url) => ipcRenderer.invoke(ipcChannels.catalogValidateBrewery, url),
+	syncBreweryCatalog: async (url) => ipcRenderer.invoke(ipcChannels.catalogSyncBrewery, url),
 	openSiteExternal: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenExternal, id),
 
 	subscribeTaskRunnerEvents: async () => ipcRenderer.invoke(ipcChannels.taskRunnerSubscribe),

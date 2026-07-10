@@ -16,6 +16,8 @@ export const ipcChannels = {
   runtimeFix: 'runtime:fix',
   catalogFindById: 'catalog:find-by-id',
   catalogSearch: 'catalog:search',
+  catalogValidateBrewery: 'catalog:validate-brewery',
+  catalogSyncBrewery: 'catalog:sync-brewery',
   customAppsList: 'custom-apps:list',
   customAppsCreate: 'custom-apps:create',
   customAppsUpdate: 'custom-apps:update',
@@ -176,6 +178,7 @@ export type SettingsItem = {
   readonly podmanMemoryMb: number;
   readonly shareSshKeys: boolean;
   readonly theme: 'system' | 'light' | 'dark';
+  readonly breweryUrl: string;
 };
 
 export type SystemResources = {
@@ -206,6 +209,8 @@ export type RendererBridge = {
   readonly syncCatalog: (apps: CatalogAppItem[]) => Promise<boolean>;
   readonly findCatalogItem: (id: string) => Promise<CatalogAppItem | null>;
   readonly searchCatalog: (query: string) => Promise<CatalogAppItem[]>;
+  readonly validateBreweryUrl: (url: string) => Promise<{ valid: boolean; error?: string; appCount?: number }>;
+  readonly syncBreweryCatalog: (url?: string) => Promise<{ success: boolean; error?: string; appCount?: number }>;
   readonly listCustomApps: () => Promise<CustomAppListItem[]>;
   readonly createCustomApp: (input: CreateCustomAppInput) => Promise<CustomAppListItem>;
   readonly updateCustomApp: (id: string, input: UpdateCustomAppInput) => Promise<CustomAppListItem | null>;

@@ -78,6 +78,7 @@ export const CustomAppSchema = z.object({
 });
 
 export const MIN_PODMAN_MEMORY_MB = 4096;
+export const DEFAULT_BREWERY_URL = 'https://frappe-brewery.lubus.in/';
 
 export const SettingsSchema = z.object({
   defaultFrappeVersion: nonEmptyString,
@@ -90,6 +91,7 @@ export const SettingsSchema = z.object({
   podmanMemoryMb: z.number().int().min(MIN_PODMAN_MEMORY_MB).default(MIN_PODMAN_MEMORY_MB),
   shareSshKeys: z.boolean().default(false),
   theme: z.enum(['system', 'light', 'dark']).default('system'),
+  breweryUrl: z.string().default(DEFAULT_BREWERY_URL),
 });
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -103,6 +105,7 @@ export const DEFAULT_SETTINGS: Settings = {
   podmanMemoryMb: MIN_PODMAN_MEMORY_MB,
   shareSshKeys: false,
   theme: 'system',
+  breweryUrl: DEFAULT_BREWERY_URL,
 };
 
 export const CreateBenchInputSchema = BenchSchema.omit({

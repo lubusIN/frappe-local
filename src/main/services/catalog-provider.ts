@@ -1,6 +1,7 @@
-import { AppSchema, type AppCatalogItem } from '@frappe-local/shared/domain';
+import { AppSchema, DEFAULT_BREWERY_URL, type AppCatalogItem } from '@frappe-local/shared/domain';
 import fs from 'node:fs';
 import { getBinaryPath } from '@frappe-local/main/utils';
+import { fetchRemoteIconAsDataUrl } from '../../../scripts/utils/icon-fetcher.js';
 
 export const APP_CATALOG_SEED_VERSION = 14;
 
@@ -91,3 +92,123 @@ export const getDefaultAppCatalogSeed = (): AppCatalogItem[] => {
     return [];
   }
 };
+
+export const fetchBreweryCatalog = async (
+  inputUrl?: string
+): Promise<{ success: boolean; apps: AppCatalogItem[]; url?: string; error?: string }> => {
+  const targetUrl = (inputUrl || DEFAULT_BREWERY_URL).trim();
+  const urlsToTry: string[] = [];
+
+  if (targetUrl.endsWith('.json')) {
+    urlsToTry.push(targetUrl);
+  } else {
+    const baseUrl = targetUrl.replace(/\/+$/, '');
+    urlsToTry.push(`${baseUrl}/index/apps.json`);
+    urlsToTry.push(`${baseUrl}/apps.json`);
+    urlsToTry.push(`${baseUrl}`);
+  }
+
+  let lastError = 'No URL attempted';
+
+  for (const fetchUrl of urlsToTry) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(fetchUrl, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        lastError = `HTTP ${res.status}: ${res.statusText}`;
+        continue;
+      }
+
+      const json = await res.json();
+      const rawApps: BreweryAppItem[] | null = Array.isArray(json)
+        ? json
+        : (json && typeof json === 'object' && Array.isArray((json as BreweryResponse).apps)
+            ? (json as BreweryResponse).apps
+            : null);
+
+      if (!rawApps || !Array.isArray(rawApps) || rawApps.length === 0) {
+        lastError = 'Invalid catalog JSON format or empty apps list';
+        continue;
+      }
+
+      const validApps = rawApps
+        .filter((app) => app && typeof app === 'object' && app.slug && app.title && app.repository)
+        .map(normalizeCatalogProviderItem);
+
+      if (validApps.length === 0) {
+        lastError = 'Catalog JSON did not contain any valid app definitions';
+        continue;
+      }
+
+      return {
+        success: true,
+        apps: validApps,
+        url: fetchUrl,
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  return {
+    success: false,
+    apps: [],
+    error: lastError,
+  };
+};
+
+export const cacheCatalogIcons = async (apps: AppCatalogItem[]): Promise<AppCatalogItem[]> => {
+  return Promise.all(
+    apps.map(async (app) => {
+      if (app.icon && (app.icon.startsWith('http://') || app.icon.startsWith('https://'))) {
+        const dataUrl = await fetchRemoteIconAsDataUrl(app.icon, 5000);
+        if (dataUrl && typeof dataUrl === 'string') {
+          return { ...app, icon: dataUrl };
+        }
+      }
+      return app;
+    })
+  );
+};
+
+export const syncAppCatalogFromBrewery = async (
+  breweryUrl: string | undefined,
+  appCatalogRepo: { sync?: (apps: AppCatalogItem[]) => Promise<void> }
+): Promise<{ success: boolean; apps: AppCatalogItem[]; error?: string }> => {
+  const primaryResult = await fetchBreweryCatalog(breweryUrl);
+  if (primaryResult.success) {
+    const cachedApps = await cacheCatalogIcons(primaryResult.apps);
+    if (appCatalogRepo.sync) await appCatalogRepo.sync(cachedApps);
+    return { ...primaryResult, apps: cachedApps };
+  }
+
+  const normalizedInput = (breweryUrl || '').trim().replace(/\/+$/, '');
+  const normalizedDefault = DEFAULT_BREWERY_URL.replace(/\/+$/, '');
+  const isDefaultUrl = !normalizedInput ||
+    normalizedInput === normalizedDefault ||
+    normalizedInput === `${normalizedDefault}/index/apps.json` ||
+    normalizedInput === `${normalizedDefault}/apps.json` ||
+    normalizedInput.includes('frappe-brewery.lubus.in');
+
+  if (!isDefaultUrl) {
+    const fallbackResult = await fetchBreweryCatalog(DEFAULT_BREWERY_URL);
+    if (fallbackResult.success) {
+      const cachedApps = await cacheCatalogIcons(fallbackResult.apps);
+      if (appCatalogRepo.sync) await appCatalogRepo.sync(cachedApps);
+      return { ...fallbackResult, apps: cachedApps };
+    }
+  }
+
+  return {
+    success: false,
+    apps: [],
+    error: primaryResult.error || 'Failed to fetch catalog',
+  };
+};
+
