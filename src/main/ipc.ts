@@ -701,7 +701,7 @@ export const registerIpcHandlers = (
       return false;
     }
 
-    if (!Boolean(inContainer)) {
+    if (!inContainer) {
       const opened = await operations.openInEditor(bench.path);
       if (opened && bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
       return opened;
@@ -738,14 +738,14 @@ export const registerIpcHandlers = (
     const benches = await repositories.benches.findAll();
     let bench = typeof benchId === 'string' ? benches.find((b) => b.id === benchId) ?? null : null;
 
-    if (!bench && Boolean(inContainer)) {
+    if (!bench && inContainer) {
       bench = benches.find((b) => b.status === 'running' && (b.apps?.includes(appName) || b.apps?.some((a) => a === appName))) ?? null;
       if (!bench) {
         bench = benches.find((b) => b.apps?.includes(appName) || b.apps?.some((a) => a === appName)) ?? null;
       }
     }
 
-    if (Boolean(inContainer)) {
+    if (inContainer) {
       if (!bench) {
         mainLogger.warn(`Cannot open Dev Container for app ${appName}: no bench found with this app.`);
         return false;
@@ -984,17 +984,6 @@ export const registerIpcHandlers = (
         throw new Error('Site must be ready or in failure state before activating apps.');
       }
 
-      const customAppsList = await repositories.customApps.findAll();
-      const isAppOnBench = (app: string) => {
-        if (bench.apps.includes(app)) return true;
-        const customApp = customAppsList.find((c) => c.id === app || c.name === app);
-        return customApp ? bench.apps.includes(customApp.id) || bench.apps.includes(customApp.name) : false;
-      };
-      const unavailableApps = requestedApps.filter((app) => app !== 'frappe' && !isAppOnBench(app));
-      if (unavailableApps.length > 0) {
-        throw new Error(`Cannot activate apps not installed on bench: ${unavailableApps.join(', ')}`);
-      }
-
       const appsToInstall = requestedApps.filter((app) => !existing.apps.includes(app));
       const removedApps = existing.apps.filter((app) => !requestedApps.includes(app));
 
@@ -1140,6 +1129,18 @@ export const registerIpcHandlers = (
       throw new Error(`Podman memory cannot exceed system memory (${totalMemoryMb} MB).`);
     }
     const current = await getCurrentSettings(repositories.settings);
+    if (
+      payload.breweryUrl !== undefined &&
+      payload.breweryUrl.trim() !== '' &&
+      payload.breweryUrl.trim() !== current?.breweryUrl?.trim()
+    ) {
+      const validation = await fetchBreweryCatalog(payload.breweryUrl.trim());
+      if (!validation.success) {
+        throw new Error(
+          `Cannot save settings: registry endpoint "${payload.breweryUrl.trim()}" is invalid or failed to fetch apps (${validation.error || 'Could not fetch app catalog from this URL.'})`
+        );
+      }
+    }
     if (
       operations.applyRuntimeMemory &&
       payload.podmanMemoryMb !== undefined &&

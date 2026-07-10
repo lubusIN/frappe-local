@@ -181,7 +181,6 @@
       :bench-status="selectedBenchForSiteApps?.status"
       context="site"
       :active-app-ids="Array.from(siteActivatedAppSet)"
-      :allowed-app-ids="benchInstalledAppRows"
       :disabled="updating || !canActivateSelectedSiteApps"
       :warning-message="siteAppsWarningMessage"
       :frappe-version="selectedBenchForSiteApps?.frappeVersion"
@@ -189,23 +188,6 @@
       @close="closeSiteAppsDialog"
       @add-app="onActivateSiteApp"
       @remove-app="onRequestDeactivateSiteApp"
-      @manage-bench-apps="onManageParentBenchApps"
-    />
-
-    <ManageAppsDialog
-      v-model:open="showBenchAppsDialog"
-      :resource-id="selectedBenchForParentApps?.id"
-      :resource-name="selectedBenchForParentApps?.name || 'Bench'"
-      :bench-status="selectedBenchForParentApps?.status"
-      context="bench"
-      :active-app-ids="selectedBenchForParentApps?.apps ?? []"
-      :disabled="!canMutateParentBenchApps || benchUpdating"
-      :warning-message="parentBenchAppsWarningMessage"
-      :frappe-version="selectedBenchForParentApps?.frappeVersion"
-      :loading-app-id="benchUpdating ? pendingRemoveBenchAppId || 'adding' : null"
-      @close="closeBenchAppsDialog"
-      @add-app="onAddParentBenchApp"
-      @remove-app="onRequestRemoveParentBenchApp"
     />
 
     <ConfirmationDialog
@@ -215,15 +197,6 @@
       confirm-label="Uninstall"
       @cancel="onCancelDeactivateSiteApp"
       @confirm="onConfirmDeactivateSiteApp"
-    />
-
-    <ConfirmationDialog
-      :open="removeBenchAppConfirmOpen"
-      title="Remove app"
-      :message="removeBenchAppConfirmMessage"
-      confirm-label="Remove app"
-      @cancel="onCancelRemoveParentBenchApp"
-      @confirm="onConfirmRemoveParentBenchApp"
     />
   </section>
 </template>
@@ -257,7 +230,7 @@ import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
 
 import { filterSites } from '@frappe-local/renderer/utils/sites';
 
-import type { BenchListItem, SiteListItem } from '@frappe-local/shared/core';
+import type { SiteListItem } from '@frappe-local/shared/core';
 
 const ipc = useIpc();
 const route = useRoute();
@@ -356,10 +329,7 @@ const {
   getLatestRelevantTaskId,
 } = useResourceTaskState('site', computed(() => tasks.value || []));
 
-const {
-  isResourceBusy: isBenchResourceBusy,
-  getLatestRelevantTaskId: getLatestRelevantBenchTaskId,
-} = useResourceTaskState('bench', computed(() => tasks.value || []));
+
 
 const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
@@ -377,9 +347,6 @@ const siteColumns = [
 const {
   benches: allBenches,
   loading: benchLoading,
-  updating: benchUpdating,
-  update: updateBench,
-  refresh: refreshBenches,
 } = useBenches();
 
 const getDisplayTheme = (row: SiteListItem) => {
@@ -525,162 +492,7 @@ const selectedBenchForSiteApps = computed(() => {
   return allBenches.value.find((bench) => bench.id === selectedSiteForApps.value?.benchId) ?? null;
 });
 
-const benchInstalledAppRows = computed(() => {
-  const apps = selectedBenchForSiteApps.value?.apps ?? [];
-  return [...apps].sort((left, right) => left.localeCompare(right));
-});
-
 const siteActivatedAppSet = computed(() => new Set(selectedSiteForApps.value?.apps ?? []));
-
-const showBenchAppsDialog = ref(false);
-const selectedBenchForParentAppsId = ref<string | null>(null);
-const removeBenchAppConfirmOpen = ref(false);
-const pendingRemoveBenchAppId = ref<string | null>(null);
-const pendingRemoveBenchAppName = ref('');
-
-const selectedBenchForParentApps = computed(() => {
-  if (!selectedBenchForParentAppsId.value) return null;
-  return allBenches.value.find((bench) => bench.id === selectedBenchForParentAppsId.value) ?? null;
-});
-
-const parentBenchAppsWarningMessage = computed(() => {
-  const bench = selectedBenchForParentApps.value;
-  if (!bench) return null;
-  if (bench.status !== 'running') return 'Start the bench before managing apps.';
-  if (isBenchResourceBusy(bench.id)) return 'App orchestration is currently in progress. Please wait.';
-  return null;
-});
-
-const canMutateParentBenchApps = computed(() => parentBenchAppsWarningMessage.value === null);
-
-const normalizeSelection = (selectedIds: readonly string[]): string[] =>
-  Array.from(new Set(selectedIds.map((id) => id.trim()).filter(Boolean)));
-
-const queueParentBenchAppsUpdate = async (bench: BenchListItem, nextApps: readonly string[]) => {
-  const normalizedNextApps = normalizeSelection(nextApps);
-  const currentApps = normalizeSelection(bench.apps);
-  const sameApps = normalizedNextApps.length === currentApps.length && normalizedNextApps.every((appId, index) => appId === currentApps[index]);
-  if (sameApps) {
-    return;
-  }
-
-  await updateBench(bench.id, { apps: normalizedNextApps });
-  await refreshBenches(true);
-};
-
-const closeBenchAppsDialog = () => {
-  showBenchAppsDialog.value = false;
-  selectedBenchForParentAppsId.value = null;
-  removeBenchAppConfirmOpen.value = false;
-  pendingRemoveBenchAppId.value = null;
-  pendingRemoveBenchAppName.value = '';
-};
-
-const onManageParentBenchApps = () => {
-  const bench = selectedBenchForSiteApps.value;
-  if (!bench) {
-    toast.error('Unable to find the parent bench for this site.');
-    return;
-  }
-
-  closeSiteAppsDialog();
-  selectedBenchForParentAppsId.value = bench.id;
-  showBenchAppsDialog.value = true;
-};
-
-const onAddParentBenchApp = async (appId: string) => {
-  const bench = selectedBenchForParentApps.value;
-  if (!bench || !canMutateParentBenchApps.value) {
-    return;
-  }
-
-  const nextApps = normalizeSelection([...bench.apps, appId]);
-
-  const promise = runAndWaitForTask(
-    () => queueParentBenchAppsUpdate(bench, nextApps),
-    'bench', bench.id, /^(Get) app .* on /i
-  ).then(async (res) => {
-    await refreshBenches(true);
-    return res;
-  });
-  closeBenchAppsDialog();
-
-  const appTitle = getAppTitle(appId);
-  toast.promise(promise, {
-    loading: `Getting app ${appTitle} for bench ${bench.name}`,
-    success: `Got app ${appTitle} on bench ${bench.name}`,
-    error: `Failed to get app ${appTitle}`,
-    action: {
-      label: 'View logs',
-      onClick: (e?: Event) => {
-        e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
-      },
-    },
-  });
-};
-
-const onRequestRemoveParentBenchApp = (appId: string) => {
-  const bench = selectedBenchForParentApps.value;
-  if (!bench || !canMutateParentBenchApps.value) {
-    return;
-  }
-
-  pendingRemoveBenchAppId.value = appId;
-  pendingRemoveBenchAppName.value = getAppTitle(appId);
-  removeBenchAppConfirmOpen.value = true;
-};
-
-const onCancelRemoveParentBenchApp = () => {
-  removeBenchAppConfirmOpen.value = false;
-  pendingRemoveBenchAppId.value = null;
-  pendingRemoveBenchAppName.value = '';
-};
-
-const removeBenchAppConfirmMessage = computed(() => {
-  const bench = selectedBenchForParentApps.value;
-  if (!bench) {
-    return 'Remove this app from the bench?';
-  }
-
-  return `Remove ${pendingRemoveBenchAppName.value} from bench "${bench.name}"? This will update the bench app list and remove the app from the bench.`;
-});
-
-const onConfirmRemoveParentBenchApp = async () => {
-  const bench = selectedBenchForParentApps.value;
-  const appId = pendingRemoveBenchAppId.value;
-  const appTitle = pendingRemoveBenchAppName.value || appId;
-  if (!bench || !appId || !canMutateParentBenchApps.value) {
-    onCancelRemoveParentBenchApp();
-    return;
-  }
-
-  removeBenchAppConfirmOpen.value = false;
-  const info = getAppInfo(appId);
-  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId && existingAppId !== (info as any).id && existingAppId !== info.name);
-
-  const promise = runAndWaitForTask(
-    () => queueParentBenchAppsUpdate(bench, nextApps),
-    'bench', bench.id, /^(Remove) app .* on /i
-  ).then(async (res) => {
-    await refreshBenches(true);
-    return res;
-  });
-  closeBenchAppsDialog();
-
-  toast.promise(promise, {
-    loading: `Removing app ${appTitle} from bench ${bench.name}`,
-    success: `Removed app ${appTitle} from bench ${bench.name}`,
-    error: `Failed to remove app ${appTitle}`,
-    action: {
-      label: 'View logs',
-      onClick: (e?: Event) => {
-        e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantBenchTaskId(bench.id);
-      },
-    },
-  });
-};
 
 const siteAppsWarningMessage = computed(() => {
   const site = selectedSiteForApps.value;
@@ -741,11 +553,6 @@ const onActivateSiteApp = async (appId: string) => {
   }
 
   const appTitle = getAppTitle(appId);
-  const benchApps = selectedBenchForSiteApps.value?.apps ?? [];
-  if (!benchApps.includes(appId)) {
-    toast.error(`App ${appTitle} is not installed on this bench.`);
-    return;
-  }
 
   const existingApps = site.apps ?? [];
   if (existingApps.includes(appId)) {
@@ -831,12 +638,12 @@ const onDeactivateSiteApp = async (appId: string) => {
 
   const existingApps = site.apps ?? [];
   const info = getAppInfo(appId);
-  if (!existingApps.includes(appId) && !existingApps.includes((info as any).id) && !existingApps.includes(info.name)) {
+  if (!existingApps.includes(appId) && !(info.id && existingApps.includes(info.id)) && !existingApps.includes(info.name)) {
     return;
   }
 
   activatingSiteAppId.value = appId;
-  const nextApps = existingApps.filter((x) => x !== appId && x !== (info as any).id && x !== info.name);
+  const nextApps = existingApps.filter((x) => x !== appId && x !== info.id && x !== info.name);
 
   const promise = runAndWaitForTask(
     () => update(site.id, { apps: nextApps }),

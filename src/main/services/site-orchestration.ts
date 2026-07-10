@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import { errorMessage, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 
-import type { Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
+import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 import type { SiteCreateInput } from '@frappe-local/shared/core';
 import { canAttachSiteToBench } from '@frappe-local/shared/domain';
 import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services';
+import { fetchBenchApps } from './bench-orchestration';
 
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
 import { composeBenchArgs, composeBenchSiteArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
@@ -437,9 +438,13 @@ export const orchestrateSiteAppsUpdate = (
   dependencies: {
     benches: {
       findById: (id: string) => Promise<Bench | null>;
+      update?: (id: string, payload: Partial<Bench>) => Promise<Bench | null>;
     };
     sites: {
       update: (id: string, input: { apps?: string[]; status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
+    };
+    appCatalog?: {
+      findById?: (id: string) => Promise<AppCatalogItem | null>;
     };
     customApps?: {
       findAll?: () => Promise<CustomAppItem[]>;
@@ -470,7 +475,7 @@ export const orchestrateSiteAppsUpdate = (
       const attemptedUninstalls: string[] = [];
       try {
         context.startStep('apps', 'Updating site apps');
-        const bench = await dependencies.benches.findById(site.benchId);
+        let bench = await dependencies.benches.findById(site.benchId);
         if (!bench) {
           throw new Error('Cannot update site apps: parent bench was not found.');
         }
@@ -484,6 +489,44 @@ export const orchestrateSiteAppsUpdate = (
         recoveryEnv = siteEnv;
 
         if (installDelta.length > 0) {
+          const currentBench = bench;
+          const missingBenchApps = installDelta.filter((app) => {
+            const customApp = customAppsList.find((c) => c.id === app || c.name === app);
+            const appSlug = customApp ? customApp.name : app;
+            return !currentBench.apps.includes(appSlug) && !currentBench.apps.includes(app);
+          });
+
+          if (missingBenchApps.length > 0) {
+            await fetchBenchApps(context, {
+              stepId: 'fetch-apps',
+              stepStartDesc: `Fetching ${missingBenchApps.length} missing app${missingBenchApps.length === 1 ? '' : 's'} onto parent bench ${bench.name}`,
+              stepCompleteDesc: 'Missing apps fetched onto parent bench',
+              apps: missingBenchApps,
+              bench,
+              appCatalogRepo: dependencies.appCatalog,
+              customAppsRepo: dependencies.customApps,
+              projectName,
+              runtimeCmd,
+              runtimeEnv,
+              onAttemptedInstall: () => {},
+            });
+
+            const fetchedSlugs = missingBenchApps.map((app) => {
+              const customApp = customAppsList.find((c) => c.id === app || c.name === app);
+              return customApp ? customApp.name : app;
+            });
+            const nextBenchApps = Array.from(new Set([...bench.apps, ...missingBenchApps, ...fetchedSlugs]));
+            if (dependencies.benches.update) {
+              await dependencies.benches.update(bench.id, { apps: nextBenchApps });
+            }
+            const reloadedBench = await dependencies.benches.findById(bench.id);
+            if (reloadedBench) {
+              bench = reloadedBench;
+            } else {
+              bench = { ...bench, apps: nextBenchApps };
+            }
+          }
+
           context.startStep('install-apps', `Installing ${installDelta.length} app${installDelta.length === 1 ? '' : 's'} on ${site.name}`);
 
           for (const app of installDelta) {

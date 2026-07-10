@@ -208,7 +208,7 @@ describe('site orchestration command execution', () => {
     orchestrateSiteAppsUpdate(
       {
         benches: {
-          findById: async () => bench,
+          findById: async () => ({ ...bench, apps: ['frappe', 'erpnext'] }),
         },
         sites: {
           update: updateSiteMock,
@@ -354,6 +354,63 @@ describe('site orchestration command execution', () => {
     });
   });
 
+  it('fetches missing apps onto parent bench before running install-app when activating new site apps', async () => {
+    const updateBenchMock = vi.fn().mockResolvedValue({ ...bench, apps: ['frappe', 'erpnext'] });
+    orchestrateSiteAppsUpdate(
+      {
+        benches: {
+          findById: async () => ({ ...bench, apps: ['frappe'] }),
+          update: updateBenchMock,
+        },
+        sites: {
+          update: updateSiteMock,
+        },
+      },
+      {
+        ...createdSite,
+        status: 'ready',
+      },
+      ['frappe', 'erpnext']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+    expect(execPromiseMock).toHaveBeenCalledTimes(6);
+
+    const [fetchCommand, fetchArgs] = execPromiseMock.mock.calls[0] as [string, string[]];
+    expect(fetchCommand).toBe('/mock/docker-compose');
+    expect(fetchArgs).toEqual([
+      '-p',
+      'frappe-local-1adb2eed',
+      'exec',
+      '-T',
+      'frappe',
+      'bench',
+      'get-app',
+      '--overwrite',
+      '--branch',
+      'version-15',
+      'erpnext',
+    ]);
+
+    expect(updateBenchMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe', 'erpnext'] });
+
+    const [installCommand, installArgs] = execPromiseMock.mock.calls[1] as [string, string[]];
+    expect(installCommand).toBe('/mock/docker-compose');
+    expect(installArgs).toEqual([
+      '-p',
+      'frappe-local-1adb2eed',
+      'exec',
+      '-T',
+      'frappe',
+      'bench',
+      '--site',
+      'frappevault.localhost',
+      'install-app',
+      'erpnext',
+    ]);
+  });
+
   it('rolls back a failed site app activation and restores the running site', async () => {
     execPromiseMock.mockImplementation(async (_command: string, args: string[]) => {
       if (args.includes('install-app') && args.includes('erpnext')) {
@@ -365,7 +422,7 @@ describe('site orchestration command execution', () => {
     orchestrateSiteAppsUpdate(
       {
         benches: {
-          findById: async () => bench,
+          findById: async () => ({ ...bench, apps: ['frappe', 'erpnext'] }),
         },
         sites: {
           update: updateSiteMock,

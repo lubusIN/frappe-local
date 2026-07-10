@@ -63,7 +63,7 @@ describe('useAppCatalog', () => {
     const uuid = '831df96f-a840-482d-80f3-fe3fa5810cb2';
     expect(getAppTitle(uuid)).toBe('Frappe Vault');
     expect(getAppInfo(uuid).name).toBe('frappe_vault');
-    expect((getAppInfo(uuid) as any).title).toBe('Frappe Vault');
+    expect(getAppInfo(uuid).title).toBe('Frappe Vault');
   });
 
   it('formats task titles by replacing UUIDs with app titles', async () => {

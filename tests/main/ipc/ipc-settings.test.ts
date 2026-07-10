@@ -162,6 +162,77 @@ describe('settings IPC handlers', () => {
     ).rejects.toThrow();
   });
 
+  it('settings:set rejects saving a custom breweryUrl if fetching apps from that URL fails', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
+
+    try {
+      const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+      registerIpcHandlers(
+        { handle: (channel, listener) => { handlers.set(channel, listener); } },
+        {
+          appCatalog: makeStubCatalogRepo(),
+          benches: makeStubBenchRepo(),
+          sites: makeStubSiteRepo(),
+          settings: makeStubSettingsRepo(seedSettings),
+          customApps: makeStubCustomAppsRepo(),
+        }
+      );
+
+      const saveHandler = handlers.get(ipcChannels.settingsSet);
+
+      await expect(
+        saveHandler?.(undefined, { ...seedSettings, breweryUrl: 'https://broken-registry.test/' })
+      ).rejects.toThrow('Cannot save settings: registry endpoint "https://broken-registry.test/" is invalid or failed to fetch apps');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('settings:set allows saving a custom breweryUrl if fetching apps from that URL succeeds', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          apps: [
+            {
+              slug: 'app-1',
+              title: 'App 1',
+              repository: 'https://github.com/test/app-1',
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+    );
+
+    try {
+      const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+
+      registerIpcHandlers(
+        { handle: (channel, listener) => { handlers.set(channel, listener); } },
+        {
+          appCatalog: makeStubCatalogRepo(),
+          benches: makeStubBenchRepo(),
+          sites: makeStubSiteRepo(),
+          settings: makeStubSettingsRepo(seedSettings),
+          customApps: makeStubCustomAppsRepo(),
+        }
+      );
+
+      const saveHandler = handlers.get(ipcChannels.settingsSet);
+      const getHandler = handlers.get(ipcChannels.settingsGet);
+
+      await saveHandler?.(undefined, { ...seedSettings, breweryUrl: 'https://valid-registry.test/' });
+      const loaded = (await getHandler?.()) as Settings;
+
+      expect(loaded.breweryUrl).toBe('https://valid-registry.test/');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('reports host memory limits and a 75 percent recommendation', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 

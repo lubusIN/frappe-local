@@ -407,7 +407,7 @@ const getAppDelta = (previousApps: readonly string[], nextApps: readonly string[
   };
 };
 
-const fetchBenchApps = async (
+export const fetchBenchApps = async (
   context: TaskExecutionContext,
   options: {
     stepId: string;

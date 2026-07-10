@@ -9,6 +9,14 @@ export type AsyncState<T> = {
   error: string | null;
 };
 
+export interface ResolvedAppInfo {
+  id?: string;
+  name: string;
+  title?: string;
+  slug?: string;
+  description?: string;
+}
+
 export const useAppCatalog = () => {
   const state = ref<AsyncState<CatalogAppItem[]>>({ data: null, loading: false, error: null });
   const { customApps, refresh: refreshCustomApps } = useCustomApps();
@@ -31,7 +39,7 @@ export const useAppCatalog = () => {
     onMounted(() => { void load(); });
   }
 
-  const getAppInfo = (appId: string) => {
+  const getAppInfo = (appId: string): ResolvedAppInfo => {
     const catalogApp = state.value.data?.find((app) => app.id === appId || app.name === appId);
     if (catalogApp) return catalogApp;
 
@@ -51,7 +59,7 @@ export const useAppCatalog = () => {
 
   const getAppTitle = (appId: string): string => {
     const info = getAppInfo(appId);
-    return (info as any).title || info.name || appId;
+    return info.title || info.name || appId;
   };
 
   const formatTaskTitle = (taskName?: string | null): string => {

@@ -207,7 +207,7 @@ import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
 import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';
-import { computed, ref } from 'vue';
+import { computed, ref, type Component } from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
 import { useAppCatalogFilters, useBenches, useCustomApps } from '@frappe-local/renderer/composables/data';
 
@@ -225,6 +225,8 @@ const props = withDefaults(
   }>(),
   {
     disabled: false,
+    resourceId: undefined,
+    benchStatus: undefined,
     activeAppIds: () => [],
     frappeVersion: '',
     allowedAppIds: undefined,
@@ -242,8 +244,21 @@ const emit = defineEmits<{
 
 const { openAppInEditor, error: openError } = useBenches();
 
-const getAppOpenOptions = (row: any) => {
-  const options: any[] = [
+interface AppManagerRow {
+  appId: string;
+  appName: string;
+  sourceBadgeLabel?: string;
+}
+
+interface DropdownOption {
+  label: string;
+  icon?: Component;
+  disabled?: boolean;
+  onClick?: () => void | Promise<void>;
+}
+
+const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
+  const options: DropdownOption[] = [
     {
       label: 'VS Code',
       icon: IconCode,
@@ -289,7 +304,7 @@ const { customApps, loading: customAppsLoading, error: customAppsError } = useCu
 
 const imageErrors = ref<Record<string, boolean>>({});
 const allowedAppIds = computed(() => {
-  if (!props.allowedAppIds) {
+  if (props.context === 'site' || !props.allowedAppIds) {
     return null;
   }
   return new Set(props.allowedAppIds.map((appId) => appId.trim()).filter(Boolean));
