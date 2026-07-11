@@ -1,5 +1,24 @@
 <template>
   <section class="flex flex-col gap-6">
+    <PageHeader class="[-webkit-app-region:drag]">
+      <h1 class="text-xl-medium truncate text-ink-gray-9">
+        Sites
+      </h1>
+      <div
+        v-if="creatableBenches.length > 0 && sites.length > 0"
+        class="flex items-center gap-3 [-webkit-app-region:no-drag]"
+      >
+        <Button
+          variant="solid"
+          :disabled="loading"
+          :icon-left="IconPlus"
+          @click="showCreateSiteModal = true"
+        >
+          Create
+        </Button>
+      </div>
+    </PageHeader>
+
     <StatePanel
       v-if="error"
       kind="error"
@@ -213,7 +232,7 @@ import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, type Component, watch } from 'vue';
+import { computed, onMounted, reactive, ref, type Component, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 
@@ -226,7 +245,7 @@ import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWiza
 import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
+import { PageHeader } from 'frappe-ui';
 
 import { filterSites } from '@frappe-local/renderer/utils/sites';
 
@@ -247,12 +266,6 @@ const {
   refresh: load,
   openFolder,
 } = useSites();
-
-const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
-
-onBeforeUnmount(() => {
-  clearPageHeaderActions();
-});
 
 const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
 const showSiteAppsDialog = ref(false);
@@ -734,28 +747,4 @@ onMounted(() => {
     siteFilters.benchId = route.query.benchId;
   }
 });
-
-watch([() => loading.value, () => creatableBenches.value.length, () => sites.value.length], () => {
-  const actions: Array<{
-    id: string;
-    label: string;
-    variant?: 'primary' | 'subtle';
-    disabled?: boolean;
-    icon?: Component;
-    onClick: () => void;
-  }> = [];
-  if (creatableBenches.value.length > 0 && sites.value.length > 0) {
-    actions.push({
-      id: 'sites-create',
-      label: 'Create',
-      variant: 'primary',
-      disabled: loading.value,
-      icon: IconPlus,
-      onClick: () => {
-        showCreateSiteModal.value = true;
-      },
-    });
-  }
-  setPageHeaderActions(actions);
-}, { immediate: true });
 </script>

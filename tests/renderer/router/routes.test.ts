@@ -4,7 +4,6 @@ import { appRouteDefinitions, navigationItems } from '../../../src/renderer/rout
 describe('renderer routes', () => {
   it('keeps all primary sections registered', () => {
     expect(appRouteDefinitions.map((route) => route.name)).toEqual([
-      'dashboard',
       'sites',
       'benches',
       'customApps',

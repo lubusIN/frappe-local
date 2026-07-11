@@ -1,7 +1,9 @@
 <template>
-  <div class="flex flex-col w-screen h-screen overflow-hidden bg-surface-base">
-    <!-- Main Content Area -->
-    <div class="flex flex-1 min-h-0">
+  <DesktopShell
+    :scroll="false"
+    class="w-screen h-screen overflow-hidden bg-surface-base"
+  >
+    <template #sidebar>
       <Sidebar
         v-model:collapsed="isCollapsed"
         class="border-r border-outline-gray-1 bg-surface-gray-1"
@@ -23,15 +25,18 @@
           </div>
 
           <!-- Navigation -->
-          <ScrollArea class="min-h-0 flex-1" viewport-class="px-2">
+          <ScrollArea
+            class="min-h-0 flex-1"
+            viewport-class="px-2"
+          >
             <div class="flex flex-col gap-0.5 py-0.5">
               <SidebarItem
                 v-for="item in mainNavItems"
                 :key="item.path"
                 :label="item.label"
-                :icon="iconComponentMap[item.path] || IconHome"
+                :icon="iconComponentMap[item.path] || IconGlobe"
                 :to="item.path"
-                :active="item.path === '/' ? route.path === '/' : route.path.startsWith(item.path)"
+                :active="item.path === '/sites' ? (route.path === '/' || route.path.startsWith('/sites')) : route.path.startsWith(item.path)"
               />
             </div>
           </ScrollArea>
@@ -109,51 +114,23 @@
           </div>
         </div>
       </Sidebar>
+    </template>
 
-      <div class="flex flex-col flex-1 min-w-0 bg-surface-base">
-        <header 
-          class="flex items-center justify-between px-8 py-5 border-b border-outline-gray-1 shrink-0 [-webkit-app-region:drag]"
-        >
-          <h1 class="text-xl-medium truncate text-ink-gray-9">
-            {{ currentTitle }}
-          </h1>
-          
-          <div
-            v-if="headerActions.length > 0"
-            class="flex items-center gap-3 [-webkit-app-region:no-drag]"
-          >
-            <Button
-              v-for="action in headerActions"
-              :key="action.id"
-              :variant="action.variant === 'primary' ? 'solid' : 'subtle'"
-              :theme="action.theme"
-              :disabled="action.disabled"
-              :loading="action.loading"
-              :icon-left="action.icon"
-              @click="action.onClick"
-            >
-              {{ action.label }}
-            </Button>
-          </div>
-        </header>
-
-        <div
-          v-if="showIpcWarning"
-          class="mx-6 mt-4 shrink-0"
-        >
-          <ErrorNotice
-            :notice="{
-              title: 'Desktop services unavailable',
-              message: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
-            }"
-          />
-        </div>
-
-        <main class="flex-1 p-8 overflow-y-auto">
-          <RouterView />
-        </main>
-      </div>
+    <div
+      v-if="showIpcWarning"
+      class="mx-6 mt-4 shrink-0"
+    >
+      <ErrorNotice
+        :notice="{
+          title: 'Desktop services unavailable',
+          message: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
+        }"
+      />
     </div>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+      <RouterView />
+    </main>
 
     <SettingsDialog
       :open="isSettingsOpen"
@@ -165,13 +142,12 @@
       :task="selectedTaskLog"
       @close="activeLogTaskId = null"
     />
-  </div>
+  </DesktopShell>
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, ScrollArea, Sidebar, SidebarItem, toast } from 'frappe-ui';
+import { Alert, Button, DesktopShell, ScrollArea, Sidebar, SidebarItem, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
-import IconHome from '~icons/lucide/home';
 import IconActivity from '~icons/lucide/activity';
 import IconPackage from '~icons/lucide/package';
 import IconGlobe from '~icons/lucide/globe';
@@ -186,7 +162,7 @@ import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDial
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import { isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog } from '@frappe-local/renderer/composables/data';
-import { usePageHeaderActions, useSettingsDialog } from '@frappe-local/renderer/composables/ui';
+import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
 import { navigationItems } from '@frappe-local/renderer/router/routes';
 
@@ -195,7 +171,6 @@ import { findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
 const { formatTaskTitle } = useAppCatalog();
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
-const { actions: headerActions } = usePageHeaderActions();
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
 const { tasks, activeLogTaskId } = useProgressCenter();
@@ -255,7 +230,6 @@ watch(
 );
 
 const iconComponentMap: Record<string, Component> = {
-  '/': IconHome,
   '/activity': IconActivity,
   '/benches': IconPackage,
   '/sites': IconGlobe,
@@ -266,8 +240,6 @@ const iconComponentMap: Record<string, Component> = {
 const mainNavItems = computed(() =>
   navigationItems.filter((item) => item.path !== '/settings')
 );
-
-const currentTitle = computed(() => String(route.meta.title ?? 'Frappe Local'));
 
 onMounted(async () => {
   window.frappeLocal?.onUpdateAvailable?.((version) => {

@@ -70,7 +70,7 @@ export const buildErrorRemediationNotice = (
       title: 'Task stream is unavailable',
       reason,
       steps: [
-        'Stay on the dashboard and retry the subscription if task updates should be active.',
+        'Stay on the current screen and retry the subscription if task updates should be active.',
         'If task events remain unavailable, reload the app to reconnect the renderer bridge.',
       ],
       actions: [{ id: 'retry', label: 'Retry subscription' }],
@@ -80,7 +80,7 @@ export const buildErrorRemediationNotice = (
   return {
     title: 'System health could not be loaded',
     reason,
-    steps: ['Refresh the dashboard to request a fresh health check from the main process.'],
+    steps: ['Refresh the app to request a fresh health check from the main process.'],
     actions: [{ id: 'retry', label: 'Try again' }],
   };
 };

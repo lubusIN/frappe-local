@@ -1,5 +1,24 @@
 <template>
   <section class="flex flex-col gap-6">
+    <PageHeader class="[-webkit-app-region:drag]">
+      <h1 class="text-xl-medium truncate text-ink-gray-9">
+        My Apps
+      </h1>
+      <div
+        v-if="customApps.length > 0"
+        class="flex items-center gap-3 [-webkit-app-region:no-drag]"
+      >
+        <Button
+          variant="solid"
+          :disabled="loading"
+          :icon-left="IconPlus"
+          @click="showAddModal = true"
+        >
+          Add
+        </Button>
+      </div>
+    </PageHeader>
+
     <StatePanel
       v-if="error && customApps.length === 0"
       kind="error"
@@ -138,14 +157,15 @@ import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import IconCode from '~icons/lucide/code';
-import { onBeforeUnmount, ref, watchEffect } from 'vue';
+import { ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import AddCustomAppModal from '@frappe-local/renderer/components/dialogs/AddCustomAppModal.vue';
 
-import { useConfirmAction, usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
+import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
+import { PageHeader } from 'frappe-ui';
 
 import { useCustomApps } from '@frappe-local/renderer/composables/data';
 import type { CustomAppListItem } from '@frappe-local/shared/core';
@@ -225,29 +245,4 @@ const formatSource = (path: string) => {
   if (!path) return '';
   return path.replace(/^\/Users\/[^/]+/, '~');
 };
-
-const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
-
-watchEffect(() => {
-  if (customApps.value.length === 0) {
-    setPageHeaderActions([]);
-    return;
-  }
-  setPageHeaderActions([
-    {
-      id: 'custom-apps-add',
-      label: 'Add App',
-      variant: 'primary',
-      disabled: loading.value,
-      icon: IconPlus,
-      onClick: () => {
-        showAddModal.value = true;
-      },
-    },
-  ]);
-});
-
-onBeforeUnmount(() => {
-  clearPageHeaderActions();
-});
 </script>

@@ -13,12 +13,6 @@ export type NavigationItem = {
 
 export const appRouteDefinitions: AppRouteDefinition[] = [
   {
-    path: '/',
-    name: 'dashboard',
-    title: 'Dashboard',
-    description: 'The control center for first-run setup, recent activity, and quick actions.',
-  },
-  {
     path: '/sites',
     name: 'sites',
     title: 'Sites',
@@ -51,11 +45,6 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
 ];
 
 export const navigationItems: NavigationItem[] = [
-  {
-    label: 'Dashboard',
-    description: 'See quick actions, recent activity, and environment health.',
-    path: '/',
-  },
   {
     label: 'Sites',
     description: 'View and control the sites attached to each bench.',

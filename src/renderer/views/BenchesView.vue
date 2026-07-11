@@ -1,5 +1,24 @@
 <template>
   <section class="flex flex-col gap-6">
+    <PageHeader class="[-webkit-app-region:drag]">
+      <h1 class="text-xl-medium truncate text-ink-gray-9">
+        Benches
+      </h1>
+      <div
+        v-if="benches.length > 0"
+        class="flex items-center gap-3 [-webkit-app-region:no-drag]"
+      >
+        <Button
+          variant="solid"
+          :disabled="loading"
+          :icon-left="IconPlus"
+          @click="showCreateBenchModal = true"
+        >
+          Create
+        </Button>
+      </div>
+    </PageHeader>
+
     <StatePanel
       v-if="error && benches.length === 0"
       kind="error"
@@ -167,7 +186,7 @@ import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';
-import { computed, onBeforeUnmount, ref, type Component, watch, watchEffect } from 'vue';
+import { computed, ref, type Component, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 
@@ -176,7 +195,8 @@ import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 
-import { useConfirmAction, usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
+import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
+import { PageHeader } from 'frappe-ui';
 
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 
@@ -510,31 +530,6 @@ const onStatusClick = (resourceId: string) => {
 };
 
 const showCreateBenchModal = ref(false);
-
-const { setActions: setPageHeaderActions, clearActions: clearPageHeaderActions } = usePageHeaderActions();
-
-watchEffect(() => {
-  if (benches.value.length === 0) {
-    setPageHeaderActions([]);
-    return;
-  }
-  setPageHeaderActions([
-    {
-      id: 'benches-create',
-      label: 'Create',
-      variant: 'primary',
-      disabled: loading.value,
-      icon: IconPlus,
-      onClick: () => {
-        showCreateBenchModal.value = true;
-      },
-    },
-  ]);
-});
-
-onBeforeUnmount(() => {
-  clearPageHeaderActions();
-});
 
 const onStopBench = async (id: string) => {
   await onSetBenchStatus(id, 'stopped');

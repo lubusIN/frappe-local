@@ -1,5 +1,24 @@
 <template>
   <section class="flex flex-col gap-6">
+    <PageHeader class="[-webkit-app-region:drag]">
+      <h1 class="text-xl-medium truncate text-ink-gray-9">
+        Activity
+      </h1>
+      <div
+        v-if="filteredTasks.length > 0"
+        class="flex items-center gap-3 [-webkit-app-region:no-drag]"
+      >
+        <Button
+          variant="subtle"
+          theme="red"
+          :icon-left="IconTrash2"
+          @click="showClearConfirm = true"
+        >
+          Clear
+        </Button>
+      </div>
+    </PageHeader>
+
     <div class="flex flex-wrap items-center gap-3">
       <Select
         v-model="statusFilterModel"
@@ -117,10 +136,10 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, LoadingIndicator, Select } from 'frappe-ui';
+import { Badge, Button, LoadingIndicator, Select } from 'frappe-ui';
 import IconActivity from '~icons/lucide/activity';
 import IconTrash2 from '~icons/lucide/trash2';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
@@ -128,7 +147,7 @@ import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListV
 import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
 import { useProgressCenter } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog } from '@frappe-local/renderer/composables/data';
-import { usePageHeaderActions } from '@frappe-local/renderer/composables/ui';
+import { PageHeader } from 'frappe-ui';
 import { buildErrorRemediationNotice, formatStatus, statusTheme } from '@frappe-local/renderer/utils';
 
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
@@ -146,37 +165,12 @@ const {
   reconnect,
 } = useProgressCenter();
 
-const { setActions, clearActions } = usePageHeaderActions();
 const showClearConfirm = ref(false);
 
 const onConfirmClear = () => {
   clearTasks();
   showClearConfirm.value = false;
 };
-
-const headerActions = computed(() => {
-  if (filteredTasks.value.length === 0) return [];
-  return [
-    {
-      id: 'activity-clear',
-      label: 'Clear',
-      icon: IconTrash2,
-      theme: 'red',
-      variant: 'subtle' as const,
-      onClick: () => {
-        showClearConfirm.value = true;
-      },
-    },
-  ];
-});
-
-watch(headerActions, (actions) => {
-  setActions(actions);
-}, { immediate: true });
-
-onBeforeUnmount(() => {
-  clearActions();
-});
 
 const statusFilterModel = computed({
   get: () => statusFilter.value,
