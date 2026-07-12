@@ -49,10 +49,17 @@ export const configureUpdater = (settings: Settings | null): void => {
 };
 
 const isGracefulUpdateError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') return false;
+  if (!error) return false;
   const code = (error as Record<string, unknown>).code;
-  const message = String((error as Record<string, unknown>).message ?? '');
-  return code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' || message.includes('404');
+  const message = error instanceof Error ? error.message : String((error as Record<string, unknown>).message ?? error);
+  return (
+    code === 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND' ||
+    message.includes('404') ||
+    message.includes('No published versions on GitHub') ||
+    message.includes('No published versions') ||
+    message.includes('Cannot find channel') ||
+    message.includes('No release found')
+  );
 };
 
 export const initializeUpdater = async (settingsRepository: SettingsRepository): Promise<void> => {
@@ -82,6 +89,10 @@ export const initializeUpdater = async (settingsRepository: SettingsRepository):
 
   autoUpdater.on('update-available', (info) => {
     updaterLogger.info(`Update available: ${info.version}`);
+    if (info.version === autoUpdater.currentVersion.version) {
+      updaterLogger.info(`Remote version (${info.version}) matches current version (${autoUpdater.currentVersion.version}), ignoring.`);
+      return;
+    }
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send(ipcChannels.updateAvailable, info.version);
     });

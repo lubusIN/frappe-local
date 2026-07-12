@@ -289,6 +289,7 @@ const mainNavItems = computed(() =>
 
 onMounted(async () => {
   window.frappeLocal?.onUpdateAvailable?.((version) => {
+    if (!version || version === appVersion) return;
     updateVersion.value = version;
     if (updateState.value === 'idle') updateState.value = 'available';
   });
@@ -305,7 +306,11 @@ onMounted(async () => {
 
   window.frappeLocal?.onUpdateError?.((errorMsg) => {
     toast.error(`Update failed: ${errorMsg}`);
-    updateState.value = 'available';
+    if (updateState.value === 'downloading') {
+      updateState.value = 'available';
+    } else if (updateState.value !== 'available' || !updateVersion.value) {
+      updateState.value = 'idle';
+    }
     isInstalling.value = false;
   });
 
