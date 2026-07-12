@@ -5,17 +5,18 @@ import type { LifecycleLogItem, SiteCreateInput, SiteListItem, SiteUpdateInput }
 
 import { humanizeCreateFailure, stripIpcPrefix } from '@frappe-local/shared/core';
 
+const sites = ref<SiteListItem[]>([]);
+const loading = ref(false);
+const creating = ref(false);
+const updating = ref(false);
+const deleting = ref(false);
+const loadingLogs = ref(false);
+const openingFolder = ref(false);
+const error = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
+const deletingIds = ref<Map<string, string>>(new Map());
+
 export const useSites = () => {
-  const sites = ref<SiteListItem[]>([]);
-  const loading = ref(false);
-  const creating = ref(false);
-  const updating = ref(false);
-  const deleting = ref(false);
-  const loadingLogs = ref(false);
-  const openingFolder = ref(false);
-  const error = ref<string | null>(null);
-  const successMessage = ref<string | null>(null);
-  const deletingIds = ref<Map<string, string>>(new Map());
 
   const load = async (silent = false) => {
     const isInitialLoad = !silent && sites.value.length === 0;

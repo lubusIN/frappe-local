@@ -1,5 +1,5 @@
 <template>
-  <section class="flex flex-col h-[60vh] gap-1">
+  <section :class="containerClass || 'flex flex-col h-[60vh] gap-1'">
     <header class="flex items-center gap-2.5 mb-3">
       <div class="min-w-[140px] flex-1">
         <TextInput 
@@ -47,7 +47,7 @@
       v-else
       class="flex-1 min-h-0 mb-2 overflow-y-auto"
     >
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4 px-1">
+      <div class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 pb-4 px-1">
         <div
           v-for="row in rows"
           :key="row.appId"
@@ -222,6 +222,7 @@ const props = withDefaults(
     context?: 'bench' | 'site';
     activeAppIds?: readonly string[];
     loadingAppId?: string | null;
+    containerClass?: string;
   }>(),
   {
     disabled: false,
@@ -232,6 +233,7 @@ const props = withDefaults(
     allowedAppIds: undefined,
     context: 'bench',
     loadingAppId: null,
+    containerClass: undefined,
   }
 );
 

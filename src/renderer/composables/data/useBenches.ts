@@ -5,17 +5,18 @@ import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogIte
 
 import { humanizeCreateFailure, stripIpcPrefix } from '@frappe-local/shared/core';
 
+const benches = ref<BenchListItem[]>([]);
+const loading = ref(false);
+const creating = ref(false);
+const updating = ref(false);
+const deleting = ref(false);
+const loadingLogs = ref(false);
+const openingFolder = ref(false);
+const error = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
+const deletingIds = ref<Map<string, string>>(new Map());
+
 export const useBenches = () => {
-  const benches = ref<BenchListItem[]>([]);
-  const loading = ref(false);
-  const creating = ref(false);
-  const updating = ref(false);
-  const deleting = ref(false);
-  const loadingLogs = ref(false);
-  const openingFolder = ref(false);
-  const error = ref<string | null>(null);
-  const successMessage = ref<string | null>(null);
-  const deletingIds = ref<Map<string, string>>(new Map());
 
   const load = async (silent = false) => {
     if (!silent) {

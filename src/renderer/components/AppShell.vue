@@ -37,7 +37,18 @@
                 :icon="iconComponentMap[item.path] || IconGlobe"
                 :to="item.path"
                 :active="item.path === '/sites' ? (route.path === '/' || route.path.startsWith('/sites')) : route.path.startsWith(item.path)"
-              />
+              >
+                <template
+                  v-if="getItemCount(item.path) !== null && getItemCount(item.path)! > 0"
+                  #suffix
+                >
+                  <Badge
+                    variant="ghost"
+                    theme="gray"
+                    :label="String(getItemCount(item.path))"
+                  />
+                </template>
+              </SidebarItem>
             </div>
           </ScrollArea>
 
@@ -128,7 +139,10 @@
       />
     </div>
 
-    <main class="flex-1 p-8 overflow-y-auto">
+    <main
+      class="flex-1 flex flex-col min-h-0 min-w-0"
+      :class="route.name === 'sites' ? 'overflow-hidden' : 'p-8 overflow-y-auto'"
+    >
       <RouterView />
     </main>
 
@@ -146,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, DesktopShell, ScrollArea, Sidebar, SidebarItem, toast } from 'frappe-ui';
+import { Alert, Badge, Button, DesktopShell, ScrollArea, Sidebar, SidebarItem, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
 import IconActivity from '~icons/lucide/activity';
 import IconPackage from '~icons/lucide/package';
@@ -161,7 +175,7 @@ import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDi
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import { isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
-import { useAppCatalog } from '@frappe-local/renderer/composables/data';
+import { useAppCatalog, useBenches, useCustomApps, useSites } from '@frappe-local/renderer/composables/data';
 import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
 import { navigationItems } from '@frappe-local/renderer/router/routes';
@@ -169,6 +183,17 @@ import { navigationItems } from '@frappe-local/renderer/router/routes';
 import { findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
 
 const { formatTaskTitle } = useAppCatalog();
+const { sites } = useSites();
+const { benches } = useBenches();
+const { customApps } = useCustomApps();
+
+const getItemCount = (path: string) => {
+  if (path === '/sites') return sites.value.length;
+  if (path === '/benches') return benches.value.length;
+  if (path === '/custom-apps') return customApps.value.length;
+  return null;
+};
+
 const route = useRoute();
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();

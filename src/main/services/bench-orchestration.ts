@@ -337,9 +337,8 @@ export const ensureBenchSocketioPort = (
       changed = true;
     }
 
-    const defaultSite = getFirstBenchSiteName(benchPath);
-    if (defaultSite && configData.default_site !== defaultSite) {
-      configData.default_site = defaultSite;
+    if (configData.default_site !== undefined) {
+      delete configData.default_site;
       changed = true;
     }
 
@@ -348,11 +347,12 @@ export const ensureBenchSocketioPort = (
     }
 
     try {
+      const defaultSite = getFirstBenchSiteName(benchPath);
       const currentSitePath = path.join(benchPath, 'sites', 'currentsite.txt');
       if (fs.existsSync(currentSitePath)) {
         const currentSite = fs.readFileSync(currentSitePath, 'utf8').trim();
         const siteFolderPath = path.join(benchPath, 'sites', currentSite);
-        if (!fs.existsSync(siteFolderPath) || (defaultSite && currentSite !== defaultSite)) {
+        if (!fs.existsSync(siteFolderPath)) {
           if (defaultSite) {
             fs.writeFileSync(currentSitePath, defaultSite, 'utf8');
           } else {

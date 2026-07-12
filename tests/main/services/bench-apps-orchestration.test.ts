@@ -268,7 +268,7 @@ describe('bench app orchestration', () => {
     expect(fs.readFileSync(path.join(benchPath, 'sites', 'apps.txt'), 'utf8')).toBe('frappe\n');
     expect(
       JSON.parse(fs.readFileSync(path.join(benchPath, 'sites', 'common_site_config.json'), 'utf8'))
-    ).toMatchObject({ default_site: 'frappe.localhost', socketio_port: 443 });
+    ).toMatchObject({ dns_multitenant: true, socketio_port: 443 });
     expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
       'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js'
     );

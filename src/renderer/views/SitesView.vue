@@ -1,186 +1,366 @@
 <template>
-  <section class="flex flex-col gap-6">
-    <PageHeader class="[-webkit-app-region:drag]">
-      <h1 class="text-xl-medium truncate text-ink-gray-9">
-        Sites
-      </h1>
+  <div class="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-base text-ink-gray-9">
+    <!--
+      One split header, not two boxy headers. PageHeaderBase teleports to
+      DesktopShell's pinned header slot so it sits cleanly across both panes.
+    -->
+    <PageHeaderBase class="z-10 flex h-12 border-b border-outline-gray-1 bg-surface-base shrink-0 [-webkit-app-region:drag]">
+      <!-- List half — width + right border track the list pane below exactly. -->
       <div
-        v-if="creatableBenches.length > 0 && sites.length > 0"
-        class="flex items-center gap-3 [-webkit-app-region:no-drag]"
+        v-show="showList"
+        class="flex w-80 sm:w-96 shrink-0 items-center justify-between border-r border-outline-gray-1 px-4"
       >
-        <Button
-          variant="solid"
-          :disabled="loading"
-          :icon-left="IconPlus"
-          @click="showCreateSiteModal = true"
-        >
-          Create
-        </Button>
+        <PageHeaderTitle title="Sites" />
+        <div class="flex items-center gap-1 [-webkit-app-region:no-drag]">
+          <Button
+            size="sm"
+            variant="solid"
+            :icon-left="IconPlus"
+            label="Create"
+            :disabled="loading || creatableBenches.length === 0"
+            @click="showCreateSiteModal = true"
+          />
+        </div>
       </div>
-    </PageHeader>
 
-    <StatePanel
-      v-if="error"
-      kind="error"
-      title="Unable to load sites"
-      :body="error"
-      action-label="Retry"
-      @action="refresh"
-    />
+      <!-- Reading / Detail half — fills the rest. -->
+      <div class="flex min-w-0 flex-1 items-center justify-between gap-3 px-5">
+        <div class="flex min-w-0 items-center gap-2 [-webkit-app-region:no-drag]">
+          <Button
+            variant="ghost"
+            :icon="showList ? IconPanelLeftClose : IconPanelLeft"
+            label="Toggle list"
+            @click="showList = !showList"
+          />
+          <PageHeaderTitle v-if="selectedSite">
+            {{ selectedSite.name }}
+          </PageHeaderTitle>
+          <PageHeaderTitle v-else>
+            Site Details
+          </PageHeaderTitle>
+          <Badge
+            v-if="selectedSite"
+            variant="subtle"
+            :theme="getDisplayTheme(selectedSite)"
+            class="shrink-0 flex items-center gap-1.5 !text-xs"
+          >
+            <span>{{ getDisplayLabel(selectedSite) }}</span>
+            <span
+              v-if="isResourceBusy(selectedSite.id)"
+              class="inline-block size-2 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
+            />
+          </Badge>
+        </div>
 
-    <FirstRunGuide
-      v-if="!loading && !benchLoading && allBenches.length === 0"
-      title="Create a bench before creating sites"
-      body="Sites are attached to benches. Once you have one running bench, this screen becomes the main place to create, control, and export sites."
-      :links="siteSetupLinks"
-      compact
-    />
+        <!-- Site actions: Open / Folder / Logs / Reset + More dropdown -->
+        <div
+          v-if="selectedSite"
+          class="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
+        >
+          <Button
+            variant="ghost"
+            :icon="IconExternalLink"
+            tooltip="Open in Browser"
+            :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
+            @click="ipc.openSiteExternal(selectedSite.id)"
+          />
+          <Button
+            variant="ghost"
+            :icon="IconFolderOpen"
+            tooltip="Open Site Folder"
+            @click="openFolder(selectedSite.id)"
+          />
+          <Button
+            variant="ghost"
+            :icon="IconActivity"
+            tooltip="Task Logs"
+            @click="onStatusClick(selectedSite.id)"
+          />
+          <Button
+            v-if="selectedSite.status === 'failure'"
+            variant="ghost"
+            :icon="IconRotateCcw"
+            tooltip="Reset Status"
+            :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id)"
+            @click="resetSiteStatus(selectedSite)"
+          />
+          <Button
+            variant="ghost"
+            theme="red"
+            :icon="IconTrash2"
+            tooltip="Delete Site"
+            :disabled="!isBenchRunning(selectedSite.benchId) || updating || deleting || isResourceBusy(selectedSite.id)"
+            @click="confirmDeleteSite(selectedSite.id, selectedSite.name)"
+          />
+          <Dropdown
+            :options="getSiteDetailMoreActions(selectedSite)"
+            align="end"
+          >
+            <Button
+              variant="ghost"
+              :icon="IconMoreHorizontal"
+              tooltip="More Actions"
+            />
+          </Dropdown>
+        </div>
+      </div>
+    </PageHeaderBase>
 
-    <!-- Creation Dialog -->
+    <!-- PANE CONTAINER BELOW HEADER -->
+    <div class="flex min-h-0 flex-1 w-full overflow-hidden">
+      <!-- Site list pane (Master) -->
+      <section
+        v-show="showList"
+        class="flex h-full min-h-0 w-80 sm:w-96 shrink-0 flex-col border-r border-outline-gray-1 bg-surface-base"
+      >
+        <!-- Search & Status Filter Bar pinned above list -->
+        <div
+          v-if="!error && sites.length > 0"
+          class="flex flex-col gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2.5 bg-surface-base"
+        >
+          <TextInput
+            v-model="siteFilters.search"
+            type="search"
+            placeholder="Search sites..."
+            size="sm"
+            variant="outline"
+          >
+            <template #prefix>
+              <IconSearch class="w-4 text-ink-gray-5" />
+            </template>
+          </TextInput>
+
+          <Select
+            v-if="allBenches.length > 1"
+            v-model="benchFilterSelection"
+            :options="benchFilterOptions"
+            size="sm"
+            variant="outline"
+            class="w-full"
+          />
+
+          <div class="flex items-center justify-between gap-2 w-full mt-0.5 min-w-0">
+            <TabButtons
+              v-model="siteFilters.status"
+              :options="statusTabOptions"
+              class="justify-start overflow-x-auto no-scrollbar min-w-0"
+            />
+            <span class="text-sm text-ink-gray-5">
+              {{ currentStatusCount }} sites
+            </span>
+          </div>
+        </div>
+
+        <ScrollArea class="min-h-0 flex-1" viewport-class="p-1">
+          <StatePanel
+            v-if="error"
+            kind="error"
+            title="Unable to load sites"
+            :body="error"
+            action-label="Retry"
+            @action="refresh"
+          />
+
+          <div
+            v-else-if="!loading && !benchLoading && allBenches.length === 0"
+            class="p-3"
+          >
+            <FirstRunGuide
+              title="Create a bench first"
+              body="Sites are attached to benches. Once you have one running bench, this screen becomes the main place to create, control, and export sites."
+              :links="siteSetupLinks"
+              compact
+            />
+          </div>
+
+          <StatePanel
+            v-else-if="loading && sites.length === 0"
+            kind="loading"
+            title="Loading sites"
+            body="Fetching sites and status metadata."
+          />
+
+          <div
+            v-else-if="sites.length === 0"
+            class="p-3"
+          >
+            <EmptyState
+              title="No sites yet"
+              description="Create your first site to manage runtime status, inspect logs, and access dashboards."
+              :icon="IconGlobe"
+            >
+              <div
+                v-if="creatableBenches.length > 0"
+                class="mt-4"
+              >
+                <Button
+                  size="sm"
+                  variant="solid"
+                  @click="showCreateSiteModal = true"
+                >
+                  Create site
+                </Button>
+              </div>
+              <div
+                v-else
+                class="mt-4"
+              >
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  @click="$router.push('/benches')"
+                >
+                  Go to Benches
+                </Button>
+              </div>
+            </EmptyState>
+          </div>
+
+          <div
+            v-else-if="filteredSites.length === 0"
+            class="p-3"
+          >
+            <EmptyState
+              title="No matching sites"
+              description="No sites match the current bench, status, or search filters."
+              :icon="IconSearch"
+            >
+              <Button
+                size="sm"
+                variant="subtle"
+                class="mt-2"
+                @click="clearSiteFilters"
+              >
+                Clear filters
+              </Button>
+            </EmptyState>
+          </div>
+
+          <template v-else>
+            <List
+              v-model:active="selectedSiteId"
+              :columns="['minmax(0,1fr)', 'auto']"
+              :style="{ '--list-row-padding-x': '1rem' }"
+            >
+              <ListRows
+                :items="filteredSites"
+                row-key="id"
+                v-slot="{ item: site, value }"
+              >
+                <ListRow :value="value" @click="selectSite(site.id)">
+                  <ListCell>
+                    <div class="min-w-0 py-3">
+                      <div
+                        class="truncate inline-flex items-center text-sm text-ink-gray-8"
+                        :class="selectedSiteId === site.id && 'font-semibold text-ink-gray-9'"
+                      >
+                        <span
+                          class="mr-2 inline-block size-2 rounded-full align-middle shrink-0"
+                          :class="site.status === 'ready' ? (isBenchRunning(site.benchId) ? 'bg-surface-green-7' : 'bg-surface-gray-5') : site.status === 'queued' ? 'bg-surface-yellow-7 animate-pulse' : 'bg-surface-red-7'"
+                        />
+                        <span class="truncate">{{ site.name }}</span>
+                      </div>
+                      <div class="truncate text-xs text-ink-gray-5 mt-0.5 pl-4">
+                        {{ getBenchName(site.benchId) }}
+                      </div>
+                    </div>
+                  </ListCell>
+                  <ListCell class="self-start justify-end pt-3.5">
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      <span
+                        v-if="isResourceBusy(site.id)"
+                        class="inline-block size-3 rounded-full border-[1.5px] border-ink-gray-6 border-r-transparent animate-spin"
+                      />
+                      <span v-if="site.port" class="text-xs font-mono text-ink-gray-5">
+                        :{{ site.port }}
+                      </span>
+                    </div>
+                  </ListCell>
+                </ListRow>
+              </ListRows>
+            </List>
+          </template>
+        </ScrollArea>
+      </section>
+
+      <!-- Reading / Detail Pane -->
+      <section class="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface-base">
+        <div
+          v-if="!selectedSite"
+          class="flex-1 flex items-center justify-center p-8 text-ink-gray-5 text-sm"
+        >
+          Select a site from the list to inspect details, actions, and apps.
+        </div>
+
+        <template v-else>
+          <ScrollArea class="min-h-0 flex-1">
+            <div class="space-y-6 px-6 py-5 w-full">
+              <!-- APPS Section -->
+              <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3">
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-base-semibold text-ink-gray-9">
+                      Apps
+                    </h3>
+                    <Badge
+                      variant="subtle"
+                      theme="gray"
+                    >
+                      {{ (selectedSite.apps || []).length }} Installed
+                    </Badge>
+                  </div>
+                </div>
+
+                <div
+                  v-if="siteAppsWarningMessage"
+                  class="pt-2"
+                >
+                  <Alert 
+                    theme="yellow" 
+                    :title="siteAppsWarningMessage" 
+                    :dismissible="false" 
+                  />
+                </div>
+
+                <AppManager
+                  class="pt-1"
+                  container-class="flex flex-col min-h-[520px] gap-1"
+                  :resource-id="selectedBenchForSiteApps?.id"
+                  :bench-status="selectedBenchForSiteApps?.status"
+                  context="site"
+                  :active-app-ids="Array.from(siteActivatedAppSet)"
+                  :disabled="updating || !canActivateSelectedSiteApps"
+                  :frappe-version="selectedBenchForSiteApps?.frappeVersion"
+                  :loading-app-id="activatingSiteAppId"
+                  @add-app="onActivateSiteApp"
+                  @remove-app="onRequestDeactivateSiteApp"
+                  @install-app="onActivateSiteApp"
+                  @uninstall-app="onRequestDeactivateSiteApp"
+                />
+              </div>
+            </div>
+          </ScrollArea>
+
+          <!-- Footer Actions Bar pinned at bottom of reading pane -->
+          <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-outline-gray-1 px-5 py-3 bg-surface-base">
+            <Button
+              variant="subtle"
+              size="sm"
+              :icon-left="IconPackage"
+              @click="goToParentBench(selectedSite.benchId)"
+            >
+              Go to Bench
+            </Button>
+          </footer>
+        </template>
+      </section>
+    </div>
+
+    <!-- Modals -->
     <SiteWizardDialog
       v-model:open="showCreateSiteModal"
       @created="onSiteCreated"
     />
-
-    <StatePanel
-      v-if="!error && loading && sites.length === 0"
-      kind="loading"
-      title="Loading sites"
-      body="Fetching sites and active status metadata."
-    />
-
-    <EmptyState
-      v-if="!error && (!loading || sites.length > 0) && sites.length === 0"
-      title="No sites yet"
-      description="Create your first site to manage runtime status, inspect logs, and access dashboards."
-      :icon="IconGlobe"
-    >
-      <div
-        v-if="creatableBenches.length > 0"
-        class="mt-6"
-      >
-        <Button
-          variant="solid"
-          @click="showCreateSiteModal = true"
-        >
-          Create site
-        </Button>
-      </div>
-      <div v-else>
-        <Button
-          variant="subtle"
-          @click="$router.push('/benches')"
-        >
-          Go to Benches
-        </Button>
-      </div>
-    </EmptyState>
-
-    <!-- Filters -->
-    <div
-      v-if="!error && sites.length > 0"
-      class="flex flex-col gap-3 sm:flex-row sm:items-center"
-    >
-      <div class="flex flex-wrap items-center gap-3">
-        <Select
-          v-model="benchFilterSelection"
-          class="flex-none min-w-36"
-          :options="benchFilterOptions"
-          variant="outline"
-        />
-        <Select
-          v-model="statusFilterSelection"
-          class="flex-none min-w-36"
-          :options="statusFilterOptions"
-          variant="outline"
-        />
-      </div>
-      <div class="w-full sm:ml-auto sm:w-64">
-        <TextInput
-          v-model="siteFilters.search"
-          type="search"
-          placeholder="Search sites"
-          variant="outline"
-        >
-          <template #prefix>
-            <IconSearch class="w-4 text-ink-gray-5" />
-          </template>
-        </TextInput>
-      </div>
-    </div>
-
-    <EmptyState
-      v-if="!error && sites.length > 0 && filteredSites.length === 0"
-      title="No matching sites"
-      description="No sites match the current bench, status, or search filters."
-      :icon="IconSearch"
-    >
-      <Button
-        variant="subtle"
-        @click="clearSiteFilters"
-      >
-        Clear filters
-      </Button>
-    </EmptyState>
-
-    <ResourceListView
-      v-if="!error && (!loading || sites.length > 0) && filteredSites.length > 0"
-      :columns="siteColumns"
-      :rows="filteredSites"
-      row-key="id"
-      empty-title="No sites"
-      empty-description="No sites are available."
-    >
-      <template #cell="{ column, row }">
-        <template v-if="column.key === 'name'">
-          <div class="flex items-center h-full min-w-0">
-            <div class="text-sm-medium truncate text-ink-gray-9">
-              {{ row.name }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="column.key === 'benchId'">
-          <span class="block text-sm truncate text-ink-gray-6">{{ getBenchName(row.benchId) }}</span>
-        </template>
-
-        <template v-else-if="column.key === 'status'">
-          <div class="flex items-center h-full">
-            <Badge
-              variant="subtle"
-              :theme="getDisplayTheme(row)"
-              class="inline-flex cursor-pointer items-center gap-1.5"
-              @click.stop="onStatusClick(row.id)"
-            >
-              {{ getDisplayLabel(row) }}
-              <span
-                v-if="isResourceBusy(row.id)"
-                class="inline-block size-2.5 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
-              />
-            </Badge>
-          </div>
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <div
-            class="flex items-center justify-end h-full"
-            @click.stop
-          >
-            <Dropdown
-              :options="getSiteActions(row)"
-              side="bottom"
-              align="end"
-            >
-              <template #default>
-                <Button
-                  size="md"
-                  variant="subtle"
-                  :icon="IconMoreHorizontal"
-                />
-              </template>
-            </Dropdown>
-          </div>
-        </template>
-      </template>
-    </ResourceListView>
 
     <ConfirmationDialog
       :open="confirmDeleteSiteOpen"
@@ -190,8 +370,6 @@
       @confirm="onConfirmDeleteSite"
       @cancel="cancelDeleteSite"
     />
-
-
 
     <ManageAppsDialog
       v-model:open="showSiteAppsDialog"
@@ -204,7 +382,7 @@
       :warning-message="siteAppsWarningMessage"
       :frappe-version="selectedBenchForSiteApps?.frappeVersion"
       :loading-app-id="activatingSiteAppId"
-      @close="closeSiteAppsDialog"
+      @close="onManageAppsDialogClose"
       @add-app="onActivateSiteApp"
       @remove-app="onRequestDeactivateSiteApp"
     />
@@ -217,11 +395,12 @@
       @cancel="onCancelDeactivateSiteApp"
       @confirm="onConfirmDeactivateSiteApp"
     />
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Select, TabButtons, TextInput, toast } from 'frappe-ui';
+import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import IconGlobe from '~icons/lucide/globe';
 import IconSearch from '~icons/lucide/search';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
@@ -232,20 +411,20 @@ import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
-import { computed, onMounted, reactive, ref, type Component, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import IconPanelLeftClose from '~icons/lucide/panel-left-close';
+import IconPanelLeft from '~icons/lucide/panel-left';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 
 import FirstRunGuide, { type FirstRunGuideLink } from '@frappe-local/renderer/components/FirstRunGuide.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
-import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
+import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
-
-import { PageHeader } from 'frappe-ui';
 
 import { filterSites } from '@frappe-local/renderer/utils/sites';
 
@@ -253,6 +432,7 @@ import type { SiteListItem } from '@frappe-local/shared/core';
 
 const ipc = useIpc();
 const route = useRoute();
+const router = useRouter();
 
 const {
   sites,
@@ -350,13 +530,6 @@ const onStatusClick = (resourceId: string) => {
 
 const SELECT_ALL = '__all__';
 
-const siteColumns = [
-  { key: 'name', label: 'Site', width: 'minmax(200px, 2fr)' },
-  { key: 'benchId', label: 'Bench', width: 'minmax(140px, 1fr)' },
-  { key: 'status', label: 'Status', width: '140px' },
-  { key: 'actions', label: '', width: '48px', align: 'right' },
-] satisfies object[];
-
 const {
   benches: allBenches,
   loading: benchLoading,
@@ -382,71 +555,55 @@ const getDisplayLabel = (row: SiteListItem) => {
   return formatStatusLabel(row);
 };
 
-const getSiteActions = (site: SiteListItem) => {
-  const isBenchRunning = allBenches.value.find((b) => b.id === site.benchId)?.status === 'running';
-  const actions: Array<{
-    label: string;
-    icon: Component;
-    disabled?: boolean;
-    hidden?: boolean;
-    theme?: 'gray' | 'red';
-    onClick: () => void | Promise<void>;
-  }> = [];
+const statusTabs = computed(() => [
+  { label: 'All', value: '', count: sites.value.length },
+  { label: 'Ready', value: 'ready', count: sites.value.filter((s) => s.status === 'ready').length },
+  { label: 'In Progress', value: 'queued', count: sites.value.filter((s) => s.status === 'queued').length },
+  { label: 'Error', value: 'failure', count: sites.value.filter((s) => s.status === 'failure').length },
+]);
 
-  if (site.status === 'ready' || site.status === 'failure') {
-    actions.push({
-      label: 'View',
-      icon: IconExternalLink,
-      disabled: !isBenchRunning,
-      onClick: async () => {
-        await ipc.openSiteExternal(site.id);
-      },
-    });
-  }
+const statusTabOptions = computed(() =>
+  statusTabs.value.map((tab) => ({
+    label: tab.label,
+    value: tab.value,
+  }))
+);
 
-  const isBusy = isResourceBusy(site.id) || Boolean(getPendingSiteAction(site.id));
+const currentStatusCount = computed(() => {
+  const currentTab = statusTabs.value.find((t) => t.value === siteFilters.status);
+  return currentTab ? currentTab.count : sites.value.length;
+});
 
-  actions.push({
-    label: 'View logs',
-    icon: IconActivity,
-    hidden: !isBusy,
-    onClick: () => onStatusClick(site.id),
-  });
+const selectedSiteId = ref<string | null>(null);
+const showList = ref(true);
 
-  actions.push({
-    label: 'Open Folder',
-    icon: IconFolderOpen,
-    onClick: () => openFolder(site.id),
-  });
+const selectSite = (id: string) => {
+  selectedSiteId.value = id;
+};
 
-  actions.push({
-    label: 'Apps',
-    icon: IconPackage,
-    disabled: !isBenchRunning || updating.value || isBusy || (site.status !== 'ready' && site.status !== 'failure'),
-    onClick: () => onShowSiteApps(site),
-  });
+const isBenchRunning = (benchId: string) => {
+  return allBenches.value.find((b) => b.id === benchId)?.status === 'running';
+};
 
-  if (site.status === 'failure') {
-    actions.push({
-      label: 'Reset status',
-      icon: IconRotateCcw,
-      disabled: !isBenchRunning || updating.value || isBusy,
-      onClick: async () => {
-        await update(site.id, { status: 'ready' });
-        toast.success(`Site "${site.name}" status reset to ready.`);
-      },
-    });
-  }
+const resetSiteStatus = async (site: SiteListItem) => {
+  await update(site.id, { status: 'ready' });
+  toast.success(`Site "${site.name}" status reset to ready.`);
+};
 
-  actions.push({
-    label: 'Delete',
-    icon: IconTrash2,
-    theme: 'red' as const,
-    disabled: !isBenchRunning || updating.value || deleting.value || isResourceBusy(site.id),
-    onClick: () => confirmDeleteSite(site.id, site.name),
-  });
+const getSiteDetailMoreActions = (site: SiteListItem) => {
+  return [
+    {
+      label: 'Delete',
+      icon: IconTrash2,
+      theme: 'red' as const,
+      disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
+      onClick: () => confirmDeleteSite(site.id, site.name),
+    },
+  ];
+};
 
-  return actions.filter((action) => !action.hidden);
+const goToParentBench = (benchId: string) => {
+  void router.push({ path: '/benches', query: { benchId } });
 };
 
 const showCreateSiteModal = ref(false);
@@ -462,29 +619,34 @@ const benchFilterSelection = computed({
     siteFilters.benchId = value === SELECT_ALL ? '' : value;
   },
 });
-const statusFilterSelection = computed({
-  get: () => siteFilters.status || SELECT_ALL,
-  set: (value: string) => {
-    siteFilters.status = value === SELECT_ALL ? '' : value;
-  },
-});
 const benchFilterOptions = computed(() => [
   { label: 'All benches', value: SELECT_ALL },
   ...allBenches.value.map((bench) => ({ label: bench.name, value: bench.id })),
 ]);
-const statusFilterOptions = [
-  { label: 'All statuses', value: SELECT_ALL },
-  { label: 'Ready', value: 'ready' },
-  { label: 'In Progress', value: 'queued' },
-  { label: 'Success', value: 'success' },
-  { label: 'Failure', value: 'failure' },
-];
 const filteredSites = computed(() => filterSites(sites.value, siteFilters));
 const clearSiteFilters = (): void => {
   siteFilters.benchId = '';
   siteFilters.status = '';
   siteFilters.search = '';
 };
+
+const selectedSite = computed(() => {
+  if (selectedSiteId.value) {
+    const found = sites.value.find((s) => s.id === selectedSiteId.value);
+    if (found) return found;
+  }
+  return filteredSites.value[0] ?? sites.value[0] ?? null;
+});
+
+watch(
+  () => filteredSites.value,
+  (list) => {
+    if (list.length > 0 && (!selectedSiteId.value || !sites.value.some((s) => s.id === selectedSiteId.value))) {
+      selectedSiteId.value = list[0].id;
+    }
+  },
+  { immediate: true }
+);
 const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
   { label: 'Go to Benches', to: '/benches' },
   { label: 'Review runtime', to: '/diagnostics' },
@@ -496,8 +658,10 @@ const getBenchName = (id: string) => {
 };
 
 const selectedSiteForApps = computed(() => {
-  if (!selectedSiteForAppsId.value) return null;
-  return sites.value.find((site) => site.id === selectedSiteForAppsId.value) ?? null;
+  if (selectedSiteForAppsId.value) {
+    return sites.value.find((site) => site.id === selectedSiteForAppsId.value) ?? selectedSite.value;
+  }
+  return selectedSite.value;
 });
 
 const selectedBenchForSiteApps = computed(() => {
@@ -538,11 +702,15 @@ const pendingRemoveSiteAppName = ref('');
 const closeSiteAppsDialog = () => {
   showSiteAppsDialog.value = false;
   selectedSiteForAppsId.value = null;
-  activatingSiteAppId.value = null;
   appsToInstall.value = [];
   removeSiteAppConfirmOpen.value = false;
   pendingRemoveSiteAppId.value = null;
   pendingRemoveSiteAppName.value = '';
+};
+
+const onManageAppsDialogClose = () => {
+  activatingSiteAppId.value = null;
+  closeSiteAppsDialog();
 };
 
 const onShowSiteApps = (site: SiteListItem) => {

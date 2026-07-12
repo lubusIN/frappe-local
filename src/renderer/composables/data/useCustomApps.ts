@@ -4,13 +4,14 @@ import { stripIpcPrefix } from '@frappe-local/shared/core';
 import type { CreateCustomAppInput, UpdateCustomAppInput } from '@frappe-local/shared/domain';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
+const customApps = ref<CustomAppListItem[]>([]);
+const loading = ref(false);
+const updating = ref(false);
+const deleting = ref(false);
+const error = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
+
 export const useCustomApps = () => {
-  const customApps = ref<CustomAppListItem[]>([]);
-  const loading = ref(false);
-  const updating = ref(false);
-  const deleting = ref(false);
-  const error = ref<string | null>(null);
-  const successMessage = ref<string | null>(null);
 
   const ipc = useIpc();
 
