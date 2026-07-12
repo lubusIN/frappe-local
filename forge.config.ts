@@ -6,6 +6,8 @@ import { MakerDeb } from '@electron-forge/maker-deb';
 import { MakerRpm } from '@electron-forge/maker-rpm';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import path from 'node:path';
+import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const isDarwin = process.platform === 'darwin';
 const iconBasePath = path.resolve(process.cwd(), 'resources/icons/icon');
@@ -15,22 +17,24 @@ const iconBasePath = path.resolve(process.cwd(), 'resources/icons/icon');
  * 
  * For production releases on macOS:
  * 1. Set APPLE_ID and APPLE_PASSWORD environment variables
- * 2. Ensure Apple Developer certificate is installed in Keychain
- * 3. Uncomment signing and notarization config below
- * 
+ * 2. Ensure Apple Developer certificate is installed in Keychain or APPLE_IDENTITY is set
  */
 const macOSConfig = {
-  // osxSign: {
-  //   identity: 'Developer ID Application: YOUR_NAME (TEAMID)',
-  //   'hardened-runtime': true,
-  //   'entitlements': 'build/entitlements.plist',
-  // },
-  // osxNotarize: {
-  //   tool: 'notarytool',
-  //   appleId: process.env.APPLE_ID,
-  //   appleIdPassword: process.env.APPLE_PASSWORD,
-  //   teamId: process.env.APPLE_TEAM_ID,
-  // },
+  osxSign: {
+    identity: process.env.APPLE_IDENTITY || '-',
+    ...(process.env.APPLE_IDENTITY ? {
+      'hardened-runtime': true,
+      ...(fs.existsSync('build/entitlements.plist') ? { entitlements: 'build/entitlements.plist' } : {}),
+    } : {}),
+  },
+  ...(process.env.APPLE_ID && process.env.APPLE_PASSWORD && process.env.APPLE_TEAM_ID ? {
+    osxNotarize: {
+      tool: 'notarytool',
+      appleId: process.env.APPLE_ID,
+      appleIdPassword: process.env.APPLE_PASSWORD,
+      teamId: process.env.APPLE_TEAM_ID,
+    },
+  } : {}),
 };
 
 const config: ForgeConfig = {
@@ -49,6 +53,26 @@ const config: ForgeConfig = {
     }),
   },
   rebuildConfig: {},
+  hooks: {
+    postPackage: async (_config, buildResult) => {
+      if (process.platform === 'darwin' && !process.env.APPLE_IDENTITY) {
+        for (const outputPath of buildResult.outputPaths) {
+          const appPath = path.join(outputPath, 'Frappe Local.app');
+          if (fs.existsSync(appPath)) {
+            console.log(`Applying deep ad-hoc code signature to ${appPath}...`);
+            const result = spawnSync('codesign', ['--sign', '-', '--force', '--deep', appPath], {
+              stdio: 'inherit',
+            });
+            if (result.error || result.status !== 0) {
+              console.warn(`Warning: Failed to apply deep ad-hoc code signature to ${appPath}`, result.error || `Exit code ${result.status}`);
+            } else {
+              console.log(`Deep ad-hoc code signature applied successfully to ${appPath}`);
+            }
+          }
+        }
+      }
+    },
+  },
   makers: [
     // Cross-platform ZIP archives (works on all platforms)
     new MakerZIP({}, ['darwin', 'linux', 'win32']),
