@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import 'frappe-ui/style.css';
+import 'frappe-ui/list-style.css';
 
 const renderFatalScreen = (title: string, detail: unknown): void => {
 	const target = document.getElementById('app');
