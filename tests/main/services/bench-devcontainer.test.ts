@@ -23,7 +23,7 @@ describe('ensureBenchDevcontainer', () => {
       },
     };
 
-    await ensureBenchDevcontainer(tmpDir, context as any, 'setup', { DOCKER_HOST: 'unix:///tmp/test.sock' });
+    await ensureBenchDevcontainer(tmpDir, context as unknown as Parameters<typeof ensureBenchDevcontainer>[1], 'setup', { DOCKER_HOST: 'unix:///tmp/test.sock' });
 
     const devcontainerDir = path.join(tmpDir, '.devcontainer');
     const devcontainerFile = path.join(devcontainerDir, 'devcontainer.json');
@@ -51,7 +51,7 @@ describe('ensureBenchDevcontainer', () => {
 
   it('injects COMPOSE_PROJECT_NAME in wrapper scripts when benchId is provided', async () => {
     const context = { log: vi.fn() };
-    await ensureBenchDevcontainer(tmpDir, context as any, 'setup', { DOCKER_HOST: 'unix:///tmp/test.sock' }, 'bench-12345678-abc');
+    await ensureBenchDevcontainer(tmpDir, context as unknown as Parameters<typeof ensureBenchDevcontainer>[1], 'setup', { DOCKER_HOST: 'unix:///tmp/test.sock' }, 'bench-12345678-abc');
 
     const composeBin = path.join(tmpDir, '.devcontainer', 'bin', process.platform === 'win32' ? 'docker-compose.bat' : 'docker-compose');
     const content = fs.readFileSync(composeBin, 'utf8');

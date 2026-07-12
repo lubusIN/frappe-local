@@ -1,13 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { detectAvailableTerminals, openBenchShell } from '../../../src/main/utils/terminal';
 
-const mockExec = vi.fn((cmd: string, cb?: any) => {
+const mockExec = vi.fn((cmd: string, cb?: ((error: unknown, result: { stdout: string; stderr: string }) => void)) => {
   if (typeof cb === 'function') cb(null, { stdout: '', stderr: '' });
-  return {} as any;
+  return {} as unknown as ReturnType<typeof import('node:child_process')['exec']>;
 });
 
 vi.mock('node:child_process', () => ({
-  exec: (cmd: string, cb?: any) => mockExec(cmd, cb),
+  exec: (cmd: string, cb?: ((error: unknown, result: { stdout: string; stderr: string }) => void)) => mockExec(cmd, cb),
 }));
 
 describe('terminal utilities', () => {

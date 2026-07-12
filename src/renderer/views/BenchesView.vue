@@ -146,7 +146,10 @@
           </div>
         </div>
 
-        <ScrollArea class="min-h-0 flex-1" viewport-class="p-1">
+        <ScrollArea
+          class="min-h-0 flex-1"
+          viewport-class="p-1"
+        >
           <StatePanel
             v-if="error"
             kind="error"
@@ -211,11 +214,14 @@
               :style="{ '--list-row-padding-x': '1rem' }"
             >
               <ListRows
+                v-slot="{ item: bench, value }"
                 :items="filteredBenches"
                 row-key="id"
-                v-slot="{ item: bench, value }"
               >
-                <ListRow :value="value" @click="selectBench(bench.id)">
+                <ListRow
+                  :value="value"
+                  @click="selectBench(bench.id)"
+                >
                   <ListCell>
                     <div class="min-w-0 py-3">
                       <div
@@ -228,7 +234,10 @@
                         />
                         <span class="truncate">{{ bench.name }}</span>
                       </div>
-                      <div class="truncate text-xs text-ink-gray-5 mt-0.5 pl-4" :title="bench.path">
+                      <div
+                        class="truncate text-xs text-ink-gray-5 mt-0.5 pl-4"
+                        :title="bench.path"
+                      >
                         {{ formatPath(bench.path) }}
                       </div>
                     </div>
@@ -239,7 +248,10 @@
                         v-if="isResourceBusy(bench.id)"
                         class="inline-block size-3 rounded-full border-[1.5px] border-ink-gray-6 border-r-transparent animate-spin"
                       />
-                      <span v-else-if="bench.frappeVersion" class="text-xs font-mono text-ink-gray-5">
+                      <span
+                        v-else-if="bench.frappeVersion"
+                        class="text-xs font-mono text-ink-gray-5"
+                      >
                         {{ bench.frappeVersion }}
                       </span>
                     </div>
@@ -340,22 +352,6 @@
       @created="onBenchCreated"
     />
 
-    <ManageAppsDialog
-      v-model:open="showAppsDialog"
-      :resource-id="selectedBenchForApps?.id"
-      :resource-name="selectedBenchForApps?.name || 'Bench'"
-      :bench-status="selectedBenchForApps?.status"
-      context="bench"
-      :active-app-ids="selectedBenchForApps?.apps ?? []"
-      :disabled="!canMutateApps || updating"
-      :warning-message="benchAppsWarningMessage"
-      :frappe-version="selectedBenchForApps?.frappeVersion"
-      :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
-      @close="closeAppsDialog"
-      @add-app="onAddBenchApp"
-      @remove-app="onRequestRemoveBenchApp"
-    />
-
     <ConfirmationDialog
       :open="removeAppConfirmOpen"
       title="Remove app"
@@ -378,7 +374,6 @@ import IconActivity from '~icons/lucide/activity';
 import IconRotateCw from '~icons/lucide/rotate-cw';
 import IconPlay from '~icons/lucide/play';
 import IconSquare from '~icons/lucide/square';
-import IconFolder from '~icons/lucide/folder';
 import IconFolderOpen from '~icons/lucide/folder-open';
 import IconTerminal from '~icons/lucide/terminal';
 import IconTrash2 from '~icons/lucide/trash2';
@@ -387,13 +382,12 @@ import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';
 import IconPanelLeftClose from '~icons/lucide/panel-left-close';
 import IconPanelLeft from '~icons/lucide/panel-left';
-import { computed, reactive, ref, type Component, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
-import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -436,8 +430,6 @@ watch(error, (err) => {
 });
 
 const { getAppInfo, getAppTitle } = useAppCatalog();
-const showAppsDialog = ref(false);
-const selectedBenchForAppsId = ref<string | null>(null);
 const removeAppConfirmOpen = ref(false);
 const pendingRemoveBenchAppId = ref<string | null>(null);
 const pendingRemoveBenchAppName = ref('');
@@ -526,27 +518,7 @@ watch(
   { immediate: true }
 );
 
-const selectedBenchForApps = computed(
-  () => {
-    if (selectedBenchForAppsId.value) {
-      return benches.value.find((bench) => bench.id === selectedBenchForAppsId.value) ?? selectedBench.value;
-    }
-    return selectedBench.value;
-  }
-);
-
-const onShowApps = (bench: BenchListItem) => {
-  selectedBenchForAppsId.value = bench.id;
-  showAppsDialog.value = true;
-};
-
-const closeAppsDialog = () => {
-  showAppsDialog.value = false;
-  selectedBenchForAppsId.value = null;
-  removeAppConfirmOpen.value = false;
-  pendingRemoveBenchAppId.value = null;
-  pendingRemoveBenchAppName.value = '';
-};
+const selectedBenchForApps = computed(() => selectedBench.value);
 
 const benchAppsWarningMessage = computed(() => {
   const bench = selectedBenchForApps.value;
@@ -592,7 +564,6 @@ const onAddBenchApp = async (appId: string) => {
     await refresh(true);
     return res;
   });
-  closeAppsDialog();
 
   const appTitle = getAppTitle(appId);
   toast.promise(promise, {
@@ -615,7 +586,6 @@ const onRequestRemoveBenchApp = (appId: string) => {
     return;
   }
 
-  const appInfo = getAppInfo(appId);
   pendingRemoveBenchAppId.value = appId;
   pendingRemoveBenchAppName.value = getAppTitle(appId);
   removeAppConfirmOpen.value = true;
@@ -648,7 +618,7 @@ const onConfirmRemoveBenchApp = async () => {
   removeAppConfirmOpen.value = false;
 
   const info = getAppInfo(appId);
-  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId && existingAppId !== (info as any).id && existingAppId !== info.name);
+  const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId && existingAppId !== info.id && existingAppId !== info.name);
 
   const promise = runAndWaitForTask(
     () => queueBenchAppsUpdate(nextApps),
@@ -657,7 +627,6 @@ const onConfirmRemoveBenchApp = async () => {
     await refresh(true);
     return res;
   });
-  closeAppsDialog();
 
   toast.promise(promise, {
     loading: `Removing app ${appTitle} from bench ${bench.name}`,
@@ -685,7 +654,6 @@ const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
 
 const {
   setPendingAction: setPendingBenchAction,
-  getPendingAction: getPendingBenchAction,
   clearPendingAction: clearPendingBenchAction,
   isResourceBusy,
   formatStatusLabel,

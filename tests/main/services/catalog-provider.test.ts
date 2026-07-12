@@ -1,6 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { fetchBreweryCatalog, normalizeCatalogProviderItem, syncAppCatalogFromBrewery } from '../../../src/main/services/catalog-provider';
-import { DEFAULT_BREWERY_URL } from '../../../src/shared/domain/models';
 
 describe('catalog provider normalization', () => {
   it('normalizes id casing and maps categories properly', () => {
@@ -70,9 +69,7 @@ describe('fetchBreweryCatalog and syncAppCatalogFromBrewery', () => {
   });
 
   it('syncAppCatalogFromBrewery falls back to DEFAULT_BREWERY_URL when custom URL fails', async () => {
-    let callCount = 0;
     global.fetch = vi.fn().mockImplementation(async (url: string) => {
-      callCount++;
       if (url.includes('failing-url')) {
         return { ok: false, status: 404, statusText: 'Not Found' };
       }
@@ -98,10 +95,11 @@ describe('fetchBreweryCatalog and syncAppCatalogFromBrewery', () => {
       },
     };
 
-    const result = await syncAppCatalogFromBrewery('https://failing-url.local', mockRepo as any);
+    const result = await syncAppCatalogFromBrewery('https://failing-url.local', mockRepo as unknown as Parameters<typeof syncAppCatalogFromBrewery>[1]);
     expect(result.success).toBe(true);
     expect(result.apps[0]?.id).toBe('fallback-app');
     expect(syncedApps).toHaveLength(1);
+    expect(global.fetch).toHaveBeenCalledTimes(4);
   });
 
   it('cacheCatalogIcons converts remote http/https icon URLs to base64 data URIs', async () => {

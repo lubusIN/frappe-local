@@ -149,7 +149,10 @@
           </div>
         </div>
 
-        <ScrollArea class="min-h-0 flex-1" viewport-class="p-1">
+        <ScrollArea
+          class="min-h-0 flex-1"
+          viewport-class="p-1"
+        >
           <StatePanel
             v-if="error"
             kind="error"
@@ -241,11 +244,14 @@
               :style="{ '--list-row-padding-x': '1rem' }"
             >
               <ListRows
+                v-slot="{ item: site, value }"
                 :items="filteredSites"
                 row-key="id"
-                v-slot="{ item: site, value }"
               >
-                <ListRow :value="value" @click="selectSite(site.id)">
+                <ListRow
+                  :value="value"
+                  @click="selectSite(site.id)"
+                >
                   <ListCell>
                     <div class="min-w-0 py-3">
                       <div
@@ -269,7 +275,10 @@
                         v-if="isResourceBusy(site.id)"
                         class="inline-block size-3 rounded-full border-[1.5px] border-ink-gray-6 border-r-transparent animate-spin"
                       />
-                      <span v-if="site.port" class="text-xs font-mono text-ink-gray-5">
+                      <span
+                        v-if="site.port"
+                        class="text-xs font-mono text-ink-gray-5"
+                      >
                         :{{ site.port }}
                       </span>
                     </div>
@@ -366,23 +375,6 @@
       :message="`Are you sure you want to delete site &quot;${deleteSiteName}&quot;? This will remove all data and cannot be undone.`"
       confirm-label="Delete"
       @confirm="onConfirmDeleteSite"
-      @cancel="cancelDeleteSite"
-    />
-
-    <ManageAppsDialog
-      v-model:open="showSiteAppsDialog"
-      :resource-id="selectedBenchForSiteApps?.id"
-      :resource-name="selectedSiteForApps?.name || 'Site'"
-      :bench-status="selectedBenchForSiteApps?.status"
-      context="site"
-      :active-app-ids="Array.from(siteActivatedAppSet)"
-      :disabled="updating || !canActivateSelectedSiteApps"
-      :warning-message="siteAppsWarningMessage"
-      :frappe-version="selectedBenchForSiteApps?.frappeVersion"
-      :loading-app-id="activatingSiteAppId"
-      @close="onManageAppsDialogClose"
-      @add-app="onActivateSiteApp"
-      @remove-app="onRequestDeactivateSiteApp"
     />
 
     <ConfirmationDialog
@@ -397,7 +389,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Select, TabButtons, TextInput, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Select, TabButtons, TextInput, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import IconGlobe from '~icons/lucide/globe';
 import IconSearch from '~icons/lucide/search';
@@ -420,7 +412,6 @@ import FirstRunGuide, { type FirstRunGuideLink } from '@frappe-local/renderer/co
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
-import ManageAppsDialog from '@frappe-local/renderer/components/dialogs/ManageAppsDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -447,8 +438,6 @@ const {
 } = useSites();
 
 const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
-const showSiteAppsDialog = ref(false);
-const selectedSiteForAppsId = ref<string | null>(null);
 const activatingSiteAppId = ref<string | null>(null);
 
 const refresh = async (force = false) => {
@@ -514,7 +503,6 @@ watch(error, (err) => {
 
 
 const {
-  getPendingAction: getPendingSiteAction,
   isResourceBusy,
   formatStatusLabel,
   getStatusTheme,
@@ -656,12 +644,7 @@ const getBenchName = (id: string) => {
   return bench ? bench.name : id;
 };
 
-const selectedSiteForApps = computed(() => {
-  if (selectedSiteForAppsId.value) {
-    return sites.value.find((site) => site.id === selectedSiteForAppsId.value) ?? selectedSite.value;
-  }
-  return selectedSite.value;
-});
+const selectedSiteForApps = computed(() => selectedSite.value);
 
 const selectedBenchForSiteApps = computed(() => {
   if (!selectedSiteForApps.value) return null;
@@ -691,31 +674,11 @@ const siteAppsWarningMessage = computed(() => {
 
 const canActivateSelectedSiteApps = computed(() => siteAppsWarningMessage.value === null);
 
-const appsToInstall = ref<string[]>([]);
 const { getAppInfo, getAppTitle } = useAppCatalog();
 
 const removeSiteAppConfirmOpen = ref(false);
 const pendingRemoveSiteAppId = ref<string | null>(null);
 const pendingRemoveSiteAppName = ref('');
-
-const closeSiteAppsDialog = () => {
-  showSiteAppsDialog.value = false;
-  selectedSiteForAppsId.value = null;
-  appsToInstall.value = [];
-  removeSiteAppConfirmOpen.value = false;
-  pendingRemoveSiteAppId.value = null;
-  pendingRemoveSiteAppName.value = '';
-};
-
-const onManageAppsDialogClose = () => {
-  activatingSiteAppId.value = null;
-  closeSiteAppsDialog();
-};
-
-const onShowSiteApps = (site: SiteListItem) => {
-  selectedSiteForAppsId.value = site.id;
-  showSiteAppsDialog.value = true;
-};
 
 const onActivateSiteApp = async (appId: string) => {
   const site = selectedSiteForApps.value;
@@ -749,7 +712,6 @@ const onActivateSiteApp = async (appId: string) => {
     await load(true);
     return res;
   });
-  closeSiteAppsDialog();
 
   toast.promise(promise, {
     loading: `Installing app ${appTitle} on ${site.name}`,
@@ -832,7 +794,6 @@ const onDeactivateSiteApp = async (appId: string) => {
     await load(true);
     return res;
   });
-  closeSiteAppsDialog();
 
   const appTitle = pendingRemoveSiteAppName.value || getAppTitle(appId);
   toast.promise(promise, {

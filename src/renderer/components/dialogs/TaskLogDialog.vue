@@ -110,10 +110,22 @@
                 />
 
                 <span class="flex items-center justify-center shrink-0">
-                  <IconCheckCircle2 v-if="group.status === 'success'" class="size-4 text-ink-green-6" />
-                  <LoadingIndicator v-else-if="group.status === 'running'" class="size-3.5 text-ink-blue-6" />
-                  <IconXCircle v-else-if="group.status === 'failure'" class="size-4 text-ink-red-6" />
-                  <IconCircle v-else class="size-4 text-ink-gray-4" />
+                  <IconCheckCircle2
+                    v-if="group.status === 'success'"
+                    class="size-4 text-ink-green-6"
+                  />
+                  <LoadingIndicator
+                    v-else-if="group.status === 'running'"
+                    class="size-3.5 text-ink-blue-6"
+                  />
+                  <IconXCircle
+                    v-else-if="group.status === 'failure'"
+                    class="size-4 text-ink-red-6"
+                  />
+                  <IconCircle
+                    v-else
+                    class="size-4 text-ink-gray-4"
+                  />
                 </span>
 
                 <span class="text-xs-medium truncate">

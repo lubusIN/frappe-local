@@ -198,7 +198,12 @@ const {
 } = useConfirmAction();
 
 const getAppActions = (app: CustomAppListItem) => {
-  const actions: Array<any> = [];
+  const actions: Array<{
+    label: string;
+    icon?: unknown;
+    theme?: 'red';
+    onClick: () => void;
+  }> = [];
 
   if (app.type === 'local') {
     actions.push({
