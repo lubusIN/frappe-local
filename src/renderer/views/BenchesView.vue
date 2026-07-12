@@ -286,7 +286,7 @@
                       variant="subtle"
                       theme="gray"
                     >
-                      {{ (selectedBench.apps || []).length }} Installed
+                      {{ selectedBench.appCount }} Installed
                     </Badge>
                   </div>
                 </div>

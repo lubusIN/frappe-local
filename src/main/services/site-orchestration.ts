@@ -1,6 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
-import { errorMessage, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
+import { errorMessage, filterNonCoreApps, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 
 import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
@@ -244,7 +244,7 @@ export const orchestrateSiteCreation = async (
           '--admin-password', adminPassword,
           '--db-root-password', dbPassword,
           '--install-app', 'frappe',
-          ...input.apps.filter(app => app !== 'frappe').flatMap(app => {
+          ...filterNonCoreApps(input.apps).flatMap(app => {
             const customApp = customAppsList.find((c) => c.id === app || c.name === app);
             return ['--install-app', customApp ? customApp.name : app];
           }),

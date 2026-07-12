@@ -173,7 +173,7 @@ describe('benches IPC handlers', () => {
     expect(updated).toMatchObject({
       id: 'bench-001',
       apps: ['frappe'],
-      appCount: 1,
+      appCount: 0,
     });
 
     expect(orchestrateBenchAppChangesMock).toHaveBeenCalledTimes(1);
@@ -215,7 +215,7 @@ describe('benches IPC handlers', () => {
         path: '/Users/dev/frappe-bench',
         frappeVersion: '15.0.0',
         status: 'running',
-        appCount: 1,
+        appCount: 0,
         apps: ['frappe'],
         httpPort: 8080,
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
@@ -308,7 +308,7 @@ describe('benches IPC handlers', () => {
       path: path.resolve('/Users/dev/new-bench'),
       frappeVersion: '15.0.0',
       status: 'queued',
-      appCount: 1,
+      appCount: 0,
       apps: ['frappe'],
     });
     expect((created as { httpPort?: number }).httpPort).toBeGreaterThanOrEqual(8080);

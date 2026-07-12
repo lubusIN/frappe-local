@@ -1,5 +1,5 @@
 import { DEFAULT_HTTP_PORT, execPromise, findNextAvailableTcpPort, getBinaryPath, isTcpPortFree } from '@frappe-local/main/utils';
-import { errorMessage, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
+import { errorMessage, filterNonCoreApps, humanizeCreateFailure, isLikelyOutOfMemory } from '@frappe-local/shared/core';
 
 import path from 'node:path';
 import fs from 'node:fs';
@@ -402,8 +402,8 @@ const getAppDelta = (previousApps: readonly string[], nextApps: readonly string[
   return {
     previous,
     next,
-    install: next.filter((app) => app !== 'frappe' && !previous.includes(app)),
-    remove: previous.filter((app) => app !== 'frappe' && !next.includes(app)),
+    install: filterNonCoreApps(next).filter((app) => !previous.includes(app)),
+    remove: filterNonCoreApps(previous).filter((app) => !next.includes(app)),
   };
 };
 
@@ -717,10 +717,9 @@ export const orchestrateBenchCreation = (
         
         context.completeStep('setup', 'Bench initialized and configured');
 
-        const appsToInstall = (bench.apps ?? [])
-          .map((app) => app.trim())
-          .filter(Boolean)
-          .filter((app) => app !== 'frappe');
+        const appsToInstall = filterNonCoreApps(
+          (bench.apps ?? []).map((app) => app.trim()).filter(Boolean)
+        );
 
         if (appsToInstall.length > 0) {
           failingStepId = 'apps';

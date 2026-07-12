@@ -3,7 +3,7 @@ import type { DiagnosticsReport, TaskProgressEvent } from '@frappe-local/shared/
 import { APP_CATALOG_SEED_VERSION, FRAPPE_LOCAL_MACHINE_NAME, ensureRuntimeRunning, extractCustomApp, fetchBreweryCatalog, getDefaultAppCatalogSeed, getLastDiagnosticsReport, getLastRuntimeError, getRuntimeEnv, getTaskRunner, orchestrateBenchAppChanges, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, resetAllBenchContainers, runDiagnostics, syncAppCatalogFromBrewery, type TaskExecutionContext } from '@frappe-local/main/services';
 
 import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
-import { getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
+import { filterNonCoreApps, getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
 import { DEFAULT_HTTP_PORT, execPromise, findNextAvailableTcpPort, getBinaryPath, resolveBenchHttpPort } from '@frappe-local/main/utils';
 
 import { createMainLogger } from '@frappe-local/main/logger';
@@ -113,7 +113,7 @@ const toBenchListItem = (bench: Bench): BenchListItem => ({
   frappeVersion: bench.frappeVersion,
   httpPort: bench.httpPort,
   status: bench.status,
-  appCount: bench.apps.length,
+  appCount: filterNonCoreApps(bench.apps).length,
   apps: bench.apps,
   createdAt: bench.timestamps.createdAt,
   updatedAt: bench.timestamps.updatedAt,
@@ -125,7 +125,7 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   benchId: site.benchId,
   status: site.status,
   path: site.path,
-  appCount: site.apps.length,
+  appCount: filterNonCoreApps(site.apps).length,
   apps: site.apps,
   createdAt: site.timestamps.createdAt,
   updatedAt: site.timestamps.updatedAt,
@@ -923,7 +923,7 @@ export const registerIpcHandlers = (
       const customApp = customAppsList.find((c) => c.id === app || c.name === app);
       return customApp ? bench.apps.includes(customApp.id) || bench.apps.includes(customApp.name) : false;
     };
-    const unavailableApps = payload.apps.filter((app) => app !== 'frappe' && !isAppOnBench(app));
+    const unavailableApps = filterNonCoreApps(payload.apps).filter((app) => !isAppOnBench(app));
     if (unavailableApps.length > 0) {
       throw new Error(`Cannot create site with apps not installed on bench: ${unavailableApps.join(', ')}`);
     }

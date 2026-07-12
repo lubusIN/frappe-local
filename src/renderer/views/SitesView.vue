@@ -313,7 +313,7 @@
                       variant="subtle"
                       theme="gray"
                     >
-                      {{ (selectedSite.apps || []).length }} Installed
+                      {{ selectedSite.appCount }} Installed
                     </Badge>
                   </div>
                 </div>

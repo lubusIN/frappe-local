@@ -167,7 +167,7 @@ describe('sites IPC handlers', () => {
         benchId: 'bench-001',
         status: 'ready',
         path: '/Users/dev/frappe-bench/sites/demo.localhost',
-        appCount: 2,
+        appCount: 1,
         apps: ['frappe', 'erpnext'],
         createdAt: new Date('2026-02-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-02-02T00:00:00.000Z').toISOString(),
@@ -406,7 +406,7 @@ describe('sites IPC handlers', () => {
     };
 
     expect(updated.status).toBe('queued');
-    expect(updated.appCount).toBe(1);
+    expect(updated.appCount).toBe(0);
     expect(updated.apps).toEqual(['frappe']);
   });
 
