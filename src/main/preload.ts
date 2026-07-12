@@ -24,6 +24,11 @@ const rendererBridge: RendererBridge = {
 		ipcRenderer.on(ipcChannels.updateDownloaded, internalListener);
 		return () => ipcRenderer.removeListener(ipcChannels.updateDownloaded, internalListener);
 	},
+	onUpdateError: (listener) => {
+		const internalListener = (_event: unknown, error: string) => listener(error);
+		ipcRenderer.on(ipcChannels.updateError, internalListener);
+		return () => ipcRenderer.removeListener(ipcChannels.updateError, internalListener);
+	},
 	runDiagnostics: async () => ipcRenderer.invoke(ipcChannels.diagnosticsRun),
 	getLastDiagnosticsReport: async () => ipcRenderer.invoke(ipcChannels.diagnosticsGetLast),
 	resetDevState: async () => ipcRenderer.invoke(ipcChannels.diagnosticsResetDevState),

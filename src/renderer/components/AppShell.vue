@@ -94,12 +94,23 @@
                     Download
                   </Button>
                   <Button
+                    v-else-if="updateState === 'downloading'"
+                    size="xs"
+                    variant="subtle"
+                    loading
+                    disabled
+                  >
+                    Downloading...
+                  </Button>
+                  <Button
                     v-else-if="updateState === 'downloaded'"
                     size="xs"
                     variant="subtle"
+                    :loading="isInstalling"
+                    :disabled="isInstalling"
                     @click="triggerInstall"
                   >
-                    Restart & Install
+                    {{ isInstalling ? 'Restarting...' : 'Restart & Install' }}
                   </Button>
                 </div>
               </template>
@@ -223,8 +234,18 @@ const triggerDownload = async () => {
   }
 };
 
+const isInstalling = ref(false);
+
 const triggerInstall = async () => {
-  await window.frappeLocal?.installUpdate?.();
+  if (isInstalling.value) return;
+  isInstalling.value = true;
+  try {
+    await window.frappeLocal?.installUpdate?.();
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Failed to install update.';
+    toast.error(msg);
+    isInstalling.value = false;
+  }
 };
 
 const selectedTaskLog = computed(() => {
@@ -279,6 +300,13 @@ onMounted(async () => {
   window.frappeLocal?.onUpdateDownloaded?.((version) => {
     updateVersion.value = version;
     updateState.value = 'downloaded';
+    isInstalling.value = false;
+  });
+
+  window.frappeLocal?.onUpdateError?.((errorMsg) => {
+    toast.error(`Update failed: ${errorMsg}`);
+    updateState.value = 'available';
+    isInstalling.value = false;
   });
 
   try {

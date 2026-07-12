@@ -8,6 +8,7 @@ export const ipcChannels = {
   updateInstall: 'update:install',
   updateDownloaded: 'update:downloaded',
   updateDownloading: 'update:downloading',
+  updateError: 'update:error',
   catalogList: 'catalog:list',
   catalogSync: 'catalog:sync',
   diagnosticsRun: 'diagnostics:run',
@@ -203,6 +204,7 @@ export type RendererBridge = {
   readonly onUpdateAvailable: (listener: (version: string) => void) => () => void;
   readonly onUpdateDownloading: (listener: () => void) => () => void;
   readonly onUpdateDownloaded: (listener: (version: string) => void) => () => void;
+  readonly onUpdateError: (listener: (error: string) => void) => () => void;
   readonly runDiagnostics: () => Promise<DiagnosticsReport>;
   readonly getLastDiagnosticsReport: () => Promise<DiagnosticsReport | null>;
   readonly resetDevState: () => Promise<boolean>;
