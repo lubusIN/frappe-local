@@ -141,7 +141,7 @@
 
     <main
       class="flex-1 flex flex-col min-h-0 min-w-0"
-      :class="route.name === 'sites' ? 'overflow-hidden' : 'p-8 overflow-y-auto'"
+      :class="['sites', 'benches'].includes(String(route.name)) ? 'overflow-hidden' : 'p-8 overflow-y-auto'"
     >
       <RouterView />
     </main>

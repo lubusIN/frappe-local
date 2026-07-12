@@ -45,9 +45,9 @@
 
     <div
       v-else
-      class="flex-1 min-h-0 mb-2 overflow-y-auto"
+      :class="containerClass ? 'flex-1 min-h-0 mb-2 w-full' : 'flex-1 min-h-0 mb-2 overflow-y-auto w-full'"
     >
-      <div class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 pb-4 px-1">
+      <div class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 pb-4 px-1 w-full">
         <div
           v-for="row in rows"
           :key="row.appId"

@@ -84,14 +84,6 @@
             :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id)"
             @click="resetSiteStatus(selectedSite)"
           />
-          <Button
-            variant="ghost"
-            theme="red"
-            :icon="IconTrash2"
-            tooltip="Delete Site"
-            :disabled="!isBenchRunning(selectedSite.benchId) || updating || deleting || isResourceBusy(selectedSite.id)"
-            @click="confirmDeleteSite(selectedSite.id, selectedSite.name)"
-          />
           <Dropdown
             :options="getSiteDetailMoreActions(selectedSite)"
             align="end"
@@ -118,26 +110,32 @@
           v-if="!error && sites.length > 0"
           class="flex flex-col gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2.5 bg-surface-base"
         >
-          <TextInput
-            v-model="siteFilters.search"
-            type="search"
-            placeholder="Search sites..."
-            size="sm"
-            variant="outline"
-          >
-            <template #prefix>
-              <IconSearch class="w-4 text-ink-gray-5" />
-            </template>
-          </TextInput>
+          <div class="flex items-center gap-2 w-full min-w-0">
+            <TextInput
+              v-model="siteFilters.search"
+              type="search"
+              placeholder="Search sites..."
+              size="sm"
+              variant="outline"
+              class="flex-1 min-w-0"
+            >
+              <template #prefix>
+                <IconSearch class="w-4 text-ink-gray-5" />
+              </template>
+            </TextInput>
 
-          <Select
-            v-if="allBenches.length > 1"
-            v-model="benchFilterSelection"
-            :options="benchFilterOptions"
-            size="sm"
-            variant="outline"
-            class="w-full"
-          />
+            <Select
+              v-model="benchFilterSelection"
+              :options="benchFilterOptions"
+              size="sm"
+              variant="outline"
+              class="w-36 shrink-0"
+            >
+              <template #prefix>
+                <IconListFilter class="w-4 text-ink-gray-5" />
+              </template>
+            </Select>
+          </div>
 
           <div class="flex items-center justify-between gap-2 w-full mt-0.5 min-w-0">
             <TabButtons
@@ -323,8 +321,8 @@
                 </div>
 
                 <AppManager
-                  class="pt-1"
-                  container-class="flex flex-col min-h-[520px] gap-1"
+                  class="pt-1 w-full"
+                  container-class="flex flex-col gap-1 w-full"
                   :resource-id="selectedBenchForSiteApps?.id"
                   :bench-status="selectedBenchForSiteApps?.status"
                   context="site"
@@ -413,6 +411,7 @@ import IconPlus from '~icons/lucide/plus';
 import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconPanelLeftClose from '~icons/lucide/panel-left-close';
 import IconPanelLeft from '~icons/lucide/panel-left';
+import IconListFilter from '~icons/lucide/list-filter';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
