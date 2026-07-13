@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 import { useStatusPolling } from '@frappe-local/renderer/composables/system/useStatusPolling';
+import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
 import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '@frappe-local/shared/core';
 
 import { humanizeCreateFailure, stripIpcPrefix } from '@frappe-local/shared/core';
@@ -227,13 +228,15 @@ export const useBenches = () => {
     try {
       const ipc = useIpc();
       const opened = await ipc.openAppInEditor(benchId, appName, inContainer);
+      const { getAppTitle } = useAppCatalog();
+      const appTitle = getAppTitle(appName);
       if (!opened) {
         error.value = inContainer
-          ? `Unable to open app ${appName} in Dev Container. Verify a bench with this app is running.`
-          : `Unable to open app ${appName} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
+          ? `Unable to open app ${appTitle} in Dev Container. Verify a bench with this app is running.`
+          : `Unable to open app ${appTitle} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
         return;
       }
-      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appName}.`;
+      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appTitle}.`;
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
     }

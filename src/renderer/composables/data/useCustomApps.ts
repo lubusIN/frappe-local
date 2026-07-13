@@ -96,13 +96,15 @@ export const useCustomApps = () => {
     try {
       const ipc = useIpc();
       const opened = await ipc.openAppInEditor(null, appName, inContainer);
+      const appItem = customApps.value.find((a) => a.id === appName || a.name === appName || a.title === appName);
+      const appTitle = appItem?.title || appItem?.name || appName;
       if (!opened) {
         error.value = inContainer
-          ? `Unable to open app ${appName} in Dev Container. Verify a bench with this app is running.`
-          : `Unable to open app ${appName} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
+          ? `Unable to open app ${appTitle} in Dev Container. Verify a bench with this app is running.`
+          : `Unable to open app ${appTitle} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
         return;
       }
-      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appName}.`;
+      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appTitle}.`;
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
     }
