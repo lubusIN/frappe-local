@@ -739,18 +739,47 @@ export const registerIpcHandlers = (
     const benches = await repositories.benches.findAll();
     let bench = typeof benchId === 'string' ? benches.find((b) => b.id === benchId) ?? null : null;
 
-    if (!bench && inContainer) {
-      bench = benches.find((b) => b.status === 'running' && (b.apps?.includes(appName) || b.apps?.some((a) => a === appName))) ?? null;
+    const customApps = await repositories.customApps.findAll();
+    const customApp = customApps.find((a) => a.id === appName || a.name === appName || a.title === appName);
+
+    if (!bench) {
+      const possibleIdentifiers = new Set([appName, customApp?.name, customApp?.id].filter(Boolean) as string[]);
+      bench = benches.find((b) => (inContainer ? b.status === 'running' : true) && b.apps?.some((a) => possibleIdentifiers.has(a))) ?? null;
+      if (!bench && inContainer) {
+        bench = benches.find((b) => b.apps?.some((a) => possibleIdentifiers.has(a))) ?? null;
+      }
       if (!bench) {
-        bench = benches.find((b) => b.apps?.includes(appName) || b.apps?.some((a) => a === appName)) ?? null;
+        bench = benches.find((b) => {
+          if (!fs.existsSync(path.join(b.path, 'apps'))) return false;
+          const dirs = fs.readdirSync(path.join(b.path, 'apps'));
+          return dirs.some((d) => possibleIdentifiers.has(d) || dirs.some((dir) => dir.replace(/[-_]/g, '').toLowerCase() === (customApp?.name || appName).replace(/[-_]/g, '').toLowerCase()));
+        }) ?? null;
+      }
+    }
+
+    if (!inContainer && customApp && customApp.type === 'local' && customApp.source && fs.existsSync(customApp.source)) {
+      return operations.openInEditor(customApp.source);
+    }
+
+    if (!bench) {
+      if (inContainer) {
+        mainLogger.warn(`Cannot open Dev Container for app ${appName}: no bench found with this app.`);
+      }
+      return false;
+    }
+
+    let folderName = customApp?.name || appName;
+    if (fs.existsSync(path.join(bench.path, 'apps'))) {
+      const dirs = fs.readdirSync(path.join(bench.path, 'apps'));
+      const target = dirs.find((d) => d === customApp?.name || d === appName)
+        || dirs.find((d) => d.toLowerCase() === (customApp?.name || appName).toLowerCase())
+        || dirs.find((d) => d.replace(/[-_]/g, '').toLowerCase() === (customApp?.name || appName).replace(/[-_]/g, '').toLowerCase());
+      if (target) {
+        folderName = target;
       }
     }
 
     if (inContainer) {
-      if (!bench) {
-        mainLogger.warn(`Cannot open Dev Container for app ${appName}: no bench found with this app.`);
-        return false;
-      }
       try {
         const { ensureBenchDevcontainer } = await import('@frappe-local/main/services/bench-orchestration');
         const { execPromise, getBinaryPath, resolveEditorCommand } = await import('@frappe-local/main/utils');
@@ -759,7 +788,7 @@ export const registerIpcHandlers = (
         const runtimeEnv: Record<string, string | undefined> = await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>));
         await ensureBenchDevcontainer(bench.path, { log: () => {} }, 'open-editor', runtimeEnv, bench.id);
         const hexPath = Buffer.from(bench.path, 'utf8').toString('hex');
-        const uri = `vscode-remote://dev-container+${hexPath}/workspace/apps/${appName}`;
+        const uri = `vscode-remote://dev-container+${hexPath}/workspace/apps/${folderName}`;
         const devcontainerBinDir = path.join(bench.path, '.devcontainer', 'bin');
         const podmanBinDir = path.dirname(getBinaryPath('podman'));
         const { command: codeCmd, env: editorEnv } = resolveEditorCommand('code');
@@ -775,27 +804,9 @@ export const registerIpcHandlers = (
       }
     }
 
-    if (bench) {
-      const appFolderPath = path.join(bench.path, 'apps', appName);
-      if (fs.existsSync(appFolderPath)) {
-        return operations.openInEditor(appFolderPath);
-      }
-    }
-
-    const customApps = await repositories.customApps.findAll();
-    const customApp = customApps.find((a) => a.id === appName || a.name === appName || a.title === appName);
-    if (customApp && customApp.type === 'local' && customApp.source && fs.existsSync(customApp.source)) {
-      return operations.openInEditor(customApp.source);
-    }
-
-    if (!bench) {
-      const fallbackBench = benches.find((b) => b.apps?.includes(appName) || b.apps?.some((a) => a === appName));
-      if (fallbackBench) {
-        const appFolderPath = path.join(fallbackBench.path, 'apps', appName);
-        if (fs.existsSync(appFolderPath)) {
-          return operations.openInEditor(appFolderPath);
-        }
-      }
+    const appFolderPath = path.join(bench.path, 'apps', folderName);
+    if (fs.existsSync(appFolderPath)) {
+      return operations.openInEditor(appFolderPath);
     }
 
     return false;

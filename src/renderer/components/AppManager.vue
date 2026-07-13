@@ -264,7 +264,7 @@ interface DropdownOption {
 }
 
 const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
-  const options: DropdownOption[] = [
+  return [
     {
       label: 'VS Code',
       icon: IconCode,
@@ -276,10 +276,7 @@ const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
         }
       },
     },
-  ];
-
-  if (row.sourceBadgeLabel !== 'Local') {
-    options.push({
+    {
       label: 'Dev Container',
       icon: IconBox,
       disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
@@ -289,10 +286,8 @@ const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
           toast.error(openError.value);
         }
       },
-    });
-  }
-
-  return options;
+    },
+  ];
 };
 
 const frappeVersionRef = computed(() => props.frappeVersion);
