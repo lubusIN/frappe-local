@@ -1,5 +1,79 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { getActiveTaskSignal } from '@frappe-local/main/services';
+
+export const getEnhancedProcessPath = (baseEnv?: NodeJS.ProcessEnv): string => {
+  const currentPath = baseEnv?.PATH || process.env.PATH || '';
+  if (process.platform !== 'darwin') {
+    return currentPath;
+  }
+  const home = process.env.HOME || '';
+  const extraDirs = [
+    '/usr/local/bin',
+    '/opt/homebrew/bin',
+    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin',
+    '/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin',
+    path.join(home, 'Applications/Visual Studio Code.app/Contents/Resources/app/bin'),
+    path.join(home, '.local/bin')
+  ];
+
+  const pathParts = new Set(currentPath.split(path.delimiter).filter(Boolean));
+  for (const dir of extraDirs) {
+    if (fs.existsSync(dir)) {
+      pathParts.add(dir);
+    }
+  }
+  return Array.from(pathParts).join(path.delimiter);
+};
+
+export const resolveEditorCommand = (commandName: string): { command: string; env: NodeJS.ProcessEnv } => {
+  const cmd = commandName.trim() || 'code';
+  const enhancedPath = getEnhancedProcessPath();
+  const env = { ...process.env, PATH: enhancedPath };
+
+  if (path.isAbsolute(cmd) && fs.existsSync(cmd)) {
+    return { command: cmd, env };
+  }
+
+  if (cmd === 'code' || cmd === 'code-insiders') {
+    const candidates: string[] = [];
+    if (process.platform === 'darwin') {
+      const home = process.env.HOME || '';
+      candidates.push(
+        '/usr/local/bin/code',
+        '/opt/homebrew/bin/code',
+        '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+        '/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin/code',
+        path.join(home, 'Applications/Visual Studio Code.app/Contents/Resources/app/bin/code')
+      );
+    } else if (process.platform === 'linux') {
+      candidates.push(
+        `/usr/bin/${cmd}`,
+        `/usr/local/bin/${cmd}`,
+        `/snap/bin/${cmd}`,
+        `/var/lib/flatpak/exports/bin/com.visualstudio.code`
+      );
+    } else if (process.platform === 'win32') {
+      const progFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
+      const localAppData = process.env['LOCALAPPDATA'] || '';
+      candidates.push(
+        path.join(progFiles, 'Microsoft VS Code\\bin\\code.cmd'),
+        path.join(progFiles, 'Microsoft VS Code\\bin\\code.exe'),
+        path.join(localAppData, 'Programs\\Microsoft VS Code\\bin\\code.cmd'),
+        path.join(localAppData, 'Programs\\Microsoft VS Code\\bin\\code.exe')
+      );
+    }
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return { command: candidate, env };
+      }
+    }
+  }
+
+  return { command: cmd, env };
+};
 
 export type ExecResult = {
   stdout: string;
@@ -25,7 +99,8 @@ export const execPromise = (
     let stdout = '';
     let stderr = '';
 
-    const mergedEnv = { ...process.env, ...env };
+    const enhancedPath = getEnhancedProcessPath(env);
+    const mergedEnv = { ...process.env, ...env, PATH: enhancedPath };
     const abortSignal = timeoutConfig?.signal === null
       ? undefined
       : timeoutConfig?.signal ?? getActiveTaskSignal();

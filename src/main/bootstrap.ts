@@ -10,6 +10,7 @@ import { createMainLogger } from '@frappe-local/main/logger';
 import type { AppRuntimePaths } from '@frappe-local/main/config';
 import { resolveAppRuntimePaths } from '@frappe-local/main/config';
 import { JsonStorageAdapter, initializeStorage } from '@frappe-local/main/storage';
+import { resolveEditorCommand } from '@frappe-local/main/utils';
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
 
@@ -35,23 +36,48 @@ const splitCommand = (commandLine: string): string[] => {
 };
 
 const openInEditor = async (targetPath: string, editorPreference: string): Promise<boolean> => {
-  const [command, ...args] = splitCommand(editorPreference.trim() || 'code');
-  if (!command) {
+  const [prefCommand, ...prefArgs] = splitCommand(editorPreference.trim() || 'code');
+  if (!prefCommand) {
     return false;
   }
 
-  try {
-    const childProcess = spawn(command, [...args, targetPath], {
-      detached: true,
-      stdio: 'ignore',
-      shell: process.platform === 'win32',
-    });
-    childProcess.unref();
-    return true;
-  } catch {
-    bootstrapLogger.warn(`failed to open editor for ${targetPath}`);
-    return false;
-  }
+  const { command, env } = resolveEditorCommand(prefCommand);
+
+  return new Promise((resolve) => {
+    try {
+      const childProcess = spawn(command, [...prefArgs, targetPath], {
+        detached: true,
+        stdio: 'ignore',
+        shell: process.platform === 'win32',
+        env,
+      });
+
+      let handled = false;
+      childProcess.on('error', (err) => {
+        if (handled) return;
+        handled = true;
+        bootstrapLogger.warn(`failed to open editor ${command} for ${targetPath}: ${err.message}`);
+        resolve(false);
+      });
+
+      childProcess.on('spawn', () => {
+        if (handled) return;
+        handled = true;
+        childProcess.unref();
+        resolve(true);
+      });
+
+      setTimeout(() => {
+        if (handled) return;
+        handled = true;
+        childProcess.unref();
+        resolve(true);
+      }, 300);
+    } catch (err) {
+      bootstrapLogger.warn(`failed to spawn editor ${command} for ${targetPath}: ${(err as Error).message}`);
+      resolve(false);
+    }
+  });
 };
 
 const buildStartupErrorHtml = (appName: string): string => {

@@ -709,7 +709,7 @@ export const registerIpcHandlers = (
 
     try {
       const { ensureBenchDevcontainer } = await import('@frappe-local/main/services/bench-orchestration');
-      const { execPromise, getBinaryPath } = await import('@frappe-local/main/utils');
+      const { execPromise, getBinaryPath, resolveEditorCommand } = await import('@frappe-local/main/utils');
       const { getRuntimeEnv } = await import('@frappe-local/main/services/runtime-service');
       const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
       const runtimeEnv: Record<string, string | undefined> = await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>));
@@ -718,10 +718,11 @@ export const registerIpcHandlers = (
       const uri = `vscode-remote://dev-container+${hexPath}/workspace`;
       const devcontainerBinDir = path.join(bench.path, '.devcontainer', 'bin');
       const podmanBinDir = path.dirname(getBinaryPath('podman'));
-      const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${process.env.PATH || ''}`;
+      const { command: codeCmd, env: editorEnv } = resolveEditorCommand('code');
+      const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${editorEnv.PATH || process.env.PATH || ''}`;
       const composeProjectName = getComposeProjectName(bench.id);
       const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv['DOCKER_HOST'] || process.env['DOCKER_HOST'] || process.env['CONTAINER_HOST'] || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
-      await execPromise('code', ['--folder-uri', uri], bench.path, undefined, execEnv);
+      await execPromise(codeCmd, ['--folder-uri', uri], bench.path, undefined, execEnv);
       if (bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
       return true;
     } catch (error) {
@@ -752,7 +753,7 @@ export const registerIpcHandlers = (
       }
       try {
         const { ensureBenchDevcontainer } = await import('@frappe-local/main/services/bench-orchestration');
-        const { execPromise, getBinaryPath } = await import('@frappe-local/main/utils');
+        const { execPromise, getBinaryPath, resolveEditorCommand } = await import('@frappe-local/main/utils');
         const { getRuntimeEnv } = await import('@frappe-local/main/services/runtime-service');
         const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
         const runtimeEnv: Record<string, string | undefined> = await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>));
@@ -761,10 +762,11 @@ export const registerIpcHandlers = (
         const uri = `vscode-remote://dev-container+${hexPath}/workspace/apps/${appName}`;
         const devcontainerBinDir = path.join(bench.path, '.devcontainer', 'bin');
         const podmanBinDir = path.dirname(getBinaryPath('podman'));
-        const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${process.env.PATH || ''}`;
+        const { command: codeCmd, env: editorEnv } = resolveEditorCommand('code');
+        const combinedPath = `${devcontainerBinDir}${path.delimiter}${podmanBinDir}${path.delimiter}${editorEnv.PATH || process.env.PATH || ''}`;
         const composeProjectName = getComposeProjectName(bench.id);
         const execEnv = { ...process.env, ...runtimeEnv, CONTAINER_HOST: runtimeEnv['DOCKER_HOST'] || process.env['DOCKER_HOST'] || process.env['CONTAINER_HOST'] || '', COMPOSE_PROJECT_NAME: composeProjectName, PATH: combinedPath };
-        await execPromise('code', ['--folder-uri', uri], bench.path, undefined, execEnv);
+        await execPromise(codeCmd, ['--folder-uri', uri], bench.path, undefined, execEnv);
         if (bench.id) operations.trackBenchOperation?.(bench.id, 'open-folder');
         return true;
       } catch (error) {
