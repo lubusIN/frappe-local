@@ -55,6 +55,7 @@ export const ipcChannels = {
   utilsOpenExternal: 'utils:open-external',
   utilsCheckGithubRepoVisibility: 'utils:check-github-repo-visibility',
   utilsGetAvailableTerminals: 'utils:get-available-terminals',
+  utilsCheckEditorInstalled: 'utils:check-editor-installed',
   uiReady: 'app:ui-ready',
   frontDoorStatus: 'app:front-door-status',
 } as const;
@@ -251,6 +252,7 @@ export type RendererBridge = {
   readonly openExternal: (url: string) => Promise<void>;
   readonly checkGithubRepoVisibility: (url: string) => Promise<boolean>;
   readonly getAvailableTerminals: () => Promise<AvailableTerminal[]>;
+  readonly checkEditorInstalled: (commandName?: string) => Promise<boolean>;
   readonly uiReady: () => Promise<void>;
   readonly getFrontDoorStatus: () => Promise<{ available: boolean; secure: boolean }>;
 };

@@ -75,6 +75,27 @@ export const resolveEditorCommand = (commandName: string): { command: string; en
   return { command: cmd, env };
 };
 
+export const isEditorInstalled = (commandName = 'code'): boolean => {
+  const { command, env } = resolveEditorCommand(commandName);
+  if (path.isAbsolute(command)) {
+    return fs.existsSync(command);
+  }
+
+  const pathDirs = (env.PATH || process.env.PATH || '').split(path.delimiter).filter(Boolean);
+  const extensions = process.platform === 'win32' ? ['.cmd', '.exe', '.bat', ''] : [''];
+
+  for (const dir of pathDirs) {
+    for (const ext of extensions) {
+      const fullPath = path.join(dir, `${command}${ext}`);
+      if (fs.existsSync(fullPath)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 export type ExecResult = {
   stdout: string;
   stderr: string;

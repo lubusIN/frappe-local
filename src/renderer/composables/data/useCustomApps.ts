@@ -96,6 +96,9 @@ export const useCustomApps = () => {
     try {
       const ipc = useIpc();
       const opened = await ipc.openAppInEditor(null, appName, inContainer);
+      if (customApps.value.length === 0) {
+        await load(true);
+      }
       const appItem = customApps.value.find((a) => a.id === appName || a.name === appName || a.title === appName);
       const appTitle = appItem?.title || appItem?.name || appName;
       if (!opened) {

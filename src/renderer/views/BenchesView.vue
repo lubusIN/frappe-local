@@ -389,10 +389,12 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
-import { useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
+import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
 import type { BenchListItem } from '@frappe-local/shared/core';
+
+const { isEditorInstalled } = useEditorStatus();
 
 const route = useRoute();
 const router = useRouter();
@@ -674,12 +676,13 @@ const getBenchMoreActions = (bench: BenchListItem) => {
     {
       label: 'Open in VS Code',
       icon: IconCode,
+      disabled: !isEditorInstalled.value,
       onClick: () => openInEditor(bench.id, false),
     },
     {
       label: 'Open in Dev Container',
       icon: IconBox,
-      disabled: bench.status !== 'running',
+      disabled: !isEditorInstalled.value || bench.status !== 'running',
       onClick: () => openInEditor(bench.id, true),
     },
     {

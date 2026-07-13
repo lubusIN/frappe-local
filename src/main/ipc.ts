@@ -1206,6 +1206,12 @@ export const registerIpcHandlers = (
     return await detectAvailableTerminals();
   });
 
+  ipcMainLike.handle(ipcChannels.utilsCheckEditorInstalled, async (_event: unknown, commandName: unknown) => {
+    const { isEditorInstalled } = await import('@frappe-local/main/utils');
+    const cmd = typeof commandName === 'string' ? commandName : 'code';
+    return isEditorInstalled(cmd);
+  });
+
   ipcMainLike.handle(ipcChannels.updateCheckNow, async (): Promise<UpdateCheckResult> => {
     return await triggerManualUpdateCheck();
   });

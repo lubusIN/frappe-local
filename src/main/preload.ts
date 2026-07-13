@@ -81,6 +81,7 @@ const rendererBridge: RendererBridge = {
 	openExternal: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsOpenExternal, url),
 	checkGithubRepoVisibility: async (url: string) => ipcRenderer.invoke(ipcChannels.utilsCheckGithubRepoVisibility, url),
 	getAvailableTerminals: async () => ipcRenderer.invoke(ipcChannels.utilsGetAvailableTerminals),
+	checkEditorInstalled: async (commandName?: string) => ipcRenderer.invoke(ipcChannels.utilsCheckEditorInstalled, commandName),
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 	getFrontDoorStatus: async () => ipcRenderer.invoke(ipcChannels.frontDoorStatus),
 };

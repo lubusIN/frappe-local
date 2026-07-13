@@ -168,7 +168,10 @@ import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
 import { PageHeader } from 'frappe-ui';
 
 import { useCustomApps } from '@frappe-local/renderer/composables/data';
+import { useEditorStatus } from '@frappe-local/renderer/composables/system';
 import type { CustomAppListItem } from '@frappe-local/shared/core';
+
+const { isEditorInstalled } = useEditorStatus();
 
 const {
   customApps,
@@ -202,6 +205,7 @@ const getAppActions = (app: CustomAppListItem) => {
     label: string;
     icon?: unknown;
     theme?: 'red';
+    disabled?: boolean;
     onClick: () => void;
   }> = [];
 
@@ -209,7 +213,8 @@ const getAppActions = (app: CustomAppListItem) => {
     actions.push({
       label: 'Open in VS Code',
       icon: IconCode,
-      onClick: () => openInEditor(app.id || app.name, false),
+      disabled: !isEditorInstalled.value,
+      onClick: () => openInEditor(app.name || app.title || app.id, false),
     });
   }
 

@@ -1,5 +1,6 @@
 export * from './useAppHealth';
 export * from './useDiagnostics';
+export * from './useEditorStatus';
 export * from './useFrontDoorStatus';
 export * from './useIpc';
 export * from './useProgressCenter';

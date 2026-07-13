@@ -228,15 +228,19 @@ export const useBenches = () => {
     try {
       const ipc = useIpc();
       const opened = await ipc.openAppInEditor(benchId, appName, inContainer);
-      const { getAppTitle } = useAppCatalog();
+      const { getAppTitle, reload: reloadCatalog } = useAppCatalog();
       const appTitle = getAppTitle(appName);
+      if (appTitle === appName) {
+        await reloadCatalog();
+      }
+      const finalTitle = getAppTitle(appName);
       if (!opened) {
         error.value = inContainer
-          ? `Unable to open app ${appTitle} in Dev Container. Verify a bench with this app is running.`
-          : `Unable to open app ${appTitle} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
+          ? `Unable to open app ${finalTitle} in Dev Container. Verify a bench with this app is running.`
+          : `Unable to open app ${finalTitle} in VS Code. Verify VS Code ("code" CLI) is installed and path exists.`;
         return;
       }
-      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${appTitle}.`;
+      successMessage.value = `${inContainer ? 'Dev Container' : 'VS Code'} opened for app ${finalTitle}.`;
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
     }

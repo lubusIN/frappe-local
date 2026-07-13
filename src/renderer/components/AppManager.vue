@@ -80,6 +80,7 @@
                 <Button
                   variant="outline"
                   size="sm"
+                  :disabled="getAppOpenOptions(row).every(o => Boolean(o.disabled))"
                 >
                   Open In
                 </Button>
@@ -210,6 +211,9 @@ import IconBox from '~icons/lucide/box';
 import { computed, ref, type Component } from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
 import { useAppCatalogFilters, useBenches, useCustomApps } from '@frappe-local/renderer/composables/data';
+import { useEditorStatus } from '@frappe-local/renderer/composables/system';
+
+const { isEditorInstalled } = useEditorStatus();
 
 const props = withDefaults(
   defineProps<{
@@ -264,6 +268,7 @@ const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
     {
       label: 'VS Code',
       icon: IconCode,
+      disabled: !isEditorInstalled.value,
       onClick: async () => {
         await openAppInEditor(props.resourceId ?? null, row.appId, false);
         if (openError.value) {
@@ -277,7 +282,7 @@ const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
     options.push({
       label: 'Dev Container',
       icon: IconBox,
-      disabled: props.benchStatus !== 'running',
+      disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
       onClick: async () => {
         await openAppInEditor(props.resourceId ?? null, row.appId, true);
         if (openError.value) {
