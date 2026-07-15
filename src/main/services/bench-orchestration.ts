@@ -445,6 +445,39 @@ export const fetchBenchApps = async (
 
   const customAppsList = customAppsRepo?.findAll ? await customAppsRepo.findAll() : [];
 
+  const allTargetApps = Array.from(new Set([...(bench.apps ?? []), ...apps]));
+  const localVolumes = await getLocalAppVolumes(allTargetApps, customAppsRepo);
+  if (localVolumes.length > 0) {
+    context.log('info', 'Ensuring local custom app volumes are mounted into the bench container...', stepId);
+    let shareSshKeys = true;
+    try {
+      const existingCompose = fs.readFileSync(getBenchComposePath(bench.path), 'utf8');
+      shareSshKeys = existingCompose.includes('/.ssh:ro');
+    } catch {
+      // ignore
+    }
+    const composePath = ensureBenchComposeWritten(
+      bench.path,
+      bench.frappeVersion,
+      bench.httpPort ?? DEFAULT_HTTP_PORT,
+      shareSshKeys,
+      localVolumes
+    );
+    const commonArgs = benchComposeArgs(projectName, composePath);
+    const serviceResult = await execPromise(
+      runtimeCmd,
+      [...commonArgs, 'up', '-d', '--force-recreate', '--remove-orphans', 'frappe'],
+      bench.path,
+      (out) => context.log('info', out, stepId),
+      runtimeEnv,
+      { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+    );
+    if (serviceResult.code !== 0) {
+      throw new Error(`Could not update container mounts for local apps: ${serviceResult.stderr || serviceResult.stdout}`);
+    }
+    await ensureBenchDevcontainer(bench.path, context, stepId, undefined, bench.id);
+  }
+
   for (const [index, app] of apps.entries()) {
     // Check if it's a custom app
     const customApp = customAppsList.find((candidate) => candidate.id === app || candidate.name === app);
