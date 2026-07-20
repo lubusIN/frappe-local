@@ -1098,6 +1098,39 @@ export const registerIpcHandlers = (
     return opened;
   });
 
+  ipcMainLike.handle(ipcChannels.sitesOpenShell, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const sites = await repositories.sites.findAll();
+    const site = sites.find((entry) => entry.id === id);
+    if (!site || !fs.existsSync(site.path)) {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === site.benchId);
+    if (!bench || bench.status !== 'running') {
+      mainLogger.warn(`Cannot open shell for site ${site.name}: parent bench is not running.`);
+      return false;
+    }
+
+    try {
+      const { getComposeProjectName } = await import('@frappe-local/main/utils/podman');
+      const { openSiteShell } = await import('@frappe-local/main/utils');
+      const projectName = getComposeProjectName(bench.id);
+      const runtimeEnv = await getRuntimeEnv();
+      const settings = await getCurrentSettings(repositories.settings);
+      await openSiteShell(bench.path, projectName, site.name, runtimeEnv, settings?.terminalPreference || 'default');
+      operations.trackSiteOperation?.(site.id, 'open-folder'); // Using open-folder or similar
+      return true;
+    } catch (error) {
+      mainLogger.error(`Failed to open shell for site ${site.name}:`, error);
+      return false;
+    }
+  });
+
   ipcMainLike.handle(ipcChannels.sitesOpenExternal, async (_event: unknown, id: unknown) => {
     if (typeof id !== 'string') {
       return false;

@@ -167,6 +167,24 @@ export const useSites = () => {
     }
   };
 
+  const openShell = async (id: string) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const opened = await ipc.openSiteShell(id);
+      if (!opened) {
+        error.value = 'Unable to open site shell. Verify the bench is running.';
+        return;
+      }
+      const site = sites.value.find((s) => s.id === id);
+      successMessage.value = site ? `Shell opened for ${site.name}.` : 'Site shell opened.';
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+    }
+  };
+
   useStatusPolling(sites, deletingIds, load);
 
   return {
@@ -184,6 +202,7 @@ export const useSites = () => {
     remove,
     listLogs,
     openFolder,
+    openShell,
     refresh: load,
   };
 };

@@ -43,6 +43,7 @@ const unavailableBridge: RendererBridge = {
   deleteSite: () => rejectUnavailable(),
   listSiteLogs: () => rejectUnavailable(),
   openSiteFolder: () => rejectUnavailable(),
+  openSiteShell: () => rejectUnavailable(),
   openSiteExternal: () => rejectUnavailable(),
   getSettings: () => rejectUnavailable(),
   setSettings: () => rejectUnavailable(),

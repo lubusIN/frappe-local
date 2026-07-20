@@ -58,6 +58,7 @@ const rendererBridge: RendererBridge = {
 	deleteSite: async (id) => ipcRenderer.invoke(ipcChannels.sitesDelete, id),
 	listSiteLogs: async (id) => ipcRenderer.invoke(ipcChannels.sitesLogs, id),
 	openSiteFolder: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenFolder, id),
+	openSiteShell: async (id) => ipcRenderer.invoke(ipcChannels.sitesOpenShell, id),
 	getSettings: async () => ipcRenderer.invoke(ipcChannels.settingsGet),
 	setSettings: async (settings) => ipcRenderer.invoke(ipcChannels.settingsSet, settings),
 	getSystemResources: async () => ipcRenderer.invoke(ipcChannels.systemResourcesGet),

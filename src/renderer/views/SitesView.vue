@@ -72,6 +72,13 @@
           />
           <Button
             variant="ghost"
+            :icon="IconTerminal"
+            tooltip="Open Shell"
+            :disabled="!isBenchRunning(selectedSite.benchId) || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
+            @click="openShell(selectedSite.id)"
+          />
+          <Button
+            variant="ghost"
             :icon="IconActivity"
             tooltip="Task Logs"
             @click="onStatusClick(selectedSite.id)"
@@ -397,6 +404,7 @@ import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconExternalLink from '~icons/lucide/external-link';
 import IconActivity from '~icons/lucide/activity';
 import IconFolderOpen from '~icons/lucide/folder-open';
+import IconTerminal from '~icons/lucide/terminal';
 import IconPackage from '~icons/lucide/package';
 import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
@@ -435,6 +443,7 @@ const {
   remove,
   refresh: load,
   openFolder,
+  openShell,
 } = useSites();
 
 const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();

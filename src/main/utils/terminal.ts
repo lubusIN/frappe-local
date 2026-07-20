@@ -82,20 +82,18 @@ export const detectAvailableTerminals = async (): Promise<AvailableTerminal[]> =
   return terminals;
 };
 
-export const openBenchShell = async (
+const launchShellScript = async (
+  scriptName: string,
+  scriptComment: string,
+  command: string,
   benchPath: string,
-  projectName: string,
-  env: NodeJS.ProcessEnv,
   terminalPreference = 'default'
 ): Promise<void> => {
-  const composePath = getBinaryPath('docker-compose');
-  const command = `cd "${benchPath}" && DOCKER_HOST="${env.DOCKER_HOST || ''}" "${composePath}" -p ${projectName} exec frappe /bin/bash`;
-
   const pref = terminalPreference.trim() || 'default';
 
   if (process.platform === 'darwin') {
-    const scriptPath = join(getShellsDir(), `bench-${projectName}.command`);
-    const script = `#!/bin/bash\n# Frappe Local - Bench Shell (${projectName})\n${command}\n`;
+    const scriptPath = join(getShellsDir(), `${scriptName}.command`);
+    const script = `#!/bin/bash\n# ${scriptComment}\n${command}\n`;
     writeFileSync(scriptPath, script);
     chmodSync(scriptPath, '755');
 
@@ -115,8 +113,8 @@ export const openBenchShell = async (
       }
     }
   } else if (process.platform === 'win32') {
-    const scriptPath = join(getShellsDir(), `bench-${projectName}.bat`);
-    const script = `@echo off\n:: Frappe Local - Bench Shell (${projectName})\n${command}\n`;
+    const scriptPath = join(getShellsDir(), `${scriptName}.bat`);
+    const script = `@echo off\n:: ${scriptComment}\n${command}\n`;
     writeFileSync(scriptPath, script);
 
     if (pref === 'default' || pref === 'cmd.exe') {
@@ -134,8 +132,8 @@ export const openBenchShell = async (
       await execAsync(`start "" "${pref}" "${scriptPath}"`);
     }
   } else {
-    const scriptPath = join(getShellsDir(), `bench-${projectName}.sh`);
-    const script = `#!/bin/bash\n# Frappe Local - Bench Shell (${projectName})\n${command}\n`;
+    const scriptPath = join(getShellsDir(), `${scriptName}.sh`);
+    const script = `#!/bin/bash\n# ${scriptComment}\n${command}\n`;
     writeFileSync(scriptPath, script);
     chmodSync(scriptPath, '755');
 
@@ -156,3 +154,35 @@ export const openBenchShell = async (
     }
   }
 };
+
+const launchContainerShell = async (
+  benchPath: string,
+  projectName: string,
+  env: NodeJS.ProcessEnv,
+  terminalPreference: string,
+  siteName?: string
+): Promise<void> => {
+  const composePath = getBinaryPath('docker-compose');
+  const envArg = siteName ? `-e FRAPPE_SITE="${siteName}" ` : '';
+  const command = `cd "${benchPath}" && DOCKER_HOST="${env.DOCKER_HOST || ''}" "${composePath}" -p ${projectName} exec ${envArg}frappe /bin/bash`;
+
+  const scriptName = siteName ? `site-${siteName}-${projectName}` : `bench-${projectName}`;
+  const scriptComment = siteName ? `Frappe Local - Site Shell (${siteName})` : `Frappe Local - Bench Shell (${projectName})`;
+
+  await launchShellScript(scriptName, scriptComment, command, benchPath, terminalPreference);
+};
+
+export const openSiteShell = (
+  benchPath: string,
+  projectName: string,
+  siteName: string,
+  env: NodeJS.ProcessEnv,
+  terminalPreference = 'default'
+): Promise<void> => launchContainerShell(benchPath, projectName, env, terminalPreference, siteName);
+
+export const openBenchShell = (
+  benchPath: string,
+  projectName: string,
+  env: NodeJS.ProcessEnv,
+  terminalPreference = 'default'
+): Promise<void> => launchContainerShell(benchPath, projectName, env, terminalPreference);

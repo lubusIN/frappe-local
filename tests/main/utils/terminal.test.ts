@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { detectAvailableTerminals, openBenchShell } from '../../../src/main/utils/terminal';
+import { detectAvailableTerminals, openBenchShell, openSiteShell } from '../../../src/main/utils/terminal';
 
 const mockExec = vi.fn((cmd: string, cb?: ((error: unknown, result: { stdout: string; stderr: string }) => void)) => {
   if (typeof cb === 'function') cb(null, { stdout: '', stderr: '' });
@@ -40,6 +40,13 @@ describe('terminal utilities', () => {
     if (process.platform === 'darwin') {
       await openBenchShell('/tmp/bench', 'test-proj', {}, '/usr/local/bin/my-term');
       expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('open -a "/usr/local/bin/my-term"'), expect.anything());
+    }
+  });
+
+  it('uses specified terminal preference when opening site shell', async () => {
+    if (process.platform === 'darwin') {
+      await openSiteShell('/tmp/bench', 'test-proj', 'site1.local', {}, 'iTerm');
+      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('osascript'), expect.anything());
     }
   });
 });
