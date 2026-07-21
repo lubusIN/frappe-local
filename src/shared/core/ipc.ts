@@ -130,6 +130,7 @@ export type BenchCreateInput = {
   readonly path: string;
   readonly frappeVersion: string;
   readonly httpPort?: number;
+  readonly siteName: string;
 
   readonly apps: string[];
 };

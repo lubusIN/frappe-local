@@ -113,6 +113,8 @@ export const CreateBenchInputSchema = BenchSchema.omit({
   id: true,
   status: true,
   timestamps: true,
+}).extend({
+  siteName: nonEmptyString,
 });
 
 export const UpdateBenchInputSchema = CreateBenchInputSchema.partial().extend({

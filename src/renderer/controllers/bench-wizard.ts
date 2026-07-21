@@ -1,14 +1,16 @@
 import type { BenchCreateInput } from '@frappe-local/shared/core';
-export type BenchWizardStep = 1 | 2;
+import { isValidSiteName, toSiteDomain } from './site-wizard';
+export type BenchWizardStep = 1 | 2 | 3;
 
 export type BenchWizardDraft = {
   readonly name: string;
   readonly path: string;
   readonly frappeVersion: string;
+  readonly siteName: string;
 };
 
 export type BenchWizardBuildResult = {
-  readonly payload: BenchCreateInput | null;
+  readonly payload: BenchCreateInput & { siteName?: string } | null;
   readonly errors: string[];
 };
 
@@ -16,7 +18,11 @@ const BENCH_NAME_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
 
 export const isValidBenchName = (benchName: string): boolean => BENCH_NAME_PATTERN.test(benchName.trim());
 
-export const getBenchWizardStepErrors = (step: BenchWizardStep, draft: BenchWizardDraft): string[] => {
+export const getBenchWizardStepErrors = (
+  step: BenchWizardStep,
+  draft: BenchWizardDraft,
+  context?: { existingSites?: string[] }
+): string[] => {
   const errors: string[] = [];
 
   if (step === 1) {
@@ -35,11 +41,30 @@ export const getBenchWizardStepErrors = (step: BenchWizardStep, draft: BenchWiza
     }
   }
 
+  if (step === 2) {
+    if (!draft.siteName.trim()) {
+      errors.push('Enter an initial site name.');
+    } else if (!isValidSiteName(draft.siteName)) {
+      errors.push('Site name must be a lowercase slug with letters, numbers, and hyphens only.');
+    } else if (context?.existingSites) {
+      const siteDomain = toSiteDomain(draft.siteName);
+      const isDuplicate = context.existingSites.some(s => toSiteDomain(s) === siteDomain);
+      if (isDuplicate) {
+        errors.push(`A site named "${siteDomain}" already exists. Please choose a unique site name.`);
+      }
+    }
+  }
+
   return errors;
 };
 
-export const buildBenchCreatePayload = (draft: BenchWizardDraft): BenchWizardBuildResult => {
-  const errors = getBenchWizardStepErrors(1, draft);
+export const buildBenchCreatePayload = (
+  draft: BenchWizardDraft,
+  context?: { existingSites?: string[] }
+): BenchWizardBuildResult => {
+  const errors1 = getBenchWizardStepErrors(1, draft, context);
+  const errors2 = getBenchWizardStepErrors(2, draft, context);
+  const errors = [...errors1, ...errors2];
 
   if (errors.length > 0) {
     return {
@@ -54,6 +79,7 @@ export const buildBenchCreatePayload = (draft: BenchWizardDraft): BenchWizardBui
       path: draft.path.trim(),
       frappeVersion: draft.frappeVersion.trim(),
       apps: ['frappe'],
+      siteName: toSiteDomain(draft.siteName),
     },
     errors: [],
   };

@@ -28,7 +28,7 @@ const sampleInput: CreateBenchInput = {
   name: 'test-bench',
   path: '/home/user/frappe-bench',
   frappeVersion: '15.0.0',
-  apps: ['frappe'],
+  apps: ['frappe'], siteName: 'test-site',
 };
 
 describe('BenchRepository', () => {

@@ -9,6 +9,7 @@ import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/s
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
 
 import { benchComposeArgs, cleanupPodmanResources, composeBenchArgs, composeExecArgs, ensureBenchComposeWritten, getBenchComposePath, getComposeProjectName, nameFilterArgs, projectFilterArgs } from '@frappe-local/main/utils/podman';
+import { orchestrateSiteCreation } from './site-orchestration';
 
 const resolveAndPersistBenchPort = async (
   bench: Bench,
@@ -586,6 +587,7 @@ export const orchestrateBenchCreation = (
   benchesRepo: {
     update: (id: string, payload: Partial<Bench>) => Promise<Bench | null>;
     delete?: (id: string) => Promise<boolean>;
+    findById: (id: string) => Promise<Bench | null>;
   },
   appCatalogRepo?: {
     findById?: (id: string) => Promise<AppCatalogItem | null>;
@@ -593,7 +595,22 @@ export const orchestrateBenchCreation = (
     customAppsRepo?: {
       findAll?: () => Promise<CustomAppItem[]>;
     },
-    shareSshKeys: boolean = false
+    shareSshKeys: boolean = false,
+    siteCreationOptions?: {
+      siteName: string;
+      siteRepo: {
+        create: (input: {
+          name: string;
+          benchId: string;
+          apps: string[];
+          status: 'queued' | 'ready' | 'failure';
+          path: string;
+        }) => Promise<Site>;
+        update: (id: string, input: { status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
+        delete?: (id: string) => Promise<boolean>;
+      };
+      onCompleted?: () => Promise<void>;
+    }
 ): void => {
   const taskRunner = getTaskRunner();
 
@@ -786,6 +803,32 @@ export const orchestrateBenchCreation = (
         context.completeStep('run', 'Bench processes started');
 
         await benchesRepo.update(bench.id, { status: 'running' });
+
+        if (siteCreationOptions && siteCreationOptions.siteName) {
+          context.startStep('site-queue', `Queueing initial site creation for ${siteCreationOptions.siteName}`);
+          
+          try {
+            await orchestrateSiteCreation(
+              {
+                sites: siteCreationOptions.siteRepo,
+                benches: benchesRepo,
+                customApps: customAppsRepo
+              },
+              {
+                name: siteCreationOptions.siteName,
+                benchId: bench.id,
+                path: path.join(bench.path, 'sites', siteCreationOptions.siteName),
+                apps: [],
+              },
+              {
+                onCompleted: siteCreationOptions.onCompleted,
+              }
+            );
+            context.completeStep('site-queue', 'Site creation task queued');
+          } catch (siteError) {
+            context.log('warning', `Failed to queue initial site: ${errorMessage(siteError)}`, 'site-queue');
+          }
+        }
       } catch (error) {
         const rawMessage = errorMessage(error);
         const message = humanizeCreateFailure('bench', rawMessage);

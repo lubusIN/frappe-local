@@ -96,7 +96,7 @@ describe('bench creation orchestration app install', () => {
       },
     };
 
-    orchestrateBenchCreation(bench, { update: updateMock });
+    orchestrateBenchCreation(bench, { update: updateMock, findById: async () => bench });
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
@@ -155,7 +155,7 @@ describe('bench creation orchestration app install', () => {
       }),
     };
 
-    orchestrateBenchCreation(bench, { update: updateMock }, appCatalogRepo);
+    orchestrateBenchCreation(bench, { update: updateMock, findById: async () => bench }, appCatalogRepo);
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
@@ -214,7 +214,7 @@ describe('bench creation orchestration app install', () => {
       }),
     };
 
-    orchestrateBenchCreation(bench, { update: updateMock }, appCatalogRepo);
+    orchestrateBenchCreation(bench, { update: updateMock, findById: async () => bench }, appCatalogRepo);
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
@@ -277,7 +277,7 @@ describe('bench creation orchestration app install', () => {
       }),
     };
 
-    orchestrateBenchCreation(bench, { update: updateMock }, appCatalogRepo);
+    orchestrateBenchCreation(bench, { update: updateMock, findById: async () => bench }, appCatalogRepo);
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
@@ -335,7 +335,7 @@ describe('bench creation orchestration app install', () => {
       }),
     };
 
-    orchestrateBenchCreation(bench, { update: updateMock }, appCatalogRepo);
+    orchestrateBenchCreation(bench, { update: updateMock, findById: async () => bench }, appCatalogRepo);
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
@@ -358,5 +358,47 @@ describe('bench creation orchestration app install', () => {
         'https://github.com/frappe/wiki',
       ])
     );
+  });
+  it('queues initial site creation if siteCreationOptions is provided', async () => {
+    const bench: Bench = {
+      id: 'd5f8f8ec-ffff-aaaa-bbbb-1234567890ab',
+      name: 'site-bench',
+      path: benchPath,
+      frappeVersion: 'version-16',
+      apps: ['frappe'],
+      status: 'queued',
+      httpPort: 8080,
+      timestamps: {
+        createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+      },
+    };
+
+    const siteCreateMock = vi.fn().mockResolvedValue({ id: 'site-123' });
+    const siteRepoMock = {
+      create: siteCreateMock,
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
+
+    orchestrateBenchCreation(
+      bench,
+      { update: updateMock, findById: async () => bench },
+      undefined,
+      undefined,
+      false,
+      { siteName: 'test-site.localhost', siteRepo: siteRepoMock as any }
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(siteCreateMock).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'test-site.localhost',
+      benchId: bench.id,
+      status: 'queued',
+      apps: [],
+    }));
+    expect(enqueueMock).toHaveBeenCalledTimes(2); // One for bench, one for site
   });
 });

@@ -16,6 +16,7 @@ describe('bench wizard helpers', () => {
       name: 'Bench Local',
       path: '',
       frappeVersion: '',
+      siteName: '',
     };
 
     expect(getBenchWizardStepErrors(1, draft)).toEqual([
@@ -30,6 +31,7 @@ describe('bench wizard helpers', () => {
       name: '  frappe-bench  ',
       path: '  /Users/dev/frappe-bench  ',
       frappeVersion: '  version-16  ',
+      siteName: '  my-site  ',
     };
 
     const result = buildBenchCreatePayload(draft);
@@ -40,6 +42,7 @@ describe('bench wizard helpers', () => {
       path: '/Users/dev/frappe-bench',
       frappeVersion: 'version-16',
       apps: ['frappe'],
+      siteName: 'my-site.localhost',
     });
   });
 
@@ -48,6 +51,7 @@ describe('bench wizard helpers', () => {
       name: 'frappe-bench',
       path: '/Users/dev/frappe-bench',
       frappeVersion: 'version-16',
+      siteName: 'my-site',
     });
 
     expect(result.payload?.apps).toEqual(['frappe']);

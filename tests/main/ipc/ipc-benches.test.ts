@@ -301,6 +301,7 @@ describe('benches IPC handlers', () => {
       path: '/Users/dev/new-bench',
       frappeVersion: '15.0.0',
       apps: ['frappe'],
+      siteName: 'test-site-1',
     });
 
     expect(created).toMatchObject({
@@ -339,6 +340,7 @@ describe('benches IPC handlers', () => {
       path: '/Users/dev/new-bench-2',
       frappeVersion: '15.0.0',
       apps: ['frappe'],
+      siteName: 'test-site-2',
     });
 
     expect(created).toMatchObject({
@@ -374,6 +376,7 @@ describe('benches IPC handlers', () => {
       frappeVersion: '15.0.0',
       httpPort: 8080,
       apps: ['frappe'],
+      siteName: 'test-site-3',
     });
 
     expect(created).toMatchObject({

@@ -389,7 +389,7 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
-import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus } from '@frappe-local/renderer/composables/system';
+import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
 import type { BenchListItem } from '@frappe-local/shared/core';
@@ -398,6 +398,7 @@ const { isEditorInstalled } = useEditorStatus();
 
 const route = useRoute();
 const router = useRouter();
+const ipc = useIpc();
 
 const {
   benches,
@@ -415,7 +416,7 @@ const {
   refresh,
 } = useBenches();
 
-const { sites } = useSites();
+const { sites, refresh: refreshSites } = useSites();
 
 watch(successMessage, (msg) => {
   if (msg) {
@@ -784,6 +785,7 @@ const onConfirmDeleteBench = async () => {
       },
     });
     await promise;
+    void refreshSites(true);
   } catch {
     // handled by toast
   }
@@ -795,8 +797,8 @@ const onOpenBenchFolder = async (id: string) => {
 
 const onBenchCreated = async (bench: BenchListItem) => {
   void refresh(true);
-  const promise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
-  toast.promise(promise, {
+  const benchPromise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
+  toast.promise(benchPromise, {
     loading: `Creating bench ${bench.name}`,
     success: `Bench ${bench.name} created.`,
     error: `Failed to create bench ${bench.name}.`,
@@ -808,6 +810,39 @@ const onBenchCreated = async (bench: BenchListItem) => {
       }
     }
   });
+
+  benchPromise.then(async () => {
+    await refreshSites(true);
+    const initialSite = sites.value.find(s => s.benchId === bench.id && s.status === 'queued');
+    if (initialSite) {
+      const sitePromise = runAndWaitForTask(() => Promise.resolve(), 'site', initialSite.id, /^Create Site/i).then(() => refreshSites(true));
+      toast.promise(sitePromise, {
+        loading: `Creating initial site ${initialSite.name}`,
+        action: {
+          label: 'View logs',
+          onClick: (e?: Event) => {
+            e?.preventDefault();
+            selectedTaskId.value = getLatestRelevantTaskId(bench.id);
+          }
+        },
+        success: () => ({
+          message: `Site ${initialSite.name} created.`,
+          action: {
+            label: 'Open',
+            onClick: (e?: Event) => {
+              e?.preventDefault();
+              void ipc.openSiteExternal(initialSite.id).then((opened) => {
+                if (!opened) {
+                  toast.error(`Unable to open ${initialSite.name}.`);
+                }
+              });
+            }
+          }
+        }),
+        error: `Failed to create site ${initialSite.name}.`
+      });
+    }
+  }).catch(() => {});
 };
 
 const onOpenBenchShell = async (id: string) => {

@@ -2,7 +2,7 @@
   <WizardDialog
     :open="open"
     title="New bench"
-    :steps="['Details', 'Confirm']"
+    :steps="['Details', 'Site', 'Confirm']"
     :current-step="wizardStep"
     :errors="wizardErrors"
     :creating="creating"
@@ -18,26 +18,24 @@
       v-if="wizardStep === 1"
       class="grid gap-4"
     >
-      <label class="flex flex-col gap-1.5">
-        <FormLabel label="Name" />
-        <TextInput
-          v-model="createForm.name"
-          type="text"
-          required
-          placeholder="my-bench"
-          variant="outline"
-        />
-      </label>
+      <FormControl
+        v-model="createForm.name"
+        type="text"
+        required
+        label="Name"
+        placeholder="my-bench"
+        variant="outline"
+      />
 
-      <label class="flex flex-col gap-1.5">
+      <div class="flex flex-col gap-1.5">
         <FormLabel label="Frappe Version" />
         <FrappeVersionSelect
           v-model="createForm.frappeVersion"
           class="w-full"
         />
-      </label>
+      </div>
 
-      <label class="flex flex-col gap-1.5">
+      <div class="flex flex-col gap-1.5">
         <FormLabel label="Path" />
         <div class="flex w-full gap-2">
           <div class="flex-1 min-w-0">
@@ -58,11 +56,31 @@
             Browse
           </Button>
         </div>
-      </label>
+      </div>
     </div>
 
     <div
       v-if="wizardStep === 2"
+      class="grid gap-4"
+    >
+      <div class="flex flex-col gap-1.5">
+        <FormLabel label="Initial Site Name" />
+        <TextInput
+          v-model="createForm.siteName"
+          type="text"
+          required
+          placeholder="my-site"
+          variant="outline"
+        >
+          <template #suffix>
+            <span class="text-p-sm text-ink-gray-6">.localhost</span>
+          </template>
+        </TextInput>
+      </div>
+    </div>
+
+    <div
+      v-if="wizardStep === 3"
       class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px] text-ink-gray-9"
     >
       <div class="mb-2 flex justify-between text-ink-gray-5">
@@ -71,25 +89,28 @@
       <div class="mb-2 flex justify-between text-ink-gray-5">
         <span>Frappe Version</span><strong class="font-semibold text-ink-gray-9">{{ createForm.frappeVersion }}</strong>
       </div>
-      <div class="flex justify-between text-ink-gray-5">
+      <div class="mb-2 flex justify-between text-ink-gray-5">
         <span>Path</span><strong class="font-mono text-xs-semibold break-all text-ink-gray-9">{{ createForm.path }}</strong>
+      </div>
+      <div class="flex justify-between text-ink-gray-5">
+        <span>Initial Site</span><strong class="font-semibold text-ink-gray-9">{{ toSiteDomain(createForm.siteName) }}</strong>
       </div>
     </div>
   </WizardDialog>
 </template>
 
 <script setup lang="ts">
-import { Button, FormLabel, TextInput } from 'frappe-ui';
+import { Button, FormLabel, TextInput, FormControl } from 'frappe-ui';
 import { reactive, ref, watch } from 'vue';
 import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
 import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
-import { useBenches, useSettings } from '@frappe-local/renderer/composables/data';
+import { useBenches, useSettings, useSites } from '@frappe-local/renderer/composables/data';
 import { useIpc } from '@frappe-local/renderer/composables/system';
 
-import { buildBenchCreatePayload, getBenchWizardStepErrors, type BenchWizardStep } from '@frappe-local/renderer/controllers';
+import { buildBenchCreatePayload, getBenchWizardStepErrors, toSiteDomain, type BenchWizardStep } from '@frappe-local/renderer/controllers';
 import { toSelectorFrappeVersion } from '@frappe-local/renderer/utils';
 
-import type { BenchListItem } from '@frappe-local/shared/domain';
+import type { BenchListItem } from '@frappe-local/shared/core';
 
 defineProps<{ open: boolean }>();
 const emit = defineEmits<{
@@ -99,6 +120,7 @@ const emit = defineEmits<{
 
 const ipc = useIpc();
 const { creating, loading, create } = useBenches();
+const { sites } = useSites();
 const { form: settingsForm } = useSettings();
 
 const getDefaultFrappeVersion = () => toSelectorFrappeVersion(settingsForm.value.defaultFrappeVersion);
@@ -109,6 +131,7 @@ const createForm = reactive({
   name: '',
   path: '',
   frappeVersion: getDefaultFrappeVersion(),
+  siteName: '',
 });
 
 watch(() => [createForm.name, settingsForm.value.storagePath], ([newName, storagePath], [oldName]) => {
@@ -147,10 +170,11 @@ const triggerFolderPicker = async () => {
 };
 
 const onNextStep = () => {
-  const errors = getBenchWizardStepErrors(wizardStep.value, createForm);
+  const context = { existingSites: sites.value.map(s => s.name) };
+  const errors = getBenchWizardStepErrors(wizardStep.value, createForm, context);
   wizardErrors.value = errors;
   if (errors.length > 0) return;
-  if (wizardStep.value < 2) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
+  if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
 };
 
 const onPreviousStep = () => {
@@ -164,11 +188,13 @@ const onCloseBenchWizard = () => {
   createForm.name = '';
   createForm.path = '';
   createForm.frappeVersion = getDefaultFrappeVersion();
+  createForm.siteName = '';
   emit('update:open', false);
 };
 
 const onCreateBench = async () => {
-  const result = buildBenchCreatePayload(createForm);
+  const context = { existingSites: sites.value.map(s => s.name) };
+  const result = buildBenchCreatePayload(createForm, context);
   wizardErrors.value = result.errors;
   if (!result.payload) return;
 

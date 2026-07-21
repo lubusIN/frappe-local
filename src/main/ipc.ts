@@ -498,20 +498,27 @@ export const registerIpcHandlers = (
 
   ipcMainLike.handle(ipcChannels.benchesCreate, async (_event: unknown, input: unknown) => {
     const rawInput = input as BenchCreateInput;
-    const payload = CreateBenchInputSchema.parse({
+    const { siteName, ...benchPayload } = CreateBenchInputSchema.parse({
       ...rawInput,
       path: resolveUserPath(rawInput.path),
     });
-    const normalizedApps = Array.from(new Set(['frappe', ...payload.apps.map(a => a.trim()).filter(Boolean)]));
+    const normalizedApps = Array.from(new Set(['frappe', ...benchPayload.apps.map(a => a.trim()).filter(Boolean)]));
+
+    const existingSites = await repositories.sites.findAll();
+    const duplicateSite = existingSites.find(s => normalizeSiteHost(s.name) === normalizeSiteHost(siteName));
+    if (duplicateSite) {
+      throw new Error(`A site host "${normalizeSiteHost(siteName)}" already exists. Use a unique initial site name.`);
+    }
 
     const existingBenches = await repositories.benches.findAll();
     const usedPorts = deriveUsedBenchPorts(existingBenches);
-    const requestedPort = payload.httpPort;
+    const requestedPort = benchPayload.httpPort;
     const startPort = requestedPort ?? DEFAULT_HTTP_PORT;
     const httpPort = await findNextAvailableTcpPort(startPort, usedPorts);
 
     const created = await repositories.benches.create({
-      ...payload,
+      ...benchPayload,
+      siteName,
       status: 'queued', // Initial state should be queued
       apps: normalizedApps,
       httpPort,
@@ -519,7 +526,20 @@ export const registerIpcHandlers = (
 
     const settings = await getCurrentSettings(repositories.settings);
     operations.trackBenchOperation?.(created.id, 'create');
-    orchestrateBenchCreation(created, repositories.benches, repositories.appCatalog, repositories.customApps, settings?.shareSshKeys ?? false);
+    orchestrateBenchCreation(
+      created,
+      repositories.benches,
+      repositories.appCatalog,
+      repositories.customApps,
+      settings?.shareSshKeys ?? false,
+      {
+        siteName,
+        siteRepo: repositories.sites,
+        onCompleted: async () => {
+          await operations.refreshFrontDoorHosts?.();
+        }
+      }
+    );
 
     return toBenchListItem(created);
   });
