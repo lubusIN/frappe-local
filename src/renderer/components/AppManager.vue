@@ -1,27 +1,38 @@
 <template>
   <section :class="containerClass || 'flex flex-col h-[60vh] gap-1'">
-    <header class="flex items-center gap-2.5 mb-3">
-      <div class="min-w-[140px] flex-1">
-        <TextInput 
-          v-model="query"
-          type="search"
-          placeholder="Search apps…"
-          :disabled="disabled"
-          variant="outline"
-          @update:model-value="onSearch"
-        >
-          <template #prefix>
-            <IconSearch class="w-4 text-ink-gray-6" />
-          </template>
-        </TextInput>
+    <header class="flex flex-col gap-3 mb-3">
+      <div class="flex items-center">
+        <TabButtons
+          v-model="activeTab"
+          :buttons="[
+            { label: 'Installed', value: 'installed' },
+            { label: 'Available', value: 'available' }
+          ]"
+        />
       </div>
-      <Select
-        v-model="categoryFilter"
-        class="min-w-[120px] text-xs"
-        :disabled="disabled || state.loading"
-        :options="categoryOptions"
-        variant="outline"
-      />
+      <div class="flex items-center gap-2.5">
+        <div class="min-w-[140px] flex-1">
+          <TextInput 
+            v-model="query"
+            type="search"
+            placeholder="Search apps…"
+            :disabled="disabled"
+            variant="outline"
+            @update:model-value="onSearch"
+          >
+            <template #prefix>
+              <IconSearch class="w-4 text-ink-gray-6" />
+            </template>
+          </TextInput>
+        </div>
+        <Select
+          v-model="categoryFilter"
+          class="min-w-[120px] text-xs"
+          :disabled="disabled || state.loading"
+          :options="categoryOptions"
+          variant="outline"
+        />
+      </div>
     </header>
 
     <div
@@ -204,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dropdown, Select, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dropdown, Select, TabButtons, TextInput, toast } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
 import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';
@@ -247,6 +258,8 @@ const emit = defineEmits<{
   (e: 'install-app', appId: string): void;
   (e: 'uninstall-app', appId: string): void;
 }>();
+
+const activeTab = ref('installed');
 
 const { openAppInEditor, error: openError } = useBenches();
 
@@ -394,5 +407,12 @@ const customRows = computed(() =>
   })
 );
 
-const rows = computed(() => [...catalogRows.value, ...customRows.value]);
+const rows = computed(() => {
+  const allRows = [...catalogRows.value, ...customRows.value];
+  if (activeTab.value === 'installed') {
+    return allRows.filter((r) => r.isActive);
+  } else {
+    return allRows.filter((r) => !r.isActive);
+  }
+});
 </script>
