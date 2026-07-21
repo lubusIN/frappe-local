@@ -238,7 +238,6 @@ export const orchestrateSiteCreation = async (
         const runtimeEnv = await getRuntimeEnv();
         const args = composeBenchArgs(projectName, [
           'new-site',
-          input.force ? '--force' : '',
           '--mariadb-user-host-login-scope', '%',
           '--db-host', 'mariadb',
           '--admin-password', adminPassword,

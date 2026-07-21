@@ -125,8 +125,6 @@ export const CreateSiteInputSchema = SiteSchema.omit({
   id: true,
   status: true,
   timestamps: true,
-}).extend({
-  force: z.boolean().optional(),
 });
 
 export const UpdateSiteInputSchema = CreateSiteInputSchema.partial().extend({

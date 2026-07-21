@@ -317,7 +317,7 @@ describe('sites IPC handlers', () => {
     ).rejects.toThrow('Cannot create site with apps not installed on bench: wiki');
   });
 
-  it('sites:create blocks duplicate canonical host across benches even when force is true', async () => {
+  it('sites:create blocks duplicate canonical host across benches', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
@@ -345,7 +345,6 @@ describe('sites IPC handlers', () => {
         benchId: 'bench-002',
         path: '/Users/dev/frappe-bench-2/sites/frappevault.local.local',
         apps: ['frappe'],
-        force: true,
       })
     ).rejects.toThrow('already exists');
   });

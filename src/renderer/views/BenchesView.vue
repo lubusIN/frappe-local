@@ -326,14 +326,24 @@
 
           <!-- Footer Actions Bar pinned at bottom of reading pane -->
           <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-outline-gray-1 px-5 py-3 bg-surface-base">
-            <Button
-              variant="subtle"
-              size="sm"
-              :icon-left="IconGlobe"
-              @click="onManageBenchSites(selectedBench.id)"
-            >
-              Go to Sites ({{ getBenchSiteCount(selectedBench.id) }})
-            </Button>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="subtle"
+                size="sm"
+                :icon-left="IconGlobe"
+                @click="onManageBenchSites(selectedBench.id)"
+              >
+                Go to Sites ({{ getBenchSiteCount(selectedBench.id) }})
+              </Button>
+              <Button
+                variant="subtle"
+                size="sm"
+                :icon-left="IconPlus"
+                @click="showCreateSiteModal = true"
+              >
+                Add Site
+              </Button>
+            </div>
           </footer>
         </template>
       </section>
@@ -352,6 +362,12 @@
     <BenchWizardDialog
       v-model:open="showCreateBenchModal"
       @created="onBenchCreated"
+    />
+
+    <SiteWizardDialog
+      v-model:open="showCreateSiteModal"
+      :fixed-bench-id="selectedBench?.id"
+      @created="onSiteCreated"
     />
 
     <ConfirmationDialog
@@ -401,6 +417,7 @@ import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
+import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import AppUsageDialog from '@frappe-local/renderer/components/dialogs/AppUsageDialog.vue';
 import type { BenchListItem } from '@frappe-local/shared/core';
 
@@ -428,6 +445,12 @@ const {
 } = useBenches();
 
 const { sites, refresh: refreshSites } = useSites();
+
+const showCreateSiteModal = ref(false);
+
+const onSiteCreated = () => {
+  refreshSites(true);
+};
 
 watch(successMessage, (msg) => {
   if (msg) {

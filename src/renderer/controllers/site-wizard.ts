@@ -6,8 +6,6 @@ export type SiteWizardDraft = {
   readonly benchId: string;
   readonly name: string;
   readonly path: string;
-
-  readonly force?: boolean;
 };
 
 export type SiteWizardBuildResult = {
@@ -99,7 +97,6 @@ export const buildSiteCreatePayload = (
       path: normalizedPath,
 
       apps: ['frappe'],
-      force: draft.force ?? false,
     },
     errors: [],
   };

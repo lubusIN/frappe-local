@@ -75,7 +75,6 @@ describe('site wizard helpers', () => {
       name: 'demo-site.localhost',
       path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
       apps: ['frappe'],
-      force: false,
     });
   });
 
@@ -91,7 +90,6 @@ describe('site wizard helpers', () => {
       name: 'my-site.localhost',
       path: '/Users/dev/frappe-bench/sites/my-site.localhost',
       apps: ['frappe'],
-      force: false,
     });
   });
 });

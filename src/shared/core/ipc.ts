@@ -169,7 +169,6 @@ export type SiteCreateInput = {
   readonly benchId: string;
   readonly path: string;
   readonly apps: string[];
-  readonly force?: boolean;
 };
 
 export type SiteUpdateInput = {

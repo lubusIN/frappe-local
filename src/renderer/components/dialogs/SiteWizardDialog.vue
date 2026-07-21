@@ -2,8 +2,8 @@
   <WizardDialog
     :open="open"
     title="New site"
-    :steps="['Bench', 'Details', 'Confirm']"
-    :current-step="wizardStep"
+    :steps="computedSteps"
+    :current-step="fixedBenchId ? wizardStep - 1 : wizardStep"
     :errors="wizardErrors"
     :creating="creating"
     :loading="loading"
@@ -47,12 +47,6 @@
           </template>
         </TextInput>
       </label>
-      <div class="flex items-center gap-2">
-        <Switch
-          v-model="createForm.force"
-          label="Force create"
-        />
-      </div>
     </div>
 
     <div
@@ -65,18 +59,12 @@
       <div class="flex justify-between mb-2 text-ink-gray-5">
         <span>Site</span><strong class="font-semibold text-ink-gray-9">{{ toSiteDomain(createForm.name) }}</strong>
       </div>
-      <div
-        v-if="createForm.force"
-        class="flex justify-between mb-2 text-ink-gray-5"
-      >
-        <span>Force</span><strong class="font-semibold text-ink-gray-9">Yes</strong>
-      </div>
     </div>
   </WizardDialog>
 </template>
 
 <script setup lang="ts">
-import { FormLabel, Select, Switch, TextInput } from 'frappe-ui';
+import { FormLabel, Select, TextInput } from 'frappe-ui';
 import { computed, reactive, ref, watch } from 'vue';
 import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
 import { useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -86,7 +74,7 @@ import { buildSiteCreatePayload, getSiteWizardStepErrors, suggestSitePath, toSit
 
 import type { SiteListItem } from '@frappe-local/shared/core';
 
-const props = defineProps<{ open: boolean }>();
+const props = defineProps<{ open: boolean; fixedBenchId?: string }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
   'created': [site: SiteListItem];
@@ -102,12 +90,12 @@ const createForm = reactive({
   name: '',
   benchId: '',
   path: '',
-
-  force: false,
 });
 
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<string[]>([]);
+
+const computedSteps = computed(() => props.fixedBenchId ? ['Details', 'Confirm'] : ['Bench', 'Details', 'Confirm']);
 
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 const createBenchSelection = computed({
@@ -131,9 +119,15 @@ watch(
   (isOpen) => {
     if (isOpen) {
       refresh();
-      const [onlyBench] = creatableBenches.value;
-      if (!createForm.benchId && onlyBench && creatableBenches.value.length === 1) {
-        createForm.benchId = onlyBench.id;
+      if (props.fixedBenchId) {
+        createForm.benchId = props.fixedBenchId;
+        wizardStep.value = 2;
+      } else {
+        wizardStep.value = 1;
+        const [onlyBench] = creatableBenches.value;
+        if (!createForm.benchId && onlyBench && creatableBenches.value.length === 1) {
+          createForm.benchId = onlyBench.id;
+        }
       }
     }
   }
@@ -142,7 +136,7 @@ watch(
 watch(
   () => [createForm.name, wizardStep.value] as const,
   ([newName, step]) => {
-    if (selectedBench.value && !createForm.force) {
+    if (selectedBench.value) {
       const sanitizedName = toSiteDomain(newName);
       createForm.path = suggestSitePath(selectedBench.value.path, sanitizedName);
     }
@@ -158,10 +152,10 @@ watch(
 const onNextStep = async () => {
   const errors = getSiteWizardStepErrors(wizardStep.value, createForm, sites.value);
   if (wizardStep.value === 2) {
-    if (!createForm.force && createForm.path) {
+    if (createForm.path) {
       const exists = await ipc.pathExists(createForm.path);
       if (exists) {
-        errors.push('Site already exists at this path. Enable "Force create" to overwrite.');
+        errors.push('Site already exists at this path. Please choose a different name.');
       }
     }
   }
@@ -172,17 +166,16 @@ const onNextStep = async () => {
 
 const onPreviousStep = () => {
   wizardErrors.value = [];
-  if (wizardStep.value > 1) wizardStep.value = (wizardStep.value - 1) as SiteWizardStep;
+  const minStep = props.fixedBenchId ? 2 : 1;
+  if (wizardStep.value > minStep) wizardStep.value = (wizardStep.value - 1) as SiteWizardStep;
 };
 
 const onCloseSiteWizard = () => {
-  wizardStep.value = 1;
+  wizardStep.value = props.fixedBenchId ? 2 : 1;
   wizardErrors.value = [];
   createForm.name = '';
-  createForm.benchId = '';
+  createForm.benchId = props.fixedBenchId ? props.fixedBenchId : '';
   createForm.path = '';
-
-  createForm.force = false;
   emit('update:open', false);
 };
 
