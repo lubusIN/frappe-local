@@ -41,9 +41,10 @@
             class="shrink-0 flex items-center gap-1.5 !text-xs"
           >
             <span>{{ formatStatusLabel(selectedBench) }}</span>
-            <span
+            <Spinner
               v-if="isResourceBusy(selectedBench.id)"
-              class="inline-block size-2 rounded-full border-[1.5px] border-current border-r-transparent animate-spin"
+              size="xs"
+              class="text-current"
             />
           </Badge>
         </div>
@@ -66,7 +67,7 @@
             variant="ghost"
             :icon="IconRotateCw"
             tooltip="Restart Bench"
-            :disabled="updating || isResourceBusy(selectedBench.id) || selectedBench.status === 'queued'"
+            :disabled="updating || isResourceBusy(selectedBench.id)"
             @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
           />
           <Button
@@ -244,9 +245,10 @@
                   </ListCell>
                   <ListCell class="self-start justify-end pt-3.5">
                     <div class="flex items-center gap-1.5 shrink-0">
-                      <span
+                      <Spinner
                         v-if="isResourceBusy(bench.id)"
-                        class="inline-block size-3 rounded-full border-[1.5px] border-ink-gray-6 border-r-transparent animate-spin"
+                        size="xs"
+                        class="text-ink-gray-6"
                       />
                       <span
                         v-else-if="bench.frappeVersion"
@@ -360,11 +362,18 @@
       @cancel="onCancelRemoveBenchApp"
       @confirm="onConfirmRemoveBenchApp"
     />
+
+    <AppUsageDialog
+      v-model:open="usageDialogOpen"
+      :app-name="usageAppTitle"
+      title="App in use"
+      :usage="usageData"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, TabButtons, TextInput, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, TextInput, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';
@@ -392,6 +401,7 @@ import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
+import AppUsageDialog from '@frappe-local/renderer/components/dialogs/AppUsageDialog.vue';
 import type { BenchListItem } from '@frappe-local/shared/core';
 
 const { isEditorInstalled } = useEditorStatus();
@@ -410,6 +420,7 @@ const {
   successMessage,
   update,
   remove: deleteBench,
+  checkAppUsage,
   openFolder,
   openShell,
   openInEditor,
@@ -437,7 +448,11 @@ const removeAppConfirmOpen = ref(false);
 const pendingRemoveBenchAppId = ref<string | null>(null);
 const pendingRemoveBenchAppName = ref('');
 
-const selectedBenchId = ref<string | null>(null);
+const usageDialogOpen = ref(false);
+const usageAppTitle = ref('');
+const usageData = ref({ benches: [] as string[], sites: [] as string[] });
+
+const selectedBenchId = ref<string>();
 const showList = ref(true);
 
 const selectBench = (id: string) => {
@@ -458,7 +473,7 @@ const statusTabs = computed(() => [
   { label: 'All', value: '', count: benches.value.length },
   { label: 'Running', value: 'running', count: benches.value.filter((b) => b.status === 'running').length },
   { label: 'Stopped', value: 'stopped', count: benches.value.filter((b) => b.status === 'stopped' || b.status === 'success').length },
-  { label: 'Error', value: 'failure', count: benches.value.filter((b) => b.status === 'failure' || b.status === 'error').length },
+  { label: 'Error', value: 'failure', count: benches.value.filter((b) => b.status === 'failure').length },
 ]);
 
 const statusTabOptions = computed(() =>
@@ -478,7 +493,7 @@ const filteredBenches = computed(() => {
     if (benchFilters.status) {
       if (benchFilters.status === 'running' && bench.status !== 'running') return false;
       if (benchFilters.status === 'stopped' && bench.status !== 'stopped' && bench.status !== 'success') return false;
-      if (benchFilters.status === 'failure' && bench.status !== 'failure' && bench.status !== 'error') return false;
+      if (benchFilters.status === 'failure' && bench.status !== 'failure') return false;
     }
     if (benchFilters.search) {
       const q = benchFilters.search.toLowerCase();
@@ -505,7 +520,7 @@ watch(
   () => filteredBenches.value,
   (list) => {
     if (list.length > 0 && (!selectedBenchId.value || !benches.value.some((b) => b.id === selectedBenchId.value))) {
-      selectedBenchId.value = list[0].id;
+      selectedBenchId.value = list[0]?.id;
     }
   },
   { immediate: true }
@@ -583,15 +598,36 @@ const onAddBenchApp = async (appId: string) => {
   });
 };
 
-const onRequestRemoveBenchApp = (appId: string) => {
+const onRequestRemoveBenchApp = async (appId: string) => {
   const bench = selectedBenchForApps.value;
   if (!bench || !canMutateApps.value) {
     return;
   }
 
-  pendingRemoveBenchAppId.value = appId;
-  pendingRemoveBenchAppName.value = getAppTitle(appId);
-  removeAppConfirmOpen.value = true;
+  const appTitle = getAppTitle(appId) || appId;
+
+  const info = getAppInfo(appId);
+  
+  const identifiers = [appId];
+  if (info.id && !identifiers.includes(info.id)) identifiers.push(info.id);
+  if (info.name && !identifiers.includes(info.name)) identifiers.push(info.name);
+  if (info.title && !identifiers.includes(info.title)) identifiers.push(info.title);
+
+  try {
+    const usage = await checkAppUsage(bench.id, identifiers);
+    if (usage.inUse) {
+      usageAppTitle.value = appTitle;
+      usageData.value = { benches: usage.benches, sites: usage.sites };
+      usageDialogOpen.value = true;
+      return;
+    }
+
+    pendingRemoveBenchAppId.value = appId;
+    pendingRemoveBenchAppName.value = appTitle;
+    removeAppConfirmOpen.value = true;
+  } catch (error) {
+    toast.error('Failed to check app usage');
+  }
 };
 
 const onCancelRemoveBenchApp = () => {
@@ -612,15 +648,17 @@ const removeAppConfirmMessage = computed(() => {
 const onConfirmRemoveBenchApp = async () => {
   const bench = selectedBenchForApps.value;
   const appId = pendingRemoveBenchAppId.value;
-  const appTitle = pendingRemoveBenchAppName.value || appId;
   if (!bench || !appId || !canMutateApps.value) {
     onCancelRemoveBenchApp();
     return;
   }
+  
+  const appTitle = pendingRemoveBenchAppName.value || appId;
 
   removeAppConfirmOpen.value = false;
 
   const info = getAppInfo(appId);
+
   const nextApps = bench.apps.filter((existingAppId) => existingAppId !== appId && existingAppId !== info.id && existingAppId !== info.name);
 
   const promise = runAndWaitForTask(

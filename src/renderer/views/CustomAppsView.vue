@@ -147,6 +147,13 @@
       @cancel="cancelDelete"
       @confirm="onConfirmDelete"
     />
+
+    <AppUsageDialog
+      v-model:open="usageDialogOpen"
+      :app-name="usageAppTitle"
+      title="App in use"
+      :usage="usageData"
+    />
   </section>
 </template>
 
@@ -163,6 +170,7 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import ResourceListView from '@frappe-local/renderer/components/ui/ResourceListView.vue';
 import AddCustomAppModal from '@frappe-local/renderer/components/dialogs/AddCustomAppModal.vue';
+import AppUsageDialog from '@frappe-local/renderer/components/dialogs/AppUsageDialog.vue';
 
 import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
 import { PageHeader } from 'frappe-ui';
@@ -179,6 +187,7 @@ const {
   error,
   refresh,
   remove: deleteApp,
+  checkAppUsage,
   openInEditor,
 } = useCustomApps();
 
@@ -203,7 +212,7 @@ const {
 const getAppActions = (app: CustomAppListItem) => {
   const actions: Array<{
     label: string;
-    icon?: unknown;
+    icon?: any;
     theme?: 'red';
     disabled?: boolean;
     onClick: () => void;
@@ -222,10 +231,31 @@ const getAppActions = (app: CustomAppListItem) => {
     label: 'Delete',
     icon: IconTrash2,
     theme: 'red' as const,
-    onClick: () => confirmDelete(app.id, app.title || app.name),
+    onClick: () => onDeleteClick(app.id, app.title || app.name),
   });
 
   return actions;
+};
+
+const usageDialogOpen = ref(false);
+const usageAppTitle = ref('');
+const usageData = ref({ benches: [] as string[], sites: [] as string[] });
+
+const onDeleteClick = async (appId: string, appName: string) => {
+  try {
+    const usage = await checkAppUsage(appId);
+    if (usage.inUse) {
+      usageAppTitle.value = appName;
+      usageData.value = { benches: usage.benches, sites: usage.sites };
+      usageDialogOpen.value = true;
+      return;
+    }
+    
+    // Not in use, safe to confirm deletion
+    confirmDelete(appId, appName);
+  } catch (error) {
+    toast.error('Failed to check app usage');
+  }
 };
 
 const onConfirmDelete = async () => {

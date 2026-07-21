@@ -24,6 +24,7 @@ export const ipcChannels = {
   customAppsUpdate: 'custom-apps:update',
   customAppsDelete: 'custom-apps:delete',
   customAppsExtract: 'custom-apps:extract',
+  appsCheckUsage: 'apps:check-usage',
   benchesList: 'benches:list',
   benchesPickFolder: 'benches:pick-folder',
   benchesCreate: 'benches:create',
@@ -102,6 +103,12 @@ export type ExtractedCustomAppMetadata = {
   readonly icon?: string;
   readonly branch?: string;
   readonly license?: string;
+};
+
+export type AppUsageResult = {
+  readonly inUse: boolean;
+  readonly benches: string[];
+  readonly sites: string[];
 };
 
 export type BenchListItem = {
@@ -223,6 +230,7 @@ export type RendererBridge = {
   readonly updateCustomApp: (id: string, input: UpdateCustomAppInput) => Promise<CustomAppListItem | null>;
   readonly deleteCustomApp: (id: string) => Promise<boolean>;
   readonly extractCustomApp: (type: 'github' | 'local', source: string) => Promise<ExtractedCustomAppMetadata>;
+  readonly checkAppUsage: (identifiers: string[], benchId?: string) => Promise<AppUsageResult>;
   readonly listBenches: () => Promise<BenchListItem[]>;
   readonly pickBenchFolder: () => Promise<string | null>;
   readonly createBench: (input: BenchCreateInput) => Promise<BenchListItem>;

@@ -41,6 +41,7 @@ const rendererBridge: RendererBridge = {
 	updateCustomApp: async (id: string, input: UpdateCustomAppInput) => ipcRenderer.invoke(ipcChannels.customAppsUpdate, id, input),
 	deleteCustomApp: async (id: string) => ipcRenderer.invoke(ipcChannels.customAppsDelete, id),
 	extractCustomApp: async (type: 'github' | 'local', source: string) => ipcRenderer.invoke(ipcChannels.customAppsExtract, type, source),
+	checkAppUsage: async (identifiers: string[], benchId?: string) => ipcRenderer.invoke(ipcChannels.appsCheckUsage, identifiers, benchId),
 	listBenches: async () => ipcRenderer.invoke(ipcChannels.benchesList),
 	pickBenchFolder: async () => ipcRenderer.invoke(ipcChannels.benchesPickFolder),
 	createBench: async (input) => ipcRenderer.invoke(ipcChannels.benchesCreate, input),

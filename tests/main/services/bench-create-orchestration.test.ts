@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { Bench } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
 import { orchestrateBenchCreation } from '../../../src/main/services/bench-orchestration';
+import type { SiteRepository } from '../../../src/main/storage/repositories';
 
 const execPromiseMock = vi.fn();
 const getBinaryPathMock = vi.fn();
@@ -387,7 +388,7 @@ describe('bench creation orchestration app install', () => {
       undefined,
       undefined,
       false,
-      { siteName: 'test-site.localhost', siteRepo: siteRepoMock as any }
+      { siteName: 'test-site.localhost', siteRepo: siteRepoMock as unknown as SiteRepository }
     );
 
     expect(queuedRun).not.toBeNull();

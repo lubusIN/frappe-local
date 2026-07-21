@@ -65,6 +65,23 @@ export const useCustomApps = () => {
     }
   };
 
+  const checkAppUsage = async (id: string) => {
+    try {
+      const app = customApps.value.find(a => a.id === id);
+      if (!app) return { inUse: false, benches: [], sites: [] };
+      
+      const identifiers = [app.id, app.name];
+      if (app.title && !identifiers.includes(app.title)) {
+        identifiers.push(app.title);
+      }
+      
+      return await ipc.checkAppUsage(identifiers);
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e);
+      throw e;
+    }
+  };
+
   const remove = async (id: string) => {
     deleting.value = true;
     error.value = null;
@@ -123,6 +140,7 @@ export const useCustomApps = () => {
     create,
     update,
     remove,
+    checkAppUsage,
     openInEditor,
     refresh: load,
   };

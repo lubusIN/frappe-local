@@ -1,0 +1,92 @@
+<template>
+  <Dialog
+    :model-value="open"
+    :title="title"
+    size="md"
+    @update:model-value="$emit('update:open', $event)"
+  >
+    <template #title>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-lg min-w-8 bg-surface-yellow-2 text-ink-yellow-8">
+          <IconAlertTriangle class="h-[18px] w-[18px]" />
+        </div>
+        <h3 class="m-0 text-sm-semibold text-ink-gray-9">
+          {{ title }}
+        </h3>
+      </div>
+    </template>
+
+    <template #default>
+      <p class="mb-4 text-[13px] leading-relaxed text-ink-gray-5">
+        Cannot remove <strong>{{ appName }}</strong> because it is currently in use by the following:
+      </p>
+
+      <div class="space-y-4">
+        <div v-if="usage.benches.length > 0">
+          <h4 class="text-xs-semibold text-ink-gray-9 mb-2 uppercase tracking-wider">
+            Benches
+          </h4>
+          <ul class="space-y-1">
+            <li
+              v-for="bench in usage.benches"
+              :key="bench"
+              class="text-sm text-ink-gray-6 flex items-center gap-2"
+            >
+              <IconBox class="w-4 text-ink-gray-4" />
+              {{ bench }}
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="usage.sites.length > 0">
+          <h4 class="text-xs-semibold text-ink-gray-9 mb-2 uppercase tracking-wider">
+            Sites
+          </h4>
+          <ul class="space-y-1">
+            <li
+              v-for="site in usage.sites"
+              :key="site"
+              class="text-sm text-ink-gray-6 flex items-center gap-2"
+            >
+              <IconGlobe class="w-4 text-ink-gray-4" />
+              {{ site }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </template>
+
+    <template #actions>
+      <div class="flex justify-end">
+        <Button
+          size="md"
+          variant="solid"
+          @click="$emit('update:open', false)"
+        >
+          Okay
+        </Button>
+      </div>
+    </template>
+  </Dialog>
+</template>
+
+<script setup lang="ts">
+import { Dialog, Button } from 'frappe-ui';
+import IconAlertTriangle from '~icons/lucide/alert-triangle';
+import IconBox from '~icons/lucide/box';
+import IconGlobe from '~icons/lucide/globe';
+
+defineProps<{
+  open: boolean;
+  appName: string;
+  title: string;
+  usage: {
+    benches: string[];
+    sites: string[];
+  };
+}>();
+
+defineEmits<{
+  'update:open': [value: boolean];
+}>();
+</script>

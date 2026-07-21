@@ -99,6 +99,16 @@ export const useBenches = () => {
     }
   };
 
+  const checkAppUsage = async (benchId: string, identifiers: string[]) => {
+    try {
+      const ipc = useIpc();
+      return await ipc.checkAppUsage(identifiers, benchId);
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+      throw err;
+    }
+  };
+
   const remove = async (id: string) => {
     deleting.value = true;
     error.value = null;
@@ -261,6 +271,7 @@ export const useBenches = () => {
     create,
     update,
     remove,
+    checkAppUsage,
     listLogs,
     openFolder,
     openShell,

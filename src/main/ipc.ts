@@ -1307,4 +1307,35 @@ export const registerIpcHandlers = (
   ipcMainLike.handle(ipcChannels.customAppsExtract, async (_event: unknown, type: unknown, source: unknown) => {
     return extractCustomApp(type as 'github' | 'local', source as string);
   });
+
+  ipcMainLike.handle(ipcChannels.appsCheckUsage, async (_event: unknown, identifiers: unknown, benchId?: unknown) => {
+    const benches = await repositories.benches.findAll();
+    const sites = await repositories.sites.findAll();
+    
+    let usedBenches: string[] = [];
+    let usedSites: string[] = [];
+    
+    const ids = Array.isArray(identifiers) ? identifiers : [identifiers];
+
+    const isAppInList = (appList: string[] | undefined) => {
+      if (!appList) return false;
+      return appList.some((appName) => ids.includes(appName));
+    };
+    
+    if (benchId) {
+      // Check if any site on the specified bench uses this app
+      const sitesOnBench = sites.filter(s => s.benchId === benchId);
+      usedSites = sitesOnBench.filter(s => isAppInList(s.apps)).map(s => s.name);
+    } else {
+      // Global check: check all benches and all sites
+      usedBenches = benches.filter(b => isAppInList(b.apps)).map(b => b.name);
+      usedSites = sites.filter(s => isAppInList(s.apps)).map(s => s.name);
+    }
+    
+    return {
+      inUse: usedBenches.length > 0 || usedSites.length > 0,
+      benches: usedBenches,
+      sites: usedSites,
+    };
+  });
 };
