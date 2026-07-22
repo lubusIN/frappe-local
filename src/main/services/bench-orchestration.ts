@@ -423,8 +423,8 @@ export const fetchBenchApps = async (
     runtimeEnv: NodeJS.ProcessEnv;
     onAttemptedInstall: (app: string) => void;
   }
-): Promise<void> => {
-  if (options.apps.length === 0) return;
+): Promise<string[]> => {
+  if (options.apps.length === 0) return [];
 
   const { stepId, stepStartDesc, stepCompleteDesc, apps, bench, appCatalogRepo, customAppsRepo, projectName, runtimeCmd, runtimeEnv, onAttemptedInstall } = options;
 
@@ -530,7 +530,7 @@ export const fetchBenchApps = async (
         const appSource = customApp.source;
         const appBranch = customApp.branch || benchBranch;
         context.log('info', `[${index + 1}/${apps.length}] Fetching custom app ${appSlug} via bench get-app (${appBranch})`, stepId);
-        getAppArgs = ['get-app', '--overwrite', '--branch', appBranch, appSource];
+        getAppArgs = ['get-app', '--resolve-deps', '--overwrite', '--branch', appBranch, appSource];
       }
     } else {
       // Standard catalog app
@@ -539,7 +539,7 @@ export const fetchBenchApps = async (
       const appBranch = resolveCatalogBranch(catalogItem, bench.frappeVersion) ?? benchBranch;
 
       context.log('info', `[${index + 1}/${apps.length}] Fetching app ${app} via bench get-app (${appBranch})`, stepId);
-      getAppArgs = ['get-app', '--overwrite', '--branch', appBranch, appSource];
+      getAppArgs = ['get-app', '--resolve-deps', '--overwrite', '--branch', appBranch, appSource];
     }
 
     const args = composeBenchArgs(projectName, getAppArgs);
@@ -575,6 +575,18 @@ export const fetchBenchApps = async (
   }
 
   context.completeStep(stepId, stepCompleteDesc);
+
+  if (fs.existsSync(appsTxtPath)) {
+    try {
+      const existing = fs.readFileSync(appsTxtPath, 'utf8');
+      return existing.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    } catch {
+      // fallback
+    }
+  }
+
+  // fallback if apps.txt read fails
+  return allTargetApps;
 };
 
 /**
@@ -771,9 +783,10 @@ export const orchestrateBenchCreation = (
           (bench.apps ?? []).map((app) => app.trim()).filter(Boolean)
         );
 
+        let finalApps = bench.apps ?? [];
         if (appsToInstall.length > 0) {
           failingStepId = 'apps';
-          await fetchBenchApps(context, {
+          finalApps = await fetchBenchApps(context, {
             stepId: 'apps',
             stepStartDesc: `Adding ${appsToInstall.length} app${appsToInstall.length === 1 ? '' : 's'} to bench`,
             stepCompleteDesc: 'Selected apps added to bench',
@@ -802,7 +815,7 @@ export const orchestrateBenchCreation = (
         );
         context.completeStep('run', 'Bench processes started');
 
-        await benchesRepo.update(bench.id, { status: 'running' });
+        await benchesRepo.update(bench.id, { status: 'running', apps: finalApps });
 
         if (siteCreationOptions && siteCreationOptions.siteName) {
           context.startStep('site-queue', `Queueing initial site creation for ${siteCreationOptions.siteName}`);
@@ -1000,7 +1013,7 @@ export const orchestrateBenchAppChanges = (
         }
 
         if (delta.install.length > 0) {
-          await fetchBenchApps(context, {
+          const fetchedApps = await fetchBenchApps(context, {
             stepId: 'install-apps',
             stepStartDesc: `Installing ${delta.install.length} app${delta.install.length === 1 ? '' : 's'}`,
             stepCompleteDesc: 'Selected apps installed',
@@ -1015,6 +1028,7 @@ export const orchestrateBenchAppChanges = (
               attemptedInstallAppIds = [...attemptedInstallAppIds, app];
             }
           });
+          delta.next = Array.from(new Set([...delta.next, ...fetchedApps]));
         }
 
         if (delta.remove.length > 0) {

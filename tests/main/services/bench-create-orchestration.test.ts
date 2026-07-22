@@ -111,13 +111,13 @@ describe('bench creation orchestration app install', () => {
 
     const getAppArgs = getAppCalls.map((call) => call[1] as string[]);
     expect(getAppArgs[0]).toEqual(
-      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'payments'])
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--resolve-deps', '--overwrite', '--branch', 'version-16', 'payments'])
     );
     expect(getAppArgs[1]).toEqual(
-      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--overwrite', '--branch', 'version-16', 'hrms'])
+      expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'get-app', '--resolve-deps', '--overwrite', '--branch', 'version-16', 'hrms'])
     );
 
-    expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running', apps: bench.apps });
   });
 
   it('uses app catalog source and catalog major-version branch when available', async () => {

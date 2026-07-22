@@ -2,7 +2,7 @@
   <Dialog
     v-if="task"
     v-model="isOpen"
-    size="5xl"
+    size="4xl"
   >
     <template #title>
       <div class="flex items-center min-w-0 gap-3">

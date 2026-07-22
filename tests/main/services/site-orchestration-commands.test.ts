@@ -387,6 +387,7 @@ describe('site orchestration command execution', () => {
       'frappe',
       'bench',
       'get-app',
+      '--resolve-deps',
       '--overwrite',
       '--branch',
       'version-15',

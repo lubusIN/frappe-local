@@ -585,7 +585,7 @@ export const orchestrateSiteAppsUpdate = (
           });
 
           if (missingBenchApps.length > 0) {
-            await fetchBenchApps(context, {
+            const fetchedApps = await fetchBenchApps(context, {
               stepId: 'fetch-apps',
               stepStartDesc: `Fetching ${missingBenchApps.length} missing app${missingBenchApps.length === 1 ? '' : 's'} onto parent bench ${bench.name}`,
               stepCompleteDesc: 'Missing apps fetched onto parent bench',
@@ -599,11 +599,7 @@ export const orchestrateSiteAppsUpdate = (
               onAttemptedInstall: () => {},
             });
 
-            const fetchedSlugs = missingBenchApps.map((app) => {
-              const customApp = customAppsList.find((c) => c.id === app || c.name === app);
-              return customApp ? customApp.name : app;
-            });
-            const nextBenchApps = Array.from(new Set([...bench.apps, ...missingBenchApps, ...fetchedSlugs]));
+            const nextBenchApps = Array.from(new Set([...bench.apps, ...fetchedApps]));
             if (dependencies.benches.update) {
               await dependencies.benches.update(bench.id, { apps: nextBenchApps });
             }
