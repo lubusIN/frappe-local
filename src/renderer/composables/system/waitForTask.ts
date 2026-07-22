@@ -1,5 +1,5 @@
 import { watch } from 'vue';
-import { useProgressCenter } from './useProgressCenter';
+import { useProgressCenter, handledFailureTaskIds } from './useProgressCenter';
 import type { ResourceType } from './useResourceTaskState';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 
@@ -50,6 +50,7 @@ export const runAndWaitForTask = async <T>(
       if (existing.status === 'success') {
         resolve(existing);
       } else {
+        handledFailureTaskIds.add(existing.taskId);
         reject(new TaskFailedError(existing));
       }
       return;
@@ -59,13 +60,14 @@ export const runAndWaitForTask = async <T>(
     const stop = watch(
       tasks,
       (currentTasks) => {
-        const task = currentTasks.find(matches);
-        if (task) {
+        const matching = currentTasks.find(matches);
+        if (matching) {
           stop();
-          if (task.status === 'success') {
-            resolve(task);
+          if (matching.status === 'success') {
+            resolve(matching);
           } else {
-            reject(new TaskFailedError(task));
+            handledFailureTaskIds.add(matching.taskId);
+            reject(new TaskFailedError(matching));
           }
         }
       },

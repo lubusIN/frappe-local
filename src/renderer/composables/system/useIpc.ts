@@ -36,6 +36,7 @@ const unavailableBridge: RendererBridge = {
   openBenchShell: () => rejectUnavailable(),
   openBenchInEditor: () => rejectUnavailable(),
   openAppInEditor: () => rejectUnavailable(),
+  buildBench: () => rejectUnavailable(),
   checkAppUsage: () => rejectUnavailable(),
   cleanBenchSites: () => rejectUnavailable(),
   listSites: () => rejectUnavailable(),

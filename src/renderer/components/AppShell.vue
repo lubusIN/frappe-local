@@ -185,7 +185,7 @@ import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
 import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
-import { isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
+import { handledFailureTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useCustomApps, useSites } from '@frappe-local/renderer/composables/data';
 import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
@@ -211,11 +211,6 @@ const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = use
 const isCollapsed = ref(false);
 const { tasks, activeLogTaskId } = useProgressCenter();
 const { isFrontDoorAvailable } = useFrontDoorStatus();
-const handledFailureTaskIds = new Set(
-  tasks.value
-    .filter((task) => task.type === 'task.failed')
-    .map((task) => task.taskId)
-);
 const updateState = ref<'idle' | 'available' | 'downloading' | 'downloaded'>('idle');
 const updateVersion = ref<string>('');
 const appVersion = __APP_VERSION__;

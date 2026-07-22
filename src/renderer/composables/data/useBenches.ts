@@ -150,6 +150,24 @@ export const useBenches = () => {
     }
   };
 
+  const build = async (id: string) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const started = await ipc.buildBench(id);
+      if (!started) {
+        error.value = 'Unable to start bench build. Ensure the bench is running.';
+        return false;
+      }
+      return true;
+    } catch (err) {
+      error.value = String(err);
+      return false;
+    }
+  };
+
   const openFolder = async (id: string) => {
     openingFolder.value = true;
     error.value = null;
@@ -271,6 +289,7 @@ export const useBenches = () => {
     create,
     update,
     remove,
+    build,
     checkAppUsage,
     listLogs,
     openFolder,

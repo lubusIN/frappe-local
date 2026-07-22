@@ -52,6 +52,7 @@ const rendererBridge: RendererBridge = {
 	openBenchShell: async (id) => ipcRenderer.invoke(ipcChannels.benchesOpenShell, id),
 	openBenchInEditor: async (id, inContainer) => ipcRenderer.invoke(ipcChannels.benchesOpenInEditor, id, inContainer),
 	openAppInEditor: async (benchId, appName, inContainer) => ipcRenderer.invoke(ipcChannels.appsOpenInEditor, benchId, appName, inContainer),
+	buildBench: async (id) => ipcRenderer.invoke(ipcChannels.benchesBuild, id),
 	cleanBenchSites: async (id) => ipcRenderer.invoke(ipcChannels.benchesCleanSites, id),
 	listSites: async () => ipcRenderer.invoke(ipcChannels.sitesList),
 	createSite: async (input) => ipcRenderer.invoke(ipcChannels.sitesCreate, input),

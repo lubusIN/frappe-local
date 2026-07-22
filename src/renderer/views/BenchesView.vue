@@ -405,6 +405,7 @@ import IconTrash2 from '~icons/lucide/trash2';
 import IconPlus from '~icons/lucide/plus';
 import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';
+import IconHammer from '~icons/lucide/hammer';
 import IconPanelLeftClose from '~icons/lucide/panel-left-close';
 import IconPanelLeft from '~icons/lucide/panel-left';
 import { computed, reactive, ref, watch } from 'vue';
@@ -436,6 +437,7 @@ const {
   error,
   successMessage,
   update,
+  build,
   remove: deleteBench,
   checkAppUsage,
   openFolder,
@@ -756,6 +758,12 @@ const getBenchMoreActions = (bench: BenchListItem) => {
       group: 'Manage',
       options: [
         {
+          label: 'Build',
+          icon: IconHammer,
+          disabled: updating.value || deleting.value || bench.status !== 'running' || isResourceBusy(bench.id),
+          onClick: () => onBuildBench(bench.id),
+        },
+        {
           label: 'Delete',
           icon: IconTrash2,
           theme: 'red' as const,
@@ -776,6 +784,31 @@ const showCreateBenchModal = ref(false);
 
 const onStopBench = async (id: string) => {
   await onSetBenchStatus(id, 'stopped');
+};
+
+const onBuildBench = async (id: string) => {
+  const bench = benches.value.find((b) => b.id === id);
+  const name = bench ? bench.name : '';
+
+  const promise = runAndWaitForTask(
+    () => build(id),
+    'bench',
+    id,
+    /^Build bench/i
+  ).then(() => refresh(true));
+
+  toast.promise(promise, {
+    loading: `Building bench ${name}...`,
+    success: `Bench ${name} build complete.`,
+    error: `Failed to build bench ${name}.`,
+    action: {
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(id);
+      }
+    },
+  });
 };
 
 const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', currentStatus?: string) => {

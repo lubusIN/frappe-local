@@ -1,6 +1,6 @@
 import type { AppHealthResponse, BenchCreateInput, BenchListItem, BenchUpdateInput, CatalogAppItem, LifecycleLogItem, SettingsItem, SiteCreateInput, SiteListItem, SiteUpdateInput, SystemResources, UpdateCheckResult } from '@frappe-local/shared/core';
 import type { DiagnosticsReport, TaskProgressEvent } from '@frappe-local/shared/domain';
-import { APP_CATALOG_SEED_VERSION, FRAPPE_LOCAL_MACHINE_NAME, ensureRuntimeRunning, extractCustomApp, fetchBreweryCatalog, getDefaultAppCatalogSeed, getLastDiagnosticsReport, getLastRuntimeError, getRuntimeEnv, getTaskRunner, orchestrateBenchAppChanges, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, resetAllBenchContainers, runDiagnostics, syncAppCatalogFromBrewery, type TaskExecutionContext } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, FRAPPE_LOCAL_MACHINE_NAME, ensureRuntimeRunning, extractCustomApp, fetchBreweryCatalog, getDefaultAppCatalogSeed, getLastDiagnosticsReport, getLastRuntimeError, getRuntimeEnv, getTaskRunner, orchestrateBenchAppChanges, orchestrateBenchBuild, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion, resetAllBenchContainers, runDiagnostics, syncAppCatalogFromBrewery, type TaskExecutionContext } from '@frappe-local/main/services';
 
 import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
 import { filterNonCoreApps, getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
@@ -830,6 +830,25 @@ export const registerIpcHandlers = (
     }
 
     return false;
+  });
+  ipcMainLike.handle(ipcChannels.benchesBuild, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      return false;
+    }
+
+    const benches = await repositories.benches.findAll();
+    const bench = benches.find((entry) => entry.id === id);
+    if (!bench || bench.status !== 'running') {
+      return false;
+    }
+
+    try {
+      orchestrateBenchBuild(bench);
+      return true;
+    } catch (error) {
+      mainLogger.error('Failed to orchestrate bench build:', error);
+      return false;
+    }
   });
 
   ipcMainLike.handle(ipcChannels.benchesCleanSites, async (_event: unknown, id: unknown) => {

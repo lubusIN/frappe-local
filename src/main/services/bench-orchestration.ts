@@ -1425,6 +1425,41 @@ export const orchestrateBenchStop = (
     }
   });
 };
+export const orchestrateBenchBuild = (bench: Bench): void => {
+  const taskRunner = getTaskRunner();
+
+  taskRunner.enqueue({
+    name: `Build Bench: ${bench.name}`,
+    resource: { type: 'bench', id: bench.id },
+    run: async (context) => {
+      try {
+        context.startStep('build', 'Running bench build');
+        const projectName = getComposeProjectName(bench.id);
+        const args = composeBenchArgs(projectName, ['build']);
+
+        const command = getBinaryPath('docker-compose');
+        const runtimeEnv = await getRuntimeEnv();
+
+        const result = await execPromise(
+          command,
+          args,
+          bench.path,
+          (out: string) => context.log('info', out, 'build'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+
+        if (result.code !== 0) {
+          throw new Error(`Command failed with exit code ${result.code}: ${result.stderr}`);
+        }
+      } catch (error) {
+        context.log('error', `Build failed: ${errorMessage(error)}`);
+        throw error;
+      }
+    },
+  });
+};
+
 export const orchestrateBenchCleaning = (
   bench: Bench,
   sitesRepo: { findAll: () => Promise<Site[]>, delete: (id: string) => Promise<boolean> }

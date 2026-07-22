@@ -48,7 +48,7 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
   const isFinished = (t: ProgressTaskSummary) => t.status === 'success' || t.status === 'failure';
   const isAppsTask = (t: ProgressTaskSummary) => {
     const verb = String(t.taskName ?? '').toLowerCase().split(' ')[0] || '';
-    return ['install', 'uninstall', 'get', 'remove'].includes(verb);
+    return ['install', 'uninstall', 'get', 'remove', 'build'].includes(verb);
   };
   const getLatestTask = (resourceId: string) => findTask(resourceId);
 
@@ -78,6 +78,7 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
         case 'restart': return 'Restarting';
         case 'delete': return 'Deleting';
         case 'clean': return 'Cleaning';
+        case 'build': return 'Building';
         case 'install': return 'Installing';
         case 'uninstall': return 'Uninstalling';
         case 'get': return 'Getting app';

@@ -57,6 +57,12 @@ watch(acknowledgedTasks, (tasks) => {
     console.error('Failed to save acknowledged tasks:', err);
   }
 }, { deep: true });
+export const handledFailureTaskIds = new Set<string>(
+  initialState.tasks
+    .filter((task) => task.type === 'task.failed')
+    .map((task) => task.taskId)
+);
+
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
 
