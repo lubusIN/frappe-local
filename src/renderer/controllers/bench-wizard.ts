@@ -21,7 +21,7 @@ export const isValidBenchName = (benchName: string): boolean => BENCH_NAME_PATTE
 export const getBenchWizardStepErrors = (
   step: BenchWizardStep,
   draft: BenchWizardDraft,
-  context?: { existingSites?: string[] }
+  context?: { existingSites?: string[]; existingBenches?: string[] }
 ): string[] => {
   const errors: string[] = [];
 
@@ -30,6 +30,11 @@ export const getBenchWizardStepErrors = (
       errors.push('Enter a bench name.');
     } else if (!isValidBenchName(draft.name)) {
       errors.push('Bench name can include lowercase letters, numbers, dots, and hyphens only.');
+    } else if (context?.existingBenches) {
+      const isDuplicate = context.existingBenches.some(b => b.toLowerCase() === draft.name.toLowerCase());
+      if (isDuplicate) {
+        errors.push(`A bench named "${draft.name}" already exists. Please choose a unique bench name.`);
+      }
     }
 
     if (!draft.frappeVersion.trim()) {
@@ -60,7 +65,7 @@ export const getBenchWizardStepErrors = (
 
 export const buildBenchCreatePayload = (
   draft: BenchWizardDraft,
-  context?: { existingSites?: string[] }
+  context?: { existingSites?: string[]; existingBenches?: string[] }
 ): BenchWizardBuildResult => {
   const errors1 = getBenchWizardStepErrors(1, draft, context);
   const errors2 = getBenchWizardStepErrors(2, draft, context);

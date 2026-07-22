@@ -56,4 +56,17 @@ describe('bench wizard helpers', () => {
 
     expect(result.payload?.apps).toEqual(['frappe']);
   });
+
+  it('returns an error if bench name already exists', () => {
+    const draft = {
+      name: 'frappe-bench',
+      path: '/path',
+      frappeVersion: 'v15',
+      siteName: '',
+    };
+
+    expect(getBenchWizardStepErrors(1, draft, { existingBenches: ['Frappe-Bench', 'other-bench'] })).toEqual([
+      'A bench named "frappe-bench" already exists. Please choose a unique bench name.',
+    ]);
+  });
 });

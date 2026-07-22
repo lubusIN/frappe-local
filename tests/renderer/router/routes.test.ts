@@ -5,8 +5,8 @@ describe('renderer routes', () => {
   it('keeps all primary sections registered', () => {
     expect(appRouteDefinitions.map((route) => route.name)).toEqual([
       'sites',
-      'benches',
       'customApps',
+      'benches',
       'activity',
       'diagnostics',
     ]);

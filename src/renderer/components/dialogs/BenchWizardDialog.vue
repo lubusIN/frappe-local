@@ -119,7 +119,7 @@ const emit = defineEmits<{
 }>();
 
 const ipc = useIpc();
-const { creating, loading, create } = useBenches();
+const { creating, loading, create, benches: allBenches } = useBenches();
 const { sites } = useSites();
 const { form: settingsForm } = useSettings();
 
@@ -170,7 +170,7 @@ const triggerFolderPicker = async () => {
 };
 
 const onNextStep = () => {
-  const context = { existingSites: sites.value.map(s => s.name) };
+  const context = { existingSites: sites.value.map(s => s.name), existingBenches: allBenches.value.map(b => b.name) };
   const errors = getBenchWizardStepErrors(wizardStep.value, createForm, context);
   wizardErrors.value = errors;
   if (errors.length > 0) return;
@@ -193,7 +193,7 @@ const onCloseBenchWizard = () => {
 };
 
 const onCreateBench = async () => {
-  const context = { existingSites: sites.value.map(s => s.name) };
+  const context = { existingSites: sites.value.map(s => s.name), existingBenches: allBenches.value.map(b => b.name) };
   const result = buildBenchCreatePayload(createForm, context);
   wizardErrors.value = result.errors;
   if (!result.payload) return;
