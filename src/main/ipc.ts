@@ -1096,6 +1096,24 @@ export const registerIpcHandlers = (
     return result;
   });
 
+  ipcMainLike.handle(ipcChannels.sitesCleanCache, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      throw new Error('Invalid site ID provided.');
+    }
+
+    const { orchestrateSiteCleanCache } = await import('@frappe-local/main/services/site-orchestration');
+    return orchestrateSiteCleanCache(repositories, id);
+  });
+
+  ipcMainLike.handle(ipcChannels.sitesMigrate, async (_event: unknown, id: unknown) => {
+    if (typeof id !== 'string') {
+      throw new Error('Invalid site ID provided.');
+    }
+
+    const { orchestrateSiteMigrate } = await import('@frappe-local/main/services/site-orchestration');
+    return orchestrateSiteMigrate(repositories, id);
+  });
+
   ipcMainLike.handle(ipcChannels.sitesLogs, async (_event: unknown, id: unknown) => {
     if (typeof id !== 'string') {
       return [];

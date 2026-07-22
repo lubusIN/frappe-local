@@ -197,23 +197,17 @@
               description="Create your first site to manage runtime status, inspect logs, and access dashboards."
               :icon="IconGlobe"
             >
-              <div
-                v-if="creatableBenches.length > 0"
-                class="mt-4"
-              >
+              <div class="mt-4">
                 <Button
+                  v-if="creatableBenches.length > 0"
                   size="sm"
                   variant="solid"
                   @click="showCreateSiteModal = true"
                 >
                   Create site
                 </Button>
-              </div>
-              <div
-                v-else
-                class="mt-4"
-              >
                 <Button
+                  v-else
                   size="sm"
                   variant="subtle"
                   @click="$router.push('/benches')"
@@ -257,6 +251,7 @@
               >
                 <ListRow
                   :value="value"
+                  class="group"
                   @click="selectSite(site.id)"
                 >
                   <ListCell>
@@ -276,18 +271,23 @@
                       </div>
                     </div>
                   </ListCell>
-                  <ListCell class="self-start justify-end pt-3.5">
+                  <ListCell class="self-center justify-end">
                     <div class="flex items-center gap-1.5 shrink-0">
                       <span
                         v-if="isResourceBusy(site.id)"
                         class="inline-block size-3 rounded-full border-[1.5px] border-ink-gray-6 border-r-transparent animate-spin"
                       />
-                      <span
-                        v-if="site.port"
-                        class="text-xs font-mono text-ink-gray-5"
-                      >
-                        :{{ site.port }}
-                      </span>
+                      <Button
+                        variant="ghost"
+                        :icon="IconExternalLink"
+                        class="!size-7 transition-opacity"
+                        :class="[
+                          selectedSiteId === site.id ? 'text-ink-gray-9 opacity-100' : 'text-ink-gray-5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-ink-gray-9'
+                        ]"
+                        tooltip="Open in Browser"
+                        :disabled="!isBenchRunning(site.benchId) || updating || isResourceBusy(site.id) || (site.status !== 'ready' && site.status !== 'failure')"
+                        @click.stop="ipc.openSiteExternal(site.id)"
+                      />
                     </div>
                   </ListCell>
                 </ListRow>
@@ -308,10 +308,9 @@
 
         <template v-else>
           <ScrollArea class="min-h-0 flex-1">
-            <div class="space-y-6 px-6 py-5 w-full">
+            <div class="flex flex-col gap-4 px-6 py-5 w-full">
               <!-- APPS Section -->
-              <div class="flex flex-col gap-4">
-                <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3">
+              <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3">
                   <div class="flex items-center gap-2">
                     <h3 class="text-base-semibold text-ink-gray-9">
                       Apps
@@ -352,7 +351,6 @@
                   @uninstall-app="onRequestDeactivateSiteApp"
                 />
               </div>
-            </div>
           </ScrollArea>
 
           <!-- Footer Actions Bar pinned at bottom of reading pane -->
@@ -381,6 +379,7 @@
       title="Delete Site"
       :message="`Are you sure you want to delete site &quot;${deleteSiteName}&quot;? This will remove all data and cannot be undone.`"
       confirm-label="Delete"
+      @cancel="confirmDeleteSiteOpen = false"
       @confirm="onConfirmDeleteSite"
     />
 
@@ -412,6 +411,8 @@ import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import IconPanelLeftClose from '~icons/lucide/panel-left-close';
 import IconPanelLeft from '~icons/lucide/panel-left';
 import IconListFilter from '~icons/lucide/list-filter';
+import IconDatabase from '~icons/lucide/database';
+import IconEraser from '~icons/lucide/eraser';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -421,7 +422,7 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
-import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
+import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask, useFrontDoorStatus } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 
 import { filterSites } from '@frappe-local/renderer/utils/sites';
@@ -439,6 +440,8 @@ const {
   deleting,
   error,
   successMessage,
+  cleanCache,
+  migrate,
   update,
   remove,
   refresh: load,
@@ -447,6 +450,7 @@ const {
 } = useSites();
 
 const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
+const { isFrontDoorAvailable } = useFrontDoorStatus();
 const activatingSiteAppId = ref<string | null>(null);
 
 const refresh = async (force = false) => {
@@ -518,8 +522,6 @@ const {
   getLatestRelevantTaskId,
 } = useResourceTaskState('site', computed(() => tasks.value || []));
 
-
-
 const onStatusClick = (resourceId: string) => {
   selectedTaskId.value = getLatestRelevantTaskId(resourceId);
 };
@@ -570,7 +572,7 @@ const currentStatusCount = computed(() => {
   return currentTab ? currentTab.count : sites.value.length;
 });
 
-const selectedSiteId = ref<string | null>(null);
+const selectedSiteId = ref<string | undefined>(undefined);
 const showList = ref(true);
 
 const selectSite = (id: string) => {
@@ -586,15 +588,77 @@ const resetSiteStatus = async (site: SiteListItem) => {
   toast.success(`Site "${site.name}" status reset to ready.`);
 };
 
+const onCleanCache = async (id: string, name: string) => {
+  const promise = runAndWaitForTask(
+    () => cleanCache(id),
+    'site', id, /^Clean Cache/i
+  );
+  
+  toast.promise(promise, {
+    loading: `Cleaning cache for ${name}...`,
+    success: `Cache cleaned for ${name}.`,
+    error: `Failed to clean cache for ${name}.`,
+    action: {
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(id);
+      }
+    }
+  });
+};
+
+const onMigrate = async (id: string, name: string) => {
+  const promise = runAndWaitForTask(
+    () => migrate(id),
+    'site', id, /^Migrate/i
+  );
+  
+  toast.promise(promise, {
+    loading: `Migrating site ${name}...`,
+    success: `Site ${name} migrated successfully.`,
+    error: `Failed to migrate site ${name}.`,
+    action: {
+      label: 'View logs',
+      onClick: (e?: Event) => {
+        e?.preventDefault();
+        selectedTaskId.value = getLatestRelevantTaskId(id);
+      }
+    }
+  });
+};
+
 const getSiteDetailMoreActions = (site: SiteListItem) => {
   return [
     {
-      label: 'Delete',
-      icon: IconTrash2,
-      theme: 'red' as const,
-      disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
-      onClick: () => confirmDeleteSite(site.id, site.name),
+      group: 'Development',
+      options: [
+        {
+          label: 'Clean Cache',
+          icon: IconEraser,
+          disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
+          onClick: () => onCleanCache(site.id, site.name),
+        },
+        {
+          label: 'Migrate',
+          icon: IconDatabase,
+          disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
+          onClick: () => onMigrate(site.id, site.name),
+        },
+      ],
     },
+    {
+      group: 'Manage',
+      options: [
+        {
+          label: 'Delete',
+          icon: IconTrash2,
+          theme: 'red' as const,
+          disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
+          onClick: () => confirmDeleteSite(site.id, site.name),
+        },
+      ],
+    }
   ];
 };
 
@@ -638,7 +702,7 @@ watch(
   () => filteredSites.value,
   (list) => {
     if (list.length > 0 && (!selectedSiteId.value || !sites.value.some((s) => s.id === selectedSiteId.value))) {
-      selectedSiteId.value = list[0].id;
+      selectedSiteId.value = list[0]?.id;
     }
   },
   { immediate: true }
@@ -651,6 +715,11 @@ const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
 const getBenchName = (id: string) => {
   const bench = allBenches.value.find((b) => b.id === id);
   return bench ? bench.name : id;
+};
+
+const getBenchPort = (id: string) => {
+  const bench = allBenches.value.find((b) => b.id === id);
+  return bench?.httpPort;
 };
 
 const selectedSiteForApps = computed(() => selectedSite.value);
@@ -675,7 +744,7 @@ const siteAppsWarningMessage = computed(() => {
   const isBenchReady = bench && (bench.status === 'running' || bench.status === 'success');
   if (!isBenchReady) return 'Start the bench before managing site apps.';
   
-  const isBenchBusy = tasks.value.some(t => t.resource === 'bench' && t.resourceId === site.benchId && (t.status === 'pending' || t.status === 'running'));
+  const isBenchBusy = tasks.value.some(t => t.resource === 'bench' && t.resourceId === site.benchId && (t.status === 'queued' || t.status === 'running'));
   if (isBenchBusy) return 'Wait for bench app management to finish before managing site apps.';
   
   return null;
@@ -879,7 +948,6 @@ const onConfirmDeleteSite = async (): Promise<void> => {
 };
 
 onMounted(() => {
-
   if (route.query.benchId && typeof route.query.benchId === 'string') {
     siteFilters.benchId = route.query.benchId;
   }

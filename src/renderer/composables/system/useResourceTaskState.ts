@@ -46,10 +46,6 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
 
   const isActive = (t: ProgressTaskSummary) => t.status === 'running' || t.status === 'queued';
   const isFinished = (t: ProgressTaskSummary) => t.status === 'success' || t.status === 'failure';
-  const isAppsTask = (t: ProgressTaskSummary) => {
-    const verb = String(t.taskName ?? '').toLowerCase().split(' ')[0] || '';
-    return ['install', 'uninstall', 'get', 'remove', 'build'].includes(verb);
-  };
   const getLatestTask = (resourceId: string) => findTask(resourceId);
 
   const isResourceBusy = (id: string) => Boolean(findTask(id, isActive));
@@ -83,6 +79,7 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
         case 'uninstall': return 'Uninstalling';
         case 'get': return 'Getting app';
         case 'remove': return 'Removing app';
+        case 'migrate': return 'Migrating';
         default:
           return 'Processing';
       }
@@ -101,16 +98,10 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
     return statusTheme(row.status, 'resource');
   };
 
-  // Prioritize: active apps task > any active task > completed apps task > any completed task
+  // Prioritize: active task > completed task
   const getLatestRelevantTaskId = (resourceId: string): string | null => {
-    const activeApps = findTask(resourceId, (t) => isAppsTask(t) && isActive(t));
-    if (activeApps) return activeApps.taskId;
-
     const active = findTask(resourceId, isActive);
     if (active) return active.taskId;
-
-    const completedApps = findTask(resourceId, (t) => isAppsTask(t) && isFinished(t));
-    if (completedApps) return completedApps.taskId;
 
     return findTask(resourceId, isFinished)?.taskId ?? null;
   };

@@ -427,6 +427,95 @@ export const orchestrateSiteDeletion = async (
   return true;
 };
 
+export const orchestrateSiteCleanCache = async (
+  dependencies: {
+    sites: { findById: (id: string) => Promise<Site | null> };
+    benches: { findById: (id: string) => Promise<Bench | null> };
+  },
+  siteId: string
+): Promise<boolean> => {
+  const site = await dependencies.sites.findById(siteId);
+  if (!site) return false;
+
+  const bench = await dependencies.benches.findById(site.benchId);
+  if (!bench) return false;
+
+  const taskRunner = getTaskRunner();
+  taskRunner.enqueue({
+    name: `Clean Cache: ${site.name}`,
+    resource: { type: 'site', id: site.id },
+    run: async (context) => {
+      try {
+        const projectName = getComposeProjectName(bench.id);
+        const command = getBinaryPath('docker-compose');
+        const runtimeEnv = await getRuntimeEnv();
+
+        context.startStep('clear-cache', 'Clearing site cache');
+        let args = composeBenchSiteArgs(projectName, site.name, ['clear-cache']);
+        let result = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'clear-cache'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
+        
+        if (result.code !== 0) {
+           throw new Error(`clear-cache failed: ${result.stderr}`);
+        }
+
+        context.startStep('clear-website-cache', 'Clearing website cache');
+        args = composeBenchSiteArgs(projectName, site.name, ['clear-website-cache']);
+        result = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'clear-website-cache'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
+        
+        if (result.code !== 0) {
+           throw new Error(`clear-website-cache failed: ${result.stderr}`);
+        }
+
+      } catch (error) {
+        context.log('error', errorMessage(error));
+        throw error;
+      }
+    }
+  });
+
+  return true;
+};
+
+export const orchestrateSiteMigrate = async (
+  dependencies: {
+    sites: { findById: (id: string) => Promise<Site | null> };
+    benches: { findById: (id: string) => Promise<Bench | null> };
+  },
+  siteId: string
+): Promise<boolean> => {
+  const site = await dependencies.sites.findById(siteId);
+  if (!site) return false;
+
+  const bench = await dependencies.benches.findById(site.benchId);
+  if (!bench) return false;
+
+  const taskRunner = getTaskRunner();
+  taskRunner.enqueue({
+    name: `Migrate Site: ${site.name}`,
+    resource: { type: 'site', id: site.id },
+    run: async (context) => {
+      try {
+        const projectName = getComposeProjectName(bench.id);
+        const command = getBinaryPath('docker-compose');
+        const runtimeEnv = await getRuntimeEnv();
+
+        context.startStep('migrate', 'Migrating site');
+        const args = composeBenchSiteArgs(projectName, site.name, ['migrate']);
+        const result = await execPromise(command, args, bench.path, (out) => context.log('info', out, 'migrate'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
+        
+        if (result.code !== 0) {
+           throw new Error(`migrate failed: ${result.stderr}`);
+        }
+      } catch (error) {
+        context.log('error', errorMessage(error));
+        throw error;
+      }
+    }
+  });
+
+  return true;
+};
+
 /**
  * Modifies the installed apps for an existing site.
  * Computes the delta of apps to install and uninstall, then runs the

@@ -146,6 +146,42 @@ export const useSites = () => {
     }
   };
 
+  const cleanCache = async (id: string) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const started = await ipc.cleanSiteCache(id);
+      if (!started) {
+        error.value = 'Unable to clean cache. Ensure the site is valid.';
+        return false;
+      }
+      return true;
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+      return false;
+    }
+  };
+
+  const migrate = async (id: string) => {
+    error.value = null;
+    successMessage.value = null;
+
+    try {
+      const ipc = useIpc();
+      const started = await ipc.migrateSite(id);
+      if (!started) {
+        error.value = 'Unable to start site migration. Ensure the site is valid.';
+        return false;
+      }
+      return true;
+    } catch (err) {
+      error.value = stripIpcPrefix(String(err));
+      return false;
+    }
+  };
+
   const openFolder = async (id: string) => {
     openingFolder.value = true;
     error.value = null;
@@ -200,6 +236,8 @@ export const useSites = () => {
     create,
     update,
     remove,
+    cleanCache,
+    migrate,
     listLogs,
     openFolder,
     openShell,

@@ -41,6 +41,8 @@ export const ipcChannels = {
   sitesCreate: 'sites:create',
   sitesUpdate: 'sites:update',
   sitesDelete: 'sites:delete',
+  sitesCleanCache: 'sites:clean-cache',
+  sitesMigrate: 'sites:migrate',
   sitesLogs: 'sites:logs',
   sitesOpenFolder: 'sites:open-folder',
   sitesOpenShell: 'sites:open-shell',
@@ -248,6 +250,8 @@ export type RendererBridge = {
   readonly createSite: (input: SiteCreateInput) => Promise<SiteListItem>;
   readonly updateSite: (id: string, input: SiteUpdateInput) => Promise<SiteListItem | null>;
   readonly deleteSite: (id: string) => Promise<boolean>;
+  readonly cleanSiteCache: (id: string) => Promise<boolean>;
+  readonly migrateSite: (id: string) => Promise<boolean>;
   readonly listSiteLogs: (id: string) => Promise<LifecycleLogItem[]>;
   readonly openSiteFolder: (id: string) => Promise<boolean>;
   readonly openSiteShell: (id: string) => Promise<boolean>;

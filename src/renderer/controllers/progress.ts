@@ -181,14 +181,16 @@ export const createProgressCenterController = (
   let disposeListener: (() => void) | null = null;
 
   const connect = async (): Promise<void> => {
+    if (disposeListener) return; // Already connected or connecting
+
     state.loading = true;
     state.error = null;
 
     try {
-      await ipc.subscribeTaskRunnerEvents();
       disposeListener = ipc.onTaskRunnerProgress((event) => {
         state.tasks = upsertProgressTask(state.tasks, event);
       });
+      await ipc.subscribeTaskRunnerEvents();
     } catch (error) {
       state.error = error instanceof Error ? error.message : String(error);
     } finally {
