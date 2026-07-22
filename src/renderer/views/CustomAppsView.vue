@@ -212,7 +212,7 @@ const {
 const getAppActions = (app: CustomAppListItem) => {
   const actions: Array<{
     label: string;
-    icon?: any;
+    icon?: unknown;
     theme?: 'red';
     disabled?: boolean;
     onClick: () => void;
@@ -253,7 +253,7 @@ const onDeleteClick = async (appId: string, appName: string) => {
     
     // Not in use, safe to confirm deletion
     confirmDelete(appId, appName);
-  } catch (error) {
+  } catch {
     toast.error('Failed to check app usage');
   }
 };

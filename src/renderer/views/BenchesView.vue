@@ -650,7 +650,7 @@ const onRequestRemoveBenchApp = async (appId: string) => {
     pendingRemoveBenchAppId.value = appId;
     pendingRemoveBenchAppName.value = appTitle;
     removeAppConfirmOpen.value = true;
-  } catch (error) {
+  } catch {
     toast.error('Failed to check app usage');
   }
 };

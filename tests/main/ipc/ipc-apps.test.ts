@@ -28,8 +28,8 @@ describe('apps IPC handlers', () => {
     ];
 
     const fakeIpcMain = {
-      handlers: new Map<string, (...args: any[]) => any>(),
-      handle(channel: string, listener: (...args: any[]) => any) {
+      handlers: new Map<string, (...args: unknown[]) => unknown>(),
+      handle(channel: string, listener: (...args: unknown[]) => unknown) {
         this.handlers.set(channel, listener);
       },
     };
@@ -44,7 +44,7 @@ describe('apps IPC handlers', () => {
 
     registerIpcHandlers(fakeIpcMain as unknown as Electron.IpcMain, repos as never, {} as never);
 
-    const checkUsage = fakeIpcMain.handlers.get(ipcChannels.appsCheckUsage)!;
+    const checkUsage = fakeIpcMain.handlers.get(ipcChannels.appsCheckUsage) as (...args: unknown[]) => Promise<{ inUse: boolean; benches: string[]; sites: string[] }>;
 
     // Check erpnext usage
     const result = await checkUsage(null, ['erpnext']);
@@ -70,8 +70,8 @@ describe('apps IPC handlers', () => {
     ];
 
     const fakeIpcMain = {
-      handlers: new Map<string, (...args: any[]) => any>(),
-      handle(channel: string, listener: (...args: any[]) => any) {
+      handlers: new Map<string, (...args: unknown[]) => unknown>(),
+      handle(channel: string, listener: (...args: unknown[]) => unknown) {
         this.handlers.set(channel, listener);
       },
     };
@@ -86,7 +86,7 @@ describe('apps IPC handlers', () => {
 
     registerIpcHandlers(fakeIpcMain as unknown as Electron.IpcMain, repos as never, {} as never);
 
-    const checkUsage = fakeIpcMain.handlers.get(ipcChannels.appsCheckUsage)!;
+    const checkUsage = fakeIpcMain.handlers.get(ipcChannels.appsCheckUsage) as (...args: unknown[]) => Promise<{ inUse: boolean; benches: string[]; sites: string[] }>;
 
     // Check erpnext usage scoped to bench b1
     const result = await checkUsage(null, ['erpnext'], 'b1');

@@ -311,46 +311,46 @@
             <div class="flex flex-col gap-4 px-6 py-5 w-full">
               <!-- APPS Section -->
               <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3">
-                  <div class="flex items-center gap-2">
-                    <h3 class="text-base-semibold text-ink-gray-9">
-                      Apps
-                    </h3>
-                    <Badge
-                      variant="subtle"
-                      theme="gray"
-                    >
-                      {{ selectedSite.appCount }} Installed
-                    </Badge>
-                  </div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base-semibold text-ink-gray-9">
+                    Apps
+                  </h3>
+                  <Badge
+                    variant="subtle"
+                    theme="gray"
+                  >
+                    {{ selectedSite.appCount }} Installed
+                  </Badge>
                 </div>
+              </div>
 
-                <div
-                  v-if="siteAppsWarningMessage"
-                  class="pt-2"
-                >
-                  <Alert 
-                    theme="yellow" 
-                    :title="siteAppsWarningMessage" 
-                    :dismissible="false" 
-                  />
-                </div>
-
-                <AppManager
-                  class="pt-1 w-full"
-                  container-class="flex flex-col gap-1 w-full"
-                  :resource-id="selectedBenchForSiteApps?.id"
-                  :bench-status="selectedBenchForSiteApps?.status"
-                  context="site"
-                  :active-app-ids="Array.from(siteActivatedAppSet)"
-                  :disabled="updating || !canActivateSelectedSiteApps"
-                  :frappe-version="selectedBenchForSiteApps?.frappeVersion"
-                  :loading-app-id="activatingSiteAppId"
-                  @add-app="onActivateSiteApp"
-                  @remove-app="onRequestDeactivateSiteApp"
-                  @install-app="onActivateSiteApp"
-                  @uninstall-app="onRequestDeactivateSiteApp"
+              <div
+                v-if="siteAppsWarningMessage"
+                class="pt-2"
+              >
+                <Alert 
+                  theme="yellow" 
+                  :title="siteAppsWarningMessage" 
+                  :dismissible="false" 
                 />
               </div>
+
+              <AppManager
+                class="pt-1 w-full"
+                container-class="flex flex-col gap-1 w-full"
+                :resource-id="selectedBenchForSiteApps?.id"
+                :bench-status="selectedBenchForSiteApps?.status"
+                context="site"
+                :active-app-ids="Array.from(siteActivatedAppSet)"
+                :disabled="updating || !canActivateSelectedSiteApps"
+                :frappe-version="selectedBenchForSiteApps?.frappeVersion"
+                :loading-app-id="activatingSiteAppId"
+                @add-app="onActivateSiteApp"
+                @remove-app="onRequestDeactivateSiteApp"
+                @install-app="onActivateSiteApp"
+                @uninstall-app="onRequestDeactivateSiteApp"
+              />
+            </div>
           </ScrollArea>
 
           <!-- Footer Actions Bar pinned at bottom of reading pane -->
@@ -422,7 +422,7 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
-import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask, useFrontDoorStatus } from '@frappe-local/renderer/composables/system';
+import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 
 import { filterSites } from '@frappe-local/renderer/utils/sites';
@@ -450,7 +450,7 @@ const {
 } = useSites();
 
 const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
-const { isFrontDoorAvailable } = useFrontDoorStatus();
+
 const activatingSiteAppId = ref<string | null>(null);
 
 const refresh = async (force = false) => {
@@ -715,11 +715,6 @@ const siteSetupLinks = computed<FirstRunGuideLink[]>(() => [
 const getBenchName = (id: string) => {
   const bench = allBenches.value.find((b) => b.id === id);
   return bench ? bench.name : id;
-};
-
-const getBenchPort = (id: string) => {
-  const bench = allBenches.value.find((b) => b.id === id);
-  return bench?.httpPort;
 };
 
 const selectedSiteForApps = computed(() => selectedSite.value);
