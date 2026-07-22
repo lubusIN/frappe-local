@@ -736,23 +736,33 @@ const {
 const getBenchMoreActions = (bench: BenchListItem) => {
   const actions = [
     {
-      label: 'Open in VS Code',
-      icon: IconCode,
-      disabled: !isEditorInstalled.value,
-      onClick: () => openInEditor(bench.id, false),
+      group: 'Development',
+      options: [
+        {
+          label: 'VS Code',
+          icon: IconCode,
+          disabled: !isEditorInstalled.value,
+          onClick: () => openInEditor(bench.id, false),
+        },
+        {
+          label: 'Dev Container',
+          icon: IconBox,
+          disabled: !isEditorInstalled.value || bench.status !== 'running',
+          onClick: () => openInEditor(bench.id, true),
+        },
+      ],
     },
     {
-      label: 'Open in Dev Container',
-      icon: IconBox,
-      disabled: !isEditorInstalled.value || bench.status !== 'running',
-      onClick: () => openInEditor(bench.id, true),
-    },
-    {
-      label: 'Delete',
-      icon: IconTrash2,
-      theme: 'red' as const,
-      disabled: updating.value || deleting.value || bench.status === 'running' || isResourceBusy(bench.id),
-      onClick: () => confirmDeleteBench(bench.id, bench.name),
+      group: 'Manage',
+      options: [
+        {
+          label: 'Delete',
+          icon: IconTrash2,
+          theme: 'red' as const,
+          disabled: updating.value || deleting.value || bench.status === 'running' || isResourceBusy(bench.id),
+          onClick: () => confirmDeleteBench(bench.id, bench.name),
+        },
+      ],
     },
   ];
   return actions;
