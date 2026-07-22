@@ -19,16 +19,16 @@ export const appRouteDefinitions: AppRouteDefinition[] = [
     description: 'Prepare the management surface for site creation, assignment, and health visibility.',
   },
   {
-    path: '/benches',
-    name: 'benches',
-    title: 'Benches',
-    description: 'Track bench creation, runtime state, and the actions users will rely on most.',
-  },
-  {
     path: '/custom-apps',
     name: 'customApps',
     title: 'My Apps',
     description: 'Manage your custom Frappe apps from GitHub or local directories.',
+  },
+  {
+    path: '/benches',
+    name: 'benches',
+    title: 'Benches',
+    description: 'Track bench creation, runtime state, and the actions users will rely on most.',
   },
   {
     path: '/activity',
@@ -51,14 +51,14 @@ export const navigationItems: NavigationItem[] = [
     path: '/sites',
   },
   {
-    label: 'Benches',
-    description: 'Manage bench lifecycle, versions, and logs.',
-    path: '/benches',
-  },
-  {
     label: 'My Apps',
     description: 'Manage custom apps.',
     path: '/custom-apps',
+  },
+  {
+    label: 'Benches',
+    description: 'Manage bench lifecycle, versions, and logs.',
+    path: '/benches',
   },
   {
     label: 'Activity',
