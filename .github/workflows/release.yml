@@ -91,7 +91,7 @@ jobs:
       - name: Build and Package App
         env:
           RELEASE_TAG: ${{ inputs.tag_name || github.event.release.tag_name }}
-        run: npm run release:make
+        run: npm run release
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v7

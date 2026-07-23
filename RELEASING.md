@@ -48,7 +48,7 @@ releaseDate: '2026-06-23T12:00:00.000Z'
 
 ## 3. Release Workflow Steps
 1. For stable releases, bump the version in `package.json` to the target tag (e.g., `1.1.0`).
-2. Run `npm run release:make` (or push a tag to trigger GitHub Actions).
+2. Run `npm run release` (or push a tag to trigger GitHub Actions).
 3. The release script automatically creates `latest-mac.yml` (for stable) or `dev-mac.yml` (for dev).
 4. Create a GitHub Release tagged `v1.1.0`.
 5. Upload the generated assets and `.yml` files to the release.

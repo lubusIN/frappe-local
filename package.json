@@ -7,14 +7,11 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "release:make": "node scripts/make-release.js",
+    "release": "node scripts/make-release.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
     "test": "vitest run",
-    "precommit:check": "bash scripts/precommit-check.sh",
     "icons:generate": "node scripts/generate-icons.js",
     "dev:reset-state": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"

@@ -80,10 +80,7 @@ Frappe Local dynamically fetches its list of available Frappe apps from the [Fra
 - `npm run lint:fix` - auto-fix lint issues where possible
 - `npm run typecheck` - run TypeScript checks
 - `npm run test` - run Vitest suite
-- `npm run package` - package the app without creating installers
-- `npm run make` - create platform distributables
-- `npm run release:make` - build and validate platform release artifacts
-- `npm run precommit:check` - run lint, typecheck, and tests
+- `npm run release` - build and validate platform release artifacts
 - `npm run icons:generate` - auto-generate platform icons
 - `npm run dev:reset-state` - factory reset development environment
 
