@@ -2,6 +2,7 @@
   <WizardDialog
     :open="open"
     title="New site"
+    size="xl"
     :steps="computedSteps"
     :current-step="fixedBenchId ? wizardStep - 1 : wizardStep"
     :errors="wizardErrors"
@@ -18,14 +19,51 @@
       v-if="wizardStep === 1"
       class="grid gap-4"
     >
-      <FormControl
-        v-model="createBenchSelection"
-        label="Select bench"
-        type="select"
-        :disabled="benchLoading"
-        :options="createBenchOptions"
-        :error="wizardErrors.benchId"
-      />
+      <div class="flex flex-col gap-0 relative">
+
+        <div class="flex flex-col">
+          <div v-if="benchLoading" class="p-4 text-center text-ink-gray-5 text-sm">
+            Loading benches...
+          </div>
+          
+          <div v-else-if="allBenches.length === 0" class="p-4 text-center text-ink-gray-5 text-sm">
+            No benches found.
+          </div>
+          
+          <div v-else class="flex flex-col gap-1 py-1">
+            <button
+              v-for="bench in allBenches"
+              :key="bench.id"
+              @click="selectBench(bench.id)"
+              class="flex items-center justify-between p-2 rounded-lg text-left transition-colors focus:outline-none"
+              :class="[
+                createForm.benchId === bench.id 
+                  ? 'bg-surface-gray-2' 
+                  : 'bg-transparent hover:bg-surface-gray-1',
+                (bench.status !== 'running' && bench.status !== 'success') ? 'opacity-50 pointer-events-none' : ''
+              ]"
+              :disabled="bench.status !== 'running' && bench.status !== 'success'"
+            >
+              <div class="flex items-center gap-3">
+                <div 
+                  class="w-2 h-2 rounded-full flex-shrink-0"
+                  :class="[
+                    (bench.status === 'running' || bench.status === 'success') ? 'bg-green-500' :
+                    bench.status === 'stopped' ? 'bg-gray-400' :
+                    'bg-red-500'
+                  ]"
+                />
+                <span class="text-sm font-medium text-ink-gray-9">{{ bench.name }}</span>
+              </div>
+              <span class="text-xs font-mono text-ink-gray-5">{{ bench.frappeVersion }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="wizardErrors.benchId" class="text-p-sm text-ink-red-6 mt-1">
+          {{ wizardErrors.benchId }}
+        </div>
+    </div>
     </div>
 
     <div
@@ -61,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { FormControl } from 'frappe-ui';
+import { FormControl, TextInput, Badge } from 'frappe-ui';
 import { computed, reactive, ref, watch } from 'vue';
 import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
 import { useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -81,8 +119,6 @@ const ipc = useIpc();
 const { sites, loading, creating, create, refresh } = useSites();
 const { benches: allBenches, loading: benchLoading } = useBenches();
 
-const SELECT_NONE = '__none__';
-
 const createForm = reactive({
   name: '',
   benchId: '',
@@ -95,19 +131,10 @@ const wizardErrors = ref<Record<string, string>>({});
 const computedSteps = computed(() => props.fixedBenchId ? ['Details', 'Confirm'] : ['Bench', 'Details', 'Confirm']);
 
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
-const createBenchSelection = computed({
-  get: () => createForm.benchId || SELECT_NONE,
-  set: (value: string) => {
-    createForm.benchId = value === SELECT_NONE ? '' : value;
-  },
-});
-const createBenchOptions = computed(() => [
-  { label: 'Choose a bench…', value: SELECT_NONE },
-  ...creatableBenches.value.map((bench) => ({
-    label: `${bench.name} (${bench.status})`,
-    value: bench.id,
-  })),
-]);
+
+const selectBench = (benchId: string) => {
+  createForm.benchId = benchId;
+};
 
 const selectedBench = computed(() => allBenches.value.find((bench) => bench.id === createForm.benchId) ?? null);
 

@@ -2,6 +2,7 @@
   <WizardDialog
     :open="open"
     title="New bench"
+    size="xl"
     :steps="['Details', 'Site', 'Confirm']"
     :current-step="wizardStep"
     :errors="wizardErrors"

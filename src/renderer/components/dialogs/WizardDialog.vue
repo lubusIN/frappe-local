@@ -2,7 +2,7 @@
   <Dialog
     :model-value="open"
     :title="title"
-    size="3xl"
+    :size="size || '3xl'"
     @update:model-value="$emit('update:open', $event)"
     @close="$emit('close')"
   >
@@ -76,10 +76,12 @@
 
 <script setup lang="ts">
 import { Button, Dialog, ErrorMessage } from 'frappe-ui';
+import type { DialogSize } from 'frappe-ui';
 
 defineProps<{
   open: boolean;
   title: string;
+  size?: DialogSize;
   steps: string[];
   currentStep: number;
   errors?: Record<string, string>;
