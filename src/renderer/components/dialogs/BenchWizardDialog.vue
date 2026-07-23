@@ -18,25 +18,27 @@
       v-if="wizardStep === 1"
       class="grid gap-4"
     >
-      <FormControl
-        v-model="createForm.name"
-        type="text"
-        required
-        label="Name"
-        placeholder="my-bench"
-        :error="wizardErrors.name"
-      />
+      <div class="grid grid-cols-2 gap-4">
+        <FormControl
+          v-model="createForm.name"
+          type="text"
+          required
+          label="Name"
+          placeholder="my-bench"
+          :error="wizardErrors.name"
+        />
 
-      <div class="flex flex-col gap-1.5">
-        <FormLabel label="Frappe Version" />
-        <FrappeVersionSelect
-          v-model="createForm.frappeVersion"
-          class="w-full"
-        />
-        <ErrorMessage
-          v-if="wizardErrors.frappeVersion"
-          :message="wizardErrors.frappeVersion"
-        />
+        <div class="flex flex-col gap-1.5">
+          <FormLabel label="Frappe Version" />
+          <FrappeVersionSelect
+            v-model="createForm.frappeVersion"
+            class="w-full"
+          />
+          <ErrorMessage
+            v-if="wizardErrors.frappeVersion"
+            :message="wizardErrors.frappeVersion"
+          />
+        </div>
       </div>
 
       <div class="flex flex-col gap-1.5">
@@ -112,7 +114,7 @@ import { toSelectorFrappeVersion } from '@frappe-local/renderer/utils';
 
 import type { BenchListItem } from '@frappe-local/shared/core';
 
-defineProps<{ open: boolean }>();
+const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{
   'update:open': [value: boolean];
   'created': [bench: BenchListItem];
@@ -121,7 +123,13 @@ const emit = defineEmits<{
 const ipc = useIpc();
 const { creating, loading, create, benches: allBenches } = useBenches();
 const { sites } = useSites();
-const { form: settingsForm } = useSettings();
+const { form: settingsForm, refresh: loadSettings } = useSettings();
+
+watch(() => props.open, (isOpen) => {
+  if (isOpen) {
+    loadSettings();
+  }
+}, { immediate: true });
 
 const getDefaultFrappeVersion = () => toSelectorFrappeVersion(settingsForm.value.defaultFrappeVersion);
 

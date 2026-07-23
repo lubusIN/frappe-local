@@ -1,40 +1,24 @@
 <template>
-  <div
-    class="grid grid-cols-2 gap-3 sm:grid-cols-3"
-    role="radiogroup"
-    aria-label="Frappe version"
-  >
-    <div
-      v-for="option in frappeVersionOptions"
-      :key="option.value"
-    >
-      <Button
-        type="button"
-        variant="subtle"
-        :aria-label="option.label"
-        role="radio"
-        :aria-checked="selectedValue === option.value"
-        :class="[
-          'flex w-full cursor-pointer items-center justify-between rounded border border-outline-gray-3 !p-3 text-sm font-normal leading-5 text-ink-gray-9 focus:outline-none !min-h-0 !h-auto',
-          selectedValue === option.value
-            ? 'border-outline-gray-7 bg-surface-gray-2 ring-1 ring-gray-900 hover:bg-surface-gray-2'
-            : 'bg-surface-base hover:bg-surface-gray-1',
-        ]"
-        @click="model = option.value"
-      >
-        <span class="font-medium">{{ option.label }}</span>
-      </Button>
-    </div>
-  </div>
+  <FormControl
+    type="select"
+    v-model="internalModel"
+    :options="frappeVersionOptions"
+  />
 </template>
 
 <script setup lang="ts">
-import { Button } from 'frappe-ui';
+import { FormControl } from 'frappe-ui';
 import { computed } from 'vue';
 import { toSelectorFrappeVersion } from '@frappe-local/renderer/utils';
 
 const model = defineModel<string>();
-const selectedValue = computed(() => toSelectorFrappeVersion(model.value));
+
+const internalModel = computed({
+  get: () => toSelectorFrappeVersion(model.value),
+  set: (val) => {
+    model.value = val;
+  }
+});
 
 const frappeVersionOptions = [
   { label: 'Version 16', value: 'version-16' },
