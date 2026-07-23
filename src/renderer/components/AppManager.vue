@@ -4,11 +4,16 @@
       <div class="flex items-center">
         <TabButtons
           v-model="activeTab"
-          :buttons="[
-            { label: 'Installed', value: 'installed' },
-            { label: 'Available', value: 'available' }
-          ]"
-        />
+          :options="tabOptions"
+        >
+          <template #suffix="{ button }">
+            <span
+              class="rounded-full bg-surface-gray-2 px-1.5 text-xs text-ink-gray-7 ml-1"
+            >
+              {{ tabCounts[button.modelValue as 'installed' | 'available'] }}
+            </span>
+          </template>
+        </TabButtons>
       </div>
       <div class="flex items-center gap-2.5">
         <div class="min-w-[140px] flex-1">
@@ -36,19 +41,19 @@
     </header>
 
     <div
-      v-if="(state.error || customAppsError) && rows.length === 0"
+      v-if="(state.error || customAppsError) && displayedApps.length === 0"
       class="px-2 py-3 text-xs text-center text-ink-red-8"
     >
       {{ state.error || customAppsError }}
     </div>
     <div
-      v-else-if="(state.loading || customAppsLoading) && rows.length === 0"
+      v-else-if="(state.loading || customAppsLoading) && displayedApps.length === 0"
       class="px-2 py-3 text-xs text-center text-ink-gray-6"
     >
       Loading apps…
     </div>
     <div
-      v-else-if="rows.length === 0"
+      v-else-if="displayedApps.length === 0"
       class="px-2 py-3 text-xs text-center text-ink-gray-6"
     >
       No matching apps.
@@ -60,45 +65,45 @@
     >
       <div class="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 pb-4 px-1 w-full">
         <div
-          v-for="row in rows"
-          :key="row.appId"
+          v-for="app in displayedApps"
+          :key="app.appId"
           class="flex flex-col relative bg-surface-base border rounded-xl p-4 transition-all duration-200 h-[190px]"
           :class="[
-            row.disabled ? 'opacity-60 cursor-not-allowed border-outline-gray-2' : 'border-outline-gray-2 hover:border-outline-gray-4'
+            app.disabled ? 'opacity-60 cursor-not-allowed border-outline-gray-2' : 'border-outline-gray-2 hover:border-outline-gray-4'
           ]"
         >
           <!-- Header: Icon & Verified Badge -->
           <div class="flex items-start justify-between mb-3">
             <img
-              v-if="row.icon && !imageErrors[row.appId]"
-              :src="row.icon"
+              v-if="app.icon && !imageErrors[app.appId]"
+              :src="app.icon"
               class="w-10 h-10 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-outline-gray-2"
-              @error="imageErrors[row.appId] = true"
+              @error="imageErrors[app.appId] = true"
             >
             <div
               v-else
               class="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 text-sm-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
             >
-              {{ (row.appName || '').charAt(0).toUpperCase() }}
+              {{ (app.appName || '').charAt(0).toUpperCase() }}
             </div>
 
             <!-- Top Right area -->
             <div class="flex items-center gap-2">
               <Dropdown
-                v-if="context === 'bench' && (row.isActive || row.appId === 'frappe')"
-                :options="getAppOpenOptions(row)"
+                v-if="context === 'bench' && (app.isActive || app.appId === 'frappe')"
+                :options="getAppOpenOptions(app)"
               >
                 <Button
                   variant="outline"
                   size="sm"
-                  :disabled="getAppOpenOptions(row).every(o => Boolean(o.disabled))"
+                  :disabled="getAppOpenOptions(app).every(o => Boolean(o.disabled))"
                 >
                   Open In
                 </Button>
               </Dropdown>
 
               <!-- Action Buttons -->
-              <template v-if="row.appId === 'frappe'">
+              <template v-if="app.appId === 'frappe'">
                 <Badge
                   theme="gray"
                   variant="subtle"
@@ -108,13 +113,13 @@
               </template>
               <template v-else-if="context === 'bench'">
                 <Button
-                  v-if="row.isActive"
+                  v-if="app.isActive"
                   variant="outline"
                   theme="red"
                   size="sm"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click.stop="emit('remove-app', row.appId)"
+                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== app.appId)"
+                  :loading="loadingAppId === app.appId"
+                  @click.stop="emit('remove-app', app.appId)"
                 >
                   Remove
                 </Button>
@@ -122,22 +127,22 @@
                   v-else
                   variant="outline"
                   size="sm"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click.stop="emit('add-app', row.appId)"
+                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== app.appId)"
+                  :loading="loadingAppId === app.appId"
+                  @click.stop="emit('add-app', app.appId)"
                 >
                   Get
                 </Button>
               </template>
               <template v-else-if="context === 'site'">
                 <Button
-                  v-if="row.isActive"
+                  v-if="app.isActive"
                   variant="outline"
                   theme="red"
                   size="sm"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click.stop="emit('uninstall-app', row.appId)"
+                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== app.appId)"
+                  :loading="loadingAppId === app.appId"
+                  @click.stop="emit('uninstall-app', app.appId)"
                 >
                   Uninstall
                 </Button>
@@ -145,9 +150,9 @@
                   v-else
                   variant="outline"
                   size="sm"
-                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== row.appId)"
-                  :loading="loadingAppId === row.appId"
-                  @click.stop="emit('install-app', row.appId)"
+                  :disabled="disabled || (loadingAppId !== null && loadingAppId !== app.appId)"
+                  :loading="loadingAppId === app.appId"
+                  @click.stop="emit('install-app', app.appId)"
                 >
                   Install
                 </Button>
@@ -159,29 +164,29 @@
           <div class="flex flex-col min-h-0 flex-1">
             <div class="flex items-center gap-2 mb-1">
               <h3 class="text-sm-semibold text-ink-gray-9 truncate">
-                {{ row.appName }}
+                {{ app.appName }}
               </h3>
             </div>
             <p
               class="text-xs text-ink-gray-5 leading-relaxed line-clamp-2"
-              :title="row.description"
+              :title="app.description"
             >
-              {{ row.description || 'No description provided' }}
+              {{ app.description || 'No description provided' }}
             </p>
             
             <div
-              v-if="row.supportText"
+              v-if="app.supportText"
               class="mt-1"
             >
               <span
                 class="text-[10px] font-medium"
                 :class="{
-                  'text-ink-amber-6': row.compatibilityStatus === 'warning',
-                  'text-ink-red-8': row.compatibilityStatus === 'blocked',
-                  'text-ink-gray-6': row.compatibilityStatus !== 'warning' && row.compatibilityStatus !== 'blocked',
+                  'text-ink-amber-6': app.compatibilityStatus === 'warning',
+                  'text-ink-red-8': app.compatibilityStatus === 'blocked',
+                  'text-ink-gray-6': app.compatibilityStatus !== 'warning' && app.compatibilityStatus !== 'blocked',
                 }"
               >
-                {{ row.supportText }}
+                {{ app.supportText }}
               </span>
             </div>
           </div>
@@ -191,10 +196,10 @@
             <!-- Source Badge -->
             <div class="flex items-center gap-1.5 flex-wrap overflow-hidden h-5">
               <Badge
-                :theme="row.sourceBadgeTheme"
+                :theme="app.sourceBadgeTheme"
                 size="sm"
               >
-                {{ row.sourceBadgeLabel }}
+                {{ app.sourceBadgeLabel }}
               </Badge>
             </div>
 
@@ -202,9 +207,9 @@
             <div class="flex items-center gap-2 shrink-0 max-w-[45%]">
               <span
                 class="text-[10px] uppercase text-ink-gray-4 font-medium tracking-wide truncate"
-                :title="row.sourceTitle"
+                :title="app.sourceTitle"
               >
-                {{ row.sourceText }}
+                {{ app.sourceText }}
               </span>
             </div>
           </div>
@@ -263,7 +268,7 @@ const activeTab = ref('installed');
 
 const { openAppInEditor, error: openError } = useBenches();
 
-interface AppManagerRow {
+interface AppItem {
   appId: string;
   appName: string;
   sourceBadgeLabel?: string;
@@ -276,14 +281,14 @@ interface DropdownOption {
   onClick?: () => void | Promise<void>;
 }
 
-const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
+const getAppOpenOptions = (app: AppItem): DropdownOption[] => {
   return [
     {
       label: 'VS Code',
       icon: IconCode,
       disabled: !isEditorInstalled.value,
       onClick: async () => {
-        await openAppInEditor(props.resourceId ?? null, row.appId, false);
+        await openAppInEditor(props.resourceId ?? null, app.appId, false);
         if (openError.value) {
           toast.error(openError.value);
         }
@@ -294,7 +299,7 @@ const getAppOpenOptions = (row: AppManagerRow): DropdownOption[] => {
       icon: IconBox,
       disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
       onClick: async () => {
-        await openAppInEditor(props.resourceId ?? null, row.appId, true);
+        await openAppInEditor(props.resourceId ?? null, app.appId, true);
         if (openError.value) {
           toast.error(openError.value);
         }
@@ -360,7 +365,7 @@ const visibleCustomApps = computed(() => {
   });
 });
 
-const catalogRows = computed(() =>
+const catalogAppItems = computed(() =>
   visibleItems.value.map((item) => {
     const compatibility = evaluateCompatibility(item as CatalogAppItem);
     const isActive = props.activeAppIds.includes(item.id) || (props.context === 'site' && item.id === 'frappe');
@@ -383,7 +388,7 @@ const catalogRows = computed(() =>
   })
 );
 
-const customRows = computed(() =>
+const customAppItems = computed(() =>
   visibleCustomApps.value.map((item) => {
     const isActive = props.activeAppIds.includes(item.id) || props.activeAppIds.includes(item.name);
     const catalogMatch = (state.value.data || []).find((app) => app.id === item.name || app.name === item.name);
@@ -407,12 +412,24 @@ const customRows = computed(() =>
   })
 );
 
-const rows = computed(() => {
-  const allRows = [...catalogRows.value, ...customRows.value];
-  if (activeTab.value === 'installed') {
-    return allRows.filter((r) => r.isActive);
-  } else {
-    return allRows.filter((r) => !r.isActive);
-  }
+const allApps = computed(() => [...catalogAppItems.value, ...customAppItems.value]);
+const installedApps = computed(() => allApps.value.filter((app) => app.isActive));
+const availableApps = computed(() => allApps.value.filter((app) => !app.isActive));
+
+const installedCount = computed(() => installedApps.value.length);
+const availableCount = computed(() => availableApps.value.length);
+
+const tabOptions = [
+  { label: 'Installed', value: 'installed' },
+  { label: 'Available', value: 'available' }
+];
+
+const tabCounts = computed(() => ({
+  installed: installedCount.value,
+  available: availableCount.value
+}));
+
+const displayedApps = computed(() => {
+  return activeTab.value === 'installed' ? installedApps.value : availableApps.value;
 });
 </script>

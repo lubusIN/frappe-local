@@ -318,12 +318,6 @@
                   <h3 class="text-base-semibold text-ink-gray-9">
                     Apps
                   </h3>
-                  <Badge
-                    variant="subtle"
-                    theme="gray"
-                  >
-                    {{ selectedSite.appCount }} Installed
-                  </Badge>
                 </div>
               </div>
 
