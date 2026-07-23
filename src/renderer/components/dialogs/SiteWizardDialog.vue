@@ -18,35 +18,32 @@
       v-if="wizardStep === 1"
       class="grid gap-4"
     >
-      <label class="flex flex-col gap-1.5">
-        <span class="mb-1 text-xs-medium text-ink-gray-6">Select bench</span>
-        <Select
-          v-model="createBenchSelection"
-          :disabled="benchLoading"
-          :options="createBenchOptions"
-          variant="outline"
-        />
-      </label>
+      <FormControl
+        v-model="createBenchSelection"
+        label="Select bench"
+        type="select"
+        :disabled="benchLoading"
+        :options="createBenchOptions"
+        :error="wizardErrors.benchId"
+      />
     </div>
 
     <div
       v-if="wizardStep === 2"
       class="grid gap-4"
     >
-      <label class="flex flex-col gap-1.5">
-        <FormLabel label="Site name" />
-        <TextInput
-          v-model="createForm.name"
-          type="text"
-          required
-          placeholder="my-site"
-          variant="outline"
-        >
-          <template #suffix>
-            <span class="text-p-sm text-ink-gray-6">.localhost</span>
-          </template>
-        </TextInput>
-      </label>
+      <FormControl
+        v-model="createForm.name"
+        label="Site name"
+        type="text"
+        required
+        placeholder="my-site"
+        :error="wizardErrors.name"
+      >
+        <template #suffix>
+          <span class="text-p-sm text-ink-gray-6">.localhost</span>
+        </template>
+      </FormControl>
     </div>
 
     <div
@@ -64,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { FormLabel, Select, TextInput } from 'frappe-ui';
+import { FormControl } from 'frappe-ui';
 import { computed, reactive, ref, watch } from 'vue';
 import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
 import { useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -93,7 +90,7 @@ const createForm = reactive({
 });
 
 const wizardStep = ref<SiteWizardStep>(1);
-const wizardErrors = ref<string[]>([]);
+const wizardErrors = ref<Record<string, string>>({});
 
 const computedSteps = computed(() => props.fixedBenchId ? ['Details', 'Confirm'] : ['Bench', 'Details', 'Confirm']);
 
@@ -133,6 +130,10 @@ watch(
   }
 );
 
+watch(() => createForm.benchId, () => { if (wizardErrors.value.benchId) delete wizardErrors.value.benchId; });
+watch(() => createForm.name, () => { if (wizardErrors.value.name) delete wizardErrors.value.name; });
+watch(() => createForm.path, () => { if (wizardErrors.value.path) delete wizardErrors.value.path; });
+
 watch(
   () => [createForm.name, wizardStep.value] as const,
   ([newName, step]) => {
@@ -144,7 +145,7 @@ watch(
       const errors = getSiteWizardStepErrors(2, createForm, sites.value);
       wizardErrors.value = errors;
     } else {
-      wizardErrors.value = [];
+      wizardErrors.value = {};
     }
   }
 );
@@ -155,24 +156,24 @@ const onNextStep = async () => {
     if (createForm.path) {
       const exists = await ipc.pathExists(createForm.path);
       if (exists) {
-        errors.push('Site already exists at this path. Please choose a different name.');
+        errors.name = 'Site already exists at this path. Please choose a different name.';
       }
     }
   }
   wizardErrors.value = errors;
-  if (errors.length > 0) return;
+  if (Object.keys(errors).length > 0) return;
   if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as SiteWizardStep;
 };
 
 const onPreviousStep = () => {
-  wizardErrors.value = [];
+  wizardErrors.value = {};
   const minStep = props.fixedBenchId ? 2 : 1;
   if (wizardStep.value > minStep) wizardStep.value = (wizardStep.value - 1) as SiteWizardStep;
 };
 
 const onCloseSiteWizard = () => {
   wizardStep.value = props.fixedBenchId ? 2 : 1;
-  wizardErrors.value = [];
+  wizardErrors.value = {};
   createForm.name = '';
   createForm.benchId = props.fixedBenchId ? props.fixedBenchId : '';
   createForm.path = '';
@@ -191,7 +192,7 @@ const onCreateSite = async () => {
       onCloseSiteWizard();
     }
   } catch (err) {
-    wizardErrors.value = [String(err)];
+    wizardErrors.value = { _global: String(err) };
   }
 };
 </script>

@@ -10,7 +10,7 @@ export type SiteWizardDraft = {
 
 export type SiteWizardBuildResult = {
   readonly payload: SiteCreateInput | null;
-  readonly errors: string[];
+  readonly errors: Record<string, string>;
 };
 
 const SITE_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
@@ -34,34 +34,34 @@ export const getSiteWizardStepErrors = (
   step: SiteWizardStep,
   draft: SiteWizardDraft,
   existingSites: readonly { readonly name: string; readonly status?: string }[] = []
-): string[] => {
-  const errors: string[] = [];
+): Record<string, string> => {
+  const errors: Record<string, string> = {};
 
   if (step === 1) {
     if (!draft.benchId.trim()) {
-      errors.push('Select a bench to continue.');
+      errors.benchId = 'Select a bench to continue.';
     }
   }
 
   if (step === 2) {
     if (!draft.name.trim()) {
-      errors.push('Enter a site name.');
+      errors.name = 'Enter a site name.';
     } else if (!isValidSiteName(draft.name)) {
-      errors.push('Site name must be a lowercase slug with letters, numbers, and hyphens only.');
+      errors.name = 'Site name must be a lowercase slug with letters, numbers, and hyphens only.';
     } else {
       const siteDomain = toSiteDomain(draft.name);
       const duplicate = existingSites.find((s) => toSiteDomain(s.name) === siteDomain);
       if (duplicate) {
         if (duplicate.status === 'queued') {
-          errors.push(`Site "${siteDomain}" is currently being processed (e.g. deleted). Please wait a moment before recreating.`);
+          errors.name = `Site "${siteDomain}" is currently being processed (e.g. deleted). Please wait a moment before recreating.`;
         } else {
-          errors.push(`A site named "${siteDomain}" already exists. Please choose a unique site name.`);
+          errors.name = `A site named "${siteDomain}" already exists. Please choose a unique site name.`;
         }
       }
     }
 
     if (!draft.path.trim()) {
-      errors.push('Enter a site path.');
+      errors.path = 'Enter a site path.';
     }
   }
 
@@ -72,12 +72,11 @@ export const buildSiteCreatePayload = (
   draft: SiteWizardDraft,
   existingSites: readonly { readonly name: string; readonly status?: string }[] = []
 ): SiteWizardBuildResult => {
-  const errors = [
-    ...getSiteWizardStepErrors(1, draft, existingSites),
-    ...getSiteWizardStepErrors(2, draft, existingSites),
-  ];
+  const errors1 = getSiteWizardStepErrors(1, draft, existingSites);
+  const errors2 = getSiteWizardStepErrors(2, draft, existingSites);
+  const errors = { ...errors1, ...errors2 };
 
-  if (errors.length > 0) {
+  if (Object.keys(errors).length > 0) {
     return {
       payload: null,
       errors,
@@ -98,6 +97,6 @@ export const buildSiteCreatePayload = (
 
       apps: ['frappe'],
     },
-    errors: [],
+    errors: {},
   };
 };

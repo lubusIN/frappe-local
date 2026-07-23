@@ -118,30 +118,33 @@
           class="flex flex-col gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2.5 bg-surface-base"
         >
           <div class="flex items-center gap-2 w-full min-w-0">
-            <TextInput
-              v-model="siteFilters.search"
-              type="search"
-              placeholder="Search sites..."
-              size="sm"
-              variant="outline"
-              class="flex-1 min-w-0"
-            >
-              <template #prefix>
-                <IconSearch class="w-4 text-ink-gray-5" />
-              </template>
-            </TextInput>
+            <div class="flex-1 min-w-0">
+              <FormControl
+                v-model="siteFilters.search"
+                type="text"
+                placeholder="Search sites..."
+                size="sm"
+                variant="outline"
+              >
+                <template #prefix>
+                  <IconSearch class="w-4 text-ink-gray-5" />
+                </template>
+              </FormControl>
+            </div>
 
-            <Select
-              v-model="benchFilterSelection"
-              :options="benchFilterOptions"
-              size="sm"
-              variant="outline"
-              class="w-36 shrink-0"
-            >
-              <template #prefix>
-                <IconListFilter class="w-4 text-ink-gray-5" />
-              </template>
-            </Select>
+            <div class="w-36 shrink-0">
+              <FormControl
+                v-model="benchFilterSelection"
+                type="select"
+                :options="benchFilterOptions"
+                size="sm"
+                variant="outline"
+              >
+                <template #prefix>
+                  <IconListFilter class="w-4 text-ink-gray-5" />
+                </template>
+              </FormControl>
+            </div>
           </div>
 
           <div class="flex items-center justify-between gap-2 w-full mt-0.5 min-w-0">
@@ -395,7 +398,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Select, TabButtons, TextInput, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, TabButtons, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import IconGlobe from '~icons/lucide/globe';
 import IconSearch from '~icons/lucide/search';

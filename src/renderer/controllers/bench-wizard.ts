@@ -11,7 +11,7 @@ export type BenchWizardDraft = {
 
 export type BenchWizardBuildResult = {
   readonly payload: BenchCreateInput & { siteName?: string } | null;
-  readonly errors: string[];
+  readonly errors: Record<string, string>;
 };
 
 const BENCH_NAME_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
@@ -22,40 +22,40 @@ export const getBenchWizardStepErrors = (
   step: BenchWizardStep,
   draft: BenchWizardDraft,
   context?: { existingSites?: string[]; existingBenches?: string[] }
-): string[] => {
-  const errors: string[] = [];
+): Record<string, string> => {
+  const errors: Record<string, string> = {};
 
   if (step === 1) {
     if (!draft.name.trim()) {
-      errors.push('Enter a bench name.');
+      errors.name = 'Enter a bench name.';
     } else if (!isValidBenchName(draft.name)) {
-      errors.push('Bench name can include lowercase letters, numbers, dots, and hyphens only.');
+      errors.name = 'Bench name can include lowercase letters, numbers, dots, and hyphens only.';
     } else if (context?.existingBenches) {
       const isDuplicate = context.existingBenches.some(b => b.toLowerCase() === draft.name.toLowerCase());
       if (isDuplicate) {
-        errors.push(`A bench named "${draft.name}" already exists. Please choose a unique bench name.`);
+        errors.name = `A bench named "${draft.name}" already exists. Please choose a unique bench name.`;
       }
     }
 
     if (!draft.frappeVersion.trim()) {
-      errors.push('Select a Frappe version.');
+      errors.frappeVersion = 'Select a Frappe version.';
     }
 
     if (!draft.path.trim()) {
-      errors.push('Enter a bench path.');
+      errors.path = 'Enter a bench path.';
     }
   }
 
   if (step === 2) {
     if (!draft.siteName.trim()) {
-      errors.push('Enter an initial site name.');
+      errors.siteName = 'Enter an initial site name.';
     } else if (!isValidSiteName(draft.siteName)) {
-      errors.push('Site name must be a lowercase slug with letters, numbers, and hyphens only.');
+      errors.siteName = 'Site name must be a lowercase slug with letters, numbers, and hyphens only.';
     } else if (context?.existingSites) {
       const siteDomain = toSiteDomain(draft.siteName);
       const isDuplicate = context.existingSites.some(s => toSiteDomain(s) === siteDomain);
       if (isDuplicate) {
-        errors.push(`A site named "${siteDomain}" already exists. Please choose a unique site name.`);
+        errors.siteName = `A site named "${siteDomain}" already exists. Please choose a unique site name.`;
       }
     }
   }
@@ -69,9 +69,9 @@ export const buildBenchCreatePayload = (
 ): BenchWizardBuildResult => {
   const errors1 = getBenchWizardStepErrors(1, draft, context);
   const errors2 = getBenchWizardStepErrors(2, draft, context);
-  const errors = [...errors1, ...errors2];
+  const errors = { ...errors1, ...errors2 };
 
-  if (errors.length > 0) {
+  if (Object.keys(errors).length > 0) {
     return {
       payload: null,
       errors,
@@ -86,6 +86,6 @@ export const buildBenchCreatePayload = (
       apps: ['frappe'],
       siteName: toSiteDomain(draft.siteName),
     },
-    errors: [],
+    errors: {},
   };
 };

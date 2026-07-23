@@ -20,18 +20,20 @@
     </PageHeader>
 
     <div class="flex flex-wrap items-center gap-3">
-      <Select
-        v-model="statusFilterModel"
-        class="min-w-36 flex-none"
-        :options="statusOptions"
-        variant="outline"
-      />
-      <Select
-        v-model="resourceFilterModel"
-        class="min-w-36 flex-none"
-        :options="resourceOptions"
-        variant="outline"
-      />
+      <div class="min-w-36 flex-none">
+        <FormControl
+          v-model="statusFilterModel"
+          type="select"
+          :options="statusOptions"
+        />
+      </div>
+      <div class="min-w-36 flex-none">
+        <FormControl
+          v-model="resourceFilterModel"
+          type="select"
+          :options="resourceOptions"
+        />
+      </div>
     </div>
 
     <div
@@ -136,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, LoadingIndicator, Select } from 'frappe-ui';
+import { Badge, Button, LoadingIndicator, FormControl } from 'frappe-ui';
 import IconActivity from '~icons/lucide/activity';
 import IconTrash2 from '~icons/lucide/trash2';
 import { computed, ref } from 'vue';

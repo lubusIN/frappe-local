@@ -30,12 +30,11 @@
           class="flex flex-col gap-4"
           @submit.prevent="currentStep === steps.length ? $emit('submit') : $emit('next')"
         >
-          <p
-            v-if="errors && errors.length > 0"
-            class="mb-4 text-sm text-ink-red-6"
-          >
-            {{ errors.join(' ') }}
-          </p>
+          <ErrorMessage
+            v-if="errors && errors._global"
+            class="mb-2"
+            :message="errors._global"
+          />
 
           <slot />
         </form>
@@ -76,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Dialog } from 'frappe-ui';
+import { Button, Dialog, ErrorMessage } from 'frappe-ui';
 import IconChevronRight from '~icons/lucide/chevron-right';
 
 defineProps<{
@@ -84,7 +83,7 @@ defineProps<{
   title: string;
   steps: string[];
   currentStep: number;
-  errors?: string[];
+  errors?: Record<string, string>;
   loading?: boolean;
   creating?: boolean;
   submitLabel: string;

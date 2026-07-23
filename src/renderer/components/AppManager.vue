@@ -12,26 +12,26 @@
       </div>
       <div class="flex items-center gap-2.5">
         <div class="min-w-[140px] flex-1">
-          <TextInput 
+          <FormControl 
             v-model="query"
-            type="search"
+            type="text"
             placeholder="Search apps…"
             :disabled="disabled"
-            variant="outline"
             @update:model-value="onSearch"
           >
             <template #prefix>
               <IconSearch class="w-4 text-ink-gray-6" />
             </template>
-          </TextInput>
+          </FormControl>
         </div>
-        <Select
-          v-model="categoryFilter"
-          class="min-w-[120px] text-xs"
-          :disabled="disabled || state.loading"
-          :options="categoryOptions"
-          variant="outline"
-        />
+        <div class="min-w-[120px] shrink-0 text-xs">
+          <FormControl
+            v-model="categoryFilter"
+            type="select"
+            :disabled="disabled || state.loading"
+            :options="categoryOptions"
+          />
+        </div>
       </div>
     </header>
 
@@ -215,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dropdown, Select, TabButtons, TextInput, toast } from 'frappe-ui';
+import { TabButtons, FormControl, Button, Dropdown, Badge, toast } from 'frappe-ui';
 import IconSearch from '~icons/lucide/search';
 import IconCode from '~icons/lucide/code';
 import IconBox from '~icons/lucide/box';

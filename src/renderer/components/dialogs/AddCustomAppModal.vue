@@ -12,8 +12,8 @@
           <TabButtons
             v-model="appType"
             :options="[
-              { label: 'GitHub URL', value: 'github' },
-              { label: 'Local Folder', value: 'local' }
+              { label: 'GitHub', value: 'github', iconLeft: IconGithub },
+              { label: 'Local', value: 'local', iconLeft: IconFolder }
             ]"
           />
         </div>
@@ -22,11 +22,13 @@
           v-if="appType === 'github'"
           class="flex flex-col gap-1.5"
         >
-          <TextInput
+          <FormControl
             v-model="source"
+            type="text"
             label="GitHub Repository URL"
             placeholder="e.g. https://github.com/frappe/hrms"
             :disabled="isExtracting || isSaving"
+            :error="error || undefined"
           />
           
           <div
@@ -101,30 +103,26 @@
           v-else
           class="flex flex-col gap-1.5"
         >
-          <label class="text-sm font-medium text-ink-gray-9">Local Folder Path</label>
-          <div class="flex gap-2">
-            <div class="flex-1">
-              <TextInput
-                v-model="source"
-                placeholder="/Users/username/projects/my-app"
-                :disabled="isExtracting || isSaving"
-              />
-            </div>
+          <div class="flex gap-2 items-end">
+            <FormControl
+              v-model="source"
+              type="text"
+              label="Local Folder Path"
+              placeholder="/Users/username/projects/my-app"
+              :disabled="isExtracting || isSaving"
+              class="flex-1"
+            />
             <Button
-              variant="outline"
               :disabled="isExtracting || isSaving"
               @click="pickFolder"
             >
               Browse
             </Button>
           </div>
-        </div>
-
-        <div
-          v-if="error"
-          class="p-3 bg-surface-red-2 text-ink-red-8 rounded-md text-sm"
-        >
-          {{ error }}
+          <ErrorMessage
+            v-if="error"
+            :message="error"
+          />
         </div>
         
         <div
@@ -176,8 +174,10 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Button, Dialog, Switch, TabButtons, TextInput, debounce, toast } from 'frappe-ui';
+import { Alert, Button, Dialog, Switch, TabButtons, FormControl, ErrorMessage, debounce, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
+import IconGithub from '~icons/lucide/github';
+import IconFolder from '~icons/lucide/folder';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core';
 import { useSshKeys } from '@frappe-local/renderer/composables/system';
@@ -198,7 +198,7 @@ const isRepoPrivate = ref(false);
 const isCheckingVisibility = ref(false);
 
 onMounted(async () => {
-  const settings = await window.frappeLocal.getSettings();
+  const settings = await window.frappeLocal?.getSettings();
   if (settings) {
     shareSshKeysEnabled.value = settings.shareSshKeys;
   }
@@ -212,7 +212,7 @@ const checkVisibility = debounce(async (url: string) => {
   }
   isCheckingVisibility.value = true;
   try {
-    const isPublic = await window.frappeLocal.checkGithubRepoVisibility(url);
+    const isPublic = await window.frappeLocal?.checkGithubRepoVisibility(url);
     if (source.value !== url) return;
     isRepoPrivate.value = !isPublic;
   } catch (err) {
@@ -240,7 +240,7 @@ watch(source, (newVal) => {
 const { showSshConfirmation, pendingSshValue, handleSshToggle, performSshSave } = useSshKeys();
 
 const onToggleSshKeys = async () => {
-  const settings = await window.frappeLocal.getSettings();
+  const settings = await window.frappeLocal?.getSettings();
   if (settings && settings.shareSshKeys === shareSshKeysEnabled.value) {
     return; // Ignore if the value hasn't actually changed in the backend
   }
@@ -266,7 +266,7 @@ const close = () => {
 };
 
 const pickFolder = async () => {
-  const result = await window.frappeLocal.pickBenchFolder();
+  const result = await window.frappeLocal?.pickBenchFolder();
   if (result) {
     source.value = result;
   }
@@ -295,7 +295,9 @@ const onConfirm = async () => {
   isExtracting.value = true;
   let metadata: ExtractedCustomAppMetadata;
   try {
-    metadata = await window.frappeLocal.extractCustomApp(appType.value, cleanSource);
+    const res = await window.frappeLocal?.extractCustomApp(appType.value, cleanSource);
+    if (!res) throw new Error('API not available or failed to extract app metadata');
+    metadata = res;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to extract app metadata';
     isExtracting.value = false;
@@ -305,7 +307,7 @@ const onConfirm = async () => {
 
   isSaving.value = true;
   try {
-    const created = await window.frappeLocal.createCustomApp({
+    const created = await window.frappeLocal?.createCustomApp({
       name: metadata.name,
       title: metadata.title,
       description: metadata.description || '',
@@ -315,6 +317,8 @@ const onConfirm = async () => {
       icon: metadata.icon,
     });
     
+    if (!created) throw new Error('API not available or failed to save app');
+
     toast.success(`App ${created.title || created.name} added successfully`);
     emit('added', created);
     close();

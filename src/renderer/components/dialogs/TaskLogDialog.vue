@@ -49,16 +49,16 @@
 
           <div class="flex items-center gap-2 flex-1 justify-end min-w-[220px]">
             <div class="w-64 max-w-full">
-              <TextInput
+              <FormControl
                 v-model="searchQuery"
-                type="search"
+                type="text"
                 placeholder="Search logs…"
                 variant="outline"
               >
                 <template #prefix>
                   <IconSearch class="w-3.5 text-ink-gray-5" />
                 </template>
-              </TextInput>
+              </FormControl>
             </div>
             <Button
               size="sm"
@@ -193,8 +193,8 @@
             {{ footerStatusLabel }}
           </span>
           <TaskTimer
-            :start-time="displayedLogs[0].timestamp"
-            :end-time="displayedLogs[displayedLogs.length - 1].timestamp"
+            :start-time="displayedLogs[0]?.timestamp || 0"
+            :end-time="displayedLogs[displayedLogs.length - 1]?.timestamp"
             :running="isBusy"
             size-class="text-xs"
             color-class="text-ink-gray-4"
@@ -263,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dialog, LoadingIndicator, Switch, TextInput, toast } from 'frappe-ui';
+import { Badge, Button, Dialog, FormControl, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import IconTerminal from '~icons/lucide/terminal';
 import IconCopy from '~icons/lucide/copy';
@@ -362,15 +362,19 @@ const parseFullLogLine = (line: string): DisplayLog => {
     };
   }
 
-  const parsedLevel = match[2].toLowerCase();
+  const parsedLevel = match[2]?.toLowerCase();
   const level: TaskLogLevel | null =
     parsedLevel === 'info' || parsedLevel === 'warning' || parsedLevel === 'error'
       ? parsedLevel
       : null;
-  const timestamp = Number.isNaN(Date.parse(match[1])) ? fallbackTimestamp : match[1];
+  const parsedTimestamp = match[1];
+  const timestamp =
+    parsedTimestamp && !Number.isNaN(Date.parse(parsedTimestamp))
+      ? parsedTimestamp
+      : fallbackTimestamp;
 
   return {
-    message: match[6],
+    message: match[6] || '',
     timestamp,
     level,
     type: (match[3] as TaskProgressEvent['type']) || undefined,

@@ -24,7 +24,7 @@
         required
         label="Name"
         placeholder="my-bench"
-        variant="outline"
+        :error="wizardErrors.name"
       />
 
       <div class="flex flex-col gap-1.5">
@@ -33,20 +33,22 @@
           v-model="createForm.frappeVersion"
           class="w-full"
         />
+        <ErrorMessage
+          v-if="wizardErrors.frappeVersion"
+          :message="wizardErrors.frappeVersion"
+        />
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <FormLabel label="Path" />
-        <div class="flex w-full gap-2">
-          <div class="flex-1 min-w-0">
-            <TextInput
-              v-model="createForm.path"
-              type="text"
-              required
-              placeholder="/path/to/bench"
-              variant="outline"
-            />
-          </div>
+        <FormLabel label="Path" required />
+        <div class="flex w-full gap-2 items-start">
+          <FormControl
+            v-model="createForm.path"
+            type="text"
+            placeholder="/path/to/bench"
+            class="flex-1 min-w-0"
+            :error="wizardErrors.path"
+          />
           <Button
             size="sm"
             variant="subtle"
@@ -63,20 +65,18 @@
       v-if="wizardStep === 2"
       class="grid gap-4"
     >
-      <div class="flex flex-col gap-1.5">
-        <FormLabel label="Initial Site Name" />
-        <TextInput
-          v-model="createForm.siteName"
-          type="text"
-          required
-          placeholder="my-site"
-          variant="outline"
-        >
-          <template #suffix>
-            <span class="text-p-sm text-ink-gray-6">.localhost</span>
-          </template>
-        </TextInput>
-      </div>
+      <FormControl
+        v-model="createForm.siteName"
+        type="text"
+        required
+        label="Initial Site Name"
+        placeholder="my-site"
+        :error="wizardErrors.siteName"
+      >
+        <template #suffix>
+          <span class="text-p-sm text-ink-gray-6">.localhost</span>
+        </template>
+      </FormControl>
     </div>
 
     <div
@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, FormLabel, TextInput, FormControl } from 'frappe-ui';
+import { Button, FormLabel, FormControl, ErrorMessage } from 'frappe-ui';
 import { reactive, ref, watch } from 'vue';
 import WizardDialog from '@frappe-local/renderer/components/dialogs/WizardDialog.vue';
 import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
@@ -126,13 +126,19 @@ const { form: settingsForm } = useSettings();
 const getDefaultFrappeVersion = () => toSelectorFrappeVersion(settingsForm.value.defaultFrappeVersion);
 
 const wizardStep = ref<BenchWizardStep>(1);
-const wizardErrors = ref<string[]>([]);
+const wizardErrors = ref<Record<string, string>>({});
+
 const createForm = reactive({
   name: '',
   path: '',
   frappeVersion: getDefaultFrappeVersion(),
   siteName: '',
 });
+
+watch(() => createForm.name, () => { if (wizardErrors.value.name) delete wizardErrors.value.name; });
+watch(() => createForm.path, () => { if (wizardErrors.value.path) delete wizardErrors.value.path; });
+watch(() => createForm.frappeVersion, () => { if (wizardErrors.value.frappeVersion) delete wizardErrors.value.frappeVersion; });
+watch(() => createForm.siteName, () => { if (wizardErrors.value.siteName) delete wizardErrors.value.siteName; });
 
 watch(() => [createForm.name, settingsForm.value.storagePath], ([newName, storagePath], [oldName]) => {
   if (!storagePath) return;
@@ -173,18 +179,18 @@ const onNextStep = () => {
   const context = { existingSites: sites.value.map(s => s.name), existingBenches: allBenches.value.map(b => b.name) };
   const errors = getBenchWizardStepErrors(wizardStep.value, createForm, context);
   wizardErrors.value = errors;
-  if (errors.length > 0) return;
+  if (Object.keys(errors).length > 0) return;
   if (wizardStep.value < 3) wizardStep.value = (wizardStep.value + 1) as BenchWizardStep;
 };
 
 const onPreviousStep = () => {
-  wizardErrors.value = [];
+  wizardErrors.value = {};
   if (wizardStep.value > 1) wizardStep.value = (wizardStep.value - 1) as BenchWizardStep;
 };
 
 const onCloseBenchWizard = () => {
   wizardStep.value = 1;
-  wizardErrors.value = [];
+  wizardErrors.value = {};
   createForm.name = '';
   createForm.path = '';
   createForm.frappeVersion = getDefaultFrappeVersion();
@@ -205,7 +211,7 @@ const onCreateBench = async () => {
       onCloseBenchWizard();
     }
   } catch (err) {
-    wizardErrors.value = [String(err)];
+    wizardErrors.value = { _global: String(err) };
   }
 };
 </script>

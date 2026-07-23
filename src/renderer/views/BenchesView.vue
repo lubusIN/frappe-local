@@ -123,9 +123,9 @@
           v-if="!error && benches.length > 0"
           class="flex flex-col gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2.5 bg-surface-base"
         >
-          <TextInput
+          <FormControl
             v-model="benchFilters.search"
-            type="search"
+            type="text"
             placeholder="Search benches..."
             size="sm"
             variant="outline"
@@ -133,7 +133,7 @@
             <template #prefix>
               <IconSearch class="w-4 text-ink-gray-5" />
             </template>
-          </TextInput>
+          </FormControl>
 
           <div class="flex items-center justify-between gap-2 w-full mt-0.5 min-w-0">
             <TabButtons
@@ -389,7 +389,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, TextInput, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, FormControl, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import IconMoreHorizontal from '~icons/lucide/more-horizontal';
 import IconPackage from '~icons/lucide/package';

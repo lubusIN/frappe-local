@@ -82,8 +82,9 @@
                   description="The directory where all your local benches and sites will be stored."
                 >
                   <div class="flex gap-2 w-full sm:w-80">
-                    <TextInput
+                    <FormControl
                       v-model="form.storagePath"
+                      type="text"
                       placeholder="/path/to/storage"
                       required
                       class="flex-1"
@@ -103,13 +104,15 @@
                   description="Select the terminal application to use when opening bench shells."
                 >
                   <div class="flex flex-col gap-2 w-full sm:w-80">
-                    <Select
+                    <FormControl
                       v-model="selectedTerminalOption"
+                      type="select"
                       :options="terminalOptions"
                     />
-                    <TextInput
+                    <FormControl
                       v-if="selectedTerminalOption === 'custom'"
                       v-model="form.terminalPreference"
+                      type="text"
                       placeholder="Custom command or binary path (e.g., /usr/local/bin/my-term)"
                     />
                   </div>
@@ -156,8 +159,9 @@
                   </span>
                 </template>
                 <div class="flex items-center gap-2 w-full sm:w-80">
-                  <TextInput
+                  <FormControl
                     v-model="form.breweryUrl"
+                    type="text"
                     placeholder="https://frappe-brewery.lubus.in/"
                     class="flex-1"
                     :disabled="saving || validatingBrewery"
@@ -255,8 +259,9 @@
                 title="Update Channel"
                 description="Choose how early you'd like to receive new updates."
               >
-                <Select
+                <FormControl
                   v-model="form.updateChannel"
+                  type="select"
                   :options="[
                     { label: 'Stable', value: 'stable' },
                     { label: 'Dev', value: 'dev' }
@@ -320,7 +325,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, Select, SettingsBody, SettingsContent, SettingsDialog, SettingsHeader, SettingsNavGroup, SettingsNavItem, SettingsPanel, SettingsRow, SettingsSidebar, Slider, Switch, TextInput, ThemeSwitcher, toast } from 'frappe-ui';
+import { Button, FormControl, SettingsBody, SettingsContent, SettingsDialog, SettingsHeader, SettingsNavGroup, SettingsNavItem, SettingsPanel, SettingsRow, SettingsSidebar, Slider, Switch, ThemeSwitcher, toast } from 'frappe-ui';
 import IconSettings from '~icons/lucide/settings';
 import IconPalette from '~icons/lucide/palette';
 import IconSlidersHorizontal from '~icons/lucide/sliders-horizontal';
