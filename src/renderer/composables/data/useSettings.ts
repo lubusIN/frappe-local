@@ -47,6 +47,7 @@ export const useSettings = () => {
       const saved = await ipc.setSettings({ ...form.value });
       originalSettings.value = { ...saved };
       form.value = { ...saved };
+      configured.value = true;
     } catch (err) {
       error.value = String(err);
     } finally {

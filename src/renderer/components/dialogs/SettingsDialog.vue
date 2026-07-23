@@ -510,7 +510,11 @@ const performSave = async () => {
 };
 
 const onSave = async () => {
-  if (saving.value) return;
+  if (saving.value) {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => onSave(), 500);
+    return;
+  }
 
   breweryValidationMessage.value = '';
   if (form.value.breweryUrl && form.value.breweryUrl.trim() && form.value.breweryUrl !== originalSettings.value?.breweryUrl) {
@@ -551,7 +555,7 @@ let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(
   form,
   (newForm) => {
-    if (loading.value || !configured.value || saving.value) return;
+    if (loading.value) return;
     if (JSON.stringify(newForm) === JSON.stringify(originalSettings.value)) return;
 
     if (saveTimeout) clearTimeout(saveTimeout);
