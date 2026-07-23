@@ -16,25 +16,25 @@
       <SettingsNavGroup label="User Preferences">
         <SettingsNavItem value="general">
           <template #prefix>
-            <IconSettings class="size-4" />
+            <i class="lucide-settings size-4" />
           </template>
           General
         </SettingsNavItem>
         <SettingsNavItem value="appearance">
           <template #prefix>
-            <IconPalette class="size-4" />
+            <i class="lucide-palette size-4" />
           </template>
           Appearance
         </SettingsNavItem>
         <SettingsNavItem value="advanced">
           <template #prefix>
-            <IconSlidersHorizontal class="size-4" />
+            <i class="lucide-sliders-horizontal size-4" />
           </template>
           Advanced
         </SettingsNavItem>
         <SettingsNavItem value="updates">
           <template #prefix>
-            <IconDownload class="size-4" />
+            <i class="lucide-download size-4" />
           </template>
           Updates
         </SettingsNavItem>
@@ -326,10 +326,6 @@
 
 <script setup lang="ts">
 import { Button, FormControl, SettingsBody, SettingsContent, SettingsDialog, SettingsHeader, SettingsNavGroup, SettingsNavItem, SettingsPanel, SettingsRow, SettingsSidebar, Slider, Switch, ThemeSwitcher, toast } from 'frappe-ui';
-import IconSettings from '~icons/lucide/settings';
-import IconPalette from '~icons/lucide/palette';
-import IconSlidersHorizontal from '~icons/lucide/sliders-horizontal';
-import IconDownload from '~icons/lucide/download';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { AvailableTerminal } from '@frappe-local/shared/core';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';

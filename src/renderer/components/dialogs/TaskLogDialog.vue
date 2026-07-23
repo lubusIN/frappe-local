@@ -7,7 +7,7 @@
     <template #title>
       <div class="flex items-center min-w-0 gap-3">
         <div class="flex items-center justify-center rounded-lg size-9 shrink-0 bg-surface-gray-2 text-ink-gray-6">
-          <IconTerminal class="size-[18px]" />
+          <i class="lucide-terminal size-[18px]" />
         </div>
         <div class="min-w-0">
           <div class="flex items-center min-w-0 gap-2">
@@ -56,7 +56,7 @@
                 variant="outline"
               >
                 <template #prefix>
-                  <IconSearch class="w-3.5 text-ink-gray-5" />
+                  <i class="lucide-search w-3.5 text-ink-gray-5" />
                 </template>
               </FormControl>
             </div>
@@ -100,31 +100,31 @@
               @click="toggleStep(group.id)"
             >
               <div class="flex items-center min-w-0 gap-2.5">
-                <IconChevronDown
+                <i
                   v-if="isStepExpanded(group.id)"
-                  class="size-4 shrink-0 text-ink-gray-5 transition-transform"
+                  class="lucide-chevron-down size-4 shrink-0 text-ink-gray-5 transition-transform"
                 />
-                <IconChevronRight
+                <i
                   v-else
-                  class="size-4 shrink-0 text-ink-gray-5 transition-transform"
+                  class="lucide-chevron-right size-4 shrink-0 text-ink-gray-5 transition-transform"
                 />
 
                 <span class="flex items-center justify-center shrink-0">
-                  <IconCheckCircle2
+                  <i
                     v-if="group.status === 'success'"
-                    class="size-4 text-ink-green-6"
+                    class="lucide-check-circle-2 size-4 text-ink-green-6"
                   />
                   <LoadingIndicator
                     v-else-if="group.status === 'running'"
                     class="size-3.5 text-ink-blue-6"
                   />
-                  <IconXCircle
+                  <i
                     v-else-if="group.status === 'failure'"
-                    class="size-4 text-ink-red-6"
+                    class="lucide-x-circle size-4 text-ink-red-6"
                   />
-                  <IconCircle
+                  <i
                     v-else
-                    class="size-4 text-ink-gray-4"
+                    class="lucide-circle size-4 text-ink-gray-4"
                   />
                 </span>
 
@@ -235,7 +235,7 @@
             v-if="displayedLogs.length > 0"
             size="md"
             variant="subtle"
-            :icon-left="IconCopy"
+            :icon-left="'lucide-copy'"
             @click="onCopyLogs"
           >
             {{ copied ? 'Copied!' : 'Copy' }}
@@ -265,14 +265,6 @@
 <script setup lang="ts">
 import { Badge, Button, Dialog, FormControl, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
-import IconTerminal from '~icons/lucide/terminal';
-import IconCopy from '~icons/lucide/copy';
-import IconSearch from '~icons/lucide/search';
-import IconChevronDown from '~icons/lucide/chevron-down';
-import IconChevronRight from '~icons/lucide/chevron-right';
-import IconCheckCircle2 from '~icons/lucide/check-circle-2';
-import IconXCircle from '~icons/lucide/x-circle';
-import IconCircle from '~icons/lucide/circle';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domain';

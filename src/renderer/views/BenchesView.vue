@@ -11,7 +11,7 @@
           <Button
             size="sm"
             variant="solid"
-            :icon-left="IconPlus"
+            :icon-left="'lucide-plus'"
             label="Create"
             :disabled="loading"
             @click="showCreateBenchModal = true"
@@ -24,7 +24,7 @@
         <div class="flex min-w-0 items-center gap-2 [-webkit-app-region:no-drag]">
           <Button
             variant="ghost"
-            :icon="showList ? IconPanelLeftClose : IconPanelLeft"
+            :icon="showList ? 'lucide-panel-left-close' : 'lucide-panel-left'"
             label="Toggle list"
             @click="showList = !showList"
           />
@@ -57,7 +57,7 @@
           <Button
             v-if="selectedBench.status !== 'running'"
             variant="ghost"
-            :icon="IconPlay"
+            :icon="'lucide-play'"
             tooltip="Start Bench"
             :disabled="updating || isResourceBusy(selectedBench.id) || selectedBench.status === 'queued'"
             @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
@@ -65,35 +65,35 @@
           <Button
             v-else
             variant="ghost"
-            :icon="IconRotateCw"
+            :icon="'lucide-rotate-cw'"
             tooltip="Restart Bench"
             :disabled="updating || isResourceBusy(selectedBench.id)"
             @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
           />
           <Button
             variant="ghost"
-            :icon="IconSquare"
+            :icon="'lucide-square'"
             tooltip="Stop Bench"
             :disabled="updating || selectedBench.status === 'stopped' || selectedBench.status === 'queued' || isResourceBusy(selectedBench.id)"
             @click="onStopBench(selectedBench.id)"
           />
           <Button
             variant="ghost"
-            :icon="IconFolderOpen"
+            :icon="'lucide-folder-open'"
             tooltip="Open Bench Folder"
             :disabled="openingFolder"
             @click="onOpenBenchFolder(selectedBench.id)"
           />
           <Button
             variant="ghost"
-            :icon="IconTerminal"
+            :icon="'lucide-terminal'"
             tooltip="Open Shell"
             :disabled="selectedBench.status !== 'running'"
             @click="onOpenBenchShell(selectedBench.id)"
           />
           <Button
             variant="ghost"
-            :icon="IconActivity"
+            :icon="'lucide-activity'"
             tooltip="Task Logs"
             @click="onStatusClick(selectedBench.id)"
           />
@@ -103,7 +103,7 @@
           >
             <Button
               variant="ghost"
-              :icon="IconMoreHorizontal"
+              :icon="'lucide-more-horizontal'"
               tooltip="More Actions"
             />
           </Dropdown>
@@ -131,7 +131,7 @@
             variant="outline"
           >
             <template #prefix>
-              <IconSearch class="w-4 text-ink-gray-5" />
+              <i class="lucide-search w-4 text-ink-gray-5" />
             </template>
           </FormControl>
 
@@ -174,7 +174,7 @@
             <EmptyState
               title="No benches yet"
               description="Create your first bench to get started with Frappe applications and sites."
-              :icon="IconPackage"
+              :icon="'lucide-boxes'"
             >
               <div class="mt-4">
                 <Button
@@ -195,7 +195,7 @@
             <EmptyState
               title="No matching benches"
               description="No benches match the current status or search filters."
-              :icon="IconSearch"
+              :icon="'lucide-search'"
             >
               <Button
                 size="sm"
@@ -324,7 +324,7 @@
               <Button
                 variant="subtle"
                 size="sm"
-                :icon-left="IconGlobe"
+                :icon-left="'lucide-app-window'"
                 @click="onManageBenchSites(selectedBench.id)"
               >
                 Go to Sites ({{ getBenchSiteCount(selectedBench.id) }})
@@ -332,7 +332,7 @@
               <Button
                 variant="subtle"
                 size="sm"
-                :icon-left="IconPlus"
+                :icon-left="'lucide-plus'"
                 @click="showCreateSiteModal = true"
               >
                 Add Site
@@ -385,23 +385,6 @@
 <script setup lang="ts">
 import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, FormControl, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
-import IconMoreHorizontal from '~icons/lucide/more-horizontal';
-import IconPackage from '~icons/lucide/package';
-import IconGlobe from '~icons/lucide/globe';
-import IconSearch from '~icons/lucide/search';
-import IconActivity from '~icons/lucide/activity';
-import IconRotateCw from '~icons/lucide/rotate-cw';
-import IconPlay from '~icons/lucide/play';
-import IconSquare from '~icons/lucide/square';
-import IconFolderOpen from '~icons/lucide/folder-open';
-import IconTerminal from '~icons/lucide/terminal';
-import IconTrash2 from '~icons/lucide/trash2';
-import IconPlus from '~icons/lucide/plus';
-import IconCode from '~icons/lucide/code';
-import IconBox from '~icons/lucide/box';
-import IconHammer from '~icons/lucide/hammer';
-import IconPanelLeftClose from '~icons/lucide/panel-left-close';
-import IconPanelLeft from '~icons/lucide/panel-left';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -736,13 +719,13 @@ const getBenchMoreActions = (bench: BenchListItem) => {
       options: [
         {
           label: 'VS Code',
-          icon: IconCode,
+          icon: 'lucide-code',
           disabled: !isEditorInstalled.value,
           onClick: () => openInEditor(bench.id, false),
         },
         {
           label: 'Dev Container',
-          icon: IconBox,
+          icon: 'lucide-box',
           disabled: !isEditorInstalled.value || bench.status !== 'running',
           onClick: () => openInEditor(bench.id, true),
         },
@@ -753,13 +736,13 @@ const getBenchMoreActions = (bench: BenchListItem) => {
       options: [
         {
           label: 'Build',
-          icon: IconHammer,
+          icon: 'lucide-hammer',
           disabled: updating.value || deleting.value || bench.status !== 'running' || isResourceBusy(bench.id),
           onClick: () => onBuildBench(bench.id),
         },
         {
           label: 'Delete',
-          icon: IconTrash2,
+          icon: 'lucide-trash-2',
           theme: 'red' as const,
           disabled: updating.value || deleting.value || bench.status === 'running' || isResourceBusy(bench.id),
           onClick: () => confirmDeleteBench(bench.id, bench.name),

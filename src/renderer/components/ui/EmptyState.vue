@@ -6,8 +6,8 @@
       v-if="icon"
       class="mb-4 flex size-12 items-center justify-center rounded-xl bg-surface-gray-2 text-ink-gray-6"
     >
-      <component
-        :is="icon"
+      <i
+        :class="icon"
         class="size-6"
         aria-hidden="true"
       />
@@ -25,11 +25,10 @@
 </template>
 
 <script setup lang="ts">
-import type { Component } from 'vue';
 
 defineProps<{
   title: string;
   description: string;
-  icon?: Component;
+  icon?: string;
 }>();
 </script>

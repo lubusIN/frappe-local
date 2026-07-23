@@ -9,7 +9,7 @@
     <template #title>
       <div class="flex items-center gap-3">
         <div class="flex items-center justify-center w-8 h-8 rounded-lg min-w-8 bg-surface-red-2 text-ink-red-8">
-          <IconAlertTriangle class="h-[18px] w-[18px]" />
+          <i class="lucide-alert-triangle h-[18px] w-[18px]" />
         </div>
         <h3 class="m-0 text-sm-semibold text-ink-gray-9">
           {{ title }}
@@ -59,7 +59,6 @@
 
 <script setup lang="ts">
 import { Button, Dialog, FormControl } from 'frappe-ui';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import { computed, nextTick, ref, watch } from 'vue';
 
 const props = withDefaults(

@@ -5,7 +5,7 @@
   >
     <div class="flex items-start gap-2.5">
       <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border border-outline-blue-3 bg-surface-base text-ink-blue-6">
-        <IconPackage class="h-4 w-4" />
+        <i class="lucide-package h-4 w-4" />
       </div>
       <div>
         <h4 class="m-0 text-sm-semibold text-ink-gray-9">
@@ -42,7 +42,7 @@
       >
         <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span>{{ link.label }}</span>
-          <IconChevronRight class="h-3 w-3 shrink-0" />
+          <i class="lucide-chevron-right h-3 w-3 shrink-0" />
         </span>
       </Button>
     </div>
@@ -51,8 +51,6 @@
 
 <script setup lang="ts">
 import { Button } from 'frappe-ui';
-import IconPackage from '~icons/lucide/package';
-import IconChevronRight from '~icons/lucide/chevron-right';
 import { useRouter } from 'vue-router';
 
 export type FirstRunGuideLink = {

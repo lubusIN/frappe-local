@@ -11,7 +11,7 @@
         <Button
           variant="solid"
           :disabled="loading"
-          :icon-left="IconPlus"
+          :icon-left="'lucide-plus'"
           @click="showAddModal = true"
         >
           Add
@@ -59,9 +59,9 @@
               >
                 {{ (row.title || row.name).charAt(0).toUpperCase() }}
               </div>
-              <IconPackage
+              <i
                 v-else
-                class="size-4"
+                class="lucide-package size-4"
               />
             </div>
             <div class="flex h-full min-w-0 flex-col justify-center gap-0.5 group">
@@ -110,7 +110,7 @@
                 <Button
                   size="md"
                   variant="subtle"
-                  :icon="IconMoreHorizontal"
+                  :icon="'lucide-more-horizontal'"
                 />
               </template>
             </Dropdown>
@@ -123,7 +123,7 @@
       v-if="!error && !loading && customApps.length === 0"
       title="No custom apps found"
       description="Register a custom app from GitHub or a local directory to install it on your benches."
-      :icon="IconPackage"
+      :icon="'lucide-package'"
     >
       <Button
         variant="solid"
@@ -159,11 +159,6 @@
 
 <script setup lang="ts">
 import { Badge, Button, Dropdown, toast } from 'frappe-ui';
-import IconMoreHorizontal from '~icons/lucide/more-horizontal';
-import IconPackage from '~icons/lucide/package';
-import IconTrash2 from '~icons/lucide/trash2';
-import IconPlus from '~icons/lucide/plus';
-import IconCode from '~icons/lucide/code';
 import { ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
@@ -221,7 +216,7 @@ const getAppActions = (app: CustomAppListItem) => {
   if (app.type === 'local') {
     actions.push({
       label: 'Open in VS Code',
-      icon: IconCode,
+      icon: 'lucide-code',
       disabled: !isEditorInstalled.value,
       onClick: () => openInEditor(app.name || app.title || app.id, false),
     });
@@ -229,7 +224,7 @@ const getAppActions = (app: CustomAppListItem) => {
 
   actions.push({
     label: 'Delete',
-    icon: IconTrash2,
+    icon: 'lucide-trash-2',
     theme: 'red' as const,
     onClick: () => onDeleteClick(app.id, app.title || app.name),
   });

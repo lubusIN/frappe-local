@@ -12,8 +12,8 @@
           <TabButtons
             v-model="appType"
             :options="[
-              { label: 'GitHub', value: 'github', iconLeft: IconGithub },
-              { label: 'Local', value: 'local', iconLeft: IconFolder }
+              { label: 'GitHub', value: 'github', iconLeft: 'github' },
+              { label: 'Local', value: 'local', iconLeft: 'lucide-folder' }
             ]"
           />
         </div>
@@ -176,8 +176,6 @@
 <script setup lang="ts">
 import { Alert, Button, Dialog, Switch, TabButtons, FormControl, ErrorMessage, debounce, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
-import IconGithub from '~icons/lucide/github';
-import IconFolder from '~icons/lucide/folder';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core';
 import { useSshKeys } from '@frappe-local/renderer/composables/system';

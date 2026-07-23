@@ -8,7 +8,7 @@
     <template #title>
       <div class="flex items-center gap-3">
         <div class="flex items-center justify-center w-8 h-8 rounded-lg min-w-8 bg-surface-yellow-2 text-ink-yellow-8">
-          <IconAlertTriangle class="h-[18px] w-[18px]" />
+          <i class="lucide-alert-triangle h-[18px] w-[18px]" />
         </div>
         <h3 class="m-0 text-sm-semibold text-ink-gray-9">
           {{ title }}
@@ -32,7 +32,7 @@
               :key="bench"
               class="text-sm text-ink-gray-6 flex items-center gap-2"
             >
-              <IconBox class="w-4 text-ink-gray-4" />
+              <i class="lucide-box w-4 text-ink-gray-4" />
               {{ bench }}
             </li>
           </ul>
@@ -48,7 +48,7 @@
               :key="site"
               class="text-sm text-ink-gray-6 flex items-center gap-2"
             >
-              <IconGlobe class="w-4 text-ink-gray-4" />
+              <i class="lucide-app-window w-4 text-ink-gray-4" />
               {{ site }}
             </li>
           </ul>
@@ -72,9 +72,6 @@
 
 <script setup lang="ts">
 import { Dialog, Button } from 'frappe-ui';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
-import IconBox from '~icons/lucide/box';
-import IconGlobe from '~icons/lucide/globe';
 
 defineProps<{
   open: boolean;

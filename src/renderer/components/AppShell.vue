@@ -34,7 +34,7 @@
                 v-for="item in mainNavItems"
                 :key="item.path"
                 :label="item.label"
-                :icon="iconComponentMap[item.path] || IconGlobe"
+                :icon="iconComponentMap[item.path] || 'lucide-globe'"
                 :to="item.path"
                 :active="item.path === '/sites' ? (route.path === '/' || route.path.startsWith('/sites')) : route.path.startsWith(item.path)"
               >
@@ -118,7 +118,7 @@
 
             <SidebarItem
               label="Settings"
-              :icon="IconSettings"
+              :icon="'lucide-settings'"
               :active="isSettingsOpen"
               @click="openSettings"
             />
@@ -127,8 +127,8 @@
               @click="isCollapsed = !isCollapsed"
             >
               <template #prefix>
-                <IconPanelRightOpen
-                  class="size-4 text-ink-gray-6 transition-transform duration-300 ease-in-out"
+                <i
+                  class="lucide-panel-right-open size-4 text-ink-gray-6 transition-transform duration-300 ease-in-out"
                   :class="{ 'rotate-180': isCollapsed }"
                 />
               </template>
@@ -172,14 +172,7 @@
 
 <script setup lang="ts">
 import { Alert, Badge, Button, DesktopShell, ScrollArea, Sidebar, SidebarItem, toast } from 'frappe-ui';
-import IconSettings from '~icons/lucide/settings';
-import IconActivity from '~icons/lucide/activity';
-import IconPackage from '~icons/lucide/package';
-import IconGlobe from '~icons/lucide/globe';
-import IconZap from '~icons/lucide/zap';
-import IconBlocks from '~icons/lucide/blocks';
-import IconPanelRightOpen from '~icons/lucide/panel-right-open';
-import { computed, onMounted, ref, type Component, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { RouterView, useRoute } from 'vue-router';
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
 import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDialog.vue';
@@ -270,12 +263,12 @@ watch(
   { deep: true }
 );
 
-const iconComponentMap: Record<string, Component> = {
-  '/activity': IconActivity,
-  '/benches': IconPackage,
-  '/sites': IconGlobe,
-  '/custom-apps': IconBlocks,
-  '/diagnostics': IconZap,
+const iconComponentMap: Record<string, string> = {
+  '/activity': 'lucide-activity',
+  '/benches': 'lucide-boxes',
+  '/sites': 'lucide-app-window',
+  '/custom-apps': 'lucide-blocks',
+  '/diagnostics': 'lucide-zap',
 };
 
 const mainNavItems = computed(() =>

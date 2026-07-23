@@ -19,13 +19,13 @@
         v-if="kind === 'loading'"
         class="h-4 w-4"
       />
-      <IconInbox
+      <i
         v-else-if="kind === 'empty'"
-        class="h-4 w-4"
+        class="lucide-inbox h-4 w-4"
       />
-      <IconAlertTriangle
+      <i
         v-else
-        class="h-4 w-4"
+        class="lucide-alert-triangle h-4 w-4"
       />
     </div>
     <div class="min-w-0">
@@ -58,8 +58,6 @@
 
 <script setup lang="ts">
 import { Button, LoadingIndicator } from 'frappe-ui';
-import IconInbox from '~icons/lucide/inbox';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import { computed } from 'vue';
 
 const props = defineProps<{

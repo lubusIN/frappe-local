@@ -42,7 +42,10 @@
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <FormLabel label="Path" required />
+        <FormLabel
+          label="Path"
+          required
+        />
         <div class="flex w-full gap-2 items-start">
           <FormControl
             v-model="createForm.path"

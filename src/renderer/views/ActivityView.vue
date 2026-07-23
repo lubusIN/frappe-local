@@ -11,7 +11,7 @@
         <Button
           variant="subtle"
           theme="red"
-          :icon-left="IconTrash2"
+          :icon-left="'lucide-trash-2'"
           @click="showClearConfirm = true"
         >
           Clear
@@ -55,7 +55,7 @@
       v-else-if="activityRows.length === 0"
       title="No activity"
       description="No background tasks or recent activity match the current filters."
-      :icon="IconActivity"
+      :icon="'lucide-activity'"
     />
 
     <ResourceListView
@@ -139,8 +139,6 @@
 
 <script setup lang="ts">
 import { Badge, Button, LoadingIndicator, FormControl } from 'frappe-ui';
-import IconActivity from '~icons/lucide/activity';
-import IconTrash2 from '~icons/lucide/trash2';
 import { computed, ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';

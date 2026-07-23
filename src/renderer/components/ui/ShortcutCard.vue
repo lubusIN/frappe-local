@@ -14,9 +14,9 @@
   >
     <div class="flex items-start gap-3">
       <div class="flex items-center justify-center size-9 min-w-9 rounded-lg bg-surface-gray-2 text-ink-gray-5">
-        <component
-          :is="icon"
+        <i
           v-if="icon"
+          :class="icon"
           class="size-5"
         />
       </div>
@@ -35,12 +35,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { Component } from 'vue';
 
 const props = defineProps<{
   title: string;
   description: string;
-  icon?: Component;
+  icon?: string;
   to?: string;
 }>();
 

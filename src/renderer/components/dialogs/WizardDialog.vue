@@ -19,9 +19,9 @@
             <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', currentStep === (index + 1) ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
               {{ step }}
             </span>
-            <IconChevronRight
+            <i
               v-if="index < steps.length - 1"
-              class="size-[15px] shrink-0 text-ink-gray-5"
+              class="lucide-chevron-right size-[15px] shrink-0 text-ink-gray-5"
             />
           </template>
         </div>
@@ -76,7 +76,6 @@
 
 <script setup lang="ts">
 import { Button, Dialog, ErrorMessage } from 'frappe-ui';
-import IconChevronRight from '~icons/lucide/chevron-right';
 
 defineProps<{
   open: boolean;

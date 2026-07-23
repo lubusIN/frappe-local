@@ -25,7 +25,7 @@
             @update:model-value="onSearch"
           >
             <template #prefix>
-              <IconSearch class="w-4 text-ink-gray-6" />
+              <i class="lucide-search w-4 text-ink-gray-6" />
             </template>
           </FormControl>
         </div>
@@ -221,10 +221,7 @@
 
 <script setup lang="ts">
 import { TabButtons, FormControl, Button, Dropdown, Badge, toast } from 'frappe-ui';
-import IconSearch from '~icons/lucide/search';
-import IconCode from '~icons/lucide/code';
-import IconBox from '~icons/lucide/box';
-import { computed, ref, type Component } from 'vue';
+import { computed, ref} from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
 import { useAppCatalogFilters, useBenches, useCustomApps } from '@frappe-local/renderer/composables/data';
 import { useEditorStatus } from '@frappe-local/renderer/composables/system';
@@ -276,7 +273,7 @@ interface AppItem {
 
 interface DropdownOption {
   label: string;
-  icon?: Component;
+  icon?: string;
   disabled?: boolean;
   onClick?: () => void | Promise<void>;
 }
@@ -285,7 +282,7 @@ const getAppOpenOptions = (app: AppItem): DropdownOption[] => {
   return [
     {
       label: 'VS Code',
-      icon: IconCode,
+      icon: 'lucide-code',
       disabled: !isEditorInstalled.value,
       onClick: async () => {
         await openAppInEditor(props.resourceId ?? null, app.appId, false);
@@ -296,7 +293,7 @@ const getAppOpenOptions = (app: AppItem): DropdownOption[] => {
     },
     {
       label: 'Dev Container',
-      icon: IconBox,
+      icon: 'lucide-box',
       disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
       onClick: async () => {
         await openAppInEditor(props.resourceId ?? null, app.appId, true);

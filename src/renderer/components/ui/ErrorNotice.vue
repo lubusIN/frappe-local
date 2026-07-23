@@ -6,7 +6,7 @@
     aria-live="polite"
     aria-atomic="true"
   >
-    <IconAlertTriangle class="mt-0.5 h-4 w-4 shrink-0" />
+    <i class="lucide-alert-triangle mt-0.5 h-4 w-4 shrink-0" />
     <div class="grid gap-1.5">
       <h4
         :id="titleId"
@@ -67,7 +67,6 @@
 
 <script setup lang="ts">
 import { Button } from 'frappe-ui';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { ErrorRemediationNotice } from '@frappe-local/renderer/utils';

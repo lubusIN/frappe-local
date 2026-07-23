@@ -37,8 +37,8 @@
               class="flex size-10 shrink-0 items-center justify-center rounded-lg"
               :class="summaryIconClass"
             >
-              <component
-                :is="summaryIcon"
+              <i
+                :class="summaryIcon"
                 class="size-5"
               />
             </div>
@@ -85,8 +85,8 @@
             <div class="flex items-start gap-3">
               <div class="min-w-0 flex-1">
                 <h3 class="flex items-center gap-1.5 text-sm-semibold text-ink-gray-9">
-                  <component
-                    :is="checkIcon(check)"
+                  <i
+                    :class="checkIcon(check)"
                     class="size-3.5 shrink-0 text-ink-gray-5"
                   />
                   <span class="min-w-0 truncate">{{ displayTitle(check) }}</span>
@@ -103,7 +103,7 @@
                         variant="ghost"
                         size="xs"
                         label="Show check details"
-                        :icon="IconInfo"
+                        :icon="'lucide-info'"
                       />
                     </template>
                     <template #default>
@@ -133,8 +133,8 @@
                 :class="statusIconClass(check.status)"
                 :title="formatStatus(check.status, 'diagnostic')"
               >
-                <component
-                  :is="statusIcon(check.status)"
+                <i
+                  :class="statusIcon(check.status)"
                   class="size-3.5"
                 />
               </div>
@@ -156,7 +156,7 @@
                   variant="subtle"
                   size="sm"
                   theme="red"
-                  :icon="IconWrench"
+                  :icon="'lucide-wrench'"
                   :loading="fixing"
                   @click="$emit('fix', check.type)"
                 >
@@ -173,19 +173,7 @@
 
 <script setup lang="ts">
 import { Badge, Button, HoverCard } from 'frappe-ui';
-import IconAlertTriangle from '~icons/lucide/alert-triangle';
-import IconCheck from '~icons/lucide/check';
-import IconCircleDashed from '~icons/lucide/circle-dashed';
-import IconCloud from '~icons/lucide/cloud';
-import IconDatabase from '~icons/lucide/database';
-import IconFolder from '~icons/lucide/folder';
-import IconHardDrive from '~icons/lucide/hard-drive';
-import IconInfo from '~icons/lucide/info';
-import IconMonitorCog from '~icons/lucide/monitor-cog';
-import IconRoute from '~icons/lucide/route';
-import IconWrench from '~icons/lucide/wrench';
-import IconX from '~icons/lucide/x';
-import { computed, type Component } from 'vue';
+import { computed} from 'vue';
 import type { DiagnosticsCheckResult, DiagnosticsCheckStatus, DiagnosticsReport } from '@frappe-local/shared/domain';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import { formatStatus, statusTheme } from '@frappe-local/renderer/utils';
@@ -215,11 +203,11 @@ const summaryDescription = computed(() => {
   return `Last checked ${formattedCompletedAt.value}`;
 });
 
-const summaryTheme = computed<'blue' | 'red' | 'yellow' | 'green' | undefined>(() => {
+const summaryTheme = computed<'blue' | 'red' | 'amber' | 'green' | 'gray'>(() => {
   if (props.running) return 'blue';
-  if (!props.report) return undefined;
+  if (!props.report) return 'gray';
   if (props.report.hasCriticalIssues) return 'red';
-  if (props.report.hasWarnings) return 'yellow';
+  if (props.report.hasWarnings) return 'amber';
   return 'green';
 });
 
@@ -240,12 +228,12 @@ const summaryBadgeLabel = computed(() => {
   return 'Ready';
 });
 
-const summaryIcon = computed<Component>(() => {
-  if (props.running) return IconCircleDashed;
-  if (!props.report) return IconInfo;
-  if (props.report.hasCriticalIssues) return IconX;
-  if (props.report.hasWarnings) return IconAlertTriangle;
-  return IconCheck;
+const summaryIcon = computed<string>(() => {
+  if (props.running) return 'lucide-circle-dashed';
+  if (!props.report) return 'lucide-info';
+  if (props.report.hasCriticalIssues) return 'lucide-x';
+  if (props.report.hasWarnings) return 'lucide-alert-triangle';
+  return 'lucide-check';
 });
 
 const summaryCardClass = computed(() => {
@@ -399,28 +387,28 @@ const infoDetails = (check: DiagnosticsCheckResult): Array<{ label: string; valu
 const hasMoreDetails = (check: DiagnosticsCheckResult): boolean =>
   infoDetails(check).length > 0;
 
-const checkIcon = (check: DiagnosticsCheckResult): Component => {
-  if (check.title === 'Internet Connectivity') return IconCloud;
-  if (check.title.startsWith('Path Writability')) return IconFolder;
-  if (check.title.startsWith('Directory Access')) return IconDatabase;
-  if (check.title === 'Docker Compose Binary') return IconRoute;
-  if (check.title === 'Podman Binary') return IconHardDrive;
-  if (check.title === 'Environment Requirement') return IconMonitorCog;
-  if (check.title === 'Podman Machine') return IconMonitorCog;
-  if (check.title === 'Podman Engine') return IconHardDrive;
-  if (check.title === 'Orchestrator Connection') return IconRoute;
-  return IconInfo;
+const checkIcon = (check: DiagnosticsCheckResult): string => {
+  if (check.title === 'Internet Connectivity') return 'lucide-cloud';
+  if (check.title.startsWith('Path Writability')) return 'lucide-folder';
+  if (check.title.startsWith('Directory Access')) return 'lucide-database';
+  if (check.title === 'Docker Compose Binary') return 'lucide-route';
+  if (check.title === 'Podman Binary') return 'lucide-hard-drive';
+  if (check.title === 'Environment Requirement') return 'lucide-monitor-cog';
+  if (check.title === 'Podman Machine') return 'lucide-monitor-cog';
+  if (check.title === 'Podman Engine') return 'lucide-hard-drive';
+  if (check.title === 'Orchestrator Connection') return 'lucide-route';
+  return 'lucide-info';
 };
 
-const statusIcon = (status: DiagnosticsCheckStatus): Component => {
-  const icons: Record<DiagnosticsCheckStatus, Component> = {
-    passed: IconCheck,
-    warning: IconAlertTriangle,
-    failed: IconX,
-    skipped: IconCircleDashed,
+const statusIcon = (status: DiagnosticsCheckStatus): string => {
+  const icons: Record<DiagnosticsCheckStatus, string> = {
+    passed: 'lucide-check',
+    warning: 'lucide-alert-triangle',
+    failed: 'lucide-x',
+    skipped: 'lucide-circle-dashed',
   };
 
-  return icons[status] ?? IconInfo;
+  return icons[status] ?? 'lucide-info';
 };
 
 const cardClass = (status: DiagnosticsCheckStatus): string => {

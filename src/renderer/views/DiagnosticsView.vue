@@ -9,7 +9,7 @@
           variant="solid"
           :disabled="running || resetting"
           :loading="running"
-          :icon-left="IconPlay"
+          :icon-left="'lucide-play'"
           @click="run"
         >
           {{ running ? 'Running' : 'Run' }}
@@ -29,7 +29,7 @@
         <div class="flex flex-col gap-4 rounded-lg border border-outline-red-3 bg-surface-red-2 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex items-start gap-3">
             <div class="flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-red-8">
-              <IconRotateCcw class="size-5" />
+              <i class="lucide-rotate-ccw size-5" />
             </div>
             <div class="min-w-0">
               <h3 class="text-base-semibold text-ink-red-8">
@@ -44,7 +44,7 @@
             <Button
               theme="red"
               variant="solid"
-              :icon="IconRotateCcw"
+              :icon="'lucide-rotate-ccw'"
               :loading="resetting"
               :disabled="running || fixing || resetting"
               @click="onOpenResetConfirm"
@@ -97,8 +97,6 @@
 
 <script setup lang="ts">
 import { Button, LoadingIndicator, toast } from 'frappe-ui';
-import IconPlay from '~icons/lucide/play';
-import IconRotateCcw from '~icons/lucide/rotate-ccw';
 import { ref } from 'vue';
 import DiagnosticsPanel from '@frappe-local/renderer/components/DiagnosticsPanel.vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';

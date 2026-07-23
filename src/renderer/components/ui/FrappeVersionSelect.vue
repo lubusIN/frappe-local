@@ -1,7 +1,7 @@
 <template>
   <FormControl
-    type="select"
     v-model="internalModel"
+    type="select"
     :options="frappeVersionOptions"
   />
 </template>

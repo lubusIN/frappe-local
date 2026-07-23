@@ -15,7 +15,7 @@
           <Button
             size="sm"
             variant="solid"
-            :icon-left="IconPlus"
+            :icon-left="'lucide-plus'"
             label="Create"
             :disabled="loading || creatableBenches.length === 0"
             @click="showCreateSiteModal = true"
@@ -28,7 +28,7 @@
         <div class="flex min-w-0 items-center gap-2 [-webkit-app-region:no-drag]">
           <Button
             variant="ghost"
-            :icon="showList ? IconPanelLeftClose : IconPanelLeft"
+            :icon="showList ? 'lucide-panel-left-close' : 'lucide-panel-left'"
             label="Toggle list"
             @click="showList = !showList"
           />
@@ -59,34 +59,34 @@
         >
           <Button
             variant="ghost"
-            :icon="IconExternalLink"
+            :icon="'lucide-external-link'"
             tooltip="Open in Browser"
             :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
             @click="ipc.openSiteExternal(selectedSite.id)"
           />
           <Button
             variant="ghost"
-            :icon="IconFolderOpen"
+            :icon="'lucide-folder-open'"
             tooltip="Open Site Folder"
             @click="openFolder(selectedSite.id)"
           />
           <Button
             variant="ghost"
-            :icon="IconTerminal"
+            :icon="'lucide-terminal'"
             tooltip="Open Shell"
             :disabled="!isBenchRunning(selectedSite.benchId) || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
             @click="openShell(selectedSite.id)"
           />
           <Button
             variant="ghost"
-            :icon="IconActivity"
+            :icon="'lucide-activity'"
             tooltip="Task Logs"
             @click="onStatusClick(selectedSite.id)"
           />
           <Button
             v-if="selectedSite.status === 'failure'"
             variant="ghost"
-            :icon="IconRotateCcw"
+            :icon="'lucide-rotate-ccw'"
             tooltip="Reset Status"
             :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id)"
             @click="resetSiteStatus(selectedSite)"
@@ -97,7 +97,7 @@
           >
             <Button
               variant="ghost"
-              :icon="IconMoreHorizontal"
+              :icon="'lucide-more-horizontal'"
               tooltip="More Actions"
             />
           </Dropdown>
@@ -127,7 +127,7 @@
                 variant="outline"
               >
                 <template #prefix>
-                  <IconSearch class="w-4 text-ink-gray-5" />
+                  <i class="lucide-search w-4 text-ink-gray-5" />
                 </template>
               </FormControl>
             </div>
@@ -141,7 +141,7 @@
                 variant="outline"
               >
                 <template #prefix>
-                  <IconListFilter class="w-4 text-ink-gray-5" />
+                  <i class="lucide-list-filter w-4 text-ink-gray-5" />
                 </template>
               </FormControl>
             </div>
@@ -198,7 +198,7 @@
             <EmptyState
               title="No sites yet"
               description="Create your first site to manage runtime status, inspect logs, and access dashboards."
-              :icon="IconGlobe"
+              :icon="'lucide-app-window'"
             >
               <div class="mt-4">
                 <Button
@@ -228,7 +228,7 @@
             <EmptyState
               title="No matching sites"
               description="No sites match the current bench, status, or search filters."
-              :icon="IconSearch"
+              :icon="'lucide-search'"
             >
               <Button
                 size="sm"
@@ -282,7 +282,7 @@
                       />
                       <Button
                         variant="ghost"
-                        :icon="IconExternalLink"
+                        :icon="'lucide-external-link'"
                         class="!size-7 transition-opacity"
                         :class="[
                           selectedSiteId === site.id ? 'text-ink-gray-9 opacity-100' : 'text-ink-gray-5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-ink-gray-9'
@@ -355,7 +355,7 @@
             <Button
               variant="subtle"
               size="sm"
-              :icon-left="IconPackage"
+              :icon-left="'lucide-boxes'"
               @click="goToParentBench(selectedSite.benchId)"
             >
               Go to Bench
@@ -394,22 +394,6 @@
 <script setup lang="ts">
 import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, TabButtons, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
-import IconGlobe from '~icons/lucide/globe';
-import IconSearch from '~icons/lucide/search';
-import IconMoreHorizontal from '~icons/lucide/more-horizontal';
-import IconExternalLink from '~icons/lucide/external-link';
-import IconActivity from '~icons/lucide/activity';
-import IconFolderOpen from '~icons/lucide/folder-open';
-import IconTerminal from '~icons/lucide/terminal';
-import IconPackage from '~icons/lucide/package';
-import IconTrash2 from '~icons/lucide/trash2';
-import IconPlus from '~icons/lucide/plus';
-import IconRotateCcw from '~icons/lucide/rotate-ccw';
-import IconPanelLeftClose from '~icons/lucide/panel-left-close';
-import IconPanelLeft from '~icons/lucide/panel-left';
-import IconListFilter from '~icons/lucide/list-filter';
-import IconDatabase from '~icons/lucide/database';
-import IconEraser from '~icons/lucide/eraser';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -632,13 +616,13 @@ const getSiteDetailMoreActions = (site: SiteListItem) => {
       options: [
         {
           label: 'Clean Cache',
-          icon: IconEraser,
+          icon: 'lucide-eraser',
           disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
           onClick: () => onCleanCache(site.id, site.name),
         },
         {
           label: 'Migrate',
-          icon: IconDatabase,
+          icon: 'lucide-database',
           disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
           onClick: () => onMigrate(site.id, site.name),
         },
@@ -649,7 +633,7 @@ const getSiteDetailMoreActions = (site: SiteListItem) => {
       options: [
         {
           label: 'Delete',
-          icon: IconTrash2,
+          icon: 'lucide-trash-2',
           theme: 'red' as const,
           disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
           onClick: () => confirmDeleteSite(site.id, site.name),
