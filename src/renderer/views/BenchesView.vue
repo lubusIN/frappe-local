@@ -392,7 +392,7 @@ import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
-import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
+import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
@@ -403,7 +403,6 @@ const { isEditorInstalled } = useEditorStatus();
 
 const route = useRoute();
 const router = useRouter();
-const ipc = useIpc();
 
 const {
   benches,

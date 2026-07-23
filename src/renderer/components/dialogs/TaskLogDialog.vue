@@ -4,7 +4,7 @@
     v-model="isOpen"
     size="4xl"
     position="top"
-    paddingTop="1.25rem"
+    padding-top="1.25rem"
   >
     <template #title>
       <div class="flex items-center min-w-0 gap-3">
