@@ -9,6 +9,16 @@ export type CatalogFilters = {
   readonly sort: CatalogSort;
 };
 
+const getItemCategories = (item: CatalogAppItem): string[] => {
+  if (item.categories && item.categories.length > 0) {
+    return item.categories;
+  }
+  if (item.category) {
+    return [item.category];
+  }
+  return ['other'];
+};
+
 const sourceHostFromUrl = (url: string): string => {
   try {
     return new URL(url).hostname;
@@ -34,8 +44,11 @@ export const filterAndSortCatalog = (
       return false;
     }
 
-    if (normalizedCategory && (item.category ?? 'other').toLowerCase() !== normalizedCategory) {
-      return false;
+    if (normalizedCategory) {
+      const itemCats = getItemCategories(item).map((c) => c.toLowerCase());
+      if (!itemCats.includes(normalizedCategory)) {
+        return false;
+      }
     }
 
     if (!normalizedSourceHost) {
@@ -89,7 +102,7 @@ export const getCatalogCategories = (items: readonly CatalogAppItem[]): Category
   const order = ['core', 'business', 'crm-support', 'productivity', 'learning', 'tools', 'other'];
 
   for (const key of order) {
-    if (items.some((item) => (item.category ?? 'other') === key)) {
+    if (items.some((item) => getItemCategories(item).includes(key))) {
       seen.add(key);
       categories.push({
         id: key,
@@ -100,13 +113,15 @@ export const getCatalogCategories = (items: readonly CatalogAppItem[]): Category
 
   // Any remaining categories not in the predefined list
   for (const item of items) {
-    const cat = item.category ?? 'other';
-    if (!seen.has(cat)) {
-      seen.add(cat);
-      categories.push({
-        id: cat,
-        label: CATEGORY_LABELS[cat] ?? cat,
-      });
+    const cats = getItemCategories(item);
+    for (const cat of cats) {
+      if (!seen.has(cat)) {
+        seen.add(cat);
+        categories.push({
+          id: cat,
+          label: CATEGORY_LABELS[cat] ?? cat,
+        });
+      }
     }
   }
 
@@ -123,7 +138,7 @@ export const groupCatalogByCategory = (
   const grouped: Array<{ category: CategoryInfo; items: CatalogAppItem[] }> = [];
 
   for (const cat of categories) {
-    const group = items.filter((item) => (item.category ?? 'other') === cat.id);
+    const group = items.filter((item) => getItemCategories(item).includes(cat.id));
     if (group.length > 0) {
       grouped.push({ category: cat, items: group });
     }
