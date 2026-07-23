@@ -31,11 +31,11 @@ describe('site wizard helpers', () => {
       path: '',
     };
 
-    expect(getSiteWizardStepErrors(1, draft)).toEqual(['Select a bench to continue.']);
-    expect(getSiteWizardStepErrors(2, draft)).toEqual([
-      'Site name must be a lowercase slug with letters, numbers, and hyphens only.',
-      'Enter a site path.',
-    ]);
+    expect(getSiteWizardStepErrors(1, draft)).toEqual({ benchId: 'Select a bench to continue.' });
+    expect(getSiteWizardStepErrors(2, draft)).toEqual({
+      name: 'Site name must be a lowercase slug with letters, numbers, and hyphens only.',
+      path: 'Enter a site path.',
+    });
   });
 
   it('treats confirm step as non-blocking validation step', () => {
@@ -45,7 +45,7 @@ describe('site wizard helpers', () => {
       path: '/Users/dev/frappe-bench/sites/demo.localhost',
     };
 
-    expect(getSiteWizardStepErrors(3, draft)).toEqual([]);
+    expect(getSiteWizardStepErrors(3, draft)).toEqual({});
   });
 
   it('detects duplicate site host against existingSites', () => {
@@ -55,9 +55,9 @@ describe('site wizard helpers', () => {
       path: '/Users/dev/frappe-bench/sites/demo-site.localhost',
     };
 
-    expect(getSiteWizardStepErrors(2, draft, [{ name: 'demo-site.localhost' }])).toEqual([
-      'A site named "demo-site.localhost" already exists. Please choose a unique site name.',
-    ]);
+    expect(getSiteWizardStepErrors(2, draft, [{ name: 'demo-site.localhost' }])).toEqual({
+      name: 'A site named "demo-site.localhost" already exists. Please choose a unique site name.',
+    });
   });
 
   it('builds create payload when draft is valid', () => {
@@ -69,7 +69,7 @@ describe('site wizard helpers', () => {
 
     const result = buildSiteCreatePayload(draft);
 
-    expect(result.errors).toEqual([]);
+    expect(result.errors).toEqual({});
     expect(result.payload).toEqual({
       benchId: 'bench-001',
       name: 'demo-site.localhost',

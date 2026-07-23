@@ -19,11 +19,11 @@ describe('bench wizard helpers', () => {
       siteName: '',
     };
 
-    expect(getBenchWizardStepErrors(1, draft)).toEqual([
-      'Bench name can include lowercase letters, numbers, dots, and hyphens only.',
-      'Select a Frappe version.',
-      'Enter a bench path.',
-    ]);
+    expect(getBenchWizardStepErrors(1, draft)).toEqual({
+      name: 'Bench name can include lowercase letters, numbers, dots, and hyphens only.',
+      frappeVersion: 'Select a Frappe version.',
+      path: 'Enter a bench path.',
+    });
   });
 
   it('builds create payload when draft is valid', () => {
@@ -36,7 +36,7 @@ describe('bench wizard helpers', () => {
 
     const result = buildBenchCreatePayload(draft);
 
-    expect(result.errors).toEqual([]);
+    expect(result.errors).toEqual({});
     expect(result.payload).toEqual({
       name: 'frappe-bench',
       path: '/Users/dev/frappe-bench',
@@ -65,8 +65,8 @@ describe('bench wizard helpers', () => {
       siteName: '',
     };
 
-    expect(getBenchWizardStepErrors(1, draft, { existingBenches: ['Frappe-Bench', 'other-bench'] })).toEqual([
-      'A bench named "frappe-bench" already exists. Please choose a unique bench name.',
-    ]);
+    expect(getBenchWizardStepErrors(1, draft, { existingBenches: ['Frappe-Bench', 'other-bench'] })).toEqual({
+      name: 'A bench named "frappe-bench" already exists. Please choose a unique bench name.',
+    });
   });
 });
