@@ -271,22 +271,28 @@
 
               <SettingsRow
                 title="Check for Updates"
+                :description="`Last checked: ${formattedLastChecked}${updateMessage ? ' - ' + updateMessage : ''}`"
               >
-                <template #description>
-                  Last checked: {{ formattedLastChecked }}
-                  <span
-                    v-if="updateMessage"
-                    class="block mt-0.5 text-ink-gray-5"
-                  >{{ updateMessage }}</span>
-                </template>
-                <Button
-                  size="sm"
-                  variant="subtle"
-                  :loading="isCheckingForUpdates"
-                  @click="onCheckForUpdates"
-                >
-                  Check Now
-                </Button>
+                <div class="flex items-center gap-2">
+                  <Button
+                    v-if="isUpdateAvailable"
+                    size="sm"
+                    variant="solid"
+                    :loading="isDownloadingUpdate"
+                    @click="onDownloadUpdate"
+                  >
+                    Download & Install
+                  </Button>
+                  <Button
+                    v-else
+                    size="sm"
+                    variant="subtle"
+                    :loading="isCheckingForUpdates"
+                    @click="onCheckForUpdates"
+                  >
+                    Check Now
+                  </Button>
+                </div>
               </SettingsRow>
             </div>
           </SettingsBody>
@@ -349,6 +355,8 @@ const ipc = useIpc();
 const activeTab = ref('general');
 
 const isCheckingForUpdates = ref(false);
+const isUpdateAvailable = ref(false);
+const isDownloadingUpdate = ref(false);
 const updateMessage = ref<string | null>(null);
 const lastCheckedAt = ref<string | null>(localStorage.getItem('frappeLocal:lastUpdateCheck'));
 
@@ -363,6 +371,7 @@ const formattedLastChecked = computed(() => {
 const onCheckForUpdates = async () => {
   isCheckingForUpdates.value = true;
   updateMessage.value = null;
+  isUpdateAvailable.value = false;
   try {
     const result = await ipc.checkForUpdates();
     lastCheckedAt.value = result.checkedAt;
@@ -370,18 +379,36 @@ const onCheckForUpdates = async () => {
     
     if (result.status === 'update-available') {
       updateMessage.value = result.message;
+      isUpdateAvailable.value = true;
+      toast({ title: 'Update Available', text: result.message, icon: 'download' });
     } else if (result.status === 'up-to-date') {
-      updateMessage.value = 'App is up to date.';
+      updateMessage.value = 'No updates available.';
+      toast({ title: 'Up to date', text: 'No updates available.', icon: 'check', iconClasses: 'text-green-600' });
     } else {
       updateMessage.value = result.message;
+      toast({ title: 'Update Check', text: result.message, icon: 'info' });
     }
   } catch (error) {
-    updateMessage.value = error instanceof Error ? error.message : 'Failed to check for updates.';
+    const errorMsg = error instanceof Error ? error.message : 'Failed to check for updates.';
+    updateMessage.value = errorMsg;
+    toast({ title: 'Error', text: errorMsg, icon: 'x' });
   } finally {
     isCheckingForUpdates.value = false;
   }
 };
 
+const onDownloadUpdate = async () => {
+  isDownloadingUpdate.value = true;
+  updateMessage.value = 'Downloading update...';
+  try {
+    await ipc.downloadUpdate();
+    updateMessage.value = 'Update downloaded and ready to install.';
+  } catch (error) {
+    updateMessage.value = error instanceof Error ? error.message : 'Failed to download update.';
+  } finally {
+    isDownloadingUpdate.value = false;
+  }
+};
 
 const { form, loading, saving, error, originalSettings, refresh, save, configured } = useSettings();
 const systemResources = reactive({

@@ -150,6 +150,8 @@ export const initializeUpdater = async (settingsRepository: SettingsRepository):
 };
 
 export const triggerManualUpdateCheck = async (): Promise<UpdateCheckResult> => {
+  // NOTE: Allowed in dev for testing purpose. Do NOT revert or remove this.
+  /*
   if (!app.isPackaged) {
     return {
       checkedAt: new Date().toISOString(),
@@ -158,6 +160,7 @@ export const triggerManualUpdateCheck = async (): Promise<UpdateCheckResult> => 
       message: 'Update checks are only available in packaged builds.',
     };
   }
+  */
 
   try {
     const result = await autoUpdater.checkForUpdates();
