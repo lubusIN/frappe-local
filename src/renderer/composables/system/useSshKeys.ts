@@ -9,6 +9,7 @@ export const useSshKeys = () => {
   const ipc = useIpc();
   const showSshConfirmation = ref(false);
   const pendingSshValue = ref(false);
+  const isRestartingSsh = ref(false);
   
   const handleSshToggle = async (newValue: boolean, onNoRestartNeeded?: () => Promise<void>) => {
     pendingSshValue.value = newValue;
@@ -27,6 +28,7 @@ export const useSshKeys = () => {
   };
 
   const performSshSave = async (newValue: boolean, restartBenches: boolean = true) => {
+    isRestartingSsh.value = true;
     const promise = (async () => {
       const settings = await ipc.getSettings();
       if (!settings) {
@@ -63,12 +65,15 @@ export const useSshKeys = () => {
     } catch (err) {
       console.error('Failed to update SSH keys:', err);
       return false;
+    } finally {
+      isRestartingSsh.value = false;
     }
   };
 
   return {
     showSshConfirmation,
     pendingSshValue,
+    isRestartingSsh,
     handleSshToggle,
     performSshSave,
   };

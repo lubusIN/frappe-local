@@ -311,7 +311,7 @@ describe('settings IPC handlers', () => {
     expect(await settings.get()).toMatchObject(seedSettings);
   });
 
-  it('update:check-now returns not configured in unpackaged builds', async () => {
+  it('update:check-now returns error when updater fails in test environment', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
     registerIpcHandlers(
@@ -328,7 +328,7 @@ describe('settings IPC handlers', () => {
     const result = await handlers.get(ipcChannels.updateCheckNow)?.();
     expect(result).toMatchObject({
       source: 'manual',
-      status: 'not-configured',
+      status: 'error',
     });
   });
 });

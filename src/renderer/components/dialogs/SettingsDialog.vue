@@ -51,7 +51,7 @@
             description="Choose how you want to use the application by setting your preferences."
           />
           <SettingsBody>
-            <form @submit.prevent="onSave">
+            <div>
               <StatePanel
                 v-if="error"
                 kind="error"
@@ -118,7 +118,7 @@
                   </div>
                 </SettingsRow>
               </div>
-            </form>
+            </div>
           </SettingsBody>
         </SettingsPanel>
 
@@ -184,6 +184,7 @@
                 <Switch
                   v-model="form.shareSshKeys"
                   size="sm"
+                  :disabled="saving || isRestartingSsh"
                 />
               </SettingsRow>
 
@@ -196,7 +197,7 @@
                   description="Set the memory available to local benches and sites."
                 >
                   <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
-                    {{ formatMemory(form.podmanMemoryMb) }}
+                    {{ formatMemory(currentMemoryMb) }}
                   </span>
                 </SettingsRow>
 
@@ -204,6 +205,7 @@
                   <Slider
                     v-model="memorySliderValue"
                     class="cursor-pointer [&_[role=slider]]:cursor-pointer"
+                    :disabled="saving"
                     :min="MIN_PODMAN_MEMORY_MB"
                     :max="systemResources.totalMemoryMb"
                     :step="1024"
@@ -220,17 +222,29 @@
                       Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
                     </p>
                     <p class="text-ink-gray-5">
-                      Saving a change briefly restarts Podman.
+                      Applying a memory change will restart environment.
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="subtle"
-                    class="shrink-0"
-                    @click="useRecommendedMemory"
-                  >
-                    Use recommended
-                  </Button>
+                  <div class="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="subtle"
+                      class="shrink-0"
+                      :disabled="saving"
+                      @click="useRecommendedMemory"
+                    >
+                      Use recommended
+                    </Button>
+                    <Button
+                      v-if="memoryHasChanged"
+                      size="sm"
+                      variant="solid"
+                      :loading="saving"
+                      @click="onApplyMemory"
+                    >
+                      Apply
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -298,33 +312,14 @@
           </SettingsBody>
         </SettingsPanel>
       </SettingsContent>
-
-      <!-- Footer Actions -->
-      <div class="border-t border-outline-gray-2 bg-surface-gray-1 px-6 py-4 flex items-center justify-end gap-2 shrink-0">
-        <Button
-          size="md"
-          variant="subtle"
-          @click="$emit('close')"
-        >
-          Cancel
-        </Button>
-        <Button
-          size="md"
-          variant="solid"
-          :loading="saving"
-          @click="onSave"
-        >
-          Save
-        </Button>
-      </div>
     </div>
   </SettingsDialog>
 
   <ConfirmationDialog
     :open="showSshConfirmation"
     title="Restart Running Benches?"
-    message="Changing SSH Key sharing requires a restart of all running benches to apply the new volume mounts. Are you sure you want to proceed?"
-    confirm-label="Restart & Proceed"
+    message="Changing SSH Key sharing requires a restart of all running benches."
+    confirm-label="Proceed"
     @confirm="onConfirmSshSave"
     @cancel="onCancelSshSave"
   />
@@ -418,13 +413,21 @@ const systemResources = reactive({
 });
 const systemResourcesLoaded = ref(false);
 
+const pendingMemoryMb = ref<number | null>(null);
+
+const currentMemoryMb = computed(() => pendingMemoryMb.value ?? form.value.podmanMemoryMb);
+
 const memorySliderValue = computed<number[]>({
-  get: () => [form.value.podmanMemoryMb],
+  get: () => [currentMemoryMb.value],
   set: ([memoryMb]) => {
     if (typeof memoryMb === 'number') {
-      form.value.podmanMemoryMb = memoryMb;
+      pendingMemoryMb.value = memoryMb;
     }
   },
+});
+
+const memoryHasChanged = computed(() => {
+  return pendingMemoryMb.value !== null && pendingMemoryMb.value !== form.value.podmanMemoryMb;
 });
 
 const isShowing = computed({
@@ -468,10 +471,27 @@ const formatMemory = (memoryMb: number): string => {
 };
 
 const useRecommendedMemory = (): void => {
-  form.value.podmanMemoryMb = systemResources.recommendedPodmanMemoryMb;
+  pendingMemoryMb.value = systemResources.recommendedPodmanMemoryMb;
 };
 
-const { showSshConfirmation, pendingSshValue, handleSshToggle, performSshSave } = useSshKeys();
+const onApplyMemory = async () => {
+  if (!memoryHasChanged.value || pendingMemoryMb.value === null) return;
+  
+  form.value.podmanMemoryMb = pendingMemoryMb.value;
+  
+  const promise = save().then(() => {
+    if (error.value) throw new Error(error.value);
+    pendingMemoryMb.value = null;
+  });
+  
+  toast.promise(promise, {
+    loading: 'Updating memory and restarting environment',
+    success: 'Memory updated and environment restarted.',
+    error: (err: Error) => `Failed to apply memory changes: ${err.message}`,
+  });
+};
+
+const { showSshConfirmation, pendingSshValue, isRestartingSsh, handleSshToggle, performSshSave } = useSshKeys();
 
 const validatingBrewery = ref(false);
 const breweryValidationMessage = ref('');
@@ -490,6 +510,8 @@ const performSave = async () => {
 };
 
 const onSave = async () => {
+  if (saving.value) return;
+
   breweryValidationMessage.value = '';
   if (form.value.breweryUrl && form.value.breweryUrl.trim() && form.value.breweryUrl !== originalSettings.value?.breweryUrl) {
     validatingBrewery.value = true;
@@ -523,6 +545,22 @@ const onSave = async () => {
     await performSave();
   }
 };
+
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(
+  form,
+  (newForm) => {
+    if (loading.value || !configured.value || saving.value) return;
+    if (JSON.stringify(newForm) === JSON.stringify(originalSettings.value)) return;
+
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      onSave();
+    }, 500);
+  },
+  { deep: true }
+);
 
 const onConfirmSshSave = async () => {
   showSshConfirmation.value = false;
