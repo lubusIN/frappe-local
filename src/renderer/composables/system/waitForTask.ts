@@ -23,10 +23,11 @@ export const runAndWaitForTask = async <T>(
   action: () => Promise<T>,
   resourceType: ResourceType,
   resourceId: string,
-  taskNamePattern?: RegExp
+  taskNamePattern?: RegExp,
+  options?: { startTime?: number }
 ): Promise<ProgressTaskSummary> => {
   const { tasks } = useProgressCenter();
-  const startTime = Date.now();
+  const startTime = options?.startTime ?? Date.now();
 
   // Execute the action that triggers the task
   await action();

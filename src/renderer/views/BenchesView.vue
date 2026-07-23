@@ -391,7 +391,7 @@ import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/Confir
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
-import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
+import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
@@ -427,8 +427,12 @@ const { sites, refresh: refreshSites } = useSites();
 
 const showCreateSiteModal = ref(false);
 
-const onSiteCreated = () => {
-  refreshSites(true);
+const onSiteCreated = (site: { id: string, name: string }) => {
+  trackSiteCreationToast(site, {
+    refreshSites,
+    selectedTaskId,
+    getLatestRelevantTaskId: getLatestRelevantSiteTaskId
+  });
 };
 
 watch(successMessage, (msg) => {
@@ -705,6 +709,10 @@ const {
 } = useResourceTaskState('bench', computed(() => tasks.value || []));
 
 const {
+  getLatestRelevantTaskId: getLatestRelevantSiteTaskId,
+} = useResourceTaskState('site', computed(() => tasks.value || []));
+
+const {
   isOpen: confirmDeleteBenchOpen,
   pendingId: deleteBenchId,
   pendingName: deleteBenchName,
@@ -877,6 +885,7 @@ const onOpenBenchFolder = async (id: string) => {
 };
 
 const onBenchCreated = async (bench: BenchListItem) => {
+  const benchStartTime = Date.now();
   void refresh(true);
   const benchPromise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
   toast.promise(benchPromise, {
@@ -896,31 +905,11 @@ const onBenchCreated = async (bench: BenchListItem) => {
     await refreshSites(true);
     const initialSite = sites.value.find(s => s.benchId === bench.id && s.status === 'queued');
     if (initialSite) {
-      const sitePromise = runAndWaitForTask(() => Promise.resolve(), 'site', initialSite.id, /^Create Site/i).then(() => refreshSites(true));
-      toast.promise(sitePromise, {
-        loading: `Creating initial site ${initialSite.name}`,
-        action: {
-          label: 'View logs',
-          onClick: (e?: Event) => {
-            e?.preventDefault();
-            selectedTaskId.value = getLatestRelevantTaskId(bench.id);
-          }
-        },
-        success: () => ({
-          message: `Site ${initialSite.name} created.`,
-          action: {
-            label: 'Open',
-            onClick: (e?: Event) => {
-              e?.preventDefault();
-              void ipc.openSiteExternal(initialSite.id).then((opened) => {
-                if (!opened) {
-                  toast.error(`Unable to open ${initialSite.name}.`);
-                }
-              });
-            }
-          }
-        }),
-        error: `Failed to create site ${initialSite.name}.`
+      trackSiteCreationToast(initialSite, {
+        refreshSites,
+        selectedTaskId,
+        getLatestRelevantTaskId: getLatestRelevantSiteTaskId,
+        startTime: benchStartTime
       });
     }
   }).catch(() => {});

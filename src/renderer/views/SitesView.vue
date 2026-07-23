@@ -397,6 +397,7 @@ import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
+import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
 
 import FirstRunGuide, { type FirstRunGuideLink } from '@frappe-local/renderer/components/FirstRunGuide.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
@@ -438,45 +439,11 @@ const refresh = async (force = false) => {
   await load(force);
 };
 
-const onSiteCreated = async (site: SiteListItem) => {
-  void refresh(true);
-  const promise = runAndWaitForTask(() => Promise.resolve(), 'site', site.id, /^Create Site/i).then(() => refresh(true));
-  const toastId = toast.loading(`Creating site ${site.name}`, {
-    action: {
-      label: 'View logs',
-      onClick: (e?: Event) => {
-        e?.preventDefault();
-        selectedTaskId.value = getLatestRelevantTaskId(site.id);
-      }
-    }
-  });
-
-  promise.then(() => {
-    toast.success(`Site ${site.name} created.`, {
-      id: toastId,
-      action: {
-        label: 'Open',
-        onClick: (e?: Event) => {
-          e?.preventDefault();
-          void ipc.openSiteExternal(site.id).then((opened) => {
-            if (!opened) {
-              toast.error(`Unable to open ${site.name}.`);
-            }
-          });
-        }
-      }
-    });
-  }).catch(() => {
-    toast.error(`Failed to create site ${site.name}.`, {
-      id: toastId,
-      action: {
-        label: 'View logs',
-        onClick: (e?: Event) => {
-          e?.preventDefault();
-          selectedTaskId.value = getLatestRelevantTaskId(site.id);
-        }
-      }
-    });
+const onSiteCreated = (site: SiteListItem) => {
+  trackSiteCreationToast(site, {
+    refreshSites: refresh,
+    selectedTaskId,
+    getLatestRelevantTaskId
   });
 };
 

@@ -3,6 +3,8 @@
     v-if="task"
     v-model="isOpen"
     size="4xl"
+    position="top"
+    paddingTop="1.25rem"
   >
     <template #title>
       <div class="flex items-center min-w-0 gap-3">
@@ -73,7 +75,7 @@
         <!-- Grouped Steps Container -->
         <div
           ref="logsContainer"
-          class="max-h-[55vh] min-h-[320px] overflow-y-auto divide-y divide-outline-gray-2 [-webkit-app-region:no-drag]"
+          class="max-h-[45vh] min-h-[250px] overflow-y-auto divide-y divide-outline-gray-2 [-webkit-app-region:no-drag]"
           tabindex="0"
           @mousedown.stop
         >
