@@ -275,48 +275,52 @@
         </div>
 
         <template v-else>
-          <ScrollArea class="min-h-0 flex-1">
-            <div class="space-y-6 px-6 py-5 w-full">
-              <!-- APPS Section -->
-              <div class="flex flex-col gap-4">
-                <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3">
-                  <div class="flex items-center gap-2">
-                    <h3 class="text-base-semibold text-ink-gray-9">
-                      Apps
-                    </h3>
+          <Tabs :tabs="[{ label: 'Overview' }, { label: 'Apps' }]">
+            <template #tab-panel="{ tab }">
+              <ScrollArea v-if="tab.label === 'Overview'" class="h-full">
+                <div class="px-6 py-5 w-full">
+                  <div class="text-ink-gray-5 text-sm">
+                    Overview content coming soon.
                   </div>
                 </div>
+              </ScrollArea>
 
-                <div
-                  v-if="benchAppsWarningMessage"
-                  class="pt-2"
-                >
-                  <Alert 
-                    theme="yellow" 
-                    :title="benchAppsWarningMessage" 
-                    :dismissible="false" 
-                  />
+              <ScrollArea v-else-if="tab.label === 'Apps'" class="h-full">
+                <div class="space-y-6 px-6 py-5 w-full">
+                  <!-- APPS Section -->
+                  <div class="flex flex-col gap-4">
+                    <div
+                      v-if="benchAppsWarningMessage"
+                      class="pt-2"
+                    >
+                      <Alert 
+                        theme="yellow" 
+                        :title="benchAppsWarningMessage" 
+                        :dismissible="false" 
+                      />
+                    </div>
+
+                    <AppManager
+                      class="pt-1 w-full"
+                      container-class="flex flex-col gap-1 w-full"
+                      :resource-id="selectedBench.id"
+                      :resource-name="selectedBench.name"
+                      :bench-status="selectedBench.status"
+                      context="bench"
+                      :active-app-ids="selectedBench.apps || []"
+                      :disabled="!canMutateApps || updating"
+                      :frappe-version="selectedBench.frappeVersion"
+                      :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
+                      @add-app="onAddBenchApp"
+                      @remove-app="onRequestRemoveBenchApp"
+                      @install-app="onAddBenchApp"
+                      @uninstall-app="onRequestRemoveBenchApp"
+                    />
+                  </div>
                 </div>
-
-                <AppManager
-                  class="pt-1 w-full"
-                  container-class="flex flex-col gap-1 w-full"
-                  :resource-id="selectedBench.id"
-                  :resource-name="selectedBench.name"
-                  :bench-status="selectedBench.status"
-                  context="bench"
-                  :active-app-ids="selectedBench.apps || []"
-                  :disabled="!canMutateApps || updating"
-                  :frappe-version="selectedBench.frappeVersion"
-                  :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
-                  @add-app="onAddBenchApp"
-                  @remove-app="onRequestRemoveBenchApp"
-                  @install-app="onAddBenchApp"
-                  @uninstall-app="onRequestRemoveBenchApp"
-                />
-              </div>
-            </div>
-          </ScrollArea>
+              </ScrollArea>
+            </template>
+          </Tabs>
 
           <!-- Footer Actions Bar pinned at bottom of reading pane -->
           <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-outline-gray-1 px-5 py-3 bg-surface-base">
@@ -383,7 +387,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, FormControl, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, Tabs, FormControl, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
