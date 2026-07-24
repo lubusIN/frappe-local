@@ -8,22 +8,19 @@
   >
     <template #default>
       <div class="flex flex-col gap-4">
-        <div
-          class="flex items-center gap-2.5 py-1"
-          :class="{ 'px-0': compact }"
-        >
-          <template
-            v-for="(step, index) in steps"
-            :key="step"
-          >
-            <span :class="['text-[0.95rem] leading-tight tracking-[-0.01em]', currentStep === (index + 1) ? 'font-medium text-ink-gray-9' : 'font-normal text-ink-gray-5']">
-              {{ step }}
-            </span>
-            <i
-              v-if="index < steps.length - 1"
-              class="lucide-chevron-right size-[15px] shrink-0 text-ink-gray-5"
+        <div class="flex flex-col gap-3 mb-2">
+          <div class="text-[0.95rem] font-medium text-ink-gray-9 leading-tight">
+            {{ steps[currentStep - 1] }}
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div
+              v-for="(_, index) in steps"
+              :key="index"
+              class="h-1 flex-1 rounded-full transition-colors duration-200"
+              :class="currentStep > index ? 'bg-gray-900 dark:bg-gray-100' : 'bg-surface-gray-2'"
             />
-          </template>
+          </div>
         </div>
 
         <form

@@ -3,7 +3,7 @@
     :open="open"
     title="New bench"
     size="xl"
-    :steps="['Details', 'Site', 'Confirm']"
+    :steps="['Environment', 'Initial Site', 'Confirm']"
     :current-step="wizardStep"
     :errors="wizardErrors"
     :creating="creating"
@@ -75,7 +75,7 @@
         v-model="createForm.siteName"
         type="text"
         required
-        label="Initial Site Name"
+        label="Site Name"
         placeholder="my-site"
         :error="wizardErrors.siteName"
       >

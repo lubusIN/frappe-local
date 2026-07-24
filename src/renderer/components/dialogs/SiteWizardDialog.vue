@@ -139,7 +139,7 @@ const createForm = reactive({
 const wizardStep = ref<SiteWizardStep>(1);
 const wizardErrors = ref<Record<string, string>>({});
 
-const computedSteps = computed(() => props.fixedBenchId ? ['Details', 'Confirm'] : ['Bench', 'Details', 'Confirm']);
+const computedSteps = computed(() => props.fixedBenchId ? ['Site Name', 'Confirm'] : ['Select Bench', 'Site Name', 'Confirm']);
 
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 
