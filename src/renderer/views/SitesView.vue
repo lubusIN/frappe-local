@@ -310,45 +310,49 @@
         </div>
 
         <template v-else>
-          <ScrollArea class="min-h-0 flex-1">
-            <div class="flex flex-col gap-4 px-6 py-5 w-full">
-              <!-- APPS Section -->
-              <div class="flex items-center justify-between border-b border-outline-gray-1 pb-3">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-base-semibold text-ink-gray-9">
-                    Apps
-                  </h3>
+          <Tabs :tabs="[{ label: 'Overview' }, { label: 'Apps' }]">
+            <template #tab-panel="{ tab }">
+              <ScrollArea v-if="tab.label === 'Overview'" class="h-full">
+                <div class="px-6 py-5 w-full">
+                  <div class="text-ink-gray-5 text-sm">
+                    Overview content coming soon.
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
 
-              <div
-                v-if="siteAppsWarningMessage"
-                class="pt-2"
-              >
-                <Alert 
-                  theme="yellow" 
-                  :title="siteAppsWarningMessage" 
-                  :dismissible="false" 
-                />
-              </div>
+              <ScrollArea v-else-if="tab.label === 'Apps'" class="h-full">
+                <div class="flex flex-col gap-4 px-6 py-5 w-full">
+                  <!-- APPS Section -->
+                  <div
+                    v-if="siteAppsWarningMessage"
+                    class="pt-2"
+                  >
+                    <Alert 
+                      theme="yellow" 
+                      :title="siteAppsWarningMessage" 
+                      :dismissible="false" 
+                    />
+                  </div>
 
-              <AppManager
-                class="pt-1 w-full"
-                container-class="flex flex-col gap-1 w-full"
-                :resource-id="selectedBenchForSiteApps?.id"
-                :bench-status="selectedBenchForSiteApps?.status"
-                context="site"
-                :active-app-ids="Array.from(siteActivatedAppSet)"
-                :disabled="updating || !canActivateSelectedSiteApps"
-                :frappe-version="selectedBenchForSiteApps?.frappeVersion"
-                :loading-app-id="activatingSiteAppId"
-                @add-app="onActivateSiteApp"
-                @remove-app="onRequestDeactivateSiteApp"
-                @install-app="onActivateSiteApp"
-                @uninstall-app="onRequestDeactivateSiteApp"
-              />
-            </div>
-          </ScrollArea>
+                  <AppManager
+                    class="pt-1 w-full"
+                    container-class="flex flex-col gap-1 w-full"
+                    :resource-id="selectedBenchForSiteApps?.id"
+                    :bench-status="selectedBenchForSiteApps?.status"
+                    context="site"
+                    :active-app-ids="Array.from(siteActivatedAppSet)"
+                    :disabled="updating || !canActivateSelectedSiteApps"
+                    :frappe-version="selectedBenchForSiteApps?.frappeVersion"
+                    :loading-app-id="activatingSiteAppId"
+                    @add-app="onActivateSiteApp"
+                    @remove-app="onRequestDeactivateSiteApp"
+                    @install-app="onActivateSiteApp"
+                    @uninstall-app="onRequestDeactivateSiteApp"
+                  />
+                </div>
+              </ScrollArea>
+            </template>
+          </Tabs>
 
           <!-- Footer Actions Bar pinned at bottom of reading pane -->
           <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-outline-gray-1 px-5 py-3 bg-surface-base">
@@ -392,7 +396,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, TabButtons, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, TabButtons, Tabs, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
