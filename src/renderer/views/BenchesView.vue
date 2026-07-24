@@ -54,49 +54,6 @@
           v-if="selectedBench"
           class="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
         >
-          <Button
-            v-if="selectedBench.status !== 'running'"
-            variant="ghost"
-            :icon="'lucide-play'"
-            tooltip="Start Bench"
-            :disabled="updating || isResourceBusy(selectedBench.id) || selectedBench.status === 'queued'"
-            @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
-          />
-          <Button
-            v-else
-            variant="ghost"
-            :icon="'lucide-rotate-cw'"
-            tooltip="Restart Bench"
-            :disabled="updating || isResourceBusy(selectedBench.id)"
-            @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-square'"
-            tooltip="Stop Bench"
-            :disabled="updating || selectedBench.status === 'stopped' || selectedBench.status === 'queued' || isResourceBusy(selectedBench.id)"
-            @click="onStopBench(selectedBench.id)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-folder-open'"
-            tooltip="Open Bench Folder"
-            :disabled="openingFolder"
-            @click="onOpenBenchFolder(selectedBench.id)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-terminal'"
-            tooltip="Open Shell"
-            :disabled="selectedBench.status !== 'running'"
-            @click="onOpenBenchShell(selectedBench.id)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-activity'"
-            tooltip="Task Logs"
-            @click="onStatusClick(selectedBench.id)"
-          />
           <Dropdown
             :options="getBenchMoreActions(selectedBench)"
             align="end"
@@ -278,9 +235,101 @@
           <Tabs :tabs="[{ label: 'Overview' }, { label: 'Apps' }]">
             <template #tab-panel="{ tab }">
               <ScrollArea v-if="tab.label === 'Overview'" class="h-full">
-                <div class="px-6 py-5 w-full">
-                  <div class="text-ink-gray-5 text-sm">
-                    Overview content coming soon.
+                <div class="space-y-8 px-6 py-5 w-full max-w-3xl">
+                  <!-- Manage Section -->
+                  <div class="flex flex-col gap-3">
+                    <h3 class="text-base-semibold text-ink-gray-9">Manage</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      <Button
+                        v-if="selectedBench.status !== 'running'"
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-play"
+                        label="Start"
+                        class="!justify-start w-full"
+                        :disabled="updating || isResourceBusy(selectedBench.id) || selectedBench.status === 'queued'"
+                        @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
+                      />
+                      <Button
+                        v-else
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-rotate-cw"
+                        label="Restart"
+                        class="!justify-start w-full"
+                        :disabled="updating || isResourceBusy(selectedBench.id)"
+                        @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-square"
+                        label="Stop"
+                        class="!justify-start w-full"
+                        :disabled="updating || selectedBench.status === 'stopped' || selectedBench.status === 'queued' || isResourceBusy(selectedBench.id)"
+                        @click="onStopBench(selectedBench.id)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-hammer"
+                        label="Build"
+                        class="!justify-start w-full"
+                        :disabled="updating || deleting || selectedBench.status !== 'running' || isResourceBusy(selectedBench.id)"
+                        @click="onBuildBench(selectedBench.id)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-activity"
+                        label="Task Logs"
+                        class="!justify-start w-full"
+                        @click="onStatusClick(selectedBench.id)"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Open in Section -->
+                  <div class="flex flex-col gap-3">
+                    <h3 class="text-base-semibold text-ink-gray-9">Open in</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-folder-open"
+                        label="Folder"
+                        class="!justify-start w-full"
+                        :disabled="openingFolder"
+                        @click="onOpenBenchFolder(selectedBench.id)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-terminal"
+                        label="Terminal"
+                        class="!justify-start w-full"
+                        :disabled="selectedBench.status !== 'running'"
+                        @click="onOpenBenchShell(selectedBench.id)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-code"
+                        label="VS Code"
+                        class="!justify-start w-full"
+                        :disabled="!isEditorInstalled"
+                        @click="openInEditor(selectedBench.id, false)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-box"
+                        label="Dev Container"
+                        class="!justify-start w-full"
+                        :disabled="!isEditorInstalled || selectedBench.status !== 'running'"
+                        @click="openInEditor(selectedBench.id, true)"
+                      />
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
@@ -726,31 +775,8 @@ const {
 const getBenchMoreActions = (bench: BenchListItem) => {
   const actions = [
     {
-      group: 'Development',
-      options: [
-        {
-          label: 'VS Code',
-          icon: 'lucide-code',
-          disabled: !isEditorInstalled.value,
-          onClick: () => openInEditor(bench.id, false),
-        },
-        {
-          label: 'Dev Container',
-          icon: 'lucide-box',
-          disabled: !isEditorInstalled.value || bench.status !== 'running',
-          onClick: () => openInEditor(bench.id, true),
-        },
-      ],
-    },
-    {
       group: 'Manage',
       options: [
-        {
-          label: 'Build',
-          icon: 'lucide-hammer',
-          disabled: updating.value || deleting.value || bench.status !== 'running' || isResourceBusy(bench.id),
-          onClick: () => onBuildBench(bench.id),
-        },
         {
           label: 'Delete',
           icon: 'lucide-trash-2',

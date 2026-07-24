@@ -52,44 +52,18 @@
           </Badge>
         </div>
 
-        <!-- Site actions: Open / Folder / Logs / Reset + More dropdown -->
+        <!-- Site actions -->
         <div
           v-if="selectedSite"
-          class="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]"
+          class="flex shrink-0 items-center gap-2 [-webkit-app-region:no-drag]"
         >
           <Button
-            variant="ghost"
-            :icon="'lucide-external-link'"
-            tooltip="Open in Browser"
+            variant="subtle"
+            size="sm"
+            :icon-left="'lucide-external-link'"
+            label="Open Site"
             :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
             @click="ipc.openSiteExternal(selectedSite.id)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-folder-open'"
-            tooltip="Open Site Folder"
-            @click="openFolder(selectedSite.id)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-terminal'"
-            tooltip="Open Shell"
-            :disabled="!isBenchRunning(selectedSite.benchId) || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
-            @click="openShell(selectedSite.id)"
-          />
-          <Button
-            variant="ghost"
-            :icon="'lucide-activity'"
-            tooltip="Task Logs"
-            @click="onStatusClick(selectedSite.id)"
-          />
-          <Button
-            v-if="selectedSite.status === 'failure'"
-            variant="ghost"
-            :icon="'lucide-rotate-ccw'"
-            tooltip="Reset Status"
-            :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id)"
-            @click="resetSiteStatus(selectedSite)"
           />
           <Dropdown
             :options="getSiteDetailMoreActions(selectedSite)"
@@ -313,9 +287,81 @@
           <Tabs :tabs="[{ label: 'Overview' }, { label: 'Apps' }]">
             <template #tab-panel="{ tab }">
               <ScrollArea v-if="tab.label === 'Overview'" class="h-full">
-                <div class="px-6 py-5 w-full">
-                  <div class="text-ink-gray-5 text-sm">
-                    Overview content coming soon.
+                <div class="space-y-8 px-6 py-5 w-full max-w-3xl">
+                  <!-- Manage Section -->
+                  <div class="flex flex-col gap-3">
+                    <h3 class="text-base-semibold text-ink-gray-9">Manage</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-eraser"
+                        label="Clean Cache"
+                        class="!justify-start w-full"
+                        :disabled="!isBenchRunning(selectedSite.benchId) || updating || deleting || isResourceBusy(selectedSite.id)"
+                        @click="onCleanCache(selectedSite.id, selectedSite.name)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-database"
+                        label="Migrate"
+                        class="!justify-start w-full"
+                        :disabled="!isBenchRunning(selectedSite.benchId) || updating || deleting || isResourceBusy(selectedSite.id)"
+                        @click="onMigrate(selectedSite.id, selectedSite.name)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-activity"
+                        label="Task Logs"
+                        class="!justify-start w-full"
+                        @click="onStatusClick(selectedSite.id)"
+                      />
+                      <Button
+                        v-if="selectedSite.status === 'failure'"
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-rotate-ccw"
+                        label="Reset Status"
+                        class="!justify-start w-full"
+                        :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id)"
+                        @click="resetSiteStatus(selectedSite)"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Open in Section -->
+                  <div class="flex flex-col gap-3">
+                    <h3 class="text-base-semibold text-ink-gray-9">Open in</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-external-link"
+                        label="Browser"
+                        class="!justify-start w-full"
+                        :disabled="!isBenchRunning(selectedSite.benchId) || updating || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
+                        @click="ipc.openSiteExternal(selectedSite.id)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-folder-open"
+                        label="Folder"
+                        class="!justify-start w-full"
+                        @click="openFolder(selectedSite.id)"
+                      />
+                      <Button
+                        variant="outline"
+                        size="md"
+                        icon-left="lucide-terminal"
+                        label="Terminal"
+                        class="!justify-start w-full"
+                        :disabled="!isBenchRunning(selectedSite.benchId) || isResourceBusy(selectedSite.id) || (selectedSite.status !== 'ready' && selectedSite.status !== 'failure')"
+                        @click="openShell(selectedSite.id)"
+                      />
+                    </div>
                   </div>
                 </div>
               </ScrollArea>
@@ -582,23 +628,6 @@ const onMigrate = async (id: string, name: string) => {
 
 const getSiteDetailMoreActions = (site: SiteListItem) => {
   return [
-    {
-      group: 'Development',
-      options: [
-        {
-          label: 'Clean Cache',
-          icon: 'lucide-eraser',
-          disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
-          onClick: () => onCleanCache(site.id, site.name),
-        },
-        {
-          label: 'Migrate',
-          icon: 'lucide-database',
-          disabled: !isBenchRunning(site.benchId) || updating.value || deleting.value || isResourceBusy(site.id),
-          onClick: () => onMigrate(site.id, site.name),
-        },
-      ],
-    },
     {
       group: 'Manage',
       options: [
