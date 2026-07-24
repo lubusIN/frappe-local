@@ -2,12 +2,14 @@ import { onMounted, ref } from 'vue';
 import type { DiagnosticsReport } from '@frappe-local/shared/domain';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
+const report = ref<DiagnosticsReport | null>(null);
+const running = ref(false);
+const fixing = ref(false);
+const resetting = ref(false);
+const error = ref<string | null>(null);
+let initialized = false;
+
 export const useDiagnostics = () => {
-  const report = ref<DiagnosticsReport | null>(null);
-  const running = ref(false);
-  const fixing = ref(false);
-  const resetting = ref(false);
-  const error = ref<string | null>(null);
 
   const run = async () => {
     running.value = true;
@@ -65,6 +67,8 @@ export const useDiagnostics = () => {
   };
 
   onMounted(() => {
+    if (initialized) return;
+    initialized = true;
     const ipc = useIpc();
     ipc.getLastDiagnosticsReport().then((last) => {
       if (last) {

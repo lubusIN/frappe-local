@@ -39,7 +39,26 @@
                 :active="item.path === '/sites' ? (route.path === '/' || route.path.startsWith('/sites')) : route.path.startsWith(item.path)"
               >
                 <template
-                  v-if="getItemCount(item.path) !== null && getItemCount(item.path)! > 0"
+                  v-if="item.path === '/diagnostics' && report"
+                  #suffix
+                >
+                  <div class="flex items-center justify-center shrink-0 mr-1.5">
+                    <i
+                      v-if="report.hasCriticalIssues"
+                      class="lucide-x text-red-500 size-[14px]"
+                    />
+                    <i
+                      v-else-if="report.hasWarnings"
+                      class="lucide-alert-triangle text-amber-500 size-[14px]"
+                    />
+                    <i
+                      v-else
+                      class="lucide-check text-green-500 size-[14px]"
+                    />
+                  </div>
+                </template>
+                <template
+                  v-else-if="getItemCount(item.path) !== null && getItemCount(item.path)! > 0"
                   #suffix
                 >
                   <Badge
@@ -178,7 +197,7 @@ import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
 import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
-import { handledFailureTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter } from '@frappe-local/renderer/composables/system';
+import { handledFailureTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter, useDiagnostics } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useCustomApps, useSites } from '@frappe-local/renderer/composables/data';
 import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
@@ -190,6 +209,7 @@ const { formatTaskTitle } = useAppCatalog();
 const { sites } = useSites();
 const { benches } = useBenches();
 const { customApps } = useCustomApps();
+const { report } = useDiagnostics();
 
 const getItemCount = (path: string) => {
   if (path === '/sites') return sites.value.length;
