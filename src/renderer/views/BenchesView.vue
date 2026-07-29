@@ -78,29 +78,34 @@
         <!-- Search & Status Filter Bar pinned above list -->
         <div
           v-if="!error && benches.length > 0"
-          class="flex flex-col gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2.5 bg-surface-base"
+          class="flex items-center gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2 bg-surface-base w-full min-w-0"
         >
-          <FormControl
-            v-model="benchFilters.search"
-            type="text"
-            placeholder="Search benches..."
-            size="sm"
-            variant="outline"
-          >
-            <template #prefix>
-              <i class="lucide-search w-4 text-ink-gray-5" />
-            </template>
-          </FormControl>
+          <div class="flex-1 min-w-0">
+            <FormControl
+              v-model="benchFilters.search"
+              type="text"
+              placeholder="Search benches..."
+              size="sm"
+              variant="outline"
+            >
+              <template #prefix>
+                <i class="lucide-search w-4 text-ink-gray-5" />
+              </template>
+            </FormControl>
+          </div>
 
-          <div class="flex items-center justify-between gap-2 w-full mt-0.5 min-w-0">
-            <TabButtons
-              v-model="benchFilters.status"
+          <div class="w-36 shrink-0">
+            <FormControl
+              v-model="benchFilterSelection"
+              type="select"
               :options="statusTabOptions"
-              class="justify-start overflow-x-auto no-scrollbar min-w-0"
-            />
-            <span class="text-sm text-ink-gray-5">
-              {{ currentStatusCount }} benches
-            </span>
+              size="sm"
+              variant="outline"
+            >
+              <template #prefix>
+                <i class="lucide-list-filter w-4 text-ink-gray-5" />
+              </template>
+            </FormControl>
           </div>
         </div>
 
@@ -436,7 +441,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, ScrollArea, Spinner, TabButtons, Tabs, FormControl, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, Tabs, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -527,23 +532,20 @@ const benchFilters = reactive({
   search: '',
 });
 
-const statusTabs = computed(() => [
-  { label: 'All', value: '', count: benches.value.length },
-  { label: 'Running', value: 'running', count: benches.value.filter((b) => b.status === 'running').length },
-  { label: 'Stopped', value: 'stopped', count: benches.value.filter((b) => b.status === 'stopped' || b.status === 'success').length },
-  { label: 'Error', value: 'failure', count: benches.value.filter((b) => b.status === 'failure').length },
+const SELECT_ALL = '__all__';
+
+const statusTabOptions = computed(() => [
+  { label: 'All statuses', value: SELECT_ALL },
+  { label: 'Running', value: 'running' },
+  { label: 'Stopped', value: 'stopped' },
+  { label: 'Error', value: 'failure' },
 ]);
 
-const statusTabOptions = computed(() =>
-  statusTabs.value.map((tab) => ({
-    label: tab.label,
-    value: tab.value,
-  }))
-);
-
-const currentStatusCount = computed(() => {
-  const currentTab = statusTabs.value.find((t) => t.value === benchFilters.status);
-  return currentTab ? currentTab.count : benches.value.length;
+const benchFilterSelection = computed({
+  get: () => benchFilters.status || SELECT_ALL,
+  set: (value: string) => {
+    benchFilters.status = value === SELECT_ALL ? '' : value;
+  },
 });
 
 const filteredBenches = computed(() => {
