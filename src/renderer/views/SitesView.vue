@@ -89,47 +89,34 @@
         <!-- Search & Status Filter Bar pinned above list -->
         <div
           v-if="!error && sites.length > 0"
-          class="flex flex-col gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2.5 bg-surface-base"
+          class="flex items-center gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2 bg-surface-base w-full min-w-0"
         >
-          <div class="flex items-center gap-2 w-full min-w-0">
-            <div class="flex-1 min-w-0">
-              <FormControl
-                v-model="siteFilters.search"
-                type="text"
-                placeholder="Search sites..."
-                size="sm"
-                variant="outline"
-              >
-                <template #prefix>
-                  <i class="lucide-search w-4 text-ink-gray-5" />
-                </template>
-              </FormControl>
-            </div>
-
-            <div class="w-36 shrink-0">
-              <FormControl
-                v-model="benchFilterSelection"
-                type="select"
-                :options="benchFilterOptions"
-                size="sm"
-                variant="outline"
-              >
-                <template #prefix>
-                  <i class="lucide-list-filter w-4 text-ink-gray-5" />
-                </template>
-              </FormControl>
-            </div>
+          <div class="flex-1 min-w-0">
+            <FormControl
+              v-model="siteFilters.search"
+              type="text"
+              placeholder="Search sites..."
+              size="sm"
+              variant="outline"
+            >
+              <template #prefix>
+                <i class="lucide-search w-4 text-ink-gray-5" />
+              </template>
+            </FormControl>
           </div>
 
-          <div class="flex items-center justify-between gap-2 w-full mt-0.5 min-w-0">
-            <TabButtons
-              v-model="siteFilters.status"
-              :options="statusTabOptions"
-              class="justify-start overflow-x-auto no-scrollbar min-w-0"
-            />
-            <span class="text-sm text-ink-gray-5">
-              {{ currentStatusCount }} sites
-            </span>
+          <div class="w-36 shrink-0">
+            <FormControl
+              v-model="benchFilterSelection"
+              type="select"
+              :options="benchFilterOptions"
+              size="sm"
+              variant="outline"
+            >
+              <template #prefix>
+                <i class="lucide-list-filter w-4 text-ink-gray-5" />
+              </template>
+            </FormControl>
           </div>
         </div>
 
@@ -442,7 +429,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, TabButtons, Tabs, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, Tabs, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -551,24 +538,6 @@ const getDisplayLabel = (row: SiteListItem) => {
   return formatStatusLabel(row);
 };
 
-const statusTabs = computed(() => [
-  { label: 'All', value: '', count: sites.value.length },
-  { label: 'Ready', value: 'ready', count: sites.value.filter((s) => s.status === 'ready').length },
-  { label: 'In Progress', value: 'queued', count: sites.value.filter((s) => s.status === 'queued').length },
-  { label: 'Error', value: 'failure', count: sites.value.filter((s) => s.status === 'failure').length },
-]);
-
-const statusTabOptions = computed(() =>
-  statusTabs.value.map((tab) => ({
-    label: tab.label,
-    value: tab.value,
-  }))
-);
-
-const currentStatusCount = computed(() => {
-  const currentTab = statusTabs.value.find((t) => t.value === siteFilters.status);
-  return currentTab ? currentTab.count : sites.value.length;
-});
 
 const selectedSiteId = ref<string | undefined>(undefined);
 const showList = ref(true);
@@ -651,7 +620,6 @@ const showCreateSiteModal = ref(false);
 const creatableBenches = computed(() => allBenches.value.filter((bench) => bench.status === 'running' || bench.status === 'success'));
 const siteFilters = reactive({
   benchId: '',
-  status: '',
   search: '',
 });
 const benchFilterSelection = computed({
@@ -667,7 +635,6 @@ const benchFilterOptions = computed(() => [
 const filteredSites = computed(() => filterSites(sites.value, siteFilters));
 const clearSiteFilters = (): void => {
   siteFilters.benchId = '';
-  siteFilters.status = '';
   siteFilters.search = '';
 };
 

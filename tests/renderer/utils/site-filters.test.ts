@@ -28,7 +28,6 @@ describe('site filters', () => {
   it('filters by bench id', () => {
     const result = filterSites(sites, {
       benchId: 'bench-001',
-      status: '',
       search: '',
     });
 
@@ -36,21 +35,9 @@ describe('site filters', () => {
     expect(result[0]?.id).toBe('site-001');
   });
 
-  it('filters by status', () => {
-    const result = filterSites(sites, {
-      benchId: '',
-      status: 'queued',
-      search: '',
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0]?.id).toBe('site-002');
-  });
-
   it('filters by search across name/path/bench', () => {
     const result = filterSites(sites, {
       benchId: '',
-      status: '',
       search: 'beta',
     });
 
