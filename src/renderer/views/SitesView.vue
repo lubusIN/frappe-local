@@ -350,6 +350,15 @@
                       />
                     </div>
                   </div>
+
+                  <!-- Installed Apps Section -->
+                  <InstalledAppsSection
+                    :app-ids="selectedSiteForApps?.apps || []"
+                    :bench-id="selectedSite.benchId"
+                    :bench-status="selectedBenchForSiteApps?.status"
+                    context="site"
+                    @remove-app="onRequestDeactivateSiteApp"
+                  />
                 </div>
               </ScrollArea>
 
@@ -440,6 +449,7 @@ import FirstRunGuide, { type FirstRunGuideLink } from '@frappe-local/renderer/co
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
+import InstalledAppsSection from '@frappe-local/renderer/components/InstalledAppsSection.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';

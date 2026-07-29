@@ -15,7 +15,18 @@ export interface ResolvedAppInfo {
   title?: string;
   slug?: string;
   description?: string;
+  icon?: string;
+  source?: string;
+  type?: string;
+  sourceBadgeLabel?: string;
+  sourceBadgeTheme?: 'blue' | 'orange' | 'gray';
 }
+
+export const getAppPresentationMeta = (type?: string) => {
+  if (type === 'github') return { sourceBadgeLabel: 'GitHub', sourceBadgeTheme: 'blue' as const };
+  if (type === 'local') return { sourceBadgeLabel: 'Local', sourceBadgeTheme: 'orange' as const };
+  return { sourceBadgeLabel: 'Registry', sourceBadgeTheme: 'gray' as const };
+};
 
 export const useAppCatalog = () => {
   const state = ref<AsyncState<CatalogAppItem[]>>({ data: null, loading: false, error: null });
@@ -41,7 +52,13 @@ export const useAppCatalog = () => {
 
   const getAppInfo = (appId: string): ResolvedAppInfo => {
     const catalogApp = state.value.data?.find((app) => app.id === appId || app.name === appId);
-    if (catalogApp) return catalogApp;
+    if (catalogApp) {
+      return { 
+        ...catalogApp, 
+        type: 'registry',
+        ...getAppPresentationMeta('registry')
+      };
+    }
 
     const customApp = customApps.value.find((app) => app.id === appId || app.name === appId);
     if (customApp) {
@@ -51,10 +68,14 @@ export const useAppCatalog = () => {
         name: customApp.name,
         title: customApp.title || customApp.name,
         slug: customApp.name,
+        ...getAppPresentationMeta(customApp.type)
       };
     }
 
-    return { name: appId };
+    return { 
+      name: appId,
+      ...getAppPresentationMeta('registry')
+    };
   };
 
   const getAppTitle = (appId: string): string => {

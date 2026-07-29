@@ -336,6 +336,15 @@
                       />
                     </div>
                   </div>
+
+                  <!-- Installed Apps Section -->
+                  <InstalledAppsSection
+                    :app-ids="selectedBench.apps || []"
+                    :bench-id="selectedBench.id"
+                    :bench-status="selectedBench.status"
+                    context="bench"
+                    @remove-app="onRequestRemoveBenchApp"
+                  />
                 </div>
               </ScrollArea>
 
@@ -441,7 +450,7 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, Tabs, toast } from 'frappe-ui';
+import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, Tabs, Spinner, toast } from 'frappe-ui';
 import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -449,6 +458,7 @@ import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/Confir
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
+import InstalledAppsSection from '@frappe-local/renderer/components/InstalledAppsSection.vue';
 import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';

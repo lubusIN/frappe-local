@@ -1,33 +1,7 @@
 <template>
   <section :class="containerClass || 'flex flex-col h-[60vh] gap-1'">
     <header class="flex flex-col gap-3 mb-3">
-      <div class="flex items-center">
-        <TabButtons
-          v-model="activeTab"
-          :options="tabOptions"
-        >
-          <template #suffix="{ button }">
-            <span
-              class="rounded-full bg-surface-gray-2 px-1.5 text-xs text-ink-gray-7 ml-1"
-            >
-              {{ tabCounts[button.modelValue as 'installed' | 'available'] }}
-            </span>
-          </template>
-        </TabButtons>
-        <Button
-          v-if="activeTab === 'available'"
-          variant="ghost"
-          size="sm"
-          class="ml-auto"
-          :loading="isSyncing"
-          @click="syncCatalog"
-        >
-          <template #prefix>
-            <i class="lucide-refresh-cw w-4 text-ink-gray-6" />
-          </template>
-          Sync
-        </Button>
-      </div>
+
       <div class="flex items-center gap-2.5">
         <div class="min-w-[140px] flex-1">
           <FormControl 
@@ -50,6 +24,18 @@
             :options="categoryOptions"
           />
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          class="shrink-0"
+          :loading="isSyncing"
+          @click="syncCatalog"
+        >
+          <template #prefix>
+            <i class="lucide-refresh-cw w-4 text-ink-gray-6" />
+          </template>
+          Sync
+        </Button>
       </div>
     </header>
 
@@ -233,10 +219,10 @@
 </template>
 
 <script setup lang="ts">
-import { TabButtons, FormControl, Button, Dropdown, Badge, toast } from 'frappe-ui';
+import { FormControl, Button, Dropdown, Badge, toast } from 'frappe-ui';
 import { computed, ref} from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
-import { useAppCatalogFilters, useBenches, useCustomApps } from '@frappe-local/renderer/composables/data';
+import { useAppCatalogFilters, useBenches, useCustomApps, getAppPresentationMeta } from '@frappe-local/renderer/composables/data';
 import { useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
 
 const { isEditorInstalled } = useEditorStatus();
@@ -273,8 +259,6 @@ const emit = defineEmits<{
   (e: 'install-app', appId: string): void;
   (e: 'uninstall-app', appId: string): void;
 }>();
-
-const activeTab = ref('installed');
 
 const { openAppInEditor, error: openError } = useBenches();
 
@@ -409,8 +393,7 @@ const catalogAppItems = computed(() =>
       isActive,
       compatibilityStatus: compatibility.status,
       supportText: compatibility.status === 'ok' ? '' : compatibility.message,
-      sourceBadgeLabel: 'Registry',
-      sourceBadgeTheme: 'gray' as const,
+      ...getAppPresentationMeta('registry'),
       sourceText: item.license || 'Unknown',
       sourceTitle: item.license || 'Unknown',
       categories: item.categories || [],
@@ -433,8 +416,7 @@ const customAppItems = computed(() =>
       isActive,
       compatibilityStatus: 'ok' as const,
       supportText: '',
-      sourceBadgeLabel: item.type === 'github' ? 'GitHub' : 'Local',
-      sourceBadgeTheme: 'gray' as const,
+      ...getAppPresentationMeta(item.type),
       sourceText: licenseText,
       sourceTitle: licenseText,
       categories: [] as string[],
@@ -442,24 +424,6 @@ const customAppItems = computed(() =>
   })
 );
 
-const allApps = computed(() => [...catalogAppItems.value, ...customAppItems.value]);
-const installedApps = computed(() => allApps.value.filter((app) => app.isActive));
-const availableApps = computed(() => allApps.value.filter((app) => !app.isActive));
-
-const installedCount = computed(() => installedApps.value.length);
-const availableCount = computed(() => availableApps.value.length);
-
-const tabOptions = [
-  { label: 'Installed', value: 'installed' },
-  { label: 'Available', value: 'available' }
-];
-
-const tabCounts = computed(() => ({
-  installed: installedCount.value,
-  available: availableCount.value
-}));
-
-const displayedApps = computed(() => {
-  return activeTab.value === 'installed' ? installedApps.value : availableApps.value;
-});
+const allApps = computed(() => [...catalogAppItems.value, ...customAppItems.value].filter(app => app.appId !== 'frappe'));
+const displayedApps = computed(() => allApps.value.filter((app) => !app.isActive));
 </script>
