@@ -288,6 +288,34 @@ const onConfirm = async () => {
     }
   }
 
+  try {
+    const existingApps = await window.frappeLocal?.listCustomApps();
+    if (existingApps) {
+      const isDuplicate = existingApps.some(app => {
+        if (app.type === 'local' && appType.value === 'local') {
+          return app.source.replace(/\/$/, '') === cleanSource.replace(/\/$/, '');
+        }
+        if (app.type === 'github' && appType.value === 'github') {
+          const normalize = (s: string) => {
+            return s.toLowerCase()
+              .replace(/^https:\/\/github\.com\//, '')
+              .replace(/^git@github\.com:/, '')
+              .replace(/\.git$/, '');
+          };
+          return normalize(app.source) === normalize(cleanSource);
+        }
+        return false;
+      });
+
+      if (isDuplicate) {
+        error.value = 'An app with this source already exists.';
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to check existing apps for duplicates:', err);
+  }
+
   // For GitHub, if it's HTTPS, keep it for extraction, but we might want SSH later. 
   // Let's do extraction first.
   isExtracting.value = true;
