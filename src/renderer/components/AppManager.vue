@@ -14,6 +14,19 @@
             </span>
           </template>
         </TabButtons>
+        <Button
+          v-if="activeTab === 'available'"
+          variant="ghost"
+          size="sm"
+          class="ml-auto"
+          :loading="isSyncing"
+          @click="syncCatalog"
+        >
+          <template #prefix>
+            <i class="lucide-refresh-cw w-4 text-ink-gray-6" />
+          </template>
+          Sync
+        </Button>
       </div>
       <div class="flex items-center gap-2.5">
         <div class="min-w-[140px] flex-1">
@@ -224,7 +237,7 @@ import { TabButtons, FormControl, Button, Dropdown, Badge, toast } from 'frappe-
 import { computed, ref} from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
 import { useAppCatalogFilters, useBenches, useCustomApps } from '@frappe-local/renderer/composables/data';
-import { useEditorStatus } from '@frappe-local/renderer/composables/system';
+import { useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
 
 const { isEditorInstalled } = useEditorStatus();
 
@@ -315,9 +328,29 @@ const {
   items,
   evaluateCompatibility,
   onSearch,
+  reload,
 } = useAppCatalogFilters({ frappeVersion: frappeVersionRef });
 
 const { customApps, loading: customAppsLoading, error: customAppsError } = useCustomApps();
+const ipc = useIpc();
+const isSyncing = ref(false);
+
+const syncCatalog = async () => {
+  isSyncing.value = true;
+  try {
+    const res = await ipc.syncBreweryCatalog();
+    if (res.success) {
+      toast.success('App catalog synced successfully');
+      await reload(query.value);
+    } else {
+      toast.error(res.error || 'Failed to sync app catalog');
+    }
+  } catch (err) {
+    toast.error(String(err));
+  } finally {
+    isSyncing.value = false;
+  }
+};
 
 const imageErrors = ref<Record<string, boolean>>({});
 const allowedAppIds = computed(() => {

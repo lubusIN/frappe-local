@@ -941,7 +941,7 @@ export const registerIpcHandlers = (
     if (!repositories.appCatalog.sync) {
       return { success: false, error: 'Catalog repository sync unavailable' };
     }
-    const result = await syncAppCatalogFromBrewery(targetUrl, { sync: repositories.appCatalog.sync });
+    const result = await syncAppCatalogFromBrewery(targetUrl, repositories.appCatalog);
     if (result.success) {
       return { success: true, appCount: result.apps.length };
     }
