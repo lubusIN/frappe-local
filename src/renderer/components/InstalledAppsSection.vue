@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col gap-3">
     <div class="flex items-center gap-2">
-      <h3 class="text-base-semibold text-ink-gray-9">Installed Apps</h3>
+      <h3 class="text-base-semibold text-ink-gray-9">
+        Installed Apps
+      </h3>
       <Badge
         theme="gray"
         variant="subtle"

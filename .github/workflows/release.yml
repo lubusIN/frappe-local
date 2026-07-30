@@ -97,7 +97,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: frappe-local-${{ matrix.artifact }}
-          path: release-artifacts/*
+          path: |
+            release-artifacts/*.dmg
+            release-artifacts/*.zip
+            release-artifacts/*.exe
+            release-artifacts/*.deb
+            release-artifacts/*.rpm
+            release-artifacts/*.AppImage
+            release-artifacts/*.blockmap
+            release-artifacts/latest*.yml
           if-no-files-found: error
           retention-days: 1
 

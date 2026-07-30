@@ -158,12 +158,11 @@ const createMainWindow = async (): Promise<void> => {
     }
   });
 
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    await window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    return;
+  if (process.env.VITE_DEV_SERVER_URL) {
+    await window.loadURL(process.env.VITE_DEV_SERVER_URL);
+  } else {
+    await window.loadFile(path.join(currentDirectory, '../renderer/main_window/index.html'));
   }
-
-  await window.loadFile(path.join(currentDirectory, '../renderer/main_window/index.html'));
 };
 
 app.whenReady().then(async () => {

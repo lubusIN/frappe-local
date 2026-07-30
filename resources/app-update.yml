@@ -1,4 +1,0 @@
-provider: github
-owner: lubusIN
-repo: frappe-local
-updaterCacheDirName: frappe-local-updater

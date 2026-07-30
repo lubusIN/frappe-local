@@ -6,29 +6,19 @@
   "description": "Desktop app for managing local Frappe benches and sites.",
   "main": ".vite/build/main.js",
   "scripts": {
-    "start": "electron-forge start",
-    "release": "node scripts/make-release.js",
+    "start": "vite",
+    "build": "npm run typecheck && vite build",
+    "release": "npm run build && electron-builder --publish never",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
     "test": "vitest run",
-    "icons:generate": "node scripts/generate-icons.js",
     "dev:reset-state": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"
   },
   "author": "Lubus",
   "license": "MIT",
   "devDependencies": {
-    "@electron-forge/cli": "^7.8.1",
-    "@electron-forge/core": "^7.11.2",
-    "@electron-forge/maker-deb": "^7.11.1",
-    "@electron-forge/maker-dmg": "^7.11.1",
-    "@electron-forge/maker-rpm": "^7.11.1",
-    "@electron-forge/maker-squirrel": "^7.11.1",
-    "@electron-forge/maker-zip": "^7.8.1",
-    "@electron-forge/plugin-vite": "^7.8.1",
-    "@electron-forge/publisher-github": "^7.11.2",
-    "@electron-forge/shared-types": "^7.11.2",
     "@eslint/js": "^9.25.1",
     "@iconify-json/lucide": "^1.2.103",
     "@iconify/json": "^2.2.478",
@@ -38,6 +28,7 @@
     "@vitejs/plugin-vue": "^5.2.4",
     "autoprefixer": "^10.5.0",
     "electron": "^35.1.5",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.25.1",
     "eslint-plugin-vue": "^9.33.0",
     "globals": "^15.15.0",
@@ -47,6 +38,7 @@
     "typescript-eslint": "^8.30.1",
     "unplugin-icons": "^23.0.1",
     "vite": "^5.4.21",
+    "vite-plugin-electron": "^1.1.0",
     "vitest": "^3.1.2",
     "vue-router": "^4.6.4"
   },
@@ -56,5 +48,81 @@
     "frappe-ui": "^1.0.0-beta.25",
     "vue": "^3.5.13",
     "zod": "^3.24.2"
+  },
+  "build": {
+    "appId": "in.lubus.frappe-local",
+    "productName": "Frappe Local",
+    "directories": {
+      "output": "release-artifacts"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "lubusIN",
+      "repo": "frappe-local"
+    },
+    "files": [
+      ".vite/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin"
+      },
+      {
+        "from": "resources/icons/icon.png",
+        "to": "resources/icons/icon.png"
+      },
+      {
+        "from": "resources/app-update.yml",
+        "to": "resources/app-update.yml"
+      }
+    ],
+    "mac": {
+      "icon": "resources/icons/icon.png",
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        "zip",
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "background": "resources/dmg-background.png",
+      "iconSize": 120,
+      "window": {
+        "width": 600,
+        "height": 400
+      },
+      "contents": [
+        {
+          "x": 150,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 450,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "icon": "resources/icons/icon.png",
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "icon": "resources/icons/icon.png",
+      "target": [
+        "deb",
+        "rpm",
+        "zip"
+      ]
+    }
   }
 }

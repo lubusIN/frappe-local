@@ -1,7 +1,6 @@
 <template>
   <section :class="containerClass || 'flex flex-col h-[60vh] gap-1'">
     <header class="flex flex-col gap-3 mb-3">
-
       <div class="flex items-center gap-2.5">
         <div class="min-w-[140px] flex-1">
           <FormControl 

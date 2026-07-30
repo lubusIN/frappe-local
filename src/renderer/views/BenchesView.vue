@@ -239,11 +239,16 @@
         <template v-else>
           <Tabs :tabs="[{ label: 'Overview' }, { label: 'Apps' }]">
             <template #tab-panel="{ tab }">
-              <ScrollArea v-if="tab.label === 'Overview'" class="h-full">
+              <ScrollArea
+                v-if="tab.label === 'Overview'"
+                class="h-full"
+              >
                 <div class="space-y-8 px-6 py-5 w-full max-w-3xl">
                   <!-- Manage Section -->
                   <div class="flex flex-col gap-3">
-                    <h3 class="text-base-semibold text-ink-gray-9">Manage</h3>
+                    <h3 class="text-base-semibold text-ink-gray-9">
+                      Manage
+                    </h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
                       <Button
                         v-if="selectedBench.status !== 'running'"
@@ -296,7 +301,9 @@
 
                   <!-- Open in Section -->
                   <div class="flex flex-col gap-3">
-                    <h3 class="text-base-semibold text-ink-gray-9">Open in</h3>
+                    <h3 class="text-base-semibold text-ink-gray-9">
+                      Open in
+                    </h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
                       <Button
                         variant="outline"
@@ -348,7 +355,10 @@
                 </div>
               </ScrollArea>
 
-              <ScrollArea v-else-if="tab.label === 'Apps'" class="h-full">
+              <ScrollArea
+                v-else-if="tab.label === 'Apps'"
+                class="h-full"
+              >
                 <div class="space-y-6 px-6 py-5 w-full">
                   <!-- APPS Section -->
                   <div class="flex flex-col gap-4">
