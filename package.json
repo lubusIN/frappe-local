@@ -49,6 +49,13 @@
     "vue": "^3.5.13",
     "zod": "^3.24.2"
   },
+  "allowScripts": {
+    "vue-demi@0.14.10": true,
+    "core-js@3.49.0": true,
+    "electron@35.7.5": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.21.5": true
+  },
   "build": {
     "appId": "in.lubus.frappe-local",
     "productName": "Frappe Local",

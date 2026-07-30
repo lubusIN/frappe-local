@@ -17,8 +17,8 @@ if (isDev) {
   process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 }
 
-const binPath = isDev 
-  ? path.resolve(currentDirectory, '../../bin') 
+const binPath = isDev
+  ? path.resolve(currentDirectory, '../../bin')
   : path.join(process.resourcesPath, 'bin');
 
 process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
@@ -101,13 +101,14 @@ const createMainWindow = async (): Promise<void> => {
     minWidth: 1024,
     minHeight: 720,
     backgroundColor: '#ffffff',
-    titleBarStyle: 'hidden',
+    autoHideMenuBar: true,
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hidden',
+          trafficLightPosition: { x: 8, y: 5 },
+        }
+      : {}),
     show: false, // Don't show the window until the UI is ready
-    titleBarOverlay: {
-      color: '#ffffff',
-      symbolColor: '#1a1919',
-    },
-    trafficLightPosition: { x: 8, y: 5 },
     webPreferences: {
       preload: path.join(currentDirectory, 'preload.js'),
       contextIsolation: true,

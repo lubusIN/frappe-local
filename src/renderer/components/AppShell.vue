@@ -11,8 +11,11 @@
         <div class="flex h-full flex-col py-2">
           <!-- Header -->
           <div
-            class="flex items-center mx-2 p-3 pt-8 transition-all duration-300 [-webkit-app-region:drag]"
-            :class="isCollapsed ? 'justify-center' : ''"
+            class="flex items-center mx-2 p-3 transition-all duration-300 [-webkit-app-region:drag]"
+            :class="[
+              isCollapsed ? 'justify-center' : '',
+              isWinOrLinux ? 'pt-3' : 'pt-8'
+            ]"
           >
             <AppLogo />
             <div 
@@ -186,6 +189,62 @@
       :task="selectedTaskLog"
       @close="activeLogTaskId = null"
     />
+    <!-- Full Screen WSL Blocking Overlay -->
+    <div
+      v-if="wslBlocked"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-surface-base/95 backdrop-blur-md p-6 [-webkit-app-region:drag]"
+    >
+      <div class="max-w-md w-full flex flex-col items-center text-center [-webkit-app-region:no-drag]">
+        <div class="mb-6 flex items-center justify-center scale-125">
+          <AppLogo />
+        </div>
+
+        <Alert
+          :theme="wslNeedsRestart ? 'blue' : 'red'"
+          :title="wslNeedsRestart ? 'System Restart Required' : 'WSL2 Virtualization Missing'"
+          :dismissible="false"
+          variant="outline"
+          class="w-full text-left"
+        >
+          <template #footer>
+            <div class="col-span-full -mt-1 flex flex-col gap-3">
+              <p class="text-xs text-ink-gray-7 leading-normal">
+                {{ wslNeedsRestart 
+                  ? 'Windows Subsystem for Linux (WSL2) has been installed successfully. You must restart your computer before Frappe Local can run containers.' 
+                  : 'Frappe Local requires Windows Subsystem for Linux (WSL2) to run containerized environments on Windows.' }}
+              </p>
+
+              <p v-if="wslError" class="text-xs text-ink-red-8 bg-surface-red-1 p-2 rounded border border-outline-red-2 break-words">
+                {{ wslError }}
+              </p>
+
+              <Button
+                v-if="!wslNeedsRestart"
+                variant="solid"
+                theme="gray"
+                size="sm"
+                class="w-full mt-1"
+                :loading="wslInstalling"
+                @click="handleWslOneClickFix"
+              >
+                {{ wslInstalling ? 'Installing...' : 'Install' }}
+              </Button>
+
+              <Button
+                v-else
+                variant="solid"
+                theme="gray"
+                size="sm"
+                class="w-full mt-1"
+                @click="handleSystemRestart"
+              >
+                Restart Now
+              </Button>
+            </div>
+          </template>
+        </Alert>
+      </div>
+    </div>
   </DesktopShell>
 </template>
 
@@ -219,11 +278,47 @@ const getItemCount = (path: string) => {
 };
 
 const route = useRoute();
+const isWinOrLinux = computed(() => {
+  const ua = navigator.userAgent.toLowerCase();
+  return ua.includes('win') || ua.includes('linux');
+});
 const showIpcWarning = computed(() => !isIpcBridgeAvailable());
 const { isOpen: isSettingsOpen, open: openSettings, close: closeSettings } = useSettingsDialog();
 const isCollapsed = ref(false);
 const { tasks, activeLogTaskId } = useProgressCenter();
 const { isFrontDoorAvailable } = useFrontDoorStatus();
+const handledFailureTaskIds = new Set<string>();
+
+const wslBlocked = ref(false);
+const wslInstalling = ref(false);
+const wslNeedsRestart = ref(false);
+const wslError = ref<string | null>(null);
+
+const handleWslOneClickFix = async () => {
+  wslInstalling.value = true;
+  wslError.value = null;
+  try {
+    const ok = await window.frappeLocal?.fixRuntime('wsl');
+    if (ok) {
+      localStorage.setItem('frappe_local_wsl_pending_restart', 'true');
+      wslNeedsRestart.value = true;
+    } else {
+      wslError.value = 'Installation failed or was cancelled. Administrator permissions are required.';
+    }
+  } catch (err) {
+    wslError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    wslInstalling.value = false;
+  }
+};
+
+const handleSystemRestart = async () => {
+  try {
+    await window.frappeLocal?.fixRuntime('system-restart');
+  } catch {
+    // ignore
+  }
+};
 const updateState = ref<'idle' | 'available' | 'downloading' | 'downloaded'>('idle');
 const updateVersion = ref<string>('');
 const appVersion = __APP_VERSION__;
@@ -324,6 +419,19 @@ onMounted(async () => {
 
   try {
     await window.frappeLocal?.getSettings();
+    if (navigator.userAgent.toLowerCase().includes('win')) {
+      const report = await window.frappeLocal?.runDiagnostics();
+      const wslCheck = report?.checks?.find((c: any) => c.title.includes('Windows Subsystem') || c.title.includes('WSL'));
+      if (wslCheck && wslCheck.status === 'failed') {
+        wslBlocked.value = true;
+        if (localStorage.getItem('frappe_local_wsl_pending_restart') === 'true') {
+          wslNeedsRestart.value = true;
+        }
+      } else if (wslCheck && wslCheck.status === 'passed') {
+        localStorage.removeItem('frappe_local_wsl_pending_restart');
+        wslBlocked.value = false;
+      }
+    }
   } catch {
     // The inline warning already covers a missing preload bridge.
   } finally {

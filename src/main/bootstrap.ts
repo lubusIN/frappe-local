@@ -14,7 +14,7 @@ import { resolveEditorCommand } from '@frappe-local/main/utils';
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
 
-import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, installWslElevated, isCaddyFrontDoorAvailable, isCaddyFrontDoorRunning, isCaddyFrontDoorSecure, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 
@@ -200,6 +200,7 @@ export const runApplicationBootstrap = async (
         }
       },
       applyRuntimeMemory: applyPodmanMachineMemory,
+      installWslElevated: () => installWslElevated(),
       trackBenchOperation: (id, op) => analytics.trackOperation(id, op),
       trackSiteOperation: (id, op) => analytics.trackOperation(id, op),
     }, undefined, context.appVersion, context.runtimePaths);

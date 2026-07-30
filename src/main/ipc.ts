@@ -100,6 +100,7 @@ export type IpcOperations = {
   isFrontDoorSecure?: () => boolean;
   refreshFrontDoorHosts?: () => Promise<void>;
   applyRuntimeMemory?: (memoryMb: number) => Promise<void>;
+  installWslElevated?: () => Promise<boolean>;
   trackBenchOperation?: (benchId: string, operation: LifecycleOperation) => void;
   trackSiteOperation?: (siteId: string, operation: LifecycleOperation) => void;
 };
@@ -256,7 +257,20 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: unknown): Promise<boolean> => {
-    if (typeof checkType !== 'string' || checkType !== 'runtime-health') return false;
+    if (typeof checkType !== 'string') return false;
+
+    if (checkType === 'system-restart') {
+      mainLogger.info('Triggering system restart...');
+      await execPromise('shutdown', ['/r', '/t', '0']);
+      return true;
+    }
+
+    if (checkType === 'wsl' || checkType === 'Windows Subsystem for Linux (WSL2)' || checkType === 'Windows Subsystem') {
+      mainLogger.info('Triggering elevated WSL installation...');
+      return await operations.installWslElevated?.() ?? false;
+    }
+
+    if (checkType !== 'runtime-health') return false;
 
     mainLogger.info('Attempting to fix runtime issues via unified service...');
     const fixed = await ensureRuntimeRunning();

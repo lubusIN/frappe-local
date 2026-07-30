@@ -17,6 +17,32 @@ let lastRuntimeError: string | null = null;
 
 export const getLastRuntimeError = (): string | null => lastRuntimeError;
 
+export const isWslInstalled = async (): Promise<boolean> => {
+  if (process.platform !== 'win32') return true;
+  try {
+    const { code } = await execPromise('wsl.exe', ['--status'], undefined, undefined, undefined, { idleTimeout: 5000 });
+    return code === 0;
+  } catch {
+    return false;
+  }
+};
+
+export const installWslElevated = async (): Promise<boolean> => {
+  if (process.platform !== 'win32') return true;
+  try {
+    logger.info('Launching elevated PowerShell to run wsl --install...');
+    const { code } = await execPromise('powershell.exe', [
+      '-NoProfile',
+      '-Command',
+      "Start-Process wsl.exe -ArgumentList '--install' -Verb RunAs -Wait"
+    ], undefined, undefined, undefined, { idleTimeout: 300000, maxTimeout: 600000 });
+    return code === 0;
+  } catch (error) {
+    logger.error(`Elevated WSL installation failed: ${error}`);
+    return false;
+  }
+};
+
 export const configurePodmanMemoryProvider = (
   provider: () => Promise<number>
 ): void => {
@@ -379,7 +405,26 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
     }
     return true;
   } catch (err) {
-    lastRuntimeError = errorMessage(err);
+    let rawError = errorMessage(err);
+    if (process.platform === 'win32') {
+      const lower = rawError.toLowerCase();
+      if (
+        lower.includes('virtualisation is not enabled') ||
+        lower.includes('virtualization is not enabled') ||
+        lower.includes('hcs_e_hyperv_not_installed') ||
+        lower.includes('virtual machine platform') ||
+        lower.includes('enablevirtualization')
+      ) {
+        rawError = 'Hardware virtualization is not enabled on your computer. Please enable "Virtual Machine Platform" in Windows Features and turn on Virtualization (VT-x / AMD-V / SVM) in your BIOS/firmware settings.';
+      } else if (
+        lower.includes('the windows subsystem for linux is not installed') ||
+        lower.includes('wsl is not installed') ||
+        (lower.includes('wsl') && (lower.includes('not installed') || lower.includes('has no installed distributions')))
+      ) {
+        rawError = 'WSL2 (Windows Subsystem for Linux) is not installed or initialized on your system. Please open PowerShell as Administrator, run "wsl --install", and restart your computer.';
+      }
+    }
+    lastRuntimeError = rawError;
     logger.error(`Failed to ensure podman runtime: ${lastRuntimeError}`);
     onLog?.(`ERROR: Failed to ensure podman runtime: ${lastRuntimeError}`);
     return false;
