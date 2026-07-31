@@ -16,7 +16,7 @@
     "dev:reset-state": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"
   },
-  "author": "Lubus",
+  "author": "lubus <ajit@lubus.in>",
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.25.1",
@@ -72,10 +72,6 @@
       {
         "from": "resources/icons/icon.png",
         "to": "resources/icons/icon.png"
-      },
-      {
-        "from": "resources/app-update.yml",
-        "to": "resources/app-update.yml"
       }
     ],
     "mac": {
