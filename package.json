@@ -8,7 +8,9 @@
   "scripts": {
     "start": "vite",
     "build": "npm run typecheck && vite build",
-    "release": "npm run build && electron-builder --publish never",
+    "release": "npm run build && npm run release:x64 && npm run release:arm64",
+    "release:x64": "electron-builder --win --x64 --publish never",
+    "release:arm64": "electron-builder --win --arm64 --publish never",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
@@ -59,6 +61,7 @@
   "build": {
     "appId": "in.lubus.frappe-local",
     "productName": "Frappe Local",
+    "compression": "normal",
     "directories": {
       "output": "release-artifacts"
     },
@@ -117,11 +120,20 @@
       ]
     },
     "win": {
-      "icon": "resources/icons/icon.png",
+      "icon": "resources/icons/icon.ico",
+      "executableName": "frappe-local",
       "target": [
         "nsis",
         "zip"
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName} Setup ${version} ${arch}.${ext}",
+      "shortcutName": "Frappe Local",
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true
     },
     "linux": {
       "icon": "resources/icons/icon.png",

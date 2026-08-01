@@ -127,13 +127,9 @@ const createMainWindow = async (): Promise<void> => {
   });
 
   window.on('close', (event) => {
-    if (!isQuitting) {
+    if (!isQuitting && process.platform === 'darwin') {
       event.preventDefault();
-      if (process.platform === 'darwin') {
-        window.hide();
-      } else {
-        window.minimize();
-      }
+      window.hide();
     }
   });
 
@@ -171,6 +167,9 @@ app.whenReady().then(async () => {
 
   process.title = APP_DISPLAY_NAME;
   app.setName(APP_DISPLAY_NAME);
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('in.lubus.frappe-local');
+  }
 
   configureApplicationMenu();
 

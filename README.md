@@ -32,6 +32,23 @@ xattr -rds com.apple.quarantine /Applications/Frappe\ Local.app
 ```
 this will remove the quarantine attribute from the app and you can open it normally.
 
+### Windows
+
+#### Download
+Download the latest release .exe directly from [releases](https://github.com/lubusIN/frappe-local/releases). Pick the file that matches your Windows architecture (`x64` or `arm64`).
+
+#### Unblock Windows SmartScreen
+Windows blocks apps that are not digitally signed. To bypass the SmartScreen block, open PowerShell in your downloads folder and run the following command on the installer (replace the filename if necessary):
+
+```powershell
+Unblock-File -Path ".\Frappe Local Setup-*.exe"
+```
+this will remove the "Mark of the Web" from the file so you can install it normally. Alternatively, right-click the file -> **Properties** -> check **Unblock** -> **Apply**.
+
+> [!WARNING]
+> Even after unblocking, Windows Defender Antivirus may quarantine the extracted `.exe` after installation. If your desktop shortcut is broken (blank white icon) and throws a *"Missing Shortcut"* error, please add an exclusion for `C:\Program Files\frappe-local` in your Windows Security settings and run the installer again.
+
+
 ## First Bench Creation
 
 The first bench creation on macOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`. Depending on the connection, this can take several minutes. Keep Frappe Local open until setup completes.
