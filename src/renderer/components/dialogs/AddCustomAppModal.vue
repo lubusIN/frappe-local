@@ -256,7 +256,12 @@ const onCancelSshSave = () => {
 };
 
 const isValid = computed(() => {
-  return source.value.trim().length > 0;
+  if (source.value.trim().length === 0) return false;
+  if (appType.value === 'github') {
+    if (isCheckingVisibility.value) return false;
+    if (isRepoPrivate.value && !shareSshKeysEnabled.value) return false;
+  }
+  return true;
 });
 
 const close = () => {
@@ -281,10 +286,14 @@ const onConfirm = async () => {
   error.value = null;
   let cleanSource = source.value.trim();
 
-  if (appType.value === 'github' && isRepoPrivate.value) {
-    if (cleanSource.startsWith('https://github.com/')) {
-      cleanSource = `git@github.com:${cleanSource.substring('https://github.com/'.length)}`;
-      if (!cleanSource.endsWith('.git')) cleanSource += '.git';
+  if (appType.value === 'github') {
+    cleanSource = cleanSource.replace(/\/+$/, '');
+    
+    if (isRepoPrivate.value) {
+      if (cleanSource.startsWith('https://github.com/')) {
+        cleanSource = `git@github.com:${cleanSource.substring('https://github.com/'.length)}`;
+        if (!cleanSource.endsWith('.git')) cleanSource += '.git';
+      }
     }
   }
 
@@ -298,9 +307,10 @@ const onConfirm = async () => {
         if (app.type === 'github' && appType.value === 'github') {
           const normalize = (s: string) => {
             return s.toLowerCase()
+              .replace(/\/+$/, '')
+              .replace(/\.git$/, '')
               .replace(/^https:\/\/github\.com\//, '')
-              .replace(/^git@github\.com:/, '')
-              .replace(/\.git$/, '');
+              .replace(/^git@github\.com:/, '');
           };
           return normalize(app.source) === normalize(cleanSource);
         }
