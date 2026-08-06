@@ -470,7 +470,7 @@ import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
 import AppManager from '@frappe-local/renderer/components/AppManager.vue';
 import InstalledAppsSection from '@frappe-local/renderer/components/InstalledAppsSection.vue';
 import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
-import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus } from '@frappe-local/renderer/composables/system';
+import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useDiagnostics } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
@@ -772,6 +772,7 @@ const getBenchSiteCount = (benchId: string) => {
 };
 
 const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
+const { run: runDiagnostics } = useDiagnostics();
 
 const {
   setPendingAction: setPendingBenchAction,
@@ -897,6 +898,9 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
 
   try {
     await promise;
+    if (status === 'running') {
+      runDiagnostics();
+    }
   } catch {
     clearPendingBenchAction(id);
   }

@@ -242,6 +242,7 @@
                         class="inline-block size-3 rounded-full border-[1.5px] border-ink-gray-6 border-r-transparent animate-spin"
                       />
                       <Button
+                        v-if="isBenchRunning(site.benchId)"
                         variant="ghost"
                         :icon="'lucide-external-link'"
                         class="!size-7 transition-opacity"
@@ -330,6 +331,7 @@
                     </h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
                       <Button
+                        v-if="isBenchRunning(selectedSite.benchId)"
                         variant="outline"
                         size="md"
                         icon-left="lucide-external-link"
