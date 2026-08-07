@@ -40,18 +40,20 @@
     "vite": "^5.4.21",
     "vite-plugin-electron": "^1.1.0",
     "vitest": "^3.1.2",
-    "vue-router": "^4.6.4"
-  },
-  "dependencies": {
-    "dugite": "^3.2.2",
-    "electron-updater": "^6.8.9",
+    "vue-router": "^4.6.4",
     "frappe-ui": "^1.0.0-beta.35",
     "vue": "^3.5.13",
     "zod": "^3.24.2"
   },
+  "dependencies": {
+    "dugite": "^3.2.2",
+    "electron-updater": "^6.8.9"
+  },
   "build": {
+    "compression": "maximum",
     "appId": "in.lubus.frappe-local",
     "productName": "Frappe Local",
+    "artifactName": "Frappe.Local-${version}-${arch}.${ext}",
     "directories": {
       "output": "release-artifacts"
     },
