@@ -1,7 +1,9 @@
 <template>
-  <FrappeUIProvider>
-    <AppShell />
-  </FrappeUIProvider>
+  <div class="h-full w-full relative">
+    <FrappeUIProvider>
+      <AppShell />
+    </FrappeUIProvider>
+  </div>
 </template>
 
 <script setup lang="ts">
