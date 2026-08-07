@@ -1380,7 +1380,9 @@ export const orchestrateBenchStop = (
     return (
       combined.includes('no containers to stop') ||
       combined.includes('is not running') ||
-      combined.includes('no such container')
+      combined.includes('no such container') ||
+      combined.includes('cannot connect to the docker daemon') ||
+      combined.includes('no such service')
     );
   };
 
@@ -1447,6 +1449,10 @@ export const orchestrateBenchBuild = (bench: Bench): void => {
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
       try {
+        context.startStep('runtime', 'Ensuring container runtime is available');
+        await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
+        context.completeStep('runtime', 'Container runtime is ready');
+
         context.startStep('build', 'Running bench build');
         const projectName = getComposeProjectName(bench.id);
         const args = composeBenchArgs(projectName, ['build']);
