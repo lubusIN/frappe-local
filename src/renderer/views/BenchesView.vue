@@ -862,13 +862,13 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
       loadingMsg = `Restarting bench ${name}`;
       successMsg = `Bench ${name} restarted.`;
       errorMsg = `Failed to restart bench ${name}.`;
-      actionMatch = /^Restart bench/i;
+      actionMatch = /^(Start|Restart) bench/i;
       setPendingBenchAction(id, 'restarting');
     } else {
       loadingMsg = `Starting bench ${name}`;
       successMsg = `Bench ${name} started.`;
       errorMsg = `Failed to start bench ${name}.`;
-      actionMatch = /^Start bench/i;
+      actionMatch = /^(Start|Restart) bench/i;
       setPendingBenchAction(id, 'starting');
     }
   } else {

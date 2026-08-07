@@ -338,13 +338,24 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.diagnosticsRun, async (): Promise<DiagnosticsReport> => {
-    return runDiagnostics({
+    const report = await runDiagnostics({
       runtimePaths,
       settingsRepository: {
         get: async () => getCurrentSettings(repositories.settings),
       },
       appVersion,
     });
+
+    if (report.hasCriticalIssues) {
+      const benches = await repositories.benches.findAll();
+      for (const bench of benches) {
+        if (bench.status === 'running' || bench.status === 'queued') {
+          await repositories.benches.update(bench.id, { status: 'stopped' });
+        }
+      }
+    }
+
+    return report;
   });
 
   ipcMainLike.handle(ipcChannels.diagnosticsGetLast, async (): Promise<DiagnosticsReport | null> => {

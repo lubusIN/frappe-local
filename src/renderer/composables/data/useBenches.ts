@@ -1,6 +1,5 @@
 import { ref } from 'vue';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
-import { useDiagnostics } from '@frappe-local/renderer/composables/system/useDiagnostics';
 import { useStatusPolling } from '@frappe-local/renderer/composables/system/useStatusPolling';
 import { useAppCatalog } from '@frappe-local/renderer/composables/data/useAppCatalog';
 import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '@frappe-local/shared/core';
@@ -37,17 +36,7 @@ export const useBenches = () => {
         }
       }
 
-      const { report } = useDiagnostics();
-      if (report.value?.hasCriticalIssues === true) {
-        benches.value = newList.map((bench) => {
-          if (bench.status === 'running' || bench.status === 'success') {
-            return { ...bench, status: 'stopped' };
-          }
-          return bench;
-        });
-      } else {
-        benches.value = newList;
-      }
+      benches.value = newList;
     } catch (err) {
       error.value = String(err);
       benches.value = [];

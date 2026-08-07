@@ -224,6 +224,15 @@ export const runApplicationBootstrap = async (
           },
         },
         appVersion: context.appVersion,
+      }).then(async (report) => {
+        if (report.hasCriticalIssues) {
+          const benches = await repositories.benches.findAll();
+          for (const bench of benches) {
+            if (bench.status === 'running' || bench.status === 'queued') {
+              await repositories.benches.update(bench.id, { status: 'stopped' });
+            }
+          }
+        }
       }).catch((err) => bootstrapLogger.error('Initial background diagnostics failed', err));
     }, 1000);
   } catch (error) {
