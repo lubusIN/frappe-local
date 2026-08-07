@@ -109,7 +109,7 @@ const createMainWindow = async (): Promise<void> => {
     },
     trafficLightPosition: { x: 8, y: 5 },
     webPreferences: {
-      preload: path.join(currentDirectory, 'preload.js'),
+      preload: path.join(currentDirectory, 'preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
       devTools: isDev,
