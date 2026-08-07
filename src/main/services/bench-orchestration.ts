@@ -3,7 +3,9 @@ import { errorMessage, filterNonCoreApps, humanizeCreateFailure, isLikelyOutOfMe
 
 import path from 'node:path';
 import fs from 'node:fs';
-import { ensureRuntimeRunning, getDefaultAppCatalogSeed, getLastRuntimeError, getRuntimeEnv, getTaskRunner, type TaskExecutionContext } from '@frappe-local/main/services';
+import { ensureRuntimeRunning, getRuntimeEnv, getLastRuntimeError } from './runtime-service';
+import { getDefaultAppCatalogSeed } from './catalog-provider';
+import { getTaskRunner, type TaskExecutionContext } from './task-runner';
 import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';

@@ -21,11 +21,15 @@ vi.mock('../../../src/main/utils/binaries', () => ({
   getBinaryPath: (...args: unknown[]) => getBinaryPathMock(...args),
 }));
 
-vi.mock('../../../src/main/services/runtime-service', () => ({
-  getRuntimeEnv: () => getRuntimeEnvMock(),
-  ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
-  getLastRuntimeError: () => getLastRuntimeErrorMock(),
-}));
+vi.mock('../../../src/main/services/runtime-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/main/services/runtime-service')>();
+  return {
+    ...actual,
+    getRuntimeEnv: () => getRuntimeEnvMock(),
+    ensureRuntimeRunning: () => ensureRuntimeRunningMock(),
+    getLastRuntimeError: () => getLastRuntimeErrorMock(),
+  };
+});
 
 vi.mock('../../../src/main/services/task-runner', () => ({
   getTaskRunner: () => ({
