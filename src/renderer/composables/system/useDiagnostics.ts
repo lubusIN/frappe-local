@@ -33,6 +33,9 @@ export const useDiagnostics = () => {
       const ipc = useIpc();
       const success = await ipc.fixRuntime(checkType);
       if (success) {
+        if (checkType === 'wsl') {
+          alert('WSL2 installed successfully! Windows requires a system restart to activate WSL.');
+        }
         await run();
       } else {
         error.value = 'Failed to apply fix. Please try manual remediation.';

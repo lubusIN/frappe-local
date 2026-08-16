@@ -2,6 +2,8 @@ export type StatusContext = 'resource' | 'task' | 'diagnostic';
 
 export const statusTheme = (status: string, context?: StatusContext) => {
   const normalized = status.toLowerCase();
+  if (normalized === 'cancelling') return 'amber';
+  if (normalized === 'cancelled') return 'gray';
   if (normalized === 'running') return context === 'resource' ? 'green' : 'blue';
   if (normalized === 'ready') return 'green';
   if (normalized === 'success' || normalized === 'passed' || normalized === 'ok') return 'green';
@@ -14,6 +16,8 @@ export const statusTheme = (status: string, context?: StatusContext) => {
 export const formatStatus = (status: string, context?: StatusContext) => {
   const normalized = status.toLowerCase();
   
+  if (normalized === 'cancelling') return 'Cancelling...';
+  if (normalized === 'cancelled') return 'Cancelled';
   if (normalized === 'running') return context === 'resource' ? 'Running' : 'In Progress';
   if (normalized === 'ready') return 'Ready';
   if (normalized === 'queued') return 'Queued';

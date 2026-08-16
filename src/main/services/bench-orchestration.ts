@@ -382,9 +382,9 @@ const getLocalAppVolumes = async (appNames: readonly string[], customAppsRepo?: 
   if (!customAppsRepo?.findAll) return [];
   const customAppsList = await customAppsRepo.findAll();
   const localVolumes: Array<{ source: string; target: string }> = [];
-  
-  const safeAppNames = Array.isArray(appNames) 
-    ? appNames 
+
+  const safeAppNames = Array.isArray(appNames)
+    ? appNames
     : (typeof appNames === 'string' ? [appNames] : []);
   for (const app of safeAppNames) {
     const customApp = customAppsList.find((candidate) => candidate.id === app || candidate.name === app);
@@ -431,7 +431,7 @@ export const fetchBenchApps = async (
   const { stepId, stepStartDesc, stepCompleteDesc, apps, bench, appCatalogRepo, customAppsRepo, projectName, runtimeCmd, runtimeEnv, onAttemptedInstall } = options;
 
   context.startStep(stepId, stepStartDesc);
-  
+
   const appsTxtPath = path.join(bench.path, 'sites', 'apps.txt');
   if (fs.existsSync(appsTxtPath)) {
     try {
@@ -518,7 +518,7 @@ export const fetchBenchApps = async (
         ].join(' && ');
         const yarnArgs = composeExecArgs(projectName, 'frappe', ['sh', '-c', yarnCmds]);
         await execPromise(runtimeCmd, yarnArgs, bench.path, (out: string) => context.log('info', out, stepId), runtimeEnv, { idleTimeout: 10 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS });
-        
+
         // Build standard Frappe assets (public/js, public/css) for local app
         context.log('info', `Building standard assets for local app ${appSlug}...`, stepId);
         const buildArgs = composeBenchArgs(projectName, ['build', '--app', appSlug]);
@@ -547,32 +547,59 @@ export const fetchBenchApps = async (
     const args = composeBenchArgs(projectName, getAppArgs);
     let result;
     try {
-      result = await execPromise(
-        runtimeCmd,
-        args,
-        bench.path,
-        (out: string) => context.log('info', out, stepId),
-        runtimeEnv,
-        { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS }
-      );
-    } catch (error) {
-      if (!errorMessage(error).includes('Command timed out')) {
-        throw error;
+      try {
+        result = await execPromise(
+          runtimeCmd,
+          args,
+          bench.path,
+          (out: string) => context.log('info', out, stepId),
+          runtimeEnv,
+          { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+      } catch (error) {
+        if (!errorMessage(error).includes('Command timed out')) {
+          throw error;
+        }
+
+        context.log('warning', `Fetching app ${app} timed out. Retrying once.`, stepId);
+        result = await execPromise(
+          runtimeCmd,
+          args,
+          bench.path,
+          (out: string) => context.log('info', out, stepId),
+          runtimeEnv,
+          { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
       }
 
-      context.log('warning', `Fetching app ${app} timed out. Retrying once.`, stepId);
-      result = await execPromise(
-        runtimeCmd,
-        args,
-        bench.path,
-        (out: string) => context.log('info', out, stepId),
-        runtimeEnv,
-        { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS }
-      );
-    }
+      if (result.code !== 0) {
+        throw new Error(`Failed to fetch app ${app}: ${result.stderr}`);
+      }
+    } catch (error) {
+      context.log('warning', `Cleaning up failed installation of app: ${appSlug}`, stepId);
+      try {
+        // Remove the app folder (try host first, fallback to container if symlinks cause EPERM on Windows)
+        const appFolderPath = path.join(bench.path, 'apps', appSlug);
+        if (fs.existsSync(appFolderPath)) {
+          try {
+            fs.rmSync(appFolderPath, { recursive: true, force: true });
+          } catch (e) {
+            context.log('warning', `Host cleanup failed, falling back to container cleanup for ${appSlug}...`, stepId);
+            await execPromise(runtimeCmd, composeBenchArgs(projectName, ['exec', '-T', 'frappe', 'rm', '-rf', `/workspace/apps/${appSlug}`]), bench.path, undefined, runtimeEnv, { idleTimeout: 60000, maxTimeout: 120000 });
+          }
+        }
 
-    if (result.code !== 0) {
-      throw new Error(`Failed to fetch app ${app}: ${result.stderr}`);
+        // Remove any invalid entries from apps.txt
+        if (fs.existsSync(appsTxtPath)) {
+          let existingApps = fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+          // Remove the app slug and any raw URLs that might have been accidentally added by a bug in bench
+          existingApps = existingApps.filter(a => a !== appSlug && !a.includes(appSlug) && !a.startsWith('http'));
+          fs.writeFileSync(appsTxtPath, existingApps.length > 0 ? `${existingApps.join('\n')}\n` : '', 'utf8');
+        }
+      } catch (cleanupErr) {
+        context.log('warning', `Failed to clean up app ${appSlug}: ${cleanupErr}`, stepId);
+      }
+      throw error;
     }
   }
 
@@ -591,6 +618,7 @@ export const fetchBenchApps = async (
   return allTargetApps;
 };
 
+
 /**
  * Main orchestration logic for creating a new Bench.
  * Handles configuration generation, docker-compose bringing up containers,
@@ -606,25 +634,25 @@ export const orchestrateBenchCreation = (
   appCatalogRepo?: {
     findById?: (id: string) => Promise<AppCatalogItem | null>;
   },
-    customAppsRepo?: {
-      findAll?: () => Promise<CustomAppItem[]>;
-    },
-    shareSshKeys: boolean = false,
-    siteCreationOptions?: {
-      siteName: string;
-      siteRepo: {
-        create: (input: {
-          name: string;
-          benchId: string;
-          apps: string[];
-          status: 'queued' | 'ready' | 'failure';
-          path: string;
-        }) => Promise<Site>;
-        update: (id: string, input: { status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
-        delete?: (id: string) => Promise<boolean>;
-      };
-      onCompleted?: () => Promise<void>;
-    }
+  customAppsRepo?: {
+    findAll?: () => Promise<CustomAppItem[]>;
+  },
+  shareSshKeys: boolean = false,
+  siteCreationOptions?: {
+    siteName: string;
+    siteRepo: {
+      create: (input: {
+        name: string;
+        benchId: string;
+        apps: string[];
+        status: 'queued' | 'ready' | 'failure';
+        path: string;
+      }) => Promise<Site>;
+      update: (id: string, input: { status?: 'queued' | 'ready' | 'failure' }) => Promise<Site | null>;
+      delete?: (id: string) => Promise<boolean>;
+    };
+    onCompleted?: () => Promise<void>;
+  }
 ): void => {
   const taskRunner = getTaskRunner();
 
@@ -650,7 +678,7 @@ export const orchestrateBenchCreation = (
         runtimeReadyForCleanup = true;
         context.completeStep('runtime', `Podman is ready`);
 
-        // Ensure bench directory exists
+        // Ensure bench directory and sites/apps subdirectories exist
         context.startStep('init', `Initializing bench directory at ${bench.path}`);
         if (!fs.existsSync(bench.path)) {
           context.log('info', `Creating directory: ${bench.path}`, 'init');
@@ -658,6 +686,10 @@ export const orchestrateBenchCreation = (
         } else {
           context.log('info', `Using existing directory: ${bench.path}`, 'init');
         }
+        const sitesDir = path.join(bench.path, 'sites');
+        const appsDir = path.join(bench.path, 'apps');
+        if (!fs.existsSync(sitesDir)) fs.mkdirSync(sitesDir, { recursive: true });
+        if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
         context.completeStep('init', 'Bench directory initialized');
 
         context.startStep('env', 'Generating docker-compose configuration');
@@ -706,11 +738,9 @@ export const orchestrateBenchCreation = (
 
         context.startStep('setup', 'Setting up Frappe bench');
         failingStepId = 'setup';
-
         const branch = resolveBenchBranch(bench.frappeVersion);
         const initArgs = composeBenchArgs(projectName, ['init', '--frappe-branch', branch, '--skip-redis-config-generation', '--ignore-exist', '.']);
-        
-        await execPromise(
+        const initResult = await execPromise(
           command,
           initArgs,
           bench.path,
@@ -718,6 +748,9 @@ export const orchestrateBenchCreation = (
           runtimeEnv,
           { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
         );
+        if (initResult.code !== 0) {
+          throw new Error(`bench init failed with exit code ${initResult.code}. Check logs for details.`);
+        }
 
         // Configure redis services
         await execPromise(
@@ -778,7 +811,7 @@ export const orchestrateBenchCreation = (
         ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'setup');
         ensureBenchProcfile(bench.path, context, 'setup');
         await ensureBenchDevcontainer(bench.path, context, 'setup', undefined, bench.id);
-        
+
         context.completeStep('setup', 'Bench initialized and configured');
 
         const appsToInstall = filterNonCoreApps(
@@ -821,7 +854,7 @@ export const orchestrateBenchCreation = (
 
         if (siteCreationOptions && siteCreationOptions.siteName) {
           context.startStep('site-queue', `Queueing initial site creation for ${siteCreationOptions.siteName}`);
-          
+
           try {
             await orchestrateSiteCreation(
               {
@@ -1094,8 +1127,7 @@ export const orchestrateBenchAppChanges = (
                 if (uninstallResult.code !== 0 && !context.signal.aborted) {
                   context.log(
                     'warning',
-                    `Could not uninstall partial Python package ${app}: ${
-                      uninstallResult.stderr || uninstallResult.stdout || `exit code ${uninstallResult.code}`
+                    `Could not uninstall partial Python package ${app}: ${uninstallResult.stderr || uninstallResult.stdout || `exit code ${uninstallResult.code}`
                     }`,
                     'rollback-apps'
                   );
@@ -1125,8 +1157,7 @@ export const orchestrateBenchAppChanges = (
               if (rebuildResult.code !== 0 && !context.signal.aborted) {
                 context.log(
                   'warning',
-                  `Could not rebuild remaining bench assets: ${
-                    rebuildResult.stderr || rebuildResult.stdout || `exit code ${rebuildResult.code}`
+                  `Could not rebuild remaining bench assets: ${rebuildResult.stderr || rebuildResult.stdout || `exit code ${rebuildResult.code}`
                   }`,
                   'rollback-apps'
                 );
@@ -1174,8 +1205,7 @@ export const orchestrateBenchAppChanges = (
             if (restartResult.code !== 0 && !context.signal.aborted) {
               context.log(
                 'warning',
-                `Failed to automatically restart bench processes: ${
-                  restartResult.stderr || restartResult.stdout || `exit code ${restartResult.code}`
+                `Failed to automatically restart bench processes: ${restartResult.stderr || restartResult.stdout || `exit code ${restartResult.code}`
                 }`,
                 'resume-bench'
               );
@@ -1604,7 +1634,23 @@ export const orchestrateBenchDeletion = (
         try {
           if (fs.existsSync(bench.path)) {
             context.log('info', `Removing directory: ${bench.path}`, 'fs');
-            await fs.promises.rm(bench.path, { recursive: true, force: true });
+            try {
+              await fs.promises.rm(bench.path, { recursive: true, force: true });
+            } catch (err: any) {
+              if (process.platform === 'win32' && err?.code === 'EPERM') {
+                context.log('warning', `Node fs.rm failed with EPERM, falling back to native rmdir...`, 'fs');
+                await new Promise<void>((resolve, reject) => {
+                  const { spawn } = require('node:child_process');
+                  const child = spawn('cmd.exe', ['/c', 'rmdir', '/s', '/q', bench.path], { windowsHide: true });
+                  child.on('close', (code: number) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Native rmdir failed with code ${code}`));
+                  });
+                });
+              } else {
+                throw err;
+              }
+            }
           }
           context.completeStep('fs', 'Bench directory removed');
         } catch (fsErr) {
@@ -1749,6 +1795,6 @@ export const resetAllBenchContainers = async (
     nameFilterArgs('frappe-local-'),
     runtimeEnv,
     { idleTimeout: 60000 },
-    { info: () => {}, warn: (msg) => logger.warn(msg) }
+    { info: () => { }, warn: (msg) => logger.warn(msg) }
   );
 };

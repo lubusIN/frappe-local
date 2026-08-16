@@ -75,6 +75,7 @@ import { Badge, Button, Dropdown, toast } from 'frappe-ui';
 import { ref, computed } from 'vue';
 import { useAppCatalog, useBenches } from '@frappe-local/renderer/composables/data';
 import { useEditorStatus } from '@frappe-local/renderer/composables/system';
+import { useAppHealth } from '@frappe-local/renderer/composables/system/useAppHealth';
 
 const props = defineProps<{
   appIds: string[];
@@ -109,37 +110,44 @@ const emit = defineEmits<{
 const { getAppInfo, getAppTitle } = useAppCatalog();
 const { isEditorInstalled } = useEditorStatus();
 const { openAppInEditor, error: openError } = useBenches();
+const { health } = useAppHealth();
+const isWindows = computed(() => health.value?.platform === 'win32');
 
 const imageErrors = ref<Record<string, boolean>>({});
 
 const getAppOpenOptions = (appId: string) => {
+  const editorOptions: Array<{ label: string; icon: string; disabled: boolean; onClick: () => Promise<void> }> = [];
+
+  if (!isWindows.value) {
+    editorOptions.push({
+      label: 'VS Code',
+      icon: 'lucide-code',
+      disabled: !isEditorInstalled.value,
+      onClick: async () => {
+        await openAppInEditor(props.benchId, appId, false);
+        if (openError.value) {
+          toast.error(openError.value);
+        }
+      },
+    });
+  }
+
+  editorOptions.push({
+    label: isWindows.value ? 'VS Code' : 'Dev Container',
+    icon: 'lucide-box',
+    disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
+    onClick: async () => {
+      await openAppInEditor(props.benchId, appId, true);
+      if (openError.value) {
+        toast.error(openError.value);
+      }
+    },
+  });
+
   return [
     {
       group: 'Open in',
-      options: [
-        {
-          label: 'VS Code',
-          icon: 'lucide-code',
-          disabled: !isEditorInstalled.value,
-          onClick: async () => {
-            await openAppInEditor(props.benchId, appId, false);
-            if (openError.value) {
-              toast.error(openError.value);
-            }
-          },
-        },
-        {
-          label: 'Dev Container',
-          icon: 'lucide-box',
-          disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
-          onClick: async () => {
-            await openAppInEditor(props.benchId, appId, true);
-            if (openError.value) {
-              toast.error(openError.value);
-            }
-          },
-        },
-      ],
+      options: editorOptions,
     },
     {
       group: 'Manage',

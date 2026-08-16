@@ -44,8 +44,9 @@ services:
     user: frappe
     environment:
       SHELL: /bin/bash
-    volumes:
-      - ../:/workspace:cached
+    volumes:${process.platform === 'win32' ? `
+      - bench-workspace:/workspace` : `
+      - ../:/workspace:cached`}
 ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.localVolumes ? options.localVolumes.map(v => `      - ${v.source}:${v.target}`).join('\n') : ''}
     ports:
       - "127.0.0.1:${httpPort}:8000"
@@ -78,7 +79,8 @@ ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.
     image: docker.io/redis:alpine
 
 volumes:
-  mariadb-data:
+  mariadb-data:${process.platform === 'win32' ? `
+  bench-workspace:` : ''}
 `;
 };
 

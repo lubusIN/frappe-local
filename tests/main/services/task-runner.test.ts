@@ -107,13 +107,13 @@ describe('TaskRunner', () => {
       status: 'queued',
     });
     expect(cancelledEvents[1]).toMatchObject({
-      type: 'task.failed',
-      status: 'failure',
+      type: 'task.cancelled',
+      status: 'cancelled',
       errorCode: 'cancelled',
     });
   });
 
-  it('transitions running tasks into failure when they are cancelled', async () => {
+  it('transitions running tasks into cancellation when they are cancelled', async () => {
     const runner = new TaskRunner();
     const events: TaskProgressEvent[] = [];
     const gate = createDeferred();
@@ -142,12 +142,13 @@ describe('TaskRunner', () => {
       'task.queued',
       'task.started',
       'task.step.started',
-      'task.failed',
+      'task.cancelling',
+      'task.cancelled',
     ]);
-    expect(runner.getTask(taskId)?.status).toBe('failure');
-    expect(taskEvents[3]).toMatchObject({
+    expect(runner.getTask(taskId)?.status).toBe('cancelled');
+    expect(taskEvents[4]).toMatchObject({
       errorCode: 'cancelled',
-      status: 'failure',
+      status: 'cancelled',
     });
   });
 

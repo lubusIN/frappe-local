@@ -1,4 +1,5 @@
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
+import type { TaskExecutionContext } from '@frappe-local/main/services/task-runner';
 import { cleanupStaleMacPodmanProcesses, getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
 
 import { createMainLogger } from '@frappe-local/main/logger';
@@ -16,6 +17,86 @@ let podmanMemoryProvider = async (): Promise<number> => MIN_PODMAN_MEMORY_MB;
 let lastRuntimeError: string | null = null;
 
 export const getLastRuntimeError = (): string | null => lastRuntimeError;
+
+export const isWslInstalled = async (): Promise<boolean> => {
+  if (process.platform !== 'win32') return true;
+  try {
+    const { code } = await execPromise('wsl.exe', ['--status'], undefined, undefined, undefined, { idleTimeout: 5000 });
+    return code === 0;
+  } catch {
+    return false;
+  }
+};
+
+export const installWslTask = async (context: TaskExecutionContext): Promise<void> => {
+  if (process.platform !== 'win32') return;
+
+  context.startStep('wsl-install', 'Installing Windows Subsystem for Linux (WSL2)');
+  context.log('info', 'Preparing WSL installation...', 'wsl-install');
+  
+  const crypto = await import('node:crypto');
+  const logFile = path.join(os.tmpdir(), `wsl-install-${crypto.randomUUID()}.log`);
+  fs.writeFileSync(logFile, '', 'utf8');
+
+  let position = 0;
+  const pollLogs = () => {
+    try {
+      if (!fs.existsSync(logFile)) return;
+      const fd = fs.openSync(logFile, 'r');
+      const stat = fs.fstatSync(fd);
+      if (stat.size > position) {
+        const buffer = Buffer.alloc(stat.size - position);
+        fs.readSync(fd, buffer, 0, buffer.length, position);
+        position = stat.size;
+        fs.closeSync(fd);
+        
+        // Remove null bytes which powershell sometimes outputs, and split lines
+        const text = buffer.toString('utf8').replace(/\x00/g, '');
+        const lines = text.split(/\r?\n/);
+        for (const line of lines) {
+          if (line.trim()) {
+            context.log('info', line.trim(), 'wsl-install');
+          }
+        }
+      } else {
+        fs.closeSync(fd);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const timer = setInterval(pollLogs, 500);
+
+  try {
+    context.log('info', 'Requesting elevated privileges. Please accept the UAC prompt if it appears...', 'wsl-install');
+
+    // Run powershell to spawn an elevated powershell that runs wsl and redirects output
+    const psCommand = `Start-Process powershell.exe -ArgumentList "-NoProfile -Command \`"wsl.exe --install *>&1 | Out-File -FilePath '${logFile}' -Encoding utf8\`"" -Verb RunAs -WindowStyle Hidden -Wait`;
+
+    const { code, stderr } = await execPromise('powershell.exe', [
+      '-NoProfile',
+      '-Command',
+      psCommand
+    ], undefined, undefined, undefined, { idleTimeout: 600000, maxTimeout: 1200000 });
+
+    clearInterval(timer);
+    pollLogs();
+
+    if (code !== 0) {
+      throw new Error(`Elevated WSL installation failed with exit code ${code}. ${stderr}`);
+    }
+
+    context.completeStep('wsl-install', 'Installing Windows Subsystem for Linux (WSL2)', 'WSL installation completed successfully.');
+  } finally {
+    clearInterval(timer);
+    try {
+      if (fs.existsSync(logFile)) fs.unlinkSync(logFile);
+    } catch {
+      // ignore
+    }
+  }
+};
 
 export const configurePodmanMemoryProvider = (
   provider: () => Promise<number>
@@ -58,6 +139,20 @@ const commandFailureMessage = (
     : `${operation} failed with exit code ${result.code ?? 'unknown'}.`;
 };
 
+const getPodmanBaseEnv = (): NodeJS.ProcessEnv => {
+  try {
+    const podmanBinDir = path.dirname(getBinaryPath('podman'));
+    const currentPath = process.env.PATH || '';
+    const enhancedPath = podmanBinDir ? `${podmanBinDir}${path.delimiter}${currentPath}` : currentPath;
+    return {
+      ...(process.platform === 'win32' ? { CONTAINERS_HELPER_BINARY_DIR: podmanBinDir } : {}),
+      PATH: enhancedPath,
+    };
+  } catch {
+    return {};
+  }
+};
+
 const runPodman = async (
   args: string[],
   operation: string,
@@ -73,12 +168,13 @@ const runPodman = async (
       onLog?.(message);
     }
   };
+  const baseEnv = getPodmanBaseEnv();
   const result = await execPromise(
     getBinaryPath('podman'),
     args,
     undefined,
     logHandler,
-    undefined,
+    baseEnv,
     timeoutConfig
   );
   if (result.code !== 0) {
@@ -104,7 +200,9 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
     logger.warn(`Failed to create isolated Docker config dir: ${err}`);
   }
 
+  const baseEnv = getPodmanBaseEnv();
   const env: NodeJS.ProcessEnv = {
+    ...baseEnv,
     DOCKER_CONFIG: isolatedConfigDir,
   };
   
@@ -114,11 +212,22 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
 
       // Try machine inspect first (most reliable for machine-based podman).
       try {
+        const formatStr = process.platform === 'win32'
+          ? '{{.ConnectionInfo.PodmanPipe.Path}}'
+          : '{{.ConnectionInfo.PodmanSocket.Path}}';
         const { stdout } = await runPodman(
-          ['machine', 'inspect', FRAPPE_LOCAL_MACHINE_NAME, '--format', '{{.ConnectionInfo.PodmanSocket.Path}}'],
+          ['machine', 'inspect', FRAPPE_LOCAL_MACHINE_NAME, '--format', formatStr],
           'Inspecting Podman socket'
         );
         socketPath = stdout.trim();
+
+        if (!socketPath && process.platform === 'win32') {
+          const fallbackRes = await runPodman(
+            ['machine', 'inspect', FRAPPE_LOCAL_MACHINE_NAME, '--format', '{{.ConnectionInfo.PodmanSocket.Path}}'],
+            'Inspecting Podman socket fallback'
+          );
+          socketPath = fallbackRes.stdout.trim();
+        }
       } catch (error) {
         logger.warn(`Failed to inspect dedicated Podman socket: ${errorMessage(error)}`);
       }
@@ -133,8 +242,20 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
       }
 
       if (socketPath) {
-        const prefix = process.platform === 'win32' ? 'npipe://' : 'unix://';
-        env.DOCKER_HOST = socketPath.startsWith(prefix) ? socketPath : `${prefix}${socketPath}`;
+        if (process.platform === 'win32') {
+          if (socketPath.startsWith('\\\\.\\pipe\\') || socketPath.startsWith('//./pipe/')) {
+            const cleanPath = socketPath.replace(/\\/g, '/');
+            const pipeName = cleanPath.replace(/^(\/\/)?\.\/pipe\//i, '').replace(/^\/+/, '');
+            env.DOCKER_HOST = `npipe:////./pipe/${pipeName}`;
+          } else if (socketPath.startsWith('npipe://')) {
+            env.DOCKER_HOST = socketPath;
+          } else {
+            const unixPath = socketPath.replace(/\\/g, '/');
+            env.DOCKER_HOST = unixPath.startsWith('/') ? `unix://${unixPath}` : `unix:///${unixPath}`;
+          }
+        } else {
+          env.DOCKER_HOST = socketPath.startsWith('unix://') ? socketPath : `unix://${socketPath}`;
+        }
         logger.info(`Detected podman socket at ${env.DOCKER_HOST}`);
       } else {
         logger.warn('Could not detect podman socket path');
@@ -249,6 +370,25 @@ const waitForPodmanEngine = async (onLog?: (message: string) => void): Promise<v
         { idleTimeout: 15000 },
         onLog
       );
+
+      if (process.platform === 'win32') {
+        const runtimeEnv = await getRuntimeEnv();
+        if (runtimeEnv.DOCKER_HOST) {
+          const composePath = getBinaryPath('docker-compose');
+          const testRes = await execPromise(
+            composePath,
+            ['version'],
+            undefined,
+            undefined,
+            runtimeEnv,
+            { idleTimeout: 10000 }
+          );
+          if (testRes.code !== 0) {
+            throw new Error(`Windows Docker API pipe not responding: ${testRes.stderr || testRes.stdout}`);
+          }
+        }
+      }
+
       return;
     } catch (error) {
       lastError = errorMessage(error);
@@ -344,6 +484,23 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
               logWarn('Default Podman machine could not be stopped.');
             }
             await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
+          } else if (process.platform === 'win32' && (normalizedMessage.includes('all pipe instances are busy') || normalizedMessage.includes('ssh error') || normalizedMessage.includes('machine is not listening on ssh port'))) {
+            logWarn('WSL VM appears to be in a stuck/zombie state. Attempting to force restart WSL...');
+            try {
+              const { execPromise } = require('./bench-orchestration');
+              const cp = require('child_process');
+              await new Promise<void>((resolve, reject) => {
+                cp.exec('wsl --shutdown', (error: any) => {
+                  if (error) reject(error);
+                  else resolve();
+                });
+              });
+              logMsg('WSL has been forcefully restarted. Retrying podman machine start...');
+              await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
+            } catch (wslErr) {
+              logWarn(`Failed to force restart WSL: ${wslErr}`);
+              throw err;
+            }
           } else {
             throw err;
           }
@@ -379,7 +536,26 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
     }
     return true;
   } catch (err) {
-    lastRuntimeError = errorMessage(err);
+    let rawError = errorMessage(err);
+    if (process.platform === 'win32') {
+      const lower = rawError.toLowerCase();
+      if (
+        lower.includes('virtualisation is not enabled') ||
+        lower.includes('virtualization is not enabled') ||
+        lower.includes('hcs_e_hyperv_not_installed') ||
+        lower.includes('virtual machine platform') ||
+        lower.includes('enablevirtualization')
+      ) {
+        rawError = 'Hardware virtualization is not enabled on your computer. Please enable "Virtual Machine Platform" in Windows Features and turn on Virtualization (VT-x / AMD-V / SVM) in your BIOS/firmware settings.';
+      } else if (
+        lower.includes('the windows subsystem for linux is not installed') ||
+        lower.includes('wsl is not installed') ||
+        (lower.includes('wsl') && (lower.includes('not installed') || lower.includes('has no installed distributions')))
+      ) {
+        rawError = 'WSL2 (Windows Subsystem for Linux) is not installed or initialized on your system. Please open PowerShell as Administrator, run "wsl --install", and restart your computer.';
+      }
+    }
+    lastRuntimeError = rawError;
     logger.error(`Failed to ensure podman runtime: ${lastRuntimeError}`);
     onLog?.(`ERROR: Failed to ensure podman runtime: ${lastRuntimeError}`);
     return false;

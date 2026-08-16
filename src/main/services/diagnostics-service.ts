@@ -9,7 +9,7 @@ import { createMainLogger } from '@frappe-local/main/logger';
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 
 import { getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
-import { FRAPPE_LOCAL_MACHINE_NAME, getRuntimeEnv } from '@frappe-local/main/services';
+import { FRAPPE_LOCAL_MACHINE_NAME, getRuntimeEnv, isWslInstalled } from '@frappe-local/main/services';
 
 type DiagnosticsContext = {
   readonly runtimePaths: AppRuntimePaths;
@@ -83,23 +83,12 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
   const title = `Directory Access: ${targetPath}`;
 
   try {
-    const stat = await fs.stat(targetPath);
-    if (!stat.isDirectory()) {
-      return {
-        type: 'storage-access',
-        status: 'failed',
-        title,
-        description: `Path exists but is not a directory`,
-        remediation: `Remove or rename the file at ${targetPath}`,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
+    await fs.access(targetPath);
     return {
       type: 'storage-access',
       status: 'passed',
       title,
-      description: `Storage directory accessible. Frappe Local uses this to store bench templates and site metadata.`,
+      description: `Storage directory ${targetPath} exists and is accessible`,
       timestamp: new Date().toISOString(),
     };
   } catch {
@@ -107,7 +96,8 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
       type: 'storage-access',
       status: 'warning',
       title,
-      description: `Storage directory does not exist (will be created on first use)`,
+      description: `Storage directory ${targetPath} cannot be accessed`,
+      remediation: 'Ensure directory exists and check permissions.',
       timestamp: new Date().toISOString(),
     };
   }
@@ -115,41 +105,61 @@ const checkPathExists = async (targetPath: string): Promise<DiagnosticsCheckResu
 
 const checkDockerComposeHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
-  
   try {
-    const { code } = await execPromise(getBinaryPath('docker-compose'), ['--version'], undefined, undefined, undefined, { idleTimeout: 10000 });
+    const { code } = await execPromise(getBinaryPath('docker-compose'), ['version'], undefined, undefined, undefined, { idleTimeout: 10000 });
     if (code === 0) {
       checks.push({
         type: 'runtime-health',
         status: 'passed',
-        title: 'Docker Compose Binary',
-        description: 'docker-compose binary is available and executable',
+        title: 'Docker Compose',
+        description: 'Bundled docker-compose binary is available',
         timestamp: new Date().toISOString(),
       });
     } else {
-      throw new Error('Non-zero exit code');
+      throw new Error('exit code not 0');
     }
-  } catch {
+  } catch (error) {
     checks.push({
       type: 'runtime-health',
       status: 'failed',
-      title: 'Docker Compose Binary',
-      description: 'docker-compose binary not found or not executable',
-      remediation: 'Install docker-compose and ensure it is in your PATH.',
+      title: 'Docker Compose',
+      description: `Cannot run docker-compose: ${error instanceof Error ? error.message : String(error)}`,
+      remediation: 'Reinstall application package.',
       timestamp: new Date().toISOString(),
     });
   }
-
   return checks;
 };
 
 const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   const checks: DiagnosticsCheckResult[] = [];
-  let podmanAvailable = false;
-
   const failureStatus = 'failed';
 
+  if (process.platform === 'win32') {
+    const wslReady = await isWslInstalled();
+    if (wslReady) {
+      checks.push({
+        type: 'runtime-health',
+        status: 'passed',
+        title: 'Windows Subsystem',
+        description: 'WSL2 virtualization is ready.',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      checks.push({
+        type: 'runtime-health',
+        status: failureStatus,
+        title: 'Windows Subsystem',
+        description: 'WSL2 virtualization is missing.',
+        remediation: 'Click "Install" to install automatically.',
+        timestamp: new Date().toISOString(),
+      });
+      return checks; // Hide child checks unless parent WSL requirement is satisfied
+    }
+  }
+
   // Check 1: Podman Binary
+  let podmanAvailable = false;
   try {
     const { code } = await execPromise(getBinaryPath('podman'), ['--version'], undefined, undefined, undefined, { idleTimeout: 10000 });
     if (code === 0) {
@@ -174,88 +184,91 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
       remediation: 'Reinstall Frappe Local. On macOS, also verify the app was allowed by Gatekeeper.',
       timestamp: new Date().toISOString(),
     });
-    return checks; // Cannot proceed with further podman checks
+    return checks; // Hide child machine/engine checks unless Podman binary runs
   }
 
-  if (podmanAvailable) {
-    const isVmRequired = isPodmanMachineRequired();
-    
-    checks.push({
-      type: 'runtime-health',
-      status: 'passed',
-      title: 'Environment Requirement',
-      description: isVmRequired ? 'A Linux VM (Podman Machine) is required on this platform' : 'No VM required (Native Linux)',
-      timestamp: new Date().toISOString(),
-    });
+  const isVmRequired = isPodmanMachineRequired();
+  checks.push({
+    type: 'runtime-health',
+    status: 'passed',
+    title: 'Environment Requirement',
+    description: isVmRequired ? 'A Linux VM (Podman Machine) is required on this platform' : 'No VM required (Native Linux)',
+    timestamp: new Date().toISOString(),
+  });
 
-    if (isVmRequired) {
-      try {
-        const machines = await getPodmanMachines();
+  let machineRunning = !isVmRequired;
+  if (isVmRequired) {
+    try {
+      const machines = await getPodmanMachines();
 
-        if (machines.length > 0) {
-          const activeMachine = machines.find((machine) => machine.Name === FRAPPE_LOCAL_MACHINE_NAME);
-          const isRunning = activeMachine && (activeMachine.CurrentlyRunning === true || activeMachine.Running === true || activeMachine.State === 'running');
+      if (machines.length > 0) {
+        const activeMachine = machines.find((machine) => machine.Name === FRAPPE_LOCAL_MACHINE_NAME);
+        const isRunning = activeMachine && (activeMachine.CurrentlyRunning === true || activeMachine.Running === true || activeMachine.State === 'running');
 
-          if (isRunning) {
-            checks.push({
-              type: 'runtime-health',
-              status: 'passed',
-              title: 'Podman Machine',
-              description: `Podman machine '${activeMachine.Name}' is running. On macOS and Windows, this virtual machine is required to run Linux containers.`,
-              timestamp: new Date().toISOString(),
-            });
-          } else if (activeMachine) {
-            checks.push({
-              type: 'runtime-health',
-              status: failureStatus,
-              title: 'Podman Machine',
-              description: `Podman machine '${activeMachine.Name}' exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.`,
-              remediation: 'Click "Attempt Fix" to start the Podman machine.',
-              timestamp: new Date().toISOString(),
-            });
-          } else {
-            checks.push({
-              type: 'runtime-health',
-              status: failureStatus,
-              title: 'Podman Machine',
-              description: `Dedicated Podman machine '${FRAPPE_LOCAL_MACHINE_NAME}' not found`,
-              remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
-              timestamp: new Date().toISOString(),
-            });
-          }
+        if (isRunning) {
+          machineRunning = true;
+          checks.push({
+            type: 'runtime-health',
+            status: 'passed',
+            title: 'Podman Machine',
+            description: `Podman machine '${activeMachine.Name}' is running. On macOS and Windows, this virtual machine is required to run Linux containers.`,
+            timestamp: new Date().toISOString(),
+          });
+        } else if (activeMachine) {
+          checks.push({
+            type: 'runtime-health',
+            status: failureStatus,
+            title: 'Podman Machine',
+            description: `Podman machine '${activeMachine.Name}' exists but is not running. On macOS and Windows, Podman requires an active virtual machine to function.`,
+            remediation: 'Click "Attempt Fix" to start the Podman machine.',
+            timestamp: new Date().toISOString(),
+          });
+          return checks; // Hide engine checks unless Podman machine is running
         } else {
           checks.push({
             type: 'runtime-health',
             status: failureStatus,
             title: 'Podman Machine',
-            description: `No Podman machines found. Dedicated machine '${FRAPPE_LOCAL_MACHINE_NAME}' is required.`,
+            description: `Dedicated Podman machine '${FRAPPE_LOCAL_MACHINE_NAME}' not found`,
             remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
             timestamp: new Date().toISOString(),
           });
+          return checks;
         }
-      } catch (err) {
+      } else {
         checks.push({
           type: 'runtime-health',
           status: failureStatus,
           title: 'Podman Machine',
-          description: `Unable to query Podman machine status: ${err instanceof Error ? err.message : 'Unknown error'}`,
-          remediation: 'Ensure Podman Desktop is running or check `podman machine ls` manually.',
+          description: `No Podman machines found. Dedicated machine '${FRAPPE_LOCAL_MACHINE_NAME}' is required.`,
+          remediation: 'Click "Attempt Fix" to initialize and start a new Podman machine.',
           timestamp: new Date().toISOString(),
         });
+        return checks;
       }
-    } else {
+    } catch (err) {
       checks.push({
         type: 'runtime-health',
-        status: 'skipped',
+        status: failureStatus,
         title: 'Podman Machine',
-        description: 'Podman machine is not required on native Linux environments.',
+        description: `Unable to query Podman machine status: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        remediation: 'Ensure Podman Desktop is running or check `podman machine ls` manually.',
         timestamp: new Date().toISOString(),
       });
+      return checks;
     }
+  } else {
+    checks.push({
+      type: 'runtime-health',
+      status: 'skipped',
+      title: 'Podman Machine',
+      description: 'Podman machine is not required on native Linux environments.',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   // Check 3: Podman Engine Connection
-  if (podmanAvailable) {
+  if (machineRunning) {
     try {
       const args = ['ps'];
       if (isPodmanMachineRequired()) {
@@ -279,6 +292,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
           remediation: 'Ensure the Podman machine or service is started.',
           timestamp: new Date().toISOString(),
         });
+        return checks; // Hide orchestrator check if engine fails
       }
     } catch (error) {
       checks.push({
@@ -289,6 +303,7 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
         remediation: 'Click "Fix" to initialize or restart the dedicated Podman machine.',
         timestamp: new Date().toISOString(),
       });
+      return checks;
     }
 
     // Check 4: Orchestrator Engine Connection

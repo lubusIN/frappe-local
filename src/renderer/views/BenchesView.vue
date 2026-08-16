@@ -306,6 +306,7 @@
                     </h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
                       <Button
+                        v-if="health?.platform !== 'win32'"
                         variant="outline"
                         size="md"
                         icon-left="lucide-folder-open"
@@ -324,6 +325,7 @@
                         @click="onOpenBenchShell(selectedBench.id)"
                       />
                       <Button
+                        v-if="health?.platform !== 'win32'"
                         variant="outline"
                         size="md"
                         icon-left="lucide-code"
@@ -336,7 +338,7 @@
                         variant="outline"
                         size="md"
                         icon-left="lucide-box"
-                        label="Dev Container"
+                        :label="health?.platform === 'win32' ? 'VS Code' : 'Dev Container'"
                         class="!justify-start w-full"
                         :disabled="!isEditorInstalled || selectedBench.status !== 'running'"
                         @click="openInEditor(selectedBench.id, true)"
@@ -472,12 +474,14 @@ import InstalledAppsSection from '@frappe-local/renderer/components/InstalledApp
 import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useDiagnostics } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
+import { useAppHealth } from '@frappe-local/renderer/composables/system/useAppHealth';
 import BenchWizardDialog from '@frappe-local/renderer/components/dialogs/BenchWizardDialog.vue';
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import AppUsageDialog from '@frappe-local/renderer/components/dialogs/AppUsageDialog.vue';
 import type { BenchListItem } from '@frappe-local/shared/core';
 
 const { isEditorInstalled } = useEditorStatus();
+const { health } = useAppHealth();
 
 const route = useRoute();
 const router = useRouter();

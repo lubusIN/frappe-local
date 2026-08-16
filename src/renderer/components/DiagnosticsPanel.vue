@@ -152,7 +152,18 @@
 
               <div class="ml-auto flex items-center gap-2">
                 <Button
-                  v-if="canFix(check)"
+                  v-if="(check.title.includes('Windows Subsystem') || check.title.includes('WSL')) && check.status !== 'passed'"
+                  variant="solid"
+                  size="sm"
+                  theme="red"
+                  :icon="IconWrench"
+                  :loading="fixing"
+                  @click="$emit('fix', 'wsl')"
+                >
+                  Install & Restart
+                </Button>
+                <Button
+                  v-else-if="canFix(check)"
                   variant="subtle"
                   size="sm"
                   theme="red"
@@ -259,11 +270,15 @@ const statusPriority: Record<DiagnosticsCheckStatus, number> = {
   passed: 3,
 };
 
-const typePriority: Record<DiagnosticsCheckResult['type'], number> = {
-  'runtime-health': 0,
-  'runtime-preference': 1,
-  'storage-access': 2,
-  'path-writability': 3,
+const checkTitlePriority: Record<string, number> = {
+  'Windows Subsystem': 0,
+  'Podman Binary': 1,
+  'Environment Requirement': 2,
+  'Podman Machine': 3,
+  'Podman Engine': 4,
+  'Docker Compose Binary': 5,
+  'Orchestrator Connection': 6,
+  'Internet Connectivity': 7,
 };
 
 const sortedChecks = computed(() => {
@@ -273,8 +288,9 @@ const sortedChecks = computed(() => {
     const statusDifference = statusPriority[left.status] - statusPriority[right.status];
     if (statusDifference !== 0) return statusDifference;
 
-    const typeDifference = typePriority[left.type] - typePriority[right.type];
-    if (typeDifference !== 0) return typeDifference;
+    const leftOrder = checkTitlePriority[left.title] ?? 10;
+    const rightOrder = checkTitlePriority[right.title] ?? 10;
+    if (leftOrder !== rightOrder) return leftOrder - rightOrder;
 
     return left.title.localeCompare(right.title);
   });

@@ -712,7 +712,7 @@ const onCancelTask = async () => {
   try {
     const cancelled = await ipc.cancelTask(props.task.taskId);
     if (cancelled) {
-      toast.success('Task cancelled');
+      toast.info('Cancelling task...');
     } else {
       toast.error('Could not cancel task (it may have already completed)');
     }

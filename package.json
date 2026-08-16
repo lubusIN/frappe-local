@@ -8,12 +8,14 @@
   "scripts": {
     "start": "vite",
     "build": "npm run typecheck && vite build",
-    "release": "npm run build && electron-builder --publish never",
+    "release": "npm run build && npm run release:x64 && npm run release:arm64",
+    "release:x64": "electron-builder --win --x64 --publish never",
+    "release:arm64": "electron-builder --win --arm64 --publish never",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
     "test": "vitest run",
-    "dev:reset-state": "node scripts/reset-dev-state.js",
+    "dev:reset": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"
   },
   "author": "lubus <ajit@lubus.in>",
@@ -48,6 +50,13 @@
   "dependencies": {
     "dugite": "^3.2.2",
     "electron-updater": "^6.8.9"
+  },
+  "allowScripts": {
+    "vue-demi@0.14.10": true,
+    "core-js@3.49.0": true,
+    "electron@35.7.5": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.21.5": true
   },
   "build": {
     "compression": "maximum",
@@ -110,11 +119,20 @@
       ]
     },
     "win": {
-      "icon": "resources/icons/icon.png",
+      "icon": "resources/icons/icon.ico",
+      "executableName": "frappe-local",
       "target": [
         "nsis",
         "zip"
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName} Setup ${version} ${arch}.${ext}",
+      "shortcutName": "Frappe Local",
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true
     },
     "linux": {
       "icon": "resources/icons/icon.png",

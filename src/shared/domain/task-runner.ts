@@ -1,4 +1,4 @@
-export const taskStatuses = ['queued', 'running', 'success', 'failure'] as const;
+export const taskStatuses = ['queued', 'running', 'cancelling', 'cancelled', 'success', 'failure'] as const;
 
 export type TaskStatus = (typeof taskStatuses)[number];
 
@@ -8,6 +8,8 @@ export const taskEventTypes = [
   'task.step.started',
   'task.step.completed',
   'task.log',
+  'task.cancelling',
+  'task.cancelled',
   'task.failed',
   'task.completed',
 ] as const;
