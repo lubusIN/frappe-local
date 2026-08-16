@@ -33,7 +33,7 @@ export const installWslTask = async (context: TaskExecutionContext): Promise<voi
 
   context.startStep('wsl-install', 'Installing Windows Subsystem for Linux (WSL2)');
   context.log('info', 'Preparing WSL installation...', 'wsl-install');
-  
+
   const crypto = await import('node:crypto');
   const logFile = path.join(os.tmpdir(), `wsl-install-${crypto.randomUUID()}.log`);
   fs.writeFileSync(logFile, '', 'utf8');
@@ -49,7 +49,7 @@ export const installWslTask = async (context: TaskExecutionContext): Promise<voi
         fs.readSync(fd, buffer, 0, buffer.length, position);
         position = stat.size;
         fs.closeSync(fd);
-        
+
         // Remove null bytes which powershell sometimes outputs, and split lines
         const text = buffer.toString('utf8').replace(/\x00/g, '');
         const lines = text.split(/\r?\n/);
@@ -205,7 +205,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
     ...baseEnv,
     DOCKER_CONFIG: isolatedConfigDir,
   };
-  
+
   if (isPodmanMachineRequired()) {
     try {
       let socketPath = '';
@@ -231,7 +231,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
       } catch (error) {
         logger.warn(`Failed to inspect dedicated Podman socket: ${errorMessage(error)}`);
       }
-      
+
       // If that fails, try podman info (works if the machine is already the default context).
       if (!socketPath) {
         const infoResult = await runPodman(
@@ -264,7 +264,7 @@ export async function getRuntimeEnv(): Promise<NodeJS.ProcessEnv> {
       logger.warn(`Failed to detect podman socket: ${err}`);
     }
   }
-  
+
   return env;
 }
 
@@ -416,15 +416,28 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
   try {
     lastRuntimeError = null;
     logMsg('Acquired machine operation lock');
-    
+
     // 1. Check if podman binary is available
     await runPodman(['--version'], 'Checking bundled Podman', undefined, onLog);
 
     // 2. On Mac/Windows, check machine status
     if (isPodmanMachineRequired()) {
-      const machines = await getPodmanMachines();
+      let machines: any[];
+      try {
+        machines = await getPodmanMachines();
+      } catch (err) {
+        if (process.platform === 'win32' && errorMessage(err).toLowerCase().includes('timed out')) {
+          logWarn('Podman machine ls timed out. WSL might be deadlocked. Forcefully terminating WSL VM...');
+          const cp = require('child_process');
+          await new Promise<void>((resolve) => cp.exec(`wsl --terminate podman-${FRAPPE_LOCAL_MACHINE_NAME}`, () => resolve()));
+          logMsg('Retrying podman machine ls...');
+          machines = await getPodmanMachines();
+        } else {
+          throw err;
+        }
+      }
       let machine = machines.find((m) => m.Name === FRAPPE_LOCAL_MACHINE_NAME);
-      
+
       if (!machine) {
         const memoryMb = await getConfiguredPodmanMemoryMb();
         logMsg(`No podman machine named ${FRAPPE_LOCAL_MACHINE_NAME} found, initializing...`);
@@ -444,7 +457,7 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
       // Check machine status
       const refreshedMachines = await getPodmanMachines();
       machine = refreshedMachines.find((m) => m.Name === FRAPPE_LOCAL_MACHINE_NAME);
-      
+
       const isRunning = isMachineRunning(machine);
       const isStarting = machine?.Starting === true || (machine?.State || machine?.Status || '').toLowerCase() === 'starting';
 
@@ -517,7 +530,7 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
         } catch {
           logWarn('Podman machine stop failed during auto-heal.');
         }
-        
+
         logMsg('Restarting podman machine after auto-heal...');
         try {
           await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Restarting Podman machine', undefined, onLog);
