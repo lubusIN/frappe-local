@@ -65,7 +65,23 @@ const quoteShell = (value) => {
 };
 
 const copyFileWithMode = (src, dest) => {
-  fs.copyFileSync(src, dest);
+  let attempts = 0;
+  while (attempts < 10) {
+    try {
+      if (fs.existsSync(dest)) fs.rmSync(dest, { force: true });
+      fs.copyFileSync(src, dest);
+      break;
+    } catch (err) {
+      if (err.code === 'EBUSY' || err.code === 'EPERM') {
+        attempts++;
+        if (attempts >= 10) throw err;
+        const start = Date.now();
+        while (Date.now() - start < 500) {} // Sync sleep 500ms
+      } else {
+        throw err;
+      }
+    }
+  }
   if (platform !== 'win32') {
     fs.chmodSync(dest, 0o755);
   }
@@ -307,6 +323,18 @@ async function main() {
       }
 
       copyFileWithMode(podmanExecutable, podmanDest);
+
+      if (platform === 'win32') {
+        const helperCandidates = ['win-sshproxy.exe', 'win-ssh-proxy.exe', 'gvproxy.exe'];
+        for (const helperName of helperCandidates) {
+          const helperSource = findBinary(podmanExtractDir, helperName);
+          if (helperSource) {
+            const helperDest = path.join(BIN_DIR, helperName);
+            copyFileWithMode(helperSource, helperDest);
+            console.log(`Copied Windows helper binary: ${helperName}`);
+          }
+        }
+      }
 
       fs.rmSync(podmanExtractDir, { recursive: true, force: true });
       fs.rmSync(podmanArchiveTarget, { force: true });

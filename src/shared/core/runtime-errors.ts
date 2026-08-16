@@ -23,6 +23,30 @@ export const humanizeCreateFailure = (resource: 'bench' | 'site', rawMessage: st
     return `${prefix}: ${OOM_GUIDANCE}`;
   }
 
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes('virtualisation is not enabled') ||
+    normalized.includes('virtualization is not enabled') ||
+    normalized.includes('hcs_e_hyperv_not_installed') ||
+    normalized.includes('virtual machine platform') ||
+    normalized.includes('enablevirtualization') ||
+    normalized.includes('hardware virtualization')
+  ) {
+    const prefix = resource === 'bench' ? 'Bench creation failed' : 'Site creation failed';
+    return `${prefix}: Hardware virtualization is not enabled on your computer. Please enable "Virtual Machine Platform" in Windows Features and turn on Virtualization (VT-x / AMD-V / SVM) in your BIOS settings.`;
+  }
+
+  if (
+    normalized.includes('the windows subsystem for linux is not installed') ||
+    normalized.includes('wsl is not installed') ||
+    normalized.includes('wsl2 (windows subsystem for linux) is not installed') ||
+    (normalized.includes('wsl') && (normalized.includes('not installed') || normalized.includes('has no installed distributions')))
+  ) {
+    const prefix = resource === 'bench' ? 'Bench creation failed' : 'Site creation failed';
+    return `${prefix}: Windows Subsystem for Linux (WSL2) is not installed or initialized on your computer. Please open PowerShell as Administrator, run "wsl --install", and restart your PC.`;
+  }
+
   if (resource === 'bench') {
     if (message.toLowerCase().includes('timed out')) {
       const normalized = message.toLowerCase();

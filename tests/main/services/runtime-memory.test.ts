@@ -58,7 +58,7 @@ describe('Podman machine memory configuration', () => {
       ['machine', 'init', '--now', '--cpus', '4', '--memory', '8192', FRAPPE_LOCAL_MACHINE_NAME],
       undefined,
       expect.any(Function),
-      undefined,
+      expect.anything(),
       {
         idleTimeout: 300000,
         maxTimeout: 1800000,
@@ -100,5 +100,33 @@ describe('Podman machine memory configuration', () => {
 
     await expect(ensureRuntimeRunning()).resolves.toBe(false);
     expect(getLastRuntimeError()).toContain('helper binary vfkit was not found');
+  });
+
+  it('formats DOCKER_HOST properly for Windows named pipes and unix sockets', async () => {
+    const { getRuntimeEnv } = await import('../../../src/main/services/runtime-service');
+    
+    // Test Named Pipe format
+    execPromiseMock.mockResolvedValueOnce({
+      stdout: '\\\\.\\pipe\\podman-frappe-local\n',
+      stderr: '',
+      code: 0,
+    });
+
+    const env1 = await getRuntimeEnv();
+    if (process.platform === 'win32') {
+      expect(env1.DOCKER_HOST).toBe('npipe:////./pipe/podman-frappe-local');
+    }
+
+    // Test Windows drive letter file path format
+    execPromiseMock.mockResolvedValueOnce({
+      stdout: 'C:\\Users\\test\\AppData\\Local\\Temp\\podman\\frappe-local-api.sock\n',
+      stderr: '',
+      code: 0,
+    });
+
+    const env2 = await getRuntimeEnv();
+    if (process.platform === 'win32') {
+      expect(env2.DOCKER_HOST).toBe('unix:///C:/Users/test/AppData/Local/Temp/podman/frappe-local-api.sock');
+    }
   });
 });

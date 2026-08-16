@@ -4,7 +4,8 @@ import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 export const useFrontDoorStatus = () => {
   const isFrontDoorAvailable = ref(true);
   const isFrontDoorSecure = ref(false);
-  let interval: ReturnType<typeof setInterval> | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let isStopped = false;
 
   const fetchStatus = async () => {
     try {
@@ -14,20 +15,22 @@ export const useFrontDoorStatus = () => {
       isFrontDoorSecure.value = status.secure;
     } catch {
       // ignore
+    } finally {
+      if (!isStopped) {
+        timer = setTimeout(fetchStatus, 5000);
+      }
     }
   };
 
   onMounted(() => {
     void fetchStatus();
-    interval = setInterval(() => {
-      void fetchStatus();
-    }, 5000);
   });
 
   onUnmounted(() => {
-    if (interval) {
-      clearInterval(interval);
-      interval = null;
+    isStopped = true;
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
     }
   });
 

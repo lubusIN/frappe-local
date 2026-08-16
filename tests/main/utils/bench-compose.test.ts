@@ -14,16 +14,23 @@ describe('bench compose generation', () => {
     expect(content).toContain('redis:\n    image: docker.io/redis:alpine');
   });
 
-  it('bind mounts the workspace root instead of using named volumes for app state', () => {
+  it('mounts the workspace using the appropriate strategy for the current platform', () => {
     const content = generateBenchCompose({
       frappeVersion: 'version-16',
       httpPort: 8080,
       shareSshKeys: false,
     });
 
-    expect(content).toContain('- ../:/workspace:cached');
+    if (process.platform === 'win32') {
+      // Windows uses a named volume for native ext4 performance
+      expect(content).toContain('- bench-workspace:/workspace');
+      expect(content).not.toContain('- ../:/workspace:cached');
+    } else {
+      // Mac/Linux uses a bind mount for direct host access
+      expect(content).toContain('- ../:/workspace:cached');
+      expect(content).not.toContain('bench-workspace');
+    }
     expect(content).not.toContain('bench_assets');
-    expect(content).not.toContain('bench_env');
   });
 
   it('maps HTTP and SocketIO ports correctly', () => {

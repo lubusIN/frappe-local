@@ -104,7 +104,7 @@
             </span>
             <Badge
               v-if="row.logs && row.logs.length > 0"
-              :theme="row.status === 'running' || row.status === 'queued' ? 'blue' : 'gray'"
+              :theme="row.status === 'running' || row.status === 'queued' || row.status === 'cancelling' ? 'blue' : 'gray'"
               variant="subtle"
               size="md"
               class="w-fit"
@@ -112,7 +112,7 @@
               <TaskTimer
                 :start-time="row.logs[0].timestamp"
                 :end-time="row.logs[row.logs.length - 1].timestamp"
-                :running="row.status === 'running' || row.status === 'queued'"
+                :running="row.status === 'running' || row.status === 'queued' || row.status === 'cancelling'"
                 :show-label="false"
                 size-class="text-xs"
                 color-class="tabular-nums"
@@ -190,7 +190,9 @@ const statusOptions = [
   { label: 'All statuses', value: 'all' },
   { label: 'In Progress', value: 'queued' },
   { label: 'Running', value: 'running' },
+  { label: 'Cancelling', value: 'cancelling' },
   { label: 'Success', value: 'success' },
+  { label: 'Cancelled', value: 'cancelled' },
   { label: 'Failure', value: 'failure' },
 ];
 

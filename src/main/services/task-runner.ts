@@ -1,3 +1,4 @@
+import { powerSaveBlocker } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
@@ -121,7 +122,7 @@ export class TaskRunner {
         return false;
       }
 
-      this.finishTask(taskId, 'failure', 'Task was cancelled before it started.', null, cancellationErrorCode);
+      this.finishTask(taskId, 'cancelled', 'Task was cancelled before it started.', null, cancellationErrorCode);
       return true;
     }
 
@@ -129,6 +130,13 @@ export class TaskRunner {
     if (!task || this.activeTaskId !== taskId) {
       return false;
     }
+
+    this.updateTask(taskId, { status: 'cancelling' });
+    this.emitTaskEvent(taskId, 'task.cancelling', 'cancelling', {
+      stepId: task.currentStepId,
+      stepName: task.currentStepName,
+      message: 'Cancelling task...',
+    });
 
     task.controller.abort();
     return true;
@@ -143,6 +151,8 @@ export class TaskRunner {
     return Array.from(this.tasks.values(), toSnapshot);
   }
 
+  private powerSaveBlockerId: number | null = null;
+
   private async startNext(): Promise<void> {
     if (this.activeTaskId !== null) {
       return;
@@ -150,7 +160,29 @@ export class TaskRunner {
 
     const nextTaskId = this.queue.shift();
     if (!nextTaskId) {
+      // Queue is empty, allow system to sleep again
+      if (this.powerSaveBlockerId !== null) {
+        try {
+          if (powerSaveBlocker.isStarted(this.powerSaveBlockerId)) {
+            powerSaveBlocker.stop(this.powerSaveBlockerId);
+          }
+        } catch (e) {
+          // Ignore
+        }
+        this.powerSaveBlockerId = null;
+      }
       return;
+    }
+
+    // Prevent system sleep while task is running
+    if (this.powerSaveBlockerId === null) {
+      try {
+        // prevent-app-suspension is more appropriate for background tasks 
+        // than prevent-display-sleep. It stops the CPU from sleeping but lets the screen turn off.
+        this.powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension');
+      } catch (e) {
+        // Ignore
+      }
     }
 
     const task = this.tasks.get(nextTaskId);
@@ -187,6 +219,7 @@ export class TaskRunner {
       this.finishTask(nextTaskId, 'success', `${task.name} completed successfully.`);
     } catch (error) {
       const wasCancelled = task.controller.signal.aborted;
+      const finalStatus = wasCancelled ? 'cancelled' : 'failure';
       const errorCode = wasCancelled ? cancellationErrorCode : 'task-failed';
       const message = wasCancelled
         ? 'Task was cancelled.'
@@ -195,7 +228,7 @@ export class TaskRunner {
           : 'Task failed due to an unknown error.';
 
       task.controller.abort();
-      this.finishTask(nextTaskId, 'failure', message, error instanceof Error ? error : null, errorCode);
+      this.finishTask(nextTaskId, finalStatus, message, error instanceof Error ? error : null, errorCode);
     } finally {
       this.activeTaskId = null;
       void this.startNext();
@@ -277,7 +310,7 @@ export class TaskRunner {
 
   private finishTask(
     taskId: string,
-    status: 'success' | 'failure',
+    status: 'success' | 'failure' | 'cancelled',
     message: string,
     _error?: Error | null,
     errorCode: string | null = null
@@ -287,7 +320,7 @@ export class TaskRunner {
       completedAt: now(),
     });
 
-    const type = status === 'success' ? 'task.completed' : 'task.failed';
+    const type = status === 'success' ? 'task.completed' : status === 'cancelled' ? 'task.cancelled' : 'task.failed';
     const task = this.tasks.get(taskId);
     if (!task) {
       return;

@@ -3,20 +3,32 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { getActiveTaskSignal } from '@frappe-local/main/services';
 
+import { getBinaryPath } from './binaries';
+
 export const getEnhancedProcessPath = (baseEnv?: NodeJS.ProcessEnv): string => {
   const currentPath = baseEnv?.PATH || process.env.PATH || '';
-  if (process.platform !== 'darwin') {
-    return currentPath;
+  const extraDirs: string[] = [];
+
+  try {
+    const podmanBinDir = path.dirname(getBinaryPath('podman'));
+    if (podmanBinDir) {
+      extraDirs.push(podmanBinDir);
+    }
+  } catch {
+    // Ignore if app module not ready in test
   }
-  const home = process.env.HOME || '';
-  const extraDirs = [
-    '/usr/local/bin',
-    '/opt/homebrew/bin',
-    '/Applications/Visual Studio Code.app/Contents/Resources/app/bin',
-    '/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin',
-    path.join(home, 'Applications/Visual Studio Code.app/Contents/Resources/app/bin'),
-    path.join(home, '.local/bin')
-  ];
+
+  if (process.platform === 'darwin') {
+    const home = process.env.HOME || '';
+    extraDirs.push(
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+      '/Applications/Visual Studio Code.app/Contents/Resources/app/bin',
+      '/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin',
+      path.join(home, 'Applications/Visual Studio Code.app/Contents/Resources/app/bin'),
+      path.join(home, '.local/bin')
+    );
+  }
 
   const pathParts = new Set(currentPath.split(path.delimiter).filter(Boolean));
   for (const dir of extraDirs) {

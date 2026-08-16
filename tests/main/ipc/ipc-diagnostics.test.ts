@@ -23,6 +23,7 @@ vi.mock('../../../src/main/services/runtime-service', () => ({
   getLastRuntimeError: () => getLastRuntimeErrorMock(),
   getRuntimeEnv: () => getRuntimeEnvMock(),
   FRAPPE_LOCAL_MACHINE_NAME: 'frappe-local',
+  isWslInstalled: () => Promise.resolve(true),
 }));
 
 vi.mock('../../../src/main/utils/binaries', () => ({

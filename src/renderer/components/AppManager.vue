@@ -223,8 +223,11 @@ import { computed, ref} from 'vue';
 import type { CatalogAppItem } from '@frappe-local/shared/core';
 import { useAppCatalogFilters, useBenches, useCustomApps, getAppPresentationMeta } from '@frappe-local/renderer/composables/data';
 import { useEditorStatus, useIpc } from '@frappe-local/renderer/composables/system';
+import { useAppHealth } from '@frappe-local/renderer/composables/system/useAppHealth';
 
 const { isEditorInstalled } = useEditorStatus();
+const { health } = useAppHealth();
+const isWindows = computed(() => health.value?.platform === 'win32');
 
 const props = withDefaults(
   defineProps<{
@@ -275,8 +278,10 @@ interface DropdownOption {
 }
 
 const getAppOpenOptions = (app: AppItem): DropdownOption[] => {
-  return [
-    {
+  const options: DropdownOption[] = [];
+
+  if (!isWindows.value) {
+    options.push({
       label: 'VS Code',
       icon: 'lucide-code',
       disabled: !isEditorInstalled.value,
@@ -286,19 +291,22 @@ const getAppOpenOptions = (app: AppItem): DropdownOption[] => {
           toast.error(openError.value);
         }
       },
+    });
+  }
+
+  options.push({
+    label: isWindows.value ? 'VS Code' : 'Dev Container',
+    icon: 'lucide-box',
+    disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
+    onClick: async () => {
+      await openAppInEditor(props.resourceId ?? null, app.appId, true);
+      if (openError.value) {
+        toast.error(openError.value);
+      }
     },
-    {
-      label: 'Dev Container',
-      icon: 'lucide-box',
-      disabled: !isEditorInstalled.value || props.benchStatus !== 'running',
-      onClick: async () => {
-        await openAppInEditor(props.resourceId ?? null, app.appId, true);
-        if (openError.value) {
-          toast.error(openError.value);
-        }
-      },
-    },
-  ];
+  });
+
+  return options;
 };
 
 const frappeVersionRef = computed(() => props.frappeVersion);

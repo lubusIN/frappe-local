@@ -7,8 +7,9 @@ import { app } from 'electron';
  * and production (using the Electron resources/bin folder).
  */
 export function getBinaryPath(name: string): string {
-  // Add .exe extension on Windows if not already present
-  const binaryName = process.platform === 'win32' && !name.endsWith('.exe') ? `${name}.exe` : name;
+  const isWindows = process.platform === 'win32';
+  const hasExtension = path.extname(name) !== '';
+  const binaryName = isWindows && !hasExtension ? `${name}.exe` : name;
 
   // In development, the bin folder is at the project root
   const devPath = path.join(app.getAppPath(), 'bin', binaryName);

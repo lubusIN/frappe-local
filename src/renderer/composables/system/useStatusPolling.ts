@@ -5,19 +5,33 @@ export const useStatusPolling = <T extends { status: string }>(
   deletingIds: { value: { size: number } },
   loadFn: (silent?: boolean) => Promise<void>
 ) => {
-  const pollingInterval = ref<ReturnType<typeof setInterval> | null>(null);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let isPolling = false;
+
+  const poll = async () => {
+    if (!isPolling) return;
+    try {
+      await loadFn(true);
+    } catch {
+      // ignore
+    } finally {
+      if (isPolling) {
+        timer = setTimeout(poll, 3000);
+      }
+    }
+  };
 
   const startPolling = () => {
-    if (pollingInterval.value) return;
-    pollingInterval.value = setInterval(() => {
-      void loadFn(true);
-    }, 3000);
+    if (isPolling) return;
+    isPolling = true;
+    poll();
   };
 
   const stopPolling = () => {
-    if (pollingInterval.value) {
-      clearInterval(pollingInterval.value);
-      pollingInterval.value = null;
+    isPolling = false;
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
     }
   };
 

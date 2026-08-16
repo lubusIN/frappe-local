@@ -4,7 +4,16 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const appSupportPath = path.join(os.homedir(), 'Library', 'Application Support', 'Frappe Local');
+const getAppSupportPath = () => {
+  if (process.platform === 'win32') {
+    return path.join(os.homedir(), 'AppData', 'Roaming', 'frappe-local-dev');
+  }
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'Frappe Local');
+  }
+  return path.join(os.homedir(), '.config', 'frappe-local');
+};
+const appSupportPath = getAppSupportPath();
 const storagePath = path.join(appSupportPath, 'storage');
 const configPath = path.join(appSupportPath, 'config');
 const benchesPath = path.join(appSupportPath, 'benches');
@@ -113,7 +122,17 @@ if (machineNames.includes(FRAPPE_LOCAL_MACHINE_NAME)) {
   );
 }
 
-const targets = [storagePath, configPath, benchesPath];
+if (process.platform === 'win32') {
+  runBestEffort(
+    'unregister default WSL Ubuntu distro',
+    'wsl.exe',
+    ['--unregister', 'Ubuntu']
+  );
+}
+
+const localStoragePath = path.join(appSupportPath, 'Local Storage');
+const sessionStoragePath = path.join(appSupportPath, 'Session Storage');
+const targets = [storagePath, configPath, benchesPath, localStoragePath, sessionStoragePath];
 
 for (const target of targets) {
   if (!fs.existsSync(target)) {

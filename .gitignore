@@ -5,3 +5,4 @@ release-artifacts/
 bin/
 .DS_Store
 scratch
+vite.config.*.mjs

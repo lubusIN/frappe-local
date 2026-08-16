@@ -56,6 +56,18 @@ export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[
   tasks.map((task) => {
     const createdAt = ('createdAt' in task && typeof (task as Record<string, unknown>).createdAt === 'string' ? (task as Record<string, unknown>).createdAt as string : task.timestamp);
     const logs = Array.isArray(task.logs) ? task.logs.slice(-MAX_LOGS_PER_TASK) : [];
+    if (task.status === 'cancelling') {
+      return {
+        ...task,
+        createdAt,
+        status: 'cancelled' as const,
+        type: 'task.cancelled' as const,
+        message: 'Task was cancelled.',
+        logs,
+        errorCode: 'cancelled',
+      };
+    }
+
     if (task.status !== 'queued' && task.status !== 'running') {
       return {
         ...task,
@@ -171,6 +183,16 @@ export const findUnhandledFailedTask = (
     task.type === 'task.failed'
     && task.errorCode !== 'cancelled'
     && !handledTaskIds.has(task.taskId)
+  ) ?? null;
+};
+
+export const findUnhandledCancelledTask = (
+  tasks: readonly ProgressTaskSummary[],
+  handledTaskIds: ReadonlySet<string>
+): ProgressTaskSummary | null => {
+  return tasks.find((task) =>
+    (task.type === 'task.cancelled' || (task.type === 'task.failed' && task.errorCode === 'cancelled'))
+    && !handledTaskIds.has(`cancelled:${task.taskId}`)
   ) ?? null;
 };
 

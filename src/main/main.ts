@@ -1,4 +1,4 @@
-import { BrowserWindow, Menu, app, dialog, ipcMain, type MenuItemConstructorOptions } from 'electron';
+import { BrowserWindow, Menu, app, dialog, ipcMain, powerMonitor, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBootstrapContext, runApplicationBootstrap } from '@frappe-local/main/bootstrap';
@@ -17,8 +17,8 @@ if (isDev) {
   process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 }
 
-const binPath = isDev 
-  ? path.resolve(currentDirectory, '../../bin') 
+const binPath = isDev
+  ? path.resolve(currentDirectory, '../../bin')
   : path.join(process.resourcesPath, 'bin');
 
 process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
@@ -101,13 +101,15 @@ const createMainWindow = async (): Promise<void> => {
     minWidth: 1024,
     minHeight: 720,
     backgroundColor: '#ffffff',
-    titleBarStyle: 'hidden',
     show: false, // Don't show the window until the UI is ready
-    titleBarOverlay: {
-      color: '#ffffff',
-      symbolColor: '#1a1919',
-    },
-    trafficLightPosition: { x: 8, y: 5 },
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hidden',
+          trafficLightPosition: { x: 8, y: 5 },
+        }
+      : {
+          autoHideMenuBar: true,
+        }),
     webPreferences: {
       preload: path.join(currentDirectory, 'preload.mjs'),
       contextIsolation: true,
@@ -126,18 +128,50 @@ const createMainWindow = async (): Promise<void> => {
   });
 
   window.on('close', (event) => {
-    if (!isQuitting) {
+    if (!isQuitting && process.platform === 'darwin') {
       event.preventDefault();
-      if (process.platform === 'darwin') {
-        window.hide();
-      } else {
-        window.minimize();
-      }
+      window.hide();
     }
   });
 
   window.webContents.on('render-process-gone', (_event, details) => {
     mainLogger.error(`renderer process exited: ${details.reason} (code: ${details.exitCode})`);
+    if (details.reason !== 'clean-exit' && details.reason !== 'killed') {
+      mainLogger.info('Reloading window due to crash...');
+      window.reload();
+    }
+  });
+
+  app.on('child-process-gone', (_event, details) => {
+    if (details.type === 'GPU' && details.reason !== 'clean-exit') {
+      mainLogger.error(`GPU process crashed: ${details.reason}. Reloading window to recover from white screen.`);
+      window.reload();
+    }
+  });
+
+  powerMonitor.on('resume', () => {
+    mainLogger.info('System resumed from sleep. Forcing UI refresh.');
+    
+    if (process.platform === 'win32') {
+      // The OS graphics context may not be fully ready immediately on resume.
+      // A small delay allows the GPU to be ready before we force a redraw.
+      setTimeout(() => {
+        if (window.isDestroyed()) return;
+        
+        // A visibility toggle often forces a new GPU surface allocation on Windows
+        if (window.isVisible()) {
+          window.hide();
+          window.show();
+        }
+        
+        // Slightly resizing forces Chromium to recalculate layout and repaint
+        const bounds = window.getBounds();
+        window.setBounds({ width: bounds.width + 1 });
+        window.setBounds(bounds);
+        
+        window.webContents.invalidate();
+      }, 1500); // 1.5 seconds delay gives the OS enough time to wake up fully
+    }
   });
 
   window.webContents.on('before-input-event', (event, input) => {
@@ -170,6 +204,9 @@ app.whenReady().then(async () => {
 
   process.title = APP_DISPLAY_NAME;
   app.setName(APP_DISPLAY_NAME);
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('in.lubus.frappe-local');
+  }
 
   configureApplicationMenu();
 

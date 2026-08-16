@@ -64,7 +64,7 @@ describe('execPromise', () => {
 
     await waitFor(() => runner.getTask(taskId)?.status === 'running');
     expect(runner.cancelTask(taskId)).toBe(true);
-    await waitFor(() => runner.getTask(taskId)?.status === 'failure');
+    await waitFor(() => runner.getTask(taskId)?.status === 'cancelled');
 
     expect(cleanupCompleted).toBe(true);
   });

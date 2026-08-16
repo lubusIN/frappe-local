@@ -44,8 +44,8 @@ export const useResourceTaskState = (resourceType: ResourceType, tasks: Ref<Prog
       (t) => t.resourceId === resourceId && t.resource === resourceType && (!predicate || predicate(t))
     );
 
-  const isActive = (t: ProgressTaskSummary) => t.status === 'running' || t.status === 'queued';
-  const isFinished = (t: ProgressTaskSummary) => t.status === 'success' || t.status === 'failure';
+  const isActive = (t: ProgressTaskSummary) => t.status === 'running' || t.status === 'queued' || t.status === 'cancelling';
+  const isFinished = (t: ProgressTaskSummary) => t.status === 'success' || t.status === 'failure' || t.status === 'cancelled';
   const getLatestTask = (resourceId: string) => findTask(resourceId);
 
   const isResourceBusy = (id: string) => Boolean(findTask(id, isActive));

@@ -42,7 +42,7 @@ export const runAndWaitForTask = async <T>(
       // Allow a small grace period for clock skew between systems/IPC
       if (taskCreatedAt < startTime - 1000) return false;
 
-      return t.status === 'success' || t.status === 'failure';
+      return t.status === 'success' || t.status === 'failure' || t.status === 'cancelled';
     };
 
     // First check if it's already in the list

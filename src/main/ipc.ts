@@ -100,6 +100,7 @@ export type IpcOperations = {
   isFrontDoorSecure?: () => boolean;
   refreshFrontDoorHosts?: () => Promise<void>;
   applyRuntimeMemory?: (memoryMb: number) => Promise<void>;
+  installWslTask?: (context: import('@frappe-local/main/services/task-runner').TaskExecutionContext) => Promise<void>;
   trackBenchOperation?: (benchId: string, operation: LifecycleOperation) => void;
   trackSiteOperation?: (siteId: string, operation: LifecycleOperation) => void;
 };
@@ -256,7 +257,28 @@ export const registerIpcHandlers = (
   });
 
   ipcMainLike.handle(ipcChannels.runtimeFix, async (_event: unknown, checkType: unknown): Promise<boolean> => {
-    if (typeof checkType !== 'string' || checkType !== 'runtime-health') return false;
+    if (typeof checkType !== 'string') return false;
+
+    if (checkType === 'system-restart') {
+      mainLogger.info('Triggering system restart...');
+      await execPromise('shutdown', ['/r', '/t', '0']);
+      return true;
+    }
+
+    if (checkType === 'wsl' || checkType === 'Windows Subsystem for Linux (WSL2)' || checkType === 'Windows Subsystem') {
+      mainLogger.info('Triggering elevated WSL installation task...');
+      if (!operations.installWslTask) return false;
+      await taskRunner.enqueue({
+        name: 'install-wsl',
+        resource: { type: 'system', id: 'wsl' },
+        run: async (ctx) => {
+          await operations.installWslTask!(ctx);
+        }
+      });
+      return true;
+    }
+
+    if (checkType !== 'runtime-health') return false;
 
     mainLogger.info('Attempting to fix runtime issues via unified service...');
     const fixed = await ensureRuntimeRunning();
