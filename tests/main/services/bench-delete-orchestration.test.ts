@@ -138,7 +138,7 @@ describe('bench delete orchestration cleanup', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-local-1adb2eed', 'down', '-v', '--remove-orphans'],
+      ['-p', 'frappe-local-1adb2eed', '-f', '/Users/dev/frappe-bench-2/.frappe-local/docker-compose.yml', 'down', '-v', '--remove-orphans'],
       '/Users/dev/frappe-bench-2',
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

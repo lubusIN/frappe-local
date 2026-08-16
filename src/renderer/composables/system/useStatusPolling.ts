@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted, ref, watchEffect } from 'vue';
+import { onMounted, onUnmounted, watchEffect } from 'vue';
 
 export const useStatusPolling = <T extends { status: string }>(
   items: { value: T[] },

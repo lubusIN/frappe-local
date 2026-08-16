@@ -159,11 +159,9 @@ const checkPodmanHealth = async (): Promise<DiagnosticsCheckResult[]> => {
   }
 
   // Check 1: Podman Binary
-  let podmanAvailable = false;
   try {
     const { code } = await execPromise(getBinaryPath('podman'), ['--version'], undefined, undefined, undefined, { idleTimeout: 10000 });
     if (code === 0) {
-      podmanAvailable = true;
       checks.push({
         type: 'runtime-health',
         status: 'passed',

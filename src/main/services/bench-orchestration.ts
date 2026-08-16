@@ -3,6 +3,7 @@ import { errorMessage, filterNonCoreApps, humanizeCreateFailure, isLikelyOutOfMe
 
 import path from 'node:path';
 import fs from 'node:fs';
+import { spawn } from 'node:child_process';
 import { ensureRuntimeRunning, getRuntimeEnv, getLastRuntimeError } from './runtime-service';
 import { getDefaultAppCatalogSeed } from './catalog-provider';
 import { getTaskRunner, type TaskExecutionContext } from './task-runner';
@@ -133,7 +134,8 @@ const cleanupBenchAppArtifacts = async (
   benchPath: string,
   appIds: readonly string[],
   context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
-  stepId: string
+  stepId: string,
+  containerEnv?: BenchContainerEnv
 ): Promise<void> => {
   if (appIds.length === 0) {
     return;
@@ -141,6 +143,32 @@ const cleanupBenchAppArtifacts = async (
 
   const uniqueAppIds = [...new Set(appIds.map((app) => app.trim()).filter(Boolean))];
   if (uniqueAppIds.length === 0) {
+    return;
+  }
+
+  if (process.platform === 'win32' && containerEnv) {
+    const script = [
+      'from pathlib import Path',
+      'import shutil, sys',
+      'apps = sys.argv[1:]',
+      '[shutil.rmtree(Path("apps") / app, ignore_errors=True) for app in apps]',
+      '[shutil.rmtree(Path("sites/assets") / app, ignore_errors=True) for app in apps]',
+      'apps_txt = Path("sites/apps.txt")',
+      'existing = apps_txt.read_text().splitlines() if apps_txt.exists() else []',
+      'kept = [line.strip() for line in existing if line.strip() and line.strip() not in apps]',
+      'apps_txt.write_text(("\\n".join(kept) + "\\n") if kept else "")',
+    ].join('; ');
+    const result = await execPromise(
+      containerEnv.runtimeCmd,
+      composeExecArgs(containerEnv.projectName, 'frappe', ['python', '-c', script, ...uniqueAppIds]),
+      benchPath,
+      undefined,
+      containerEnv.runtimeEnv,
+      { idleTimeout: 60000, maxTimeout: 120000 }
+    );
+    if (result.code !== 0) {
+      context.log('warning', `Failed to clean container workspace app artifacts: ${result.stderr || result.stdout}`, stepId);
+    }
     return;
   }
 
@@ -179,11 +207,47 @@ const cleanupBenchAppArtifacts = async (
   }
 };
 
-const ensureBenchProcfile = (
+type BenchContainerEnv = {
+  projectName: string;
+  runtimeCmd: string;
+  runtimeEnv: NodeJS.ProcessEnv;
+};
+
+const updateContainerAppsTxt = async (
+  benchPath: string,
+  containerEnv: BenchContainerEnv,
+  mode: 'normalize' | 'add',
+  appName = ''
+): Promise<string[]> => {
+  const script = [
+    'from pathlib import Path',
+    'import sys',
+    'path = Path("sites/apps.txt")',
+    'apps = [line.strip() for line in path.read_text().splitlines() if line.strip()] if path.exists() else []',
+    'app = sys.argv[2]',
+    'apps.append(app) if sys.argv[1] == "add" and app and app not in apps else None',
+    'path.parent.mkdir(parents=True, exist_ok=True)',
+    'path.write_text(("\\n".join(apps) + "\\n") if apps else "")',
+    'print("\\n".join(apps))',
+  ].join('; ');
+  const result = await execPromise(
+    containerEnv.runtimeCmd,
+    composeExecArgs(containerEnv.projectName, 'frappe', ['python', '-c', script, mode, appName]),
+    benchPath,
+    undefined,
+    containerEnv.runtimeEnv,
+    { idleTimeout: 30000, maxTimeout: 60000 }
+  );
+  if (result.code !== 0) throw new Error(result.stderr || result.stdout);
+  return result.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+};
+
+const ensureBenchProcfile = async (
   benchPath: string,
   context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
-  stepId: string
-): void => {
+  stepId: string,
+  containerEnv?: BenchContainerEnv
+): Promise<void> => {
   const procfilePath = path.join(benchPath, 'Procfile');
   const content = [
     'web: DEV_SERVER=0 bench serve --port 8000 --proxy',
@@ -195,6 +259,23 @@ const ensureBenchProcfile = (
   ].join('\n');
 
   try {
+    if (process.platform === 'win32' && containerEnv) {
+      const encodedContent = Buffer.from(content, 'utf8').toString('base64');
+      const result = await execPromise(
+        containerEnv.runtimeCmd,
+        composeExecArgs(containerEnv.projectName, 'frappe', [
+          'python', '-c',
+          'import base64, pathlib, sys; pathlib.Path("Procfile").write_bytes(base64.b64decode(sys.argv[1]))',
+          encodedContent,
+        ]),
+        benchPath,
+        undefined,
+        containerEnv.runtimeEnv,
+        { idleTimeout: 30000, maxTimeout: 60000 }
+      );
+      if (result.code !== 0) throw new Error(result.stderr || result.stdout);
+      return;
+    }
     fs.writeFileSync(procfilePath, content, 'utf8');
   } catch (error) {
     context.log('warning', `Failed to write managed Procfile: ${errorMessage(error)}`, stepId);
@@ -312,13 +393,43 @@ export const getFirstBenchSiteName = (benchPath: string): string | null => {
   }
 };
 
-export const ensureBenchSocketioPort = (
+export const ensureBenchSocketioPort = async (
   benchPath: string,
   _httpPort: number,
   context: { log: (level: 'info' | 'warning' | 'error', message: string, stepId?: string) => void },
-  stepId: string
-): void => {
+  stepId: string,
+  containerEnv?: BenchContainerEnv
+): Promise<void> => {
   try {
+    if (process.platform === 'win32' && containerEnv) {
+      const script = [
+        'import json',
+        'from pathlib import Path',
+        'sites = Path("sites")',
+        'config_path = sites / "common_site_config.json"',
+        'config = json.loads(config_path.read_text()) if config_path.exists() else {}',
+        'config["socketio_port"] = 443',
+        'config["dns_multitenant"] = True',
+        'config.pop("default_site", None)',
+        'config_path.write_text(json.dumps(config, indent=1))',
+        'ignored = {"assets", "archived_sites", "languages"}',
+        'site_names = sorted(p.name for p in sites.iterdir() if p.is_dir() and p.name not in ignored)',
+        'current_path = sites / "currentsite.txt"',
+        'current = current_path.read_text().strip() if current_path.exists() else ""',
+        'current_valid = bool(current) and (sites / current).is_dir()',
+        'current_path.write_text(site_names[0]) if not current_valid and site_names else (current_path.unlink(missing_ok=True) if not current_valid else None)',
+      ].join('; ');
+      const result = await execPromise(
+        containerEnv.runtimeCmd,
+        composeExecArgs(containerEnv.projectName, 'frappe', ['python', '-c', script]),
+        benchPath,
+        undefined,
+        containerEnv.runtimeEnv,
+        { idleTimeout: 30000, maxTimeout: 60000 }
+      );
+      if (result.code !== 0) throw new Error(result.stderr || result.stdout);
+      return;
+    }
     const configPath = path.join(benchPath, 'sites', 'common_site_config.json');
     if (!fs.existsSync(configPath)) {
       return;
@@ -433,7 +544,10 @@ export const fetchBenchApps = async (
   context.startStep(stepId, stepStartDesc);
 
   const appsTxtPath = path.join(bench.path, 'sites', 'apps.txt');
-  if (fs.existsSync(appsTxtPath)) {
+  const containerEnv = { projectName, runtimeCmd, runtimeEnv };
+  if (process.platform === 'win32') {
+    await updateContainerAppsTxt(bench.path, containerEnv, 'normalize').catch(() => undefined);
+  } else if (fs.existsSync(appsTxtPath)) {
     try {
       const existing = fs.readFileSync(appsTxtPath, 'utf8');
       if (existing.length > 0 && !existing.endsWith('\n') && !existing.endsWith('\r')) {
@@ -503,9 +617,13 @@ export const fetchBenchApps = async (
 
         // Add to apps.txt reliably via Node filesystem BEFORE building
         try {
-          const existingApps = fs.existsSync(appsTxtPath) ? fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
-          if (!existingApps.includes(appSlug)) {
-            fs.writeFileSync(appsTxtPath, `${[...existingApps, appSlug].join('\n')}\n`, 'utf8');
+          if (process.platform === 'win32') {
+            await updateContainerAppsTxt(bench.path, containerEnv, 'add', appSlug);
+          } else {
+            const existingApps = fs.existsSync(appsTxtPath) ? fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
+            if (!existingApps.includes(appSlug)) {
+              fs.writeFileSync(appsTxtPath, `${[...existingApps, appSlug].join('\n')}\n`, 'utf8');
+            }
           }
         } catch {
           // ignore
@@ -578,23 +696,19 @@ export const fetchBenchApps = async (
     } catch (error) {
       context.log('warning', `Cleaning up failed installation of app: ${appSlug}`, stepId);
       try {
-        // Remove the app folder (try host first, fallback to container if symlinks cause EPERM on Windows)
-        const appFolderPath = path.join(bench.path, 'apps', appSlug);
-        if (fs.existsSync(appFolderPath)) {
-          try {
+        if (process.platform === 'win32') {
+          await cleanupBenchAppArtifacts(bench.path, [appSlug], context, stepId, containerEnv);
+        } else {
+          const appFolderPath = path.join(bench.path, 'apps', appSlug);
+          if (fs.existsSync(appFolderPath)) {
             fs.rmSync(appFolderPath, { recursive: true, force: true });
-          } catch (e) {
-            context.log('warning', `Host cleanup failed, falling back to container cleanup for ${appSlug}...`, stepId);
-            await execPromise(runtimeCmd, composeBenchArgs(projectName, ['exec', '-T', 'frappe', 'rm', '-rf', `/workspace/apps/${appSlug}`]), bench.path, undefined, runtimeEnv, { idleTimeout: 60000, maxTimeout: 120000 });
           }
-        }
 
-        // Remove any invalid entries from apps.txt
-        if (fs.existsSync(appsTxtPath)) {
-          let existingApps = fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-          // Remove the app slug and any raw URLs that might have been accidentally added by a bug in bench
-          existingApps = existingApps.filter(a => a !== appSlug && !a.includes(appSlug) && !a.startsWith('http'));
-          fs.writeFileSync(appsTxtPath, existingApps.length > 0 ? `${existingApps.join('\n')}\n` : '', 'utf8');
+          if (fs.existsSync(appsTxtPath)) {
+            let existingApps = fs.readFileSync(appsTxtPath, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            existingApps = existingApps.filter(a => a !== appSlug && !a.includes(appSlug) && !a.startsWith('http'));
+            fs.writeFileSync(appsTxtPath, existingApps.length > 0 ? `${existingApps.join('\n')}\n` : '', 'utf8');
+          }
         }
       } catch (cleanupErr) {
         context.log('warning', `Failed to clean up app ${appSlug}: ${cleanupErr}`, stepId);
@@ -604,6 +718,10 @@ export const fetchBenchApps = async (
   }
 
   context.completeStep(stepId, stepCompleteDesc);
+
+  if (process.platform === 'win32') {
+    return updateContainerAppsTxt(bench.path, containerEnv, 'normalize').catch(() => allTargetApps);
+  }
 
   if (fs.existsSync(appsTxtPath)) {
     try {
@@ -678,7 +796,8 @@ export const orchestrateBenchCreation = (
         runtimeReadyForCleanup = true;
         context.completeStep('runtime', `Podman is ready`);
 
-        // Ensure bench directory and sites/apps subdirectories exist
+        // The host directory stores compose/devcontainer metadata. Bench itself is
+        // initialized in the mounted workspace (a named volume on Windows).
         context.startStep('init', `Initializing bench directory at ${bench.path}`);
         if (!fs.existsSync(bench.path)) {
           context.log('info', `Creating directory: ${bench.path}`, 'init');
@@ -686,10 +805,6 @@ export const orchestrateBenchCreation = (
         } else {
           context.log('info', `Using existing directory: ${bench.path}`, 'init');
         }
-        const sitesDir = path.join(bench.path, 'sites');
-        const appsDir = path.join(bench.path, 'apps');
-        if (!fs.existsSync(sitesDir)) fs.mkdirSync(sitesDir, { recursive: true });
-        if (!fs.existsSync(appsDir)) fs.mkdirSync(appsDir, { recursive: true });
         context.completeStep('init', 'Bench directory initialized');
 
         context.startStep('env', 'Generating docker-compose configuration');
@@ -808,8 +923,9 @@ export const orchestrateBenchCreation = (
 
         // Some app frontends import this key at build time. The value keeps browser
         // socket traffic on the Caddy HTTPS front door, which proxies /socket.io.
-        ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'setup');
-        ensureBenchProcfile(bench.path, context, 'setup');
+        const containerEnv = { projectName, runtimeCmd: command, runtimeEnv };
+        await ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'setup', containerEnv);
+        await ensureBenchProcfile(bench.path, context, 'setup', containerEnv);
         await ensureBenchDevcontainer(bench.path, context, 'setup', undefined, bench.id);
 
         context.completeStep('setup', 'Bench initialized and configured');
@@ -1015,8 +1131,9 @@ export const orchestrateBenchAppChanges = (
         }
         context.completeStep('bench-service', 'Bench containers are running');
         recoveryEnv = { command, projectName, runtimeEnv };
-        ensureBenchSocketioPort(bench.path, bench.httpPort ?? DEFAULT_HTTP_PORT, context, 'bench-service');
-        ensureBenchProcfile(bench.path, context, 'bench-service');
+        const containerEnv = { projectName, runtimeCmd: command, runtimeEnv };
+        await ensureBenchSocketioPort(bench.path, bench.httpPort ?? DEFAULT_HTTP_PORT, context, 'bench-service', containerEnv);
+        await ensureBenchProcfile(bench.path, context, 'bench-service', containerEnv);
         await ensureBenchDevcontainer(bench.path, context, 'bench-service', undefined, bench.id);
 
         // Temporarily pause background bench processes (watch, workers, web) to free up the 4GB VM memory
@@ -1094,7 +1211,13 @@ export const orchestrateBenchAppChanges = (
             }
           }
 
-          await cleanupBenchAppArtifacts(bench.path, removedAppSlugs, context, 'remove-apps');
+          await cleanupBenchAppArtifacts(
+            bench.path,
+            removedAppSlugs,
+            context,
+            'remove-apps',
+            recoveryEnv ? { projectName: recoveryEnv.projectName, runtimeCmd: recoveryEnv.command, runtimeEnv: recoveryEnv.runtimeEnv } : undefined
+          );
           context.completeStep('remove-apps', 'Selected apps removed');
         }
 
@@ -1139,7 +1262,8 @@ export const orchestrateBenchAppChanges = (
               bench.path,
               attemptedInstallAppIds,
               context.signal.aborted ? { log: () => undefined } : context,
-              'rollback-apps'
+              'rollback-apps',
+              recoveryEnv ? { projectName: recoveryEnv.projectName, runtimeCmd: recoveryEnv.command, runtimeEnv: recoveryEnv.runtimeEnv } : undefined
             );
 
             if (recoveryEnv) {
@@ -1293,8 +1417,10 @@ export const orchestrateBenchStart = (
           context.log('info', `Mounting ${localVolumes.length} custom app volume(s) into containers`, 'env');
         }
         ensureBenchComposeWritten(bench.path, bench.frappeVersion, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, shareSshKeys, localVolumes);
-        ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
-        ensureBenchProcfile(bench.path, context, 'env');
+        if (process.platform !== 'win32') {
+          await ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env');
+          await ensureBenchProcfile(bench.path, context, 'env');
+        }
         await ensureBenchDevcontainer(bench.path, context, 'env', undefined, bench.id);
         context.log('info', `Wrote docker-compose.yml for Frappe ${bench.frappeVersion}`, 'env');
         context.completeStep('env', `Compose generated (HTTP port ${benchWithPort.httpPort})`);
@@ -1374,6 +1500,11 @@ export const orchestrateBenchStart = (
           throw new Error(`Command failed with code ${upResult.code}: ${upResult.stderr}`);
         }
 
+        if (process.platform === 'win32') {
+          const containerEnv = { projectName, runtimeCmd: command, runtimeEnv };
+          await ensureBenchSocketioPort(bench.path, benchWithPort.httpPort ?? DEFAULT_HTTP_PORT, context, 'env', containerEnv);
+          await ensureBenchProcfile(bench.path, context, 'env', containerEnv);
+        }
         context.completeStep('start', 'Containers are running');
 
         context.startStep('run', 'Starting bench processes');
@@ -1528,11 +1659,28 @@ export const orchestrateBenchCleaning = (
         // 1. Get sites from DB
         let allSites = await sitesRepo.findAll();
         const dbSites = allSites.filter(s => s.benchId === bench.id).map(s => s.name);
+        const runtimeCmd = getBinaryPath('docker-compose');
+        const runtimeEnv = await getRuntimeEnv();
+        const projectName = getComposeProjectName(bench.id);
 
         // 2. Get sites from Disk
         let diskSites: string[] = [];
         const sitesPath = path.join(bench.path, 'sites');
-        if (fs.existsSync(sitesPath)) {
+        if (process.platform === 'win32') {
+          const listResult = await execPromise(
+            runtimeCmd,
+            composeExecArgs(projectName, 'frappe', ['find', 'sites', '-mindepth', '1', '-maxdepth', '1', '-type', 'd', '-printf', '%f\n']),
+            bench.path,
+            undefined,
+            runtimeEnv,
+            { idleTimeout: 30000, maxTimeout: 60000 }
+          );
+          if (listResult.code === 0) {
+            diskSites = listResult.stdout.split(/\r?\n/).map((name) => name.trim()).filter((name) => name && !['assets', 'languages'].includes(name));
+          } else {
+            context.log('warning', `Could not scan container workspace sites: ${listResult.stderr || listResult.stdout}`);
+          }
+        } else if (fs.existsSync(sitesPath)) {
           const entries = fs.readdirSync(sitesPath, { withFileTypes: true });
           diskSites = entries
             .filter((e) => e.isDirectory() && !['assets', 'languages'].includes(e.name))
@@ -1560,10 +1708,7 @@ export const orchestrateBenchCleaning = (
         }
         context.completeStep('verify', 'Bench consistency verified');
 
-        const runtimeCmd = getBinaryPath('docker-compose');
-        const runtimeEnv = await getRuntimeEnv();
         const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
-        const projectName = getComposeProjectName(bench.id);
 
         // Refresh sites list for cleanup operations
         allSites = await sitesRepo.findAll();
@@ -1636,11 +1781,10 @@ export const orchestrateBenchDeletion = (
             context.log('info', `Removing directory: ${bench.path}`, 'fs');
             try {
               await fs.promises.rm(bench.path, { recursive: true, force: true });
-            } catch (err: any) {
-              if (process.platform === 'win32' && err?.code === 'EPERM') {
+            } catch (err: unknown) {
+              if (process.platform === 'win32' && err instanceof Error && 'code' in err && err.code === 'EPERM') {
                 context.log('warning', `Node fs.rm failed with EPERM, falling back to native rmdir...`, 'fs');
                 await new Promise<void>((resolve, reject) => {
-                  const { spawn } = require('node:child_process');
                   const child = spawn('cmd.exe', ['/c', 'rmdir', '/s', '/q', bench.path], { windowsHide: true });
                   child.on('close', (code: number) => {
                     if (code === 0) resolve();
@@ -1675,7 +1819,7 @@ export const orchestrateBenchDeletion = (
         context.startStep('deleting', 'Deleting...');
         const command = getBinaryPath('docker-compose');
         const projectName = getComposeProjectName(bench.id);
-        const args = ['-p', projectName, 'down', '-v', '--remove-orphans'];
+        const args = [...benchComposeArgs(projectName, getBenchComposePath(bench.path)), 'down', '-v', '--remove-orphans'];
         context.log('info', `Running: ${command} ${args.join(' ')}`, 'deleting');
 
         if (!runtimeReady) {

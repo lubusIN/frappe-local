@@ -76,7 +76,9 @@ const copyFileWithMode = (src, dest) => {
         attempts++;
         if (attempts >= 10) throw err;
         const start = Date.now();
-        while (Date.now() - start < 500) {} // Sync sleep 500ms
+        while (Date.now() - start < 500) {
+          // Sync sleep because this script runs during installation.
+        }
       } else {
         throw err;
       }

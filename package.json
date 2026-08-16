@@ -8,14 +8,12 @@
   "scripts": {
     "start": "vite",
     "build": "npm run typecheck && vite build",
-    "release": "npm run build && npm run release:x64 && npm run release:arm64",
-    "release:x64": "electron-builder --win --x64 --publish never",
-    "release:arm64": "electron-builder --win --arm64 --publish never",
+    "release": "npm run build && electron-builder --publish never",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
     "test": "vitest run",
-    "dev:reset": "node scripts/reset-dev-state.js",
+    "dev:reset-state": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"
   },
   "author": "lubus <ajit@lubus.in>",

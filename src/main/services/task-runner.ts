@@ -166,7 +166,7 @@ export class TaskRunner {
           if (powerSaveBlocker.isStarted(this.powerSaveBlockerId)) {
             powerSaveBlocker.stop(this.powerSaveBlockerId);
           }
-        } catch (e) {
+        } catch {
           // Ignore
         }
         this.powerSaveBlockerId = null;
@@ -180,7 +180,7 @@ export class TaskRunner {
         // prevent-app-suspension is more appropriate for background tasks 
         // than prevent-display-sleep. It stops the CPU from sleeping but lets the screen turn off.
         this.powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension');
-      } catch (e) {
+      } catch {
         // Ignore
       }
     }

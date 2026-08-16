@@ -23,13 +23,14 @@ export interface BenchComposeOptions {
   httpPort: number;
   localVolumes?: Array<{ source: string; target: string }>;
   shareSshKeys: boolean;
+  platform?: NodeJS.Platform;
 }
 
 /**
  * Generates the docker-compose YAML content for a bench.
  */
 export const generateBenchCompose = (options: BenchComposeOptions): string => {
-  const { httpPort } = options;
+  const { httpPort, platform = process.platform } = options;
   const image = getImageTag();
   // Socket.io port derived from httpPort to avoid collisions
   const socketPort = httpPort + 1000;
@@ -44,7 +45,7 @@ services:
     user: frappe
     environment:
       SHELL: /bin/bash
-    volumes:${process.platform === 'win32' ? `
+    volumes:${platform === 'win32' ? `
       - bench-workspace:/workspace` : `
       - ../:/workspace:cached`}
 ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.localVolumes ? options.localVolumes.map(v => `      - ${v.source}:${v.target}`).join('\n') : ''}
@@ -79,7 +80,7 @@ ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.
     image: docker.io/redis:alpine
 
 volumes:
-  mariadb-data:${process.platform === 'win32' ? `
+  mariadb-data:${platform === 'win32' ? `
   bench-workspace:` : ''}
 `;
 };
