@@ -14,23 +14,30 @@ describe('bench compose generation', () => {
     expect(content).toContain('redis:\n    image: docker.io/redis:alpine');
   });
 
-  it('mounts the workspace using the appropriate strategy for the current platform', () => {
+  it('keeps the main-branch bind mount on macOS and Linux', () => {
     const content = generateBenchCompose({
       frappeVersion: 'version-16',
       httpPort: 8080,
       shareSshKeys: false,
+      platform: 'darwin',
     });
 
-    if (process.platform === 'win32') {
-      // Windows uses a named volume for native ext4 performance
-      expect(content).toContain('- bench-workspace:/workspace');
-      expect(content).not.toContain('- ../:/workspace:cached');
-    } else {
-      // Mac/Linux uses a bind mount for direct host access
-      expect(content).toContain('- ../:/workspace:cached');
-      expect(content).not.toContain('bench-workspace');
-    }
+    expect(content).toContain('- ../:/workspace:cached');
+    expect(content).not.toContain('bench-workspace');
     expect(content).not.toContain('bench_assets');
+  });
+
+  it('uses container-native workspace storage on Windows', () => {
+    const content = generateBenchCompose({
+      frappeVersion: 'version-16',
+      httpPort: 8080,
+      shareSshKeys: false,
+      platform: 'win32',
+    });
+
+    expect(content).toContain('- bench-workspace:/workspace');
+    expect(content).not.toContain('- ../:/workspace:cached');
+    expect(content).toContain('volumes:\n  mariadb-data:\n  bench-workspace:');
   });
 
   it('maps HTTP and SocketIO ports correctly', () => {

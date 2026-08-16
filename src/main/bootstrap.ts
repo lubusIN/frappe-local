@@ -14,7 +14,7 @@ import { resolveEditorCommand } from '@frappe-local/main/utils';
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
 
-import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, installWslTask, isCaddyFrontDoorAvailable, isCaddyFrontDoorRunning, isCaddyFrontDoorSecure, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, installWslTask, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 

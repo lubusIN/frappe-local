@@ -6,12 +6,15 @@ import { createMainLogger } from '@frappe-local/main/logger';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
+import { exec as execCommand } from 'node:child_process';
+import type { PodmanMachineStatus } from '@frappe-local/main/utils/podman/podman';
 import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 import { PODMAN_RUNTIME_TIMEOUTS } from '@frappe-local/main/constants';
 
 const logger = createMainLogger('runtime');
 
 export const FRAPPE_LOCAL_MACHINE_NAME = 'frappe-local';
+const FRAPPE_LOCAL_WSL_DISTRO_NAME = `podman-machine-${FRAPPE_LOCAL_MACHINE_NAME}`;
 
 let podmanMemoryProvider = async (): Promise<number> => MIN_PODMAN_MEMORY_MB;
 let lastRuntimeError: string | null = null;
@@ -51,7 +54,7 @@ export const installWslTask = async (context: TaskExecutionContext): Promise<voi
         fs.closeSync(fd);
 
         // Remove null bytes which powershell sometimes outputs, and split lines
-        const text = buffer.toString('utf8').replace(/\x00/g, '');
+        const text = buffer.toString('utf8').split('\0').join('');
         const lines = text.split(/\r?\n/);
         for (const line of lines) {
           if (line.trim()) {
@@ -422,14 +425,13 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
 
     // 2. On Mac/Windows, check machine status
     if (isPodmanMachineRequired()) {
-      let machines: any[];
+      let machines: PodmanMachineStatus[];
       try {
         machines = await getPodmanMachines();
       } catch (err) {
         if (process.platform === 'win32' && errorMessage(err).toLowerCase().includes('timed out')) {
           logWarn('Podman machine ls timed out. WSL might be deadlocked. Forcefully terminating WSL VM...');
-          const cp = require('child_process');
-          await new Promise<void>((resolve) => cp.exec(`wsl --terminate podman-${FRAPPE_LOCAL_MACHINE_NAME}`, () => resolve()));
+          await new Promise<void>((resolve) => execCommand(`wsl --terminate ${FRAPPE_LOCAL_WSL_DISTRO_NAME}`, () => resolve()));
           logMsg('Retrying podman machine ls...');
           machines = await getPodmanMachines();
         } else {
@@ -498,17 +500,15 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
             }
             await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
           } else if (process.platform === 'win32' && (normalizedMessage.includes('all pipe instances are busy') || normalizedMessage.includes('ssh error') || normalizedMessage.includes('machine is not listening on ssh port'))) {
-            logWarn('WSL VM appears to be in a stuck/zombie state. Attempting to force restart WSL...');
+            logWarn('Frappe Local Podman VM appears stuck. Restarting only its WSL distribution...');
             try {
-              const { execPromise } = require('./bench-orchestration');
-              const cp = require('child_process');
               await new Promise<void>((resolve, reject) => {
-                cp.exec('wsl --shutdown', (error: any) => {
+                execCommand(`wsl --terminate ${FRAPPE_LOCAL_WSL_DISTRO_NAME}`, (error) => {
                   if (error) reject(error);
                   else resolve();
                 });
               });
-              logMsg('WSL has been forcefully restarted. Retrying podman machine start...');
+              logMsg('Frappe Local Podman WSL distribution stopped. Retrying machine start...');
               await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Starting Podman machine', undefined, onLog);
             } catch (wslErr) {
               logWarn(`Failed to force restart WSL: ${wslErr}`);

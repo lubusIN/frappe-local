@@ -10,7 +10,7 @@ import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner, ensureRuntimeRun
 import { fetchBenchApps } from './bench-orchestration';
 
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
-import { composeBenchArgs, composeBenchSiteArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
+import { composeBenchArgs, composeBenchSiteArgs, composeExecArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
 
 /** Shared execution context for running bench commands against a site. */
 export type SiteCommandEnv = {
@@ -225,9 +225,20 @@ export const orchestrateSiteCreation = async (
         }
 
         try {
-          const siteFolderPath = path.join(bench.path, 'sites', input.name);
-          if (fs.existsSync(siteFolderPath)) {
-            await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
+          if (process.platform === 'win32') {
+            await execPromise(
+              runtimeCmd,
+              composeExecArgs(projectName, 'frappe', ['rm', '-rf', `/workspace/sites/${input.name}`]),
+              bench.path,
+              undefined,
+              runtimeEnv,
+              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
+            );
+          } else {
+            const siteFolderPath = path.join(bench.path, 'sites', input.name);
+            if (fs.existsSync(siteFolderPath)) {
+              await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
+            }
           }
         } catch (cleanupError) {
           context.log('warning', `Filesystem cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
@@ -287,7 +298,7 @@ export const orchestrateSiteCreation = async (
         const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
         await migrateSite(context, input.name, siteEnv);
         await clearSiteCaches(context, input.name, siteEnv);
-        ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'new-site');
+        await ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'new-site', { projectName, runtimeCmd, runtimeEnv });
         await restartBenchServices(context, siteEnv);
 
         const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'ready' });
@@ -404,11 +415,22 @@ export const orchestrateSiteDeletion = async (
 
         context.startStep('rm-dir', `Removing site directory`);
         try {
-          const siteFolderPath = path.join(bench.path, 'sites', site.name);
-          if (fs.existsSync(siteFolderPath)) {
-            await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
+          if (process.platform === 'win32') {
+            await execPromise(
+              runtimeCmd,
+              composeExecArgs(projectName, 'frappe', ['rm', '-rf', `/workspace/sites/${site.name}`]),
+              bench.path,
+              undefined,
+              runtimeEnv,
+              { idleTimeout: 30000, maxTimeout: 60000 }
+            );
+          } else {
+            const siteFolderPath = path.join(bench.path, 'sites', site.name);
+            if (fs.existsSync(siteFolderPath)) {
+              await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
+            }
           }
-          ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'rm-dir');
+          await ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'rm-dir', { projectName, runtimeCmd, runtimeEnv });
           if (bench.status === 'running') {
             const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
             await restartBenchServices(context, siteEnv).catch((err) =>

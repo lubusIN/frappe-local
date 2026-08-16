@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const getAppSupportPath = () => {
   if (process.platform === 'win32') {
-    return path.join(os.homedir(), 'AppData', 'Roaming', 'frappe-local-dev');
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Frappe Local');
   }
   if (process.platform === 'darwin') {
     return path.join(os.homedir(), 'Library', 'Application Support', 'Frappe Local');
@@ -119,14 +119,6 @@ if (machineNames.includes(FRAPPE_LOCAL_MACHINE_NAME)) {
     `destroy Podman machine ${FRAPPE_LOCAL_MACHINE_NAME}`,
     podmanBinary,
     ['machine', 'rm', '--force', FRAPPE_LOCAL_MACHINE_NAME]
-  );
-}
-
-if (process.platform === 'win32') {
-  runBestEffort(
-    'unregister default WSL Ubuntu distro',
-    'wsl.exe',
-    ['--unregister', 'Ubuntu']
   );
 }
 

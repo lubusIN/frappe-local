@@ -260,12 +260,14 @@ export const registerIpcHandlers = (
     if (typeof checkType !== 'string') return false;
 
     if (checkType === 'system-restart') {
+      if (process.platform !== 'win32') return false;
       mainLogger.info('Triggering system restart...');
       await execPromise('shutdown', ['/r', '/t', '0']);
       return true;
     }
 
     if (checkType === 'wsl' || checkType === 'Windows Subsystem for Linux (WSL2)' || checkType === 'Windows Subsystem') {
+      if (process.platform !== 'win32') return false;
       mainLogger.info('Triggering elevated WSL installation task...');
       if (!operations.installWslTask) return false;
       await taskRunner.enqueue({
@@ -1195,7 +1197,7 @@ export const registerIpcHandlers = (
 
     const sites = await repositories.sites.findAll();
     const site = sites.find((entry) => entry.id === id);
-    if (!site || !fs.existsSync(site.path)) {
+    if (!site || (process.platform !== 'win32' && !fs.existsSync(site.path))) {
       return false;
     }
 

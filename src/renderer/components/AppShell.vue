@@ -468,7 +468,7 @@ onMounted(async () => {
     await window.frappeLocal?.getSettings();
     if (navigator.userAgent.toLowerCase().includes('win')) {
       const report = await window.frappeLocal?.runDiagnostics();
-      const wslCheck = report?.checks?.find((c: any) => c.title.includes('Windows Subsystem') || c.title.includes('WSL'));
+      const wslCheck = report?.checks?.find((check) => check.title.includes('Windows Subsystem') || check.title.includes('WSL'));
       if (wslCheck && wslCheck.status === 'failed') {
         wslBlocked.value = true;
         if (localStorage.getItem('frappe_local_wsl_pending_restart') === 'true') {
