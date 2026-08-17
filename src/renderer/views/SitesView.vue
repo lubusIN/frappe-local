@@ -139,7 +139,7 @@
           >
             <FirstRunGuide
               title="Create a bench first"
-              body="Sites are attached to benches. Once you have one running bench, this screen becomes the main place to create, control, and export sites."
+              body="Sites live on bench, create one to get started."
               :links="siteSetupLinks"
               compact
             />

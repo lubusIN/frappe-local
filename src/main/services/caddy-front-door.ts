@@ -593,11 +593,11 @@ class CaddyFrontDoor {
         this.process = null;
         this.running = false;
         this.secure = false;
+        this.available = false;
         this.configKey = '';
         stopPidFromFile();
 
         if (!settled) {
-          this.available = false;
           logger.error(`Caddy front door exited before becoming ready (code=${code ?? 'null'}, signal=${signal ?? 'null'})`);
           settle(false);
           return;
