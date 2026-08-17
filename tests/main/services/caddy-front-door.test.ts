@@ -46,6 +46,19 @@ describe('caddy front door config', () => {
     expect(caddyfile).not.toContain('FRAPPE_LOCAL_TAILWIND_CSS');
   });
 
+  it('keeps clean HTTPS routes without binding port 80', () => {
+    const caddyfile = buildCaddyfile([
+      { siteHost: 'https-only.localhost', benchPort: 18080 },
+    ], { includeHttp: false });
+
+    expect(caddyfile).toContain('https://https-only.localhost');
+    expect(caddyfile).toContain('tls internal');
+    expect(caddyfile).toContain('auto_https disable_redirects');
+    expect(caddyfile).toContain('handle /socket.io/*');
+    expect(caddyfile).toContain('reverse_proxy 127.0.0.1:19080');
+    expect(caddyfile).not.toContain('http://https-only.localhost');
+  });
+
   it('removes stale local site certificate directories while keeping active hosts', () => {
     const certRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'frappe-local-certs-test-'));
     fs.mkdirSync(path.join(certRoot, 'localhost'));

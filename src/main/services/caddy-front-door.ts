@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { X509Certificate, createHash } from 'node:crypto';
@@ -19,6 +20,7 @@ const CADDY_PID_PATH = path.join(CADDY_RUNTIME_DIR, 'caddy.pid');
 const CADDY_ADMIN_ADDRESS = 'localhost:29919';
 const CADDY_TRUST_TIMEOUT_MS = 60_000;
 const CADDY_ROOT_WAIT_TIMEOUT_MS = 10_000;
+const CADDY_HTTP_PORT = 80;
 const getCaddyDataDir = (): string => {
   if (process.platform === 'win32') {
     return path.join(
@@ -67,6 +69,13 @@ type CommandResult = {
   readonly stdout: string;
   readonly stderr: string;
 };
+
+const canBindFrontDoorPort = (port: number): Promise<boolean> => new Promise((resolve) => {
+  const server = net.createServer();
+  server.once('error', () => resolve(false));
+  server.once('listening', () => server.close(() => resolve(true)));
+  server.listen(port);
+});
 
 const runCommand = (
   command: string,
@@ -431,7 +440,11 @@ export const pruneStaleCaddySiteCertificates = (
   }
 };
 
-export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
+export const buildCaddyfile = (
+  routes: FrontDoorRoute[] = [],
+  options: { includeHttp?: boolean } = {}
+): string => {
+  const includeHttp = options.includeHttp ?? true;
   const orderedRoutes = routes.length > 0 ? [{ siteHost: 'localhost', benchPort: routes[0]!.benchPort }, ...routes] : [];
   const uniqueRoutes = new Map<string, FrontDoorRoute>();
 
@@ -455,21 +468,23 @@ export const buildCaddyfile = (routes: FrontDoorRoute[] = []): string => {
   reverse_proxy 127.0.0.1:${benchPort} {
     header_up Host {host}
   }`;
-      return `http://${siteHost} {
+      const httpBlock = includeHttp ? `http://${siteHost} {
 ${proxy}
 }
 
-https://${siteHost} {
+` : '';
+      return `${httpBlock}https://${siteHost} {
   tls internal
 ${proxy}
 }`;
     })
     .join('\n\n');
+  const autoHttpsConfig = includeHttp ? '' : '  auto_https disable_redirects\n';
 
   return `{
   admin ${CADDY_ADMIN_ADDRESS}
   skip_install_trust
-  servers {
+${autoHttpsConfig}  servers {
     protocols h1 h2
   }
 }
@@ -486,6 +501,7 @@ class CaddyFrontDoor {
   private secure = false;
   private available = true;
   private configKey = '';
+  private includeHttp = true;
 
   public isRunning(): boolean {
     return this.running;
@@ -507,10 +523,16 @@ class CaddyFrontDoor {
       return true;
     }
 
-    const siteHostsKey = routes.map((route) => `${route.siteHost}:${route.benchPort}`).join('|');
-    const desiredConfig = buildCaddyfile(routes);
+    const includeHttp = this.running ? this.includeHttp : await canBindFrontDoorPort(CADDY_HTTP_PORT);
+    if (!includeHttp) {
+      logger.warn('Port 80 is unavailable; starting the Caddy front door in HTTPS-only mode.');
+    }
+    const siteHostsKey = `${includeHttp ? 'http+https' : 'https'}|${routes.map((route) => `${route.siteHost}:${route.benchPort}`).join('|')}`;
+    const desiredConfig = buildCaddyfile(routes, { includeHttp });
     if (this.running && this.configKey === siteHostsKey && canReuseManagedFrontDoor(desiredConfig)) {
-      this.secure = await ensureCaddyRootTrusted();
+      const trusted = await ensureCaddyRootTrusted();
+      this.secure = true;
+      if (!trusted) logger.warn('Caddy HTTPS is available, but its local root certificate is not trusted.');
       this.available = true;
       return true;
     }
@@ -518,7 +540,10 @@ class CaddyFrontDoor {
     if (canReuseManagedFrontDoor(desiredConfig)) {
       this.process = null;
       this.running = true;
-      this.secure = await ensureCaddyRootTrusted();
+      const trusted = await ensureCaddyRootTrusted();
+      this.secure = true;
+      this.includeHttp = includeHttp;
+      if (!trusted) logger.warn('Caddy HTTPS is available, but its local root certificate is not trusted.');
       this.available = true;
       this.configKey = siteHostsKey;
       logger.info('Reusing existing managed Caddy front door process with unchanged config.');
@@ -556,15 +581,17 @@ class CaddyFrontDoor {
       };
 
       const readyTimer = setTimeout(async () => {
-        const secure = await ensureCaddyRootTrusted();
+        const trusted = await ensureCaddyRootTrusted();
         if (this.process !== child) {
           settle(false);
           return;
         }
-        this.secure = secure;
+        this.secure = true;
         this.running = true;
         this.available = true;
+        this.includeHttp = includeHttp;
         this.configKey = siteHostsKey;
+        if (!trusted) logger.warn('Caddy HTTPS is available, but its local root certificate is not trusted.');
         settle(true);
       }, 1000);
 
