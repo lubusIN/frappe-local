@@ -214,7 +214,10 @@
                   : 'Frappe Local requires Windows Subsystem for Linux (WSL2) to run containerized environments on Windows.' }}
               </p>
 
-              <p v-if="wslError" class="text-xs text-ink-red-8 bg-surface-red-1 p-2 rounded border border-outline-red-2 break-words">
+              <p
+                v-if="wslError"
+                class="text-xs text-ink-red-8 bg-surface-red-1 p-2 rounded border border-outline-red-2 break-words"
+              >
                 {{ wslError }}
               </p>
 
@@ -231,16 +234,32 @@
                 {{ wslInstalling ? 'Installing WSL...' : 'Install' }}
               </Button>
 
-              <div v-if="wslInstallTask" class="mt-2 w-full overflow-hidden rounded-md bg-surface-base border border-outline-gray-2 flex flex-col text-left">
+              <div
+                v-if="wslInstallTask"
+                class="mt-2 w-full overflow-hidden rounded-md bg-surface-base border border-outline-gray-2 flex flex-col text-left"
+              >
                 <div class="px-3 py-1.5 border-b border-outline-gray-2 bg-surface-gray-1 flex items-center justify-between">
                   <span class="text-[11px] font-medium text-ink-gray-6 uppercase tracking-wider">Installation Log</span>
-                  <LoadingIndicator v-if="wslInstallTask.status === 'running' || wslInstallTask.status === 'queued'" class="size-3 text-ink-blue-5" />
+                  <LoadingIndicator
+                    v-if="wslInstallTask.status === 'running' || wslInstallTask.status === 'queued'"
+                    class="size-3 text-ink-blue-5"
+                  />
                 </div>
-                <div ref="wslLogsContainer" class="p-3 h-32 overflow-y-auto font-mono text-[10px] leading-relaxed text-ink-gray-7 cursor-text select-text whitespace-pre-wrap break-words">
-                  <div v-for="(log, idx) in wslInstallTask.logs" :key="idx" :class="{'text-ink-red-6': log.level === 'error'}">
+                <div
+                  ref="wslLogsContainer"
+                  class="p-3 h-32 overflow-y-auto font-mono text-[10px] leading-relaxed text-ink-gray-7 cursor-text select-text whitespace-pre-wrap break-words"
+                >
+                  <div
+                    v-for="(log, idx) in wslInstallTask.logs"
+                    :key="idx"
+                    :class="{'text-ink-red-6': log.level === 'error'}"
+                  >
                     {{ log.message }}
                   </div>
-                  <div v-if="!wslInstallTask.logs?.length" class="text-ink-gray-4 italic">
+                  <div
+                    v-if="!wslInstallTask.logs?.length"
+                    class="text-ink-gray-4 italic"
+                  >
                     Waiting for output...
                   </div>
                 </div>

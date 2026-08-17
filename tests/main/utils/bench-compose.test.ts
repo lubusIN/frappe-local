@@ -9,7 +9,7 @@ describe('bench compose generation', () => {
       shareSshKeys: false,
     });
 
-    expect(content).toContain('services:\n  frappe:\n    image: docker.io/frappe/bench:latest');
+    expect(content).toContain('services:\n  frappe:\n    image: docker.io/frappe/bench:v5.31.0');
     expect(content).toContain('mariadb:\n    image: docker.io/mariadb:10.6');
     expect(content).toContain('redis:\n    image: docker.io/redis:alpine');
   });
