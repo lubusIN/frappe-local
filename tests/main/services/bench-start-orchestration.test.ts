@@ -127,7 +127,7 @@ describe('bench start/restart orchestration', () => {
     expect(execPromiseMock).toHaveBeenNthCalledWith(
       3,
       '/mock/docker-compose',
-      expect.arrayContaining(['exec', '-d', 'frappe', 'bench', 'start']),
+      ['-p', 'frappe-local-3689f4f1', '-f', expect.any(String), 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -142,7 +142,7 @@ describe('bench start/restart orchestration', () => {
       'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js'
     );
     expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
-      'web: DEV_SERVER=0 bench serve --port 8000 --proxy'
+      'web: DEV_SERVER=0 FRAPPE_BIND_ADDR=0.0.0.0 bench serve --port 8000 --proxy'
     );
     expect(context.log).toHaveBeenCalledWith(
       'warning',

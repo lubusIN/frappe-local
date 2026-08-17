@@ -250,7 +250,7 @@ const ensureBenchProcfile = async (
 ): Promise<void> => {
   const procfilePath = path.join(benchPath, 'Procfile');
   const content = [
-    'web: DEV_SERVER=0 bench serve --port 8000 --proxy',
+    'web: DEV_SERVER=0 FRAPPE_BIND_ADDR=0.0.0.0 bench serve --port 8000 --proxy',
     'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js',
     'watch: bench watch',
     'schedule: bench schedule',
@@ -958,7 +958,7 @@ export const orchestrateBenchCreation = (
         failingStepId = 'run';
         await execPromise(
           command,
-          [...commonArgs, 'exec', '-d', 'frappe', 'bench', 'start'],
+          [...commonArgs, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
           bench.path,
           (out) => context.log('info', out, 'run'),
           runtimeEnv,
@@ -1317,7 +1317,7 @@ export const orchestrateBenchAppChanges = (
             }
             const restartResult = await execPromise(
               recoveryEnv.command,
-              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
               bench.path,
               context.signal.aborted
                 ? undefined
@@ -1510,7 +1510,7 @@ export const orchestrateBenchStart = (
         context.startStep('run', 'Starting bench processes');
         await execPromise(
           command,
-          [...commonArgs, 'exec', '-d', 'frappe', 'bench', 'start'],
+          [...commonArgs, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
           bench.path,
           (out) => context.log('info', out, 'run'),
           runtimeEnv,

@@ -143,7 +143,7 @@ describe('bench app orchestration', () => {
     );
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-local-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
+      ['-p', 'frappe-local-bench-ap', 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -294,7 +294,7 @@ describe('bench app orchestration', () => {
     );
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-local-bench-ap', 'exec', '-d', 'frappe', 'bench', 'start'],
+      ['-p', 'frappe-local-bench-ap', 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -307,7 +307,7 @@ describe('bench app orchestration', () => {
     });
     const restartCallIndex = execPromiseMock.mock.calls.findIndex((call) => {
       const args = call[1] as string[];
-      return args.includes('start');
+      return args.some(a => a.includes('honcho start'));
     });
     expect(rebuildCallIndex).toBeGreaterThan(-1);
     expect(restartCallIndex).toBeGreaterThan(rebuildCallIndex);

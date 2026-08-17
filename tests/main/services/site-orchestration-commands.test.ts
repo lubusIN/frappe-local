@@ -201,8 +201,9 @@ describe('site orchestration command execution', () => {
       'exec',
       '-d',
       'frappe',
-      'bench',
-      'start',
+      'sh',
+      '-c',
+      'nohup honcho start > logs/honcho.log 2>&1',
     ]);
 
     const calledCommands = execPromiseMock.mock.calls.map((call) => (call[1] as string[]).join(' '));
@@ -349,8 +350,9 @@ describe('site orchestration command execution', () => {
       'exec',
       '-d',
       'frappe',
-      'bench',
-      'start',
+      'sh',
+      '-c',
+      'nohup honcho start > logs/honcho.log 2>&1',
     ]);
 
     expect(updateSiteMock).toHaveBeenCalledWith('site-001', {
@@ -464,8 +466,9 @@ describe('site orchestration command execution', () => {
       'exec',
       '-d',
       'frappe',
-      'bench',
-      'start',
+      'sh',
+      '-c',
+      'nohup honcho start > logs/honcho.log 2>&1',
     ]);
     expect(updateSiteMock).toHaveBeenLastCalledWith('site-001', { status: 'ready' });
     expect(updateSiteMock).not.toHaveBeenCalledWith(

@@ -125,7 +125,7 @@ const restartBenchServices = async (
   // Start it again
   const restartResult = await execPromise(
     env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+    ['-p', env.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
     env.benchPath,
     (out) => context.log('info', out, 'restart'),
     env.runtimeEnv,
@@ -810,7 +810,7 @@ export const orchestrateSiteAppsUpdate = (
 
             const restartResult = await execPromise(
               recoveryEnv.runtimeCmd,
-              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
               recoveryEnv.benchPath,
               undefined,
               recoveryEnv.runtimeEnv,
