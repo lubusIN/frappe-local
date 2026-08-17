@@ -15,7 +15,8 @@ export const getBenchComposePath = (benchPath: string): string =>
  * Returns the official frappe bench development image.
  */
 export const getImageTag = (): string => {
-  return `docker.io/frappe/bench:latest`;
+  // TODO: add config and auto update
+  return `docker.io/frappe/bench:v5.31.0`;
 };
 
 export interface BenchComposeOptions {
