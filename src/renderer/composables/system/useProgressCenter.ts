@@ -57,11 +57,14 @@ watch(acknowledgedTasks, (tasks) => {
     console.error('Failed to save acknowledged tasks:', err);
   }
 }, { deep: true });
-export const handledFailureTaskIds = new Set<string>(
-  initialState.tasks
+export const handledFailureTaskIds = new Set<string>([
+  ...initialState.tasks
     .filter((task) => task.type === 'task.failed')
-    .map((task) => task.taskId)
-);
+    .map((task) => task.taskId),
+  ...initialState.tasks
+    .filter((task) => task.type === 'task.cancelled' || (task.type === 'task.failed' && task.errorCode === 'cancelled'))
+    .map((task) => `cancelled:${task.taskId}`)
+]);
 
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
