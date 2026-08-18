@@ -78,4 +78,39 @@ describe('json storage adapter', () => {
 
     await adapter.close();
   });
+
+  it('serializes concurrent transactions without losing snapshot updates', async () => {
+    const storageFilePath = await createTemporaryStorageFilePath();
+    const adapter = new JsonStorageAdapter(storageFilePath);
+
+    await adapter.connect();
+    await adapter.writeSnapshot(createDefaultStorageSnapshot([], 1));
+
+    const addBench = (id: string) => adapter.transaction(async (snapshot) => ({
+      snapshot: {
+        ...snapshot,
+        benches: [
+          ...snapshot.benches,
+          {
+            id,
+            name: id,
+            path: `/tmp/${id}`,
+            frappe_version: 'version-15',
+            status: 'queued' as const,
+            apps: ['frappe'],
+            created_at: '2026-04-18T10:00:00.000Z',
+            updated_at: '2026-04-18T10:00:00.000Z',
+          },
+        ],
+      },
+      result: undefined,
+    }));
+
+    await Promise.all([addBench('bench-1'), addBench('bench-2')]);
+
+    const snapshot = await adapter.readSnapshot();
+    expect(snapshot.benches.map((bench) => bench.id)).toEqual(['bench-1', 'bench-2']);
+
+    await adapter.close();
+  });
 });
