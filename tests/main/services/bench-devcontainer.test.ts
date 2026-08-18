@@ -44,8 +44,12 @@ describe('ensureBenchDevcontainer', () => {
     expect(parsed.customizations.vscode.extensions).toContain('ms-python.python');
 
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
-    expect(settings['dev.containers.dockerPath']).toBe(dockerBin);
-    expect(settings['dev.containers.dockerComposePath']).toBe(composeBin);
+    expect(settings['dev.containers.dockerPath']).toBe(
+      process.platform === 'win32' ? path.resolve('bin/podman.exe') : dockerBin
+    );
+    expect(settings['dev.containers.dockerComposePath']).toBe(
+      process.platform === 'win32' ? path.resolve('bin/docker-compose.exe') : composeBin
+    );
     expect(logs).toHaveLength(0);
   });
 
