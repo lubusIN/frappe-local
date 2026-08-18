@@ -6,16 +6,27 @@
 
 # Frappe Local
 
-Frappe Local is a cross-platform desktop app that lets anyone create local Frappe benches and sites visually without Docker setup, dependency management, or terminal commands.
+Frappe Local is a cross-platform desktop app for creating and managing local Frappe benches and sites visually - without dependency management, or terminal commands.
 
 ## Status
 
 > [!CAUTION]
-> Project is currently under active development.
+> Frappe Local is currently under active development.
+
+## Features
+
+- Create and manage local Frappe benches visually
+- Create and manage Frappe sites without terminal commands
+- Install and manage Frappe apps
+- Run Frappe workloads inside managed Linux containers
+- Automatic local HTTPS using Caddy
+- Built-in diagnostics and setup assistance
+- Open projects directly in Visual Studio Code Dev Containers
+- Cross-platform support for macOS and Windows
 
 ## System Requirements
 
-Frappe benches and app asset builds run inside Linux containers. Some apps with large frontend builds, such as Wiki, require substantially more memory than a basic Frappe bench.
+Frappe benches and app asset builds run inside Linux containers. Apps with large frontend builds may require significantly more memory than a basic Frappe bench.
 
 ### Hardware
 
@@ -25,22 +36,26 @@ Frappe benches and app asset builds run inside Linux containers. Some apps with 
 | CPU | 4 cores with hardware virtualization | 6 or more cores |
 | Storage | 20 GB free SSD space | 40 GB or more for multiple benches and apps |
 
-Systems with less than 8 GB RAM are not supported. On macOS and Windows, Frappe Local configures its container environment to use approximately 75% of host memory while leaving memory available for the operating system.
+Systems with less than **8 GB RAM are not supported**.
+
+On macOS and Windows, Frappe Local configures its container environment to use approximately 75% of host memory while leaving memory available for the operating system.
 
 ### Platform
 
-- **macOS:** Apple Silicon or Intel Mac with hardware virtualization available.
-- **Windows:** 64-bit Windows with hardware virtualization support. Frappe Local detects whether WSL2 and Virtual Machine Platform are ready and provides an in-app setup flow when they need to be enabled.
+- **macOS:** Apple Silicon or Intel Mac with hardware virtualization support.
+- **Windows:** 64-bit Windows with hardware virtualization support. Frappe Local detects whether WSL2 and Virtual Machine Platform are configured and provides an in-app setup flow when required.
 
 ### Network
 
-An internet connection is required during initial setup and when installing apps. The network must allow access to:
+An internet connection is required during initial setup and when installing apps.
+
+Your network must allow access to:
 
 - `quay.io` for the Podman machine image
 - Frappe and app Git repositories, including `github.com`
-- npm, Yarn, Python, and system package registries used by selected apps
+- npm, Yarn, Python, and system package registries required by installed apps
 
-Corporate proxies, VPNs, firewalls, or antivirus software may need exceptions for Frappe Local, Podman, WSL, and the required registries.
+Corporate proxies, VPNs, firewalls, or antivirus software may require exceptions for Frappe Local, Podman, WSL, and the required registries.
 
 ### Optional Development Tools
 
@@ -52,59 +67,83 @@ Corporate proxies, VPNs, firewalls, or antivirus software may need exceptions fo
 ### macOS
 
 #### Download
-Download the latest release .dmg directly from [releases](https://github.com/lubusIN/frappe-local/releases). Pick the file that matches your macOS version/Architecture:
-- Apple Silicon (M1/M2/M3...): Frappe.Local-*-arm64.dmg
-- Intel (Core i5/i7/i9...): Frappe.Local-*-x64.dmg
 
-After download open and drag the app to the applications folder.
+Download the latest `.dmg` from [GitHub Releases](https://github.com/lubusIN/frappe-local/releases). Choose the file matching your Mac architecture:
+
+- **Apple Silicon (M1/M2/M3/...):** `Frappe.Local-*-arm64.dmg`
+- **Intel (Core i5/i7/i9/...):** `Frappe.Local-*-x64.dmg`
+
+Open the downloaded `.dmg` and drag **Frappe Local** into the **Applications** folder.
 
 #### Unblock Gatekeeper
-Apple blocks apps not from Mac App Store or signed by trusted developers. Open terminal and run the following command:
+
+App is not currently signed by an Apple-trusted developer certificate, macOS may block it from opening. Open Terminal and run:
 
 ```shell
 xattr -rds com.apple.quarantine /Applications/Frappe\ Local.app
 ```
-this will remove the quarantine attribute from the app and you can open it normally.
+This removes the quarantine attribute added by macOS. You should then be able to open Frappe Local normally.
 
 ### Windows
 
 #### Download
-Download the latest release .exe directly from [releases](https://github.com/lubusIN/frappe-local/releases). Pick the file that matches your Windows architecture (`x64` or `arm64`).
+
+Download the latest `.exe` installer from [GitHub Releases](https://github.com/lubusIN/frappe-local/releases).
 
 #### Unblock Windows SmartScreen
-Windows blocks apps that are not digitally signed. To bypass the SmartScreen block, open PowerShell in your downloads folder and run the following command on the installer (replace the filename if necessary):
+
+Because Frappe Local is not currently digitally signed, Windows SmartScreen may block the installer. Open PowerShell in your Downloads folder and run the following command, replacing the filename if necessary:
 
 ```powershell
 Unblock-File -Path ".\Frappe Local Setup-*.exe"
 ```
-this will remove the "Mark of the Web" from the file so you can install it normally. Alternatively, right-click the file -> **Properties** -> check **Unblock** -> **Apply**.
+This removes the **Mark of the Web** from the installer.
+
+Alternatively:
+
+1. Right-click the installer.
+2. Select **Properties**.
+3. Check **Unblock**.
+4. Click **Apply**.
 
 > [!WARNING]
-> Even after unblocking, Windows Defender Antivirus may quarantine the extracted `.exe` after installation. If your desktop shortcut is broken (blank white icon) and throws a *"Missing Shortcut"* error, please add an exclusion for `C:\Program Files\frappe-local` in your Windows Security settings and run the installer again.
-
+> Windows Defender Antivirus may still quarantine the extracted `.exe` after installation.
+> If the desktop shortcut shows a blank white icon or displays a **Missing Shortcut** error, add an exclusion for:
+> `C:\Program Files\frappe-local`
+> Then run the installer again.
 
 ## First Bench Creation
 
-The first bench creation on macOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`. Depending on the connection, this can take several minutes. Keep Frappe Local open until setup completes.
+Creating your first bench on macOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`.
 
-If setup fails, open **Diagnostics**, run the checks, and use **Fix**. The diagnostic error includes the underlying Podman output, such as blocked downloads, Gatekeeper restrictions, or missing VM helpers.
+Depending on your internet connection, this may take several minutes. Keep Frappe Local open until setup completes.
+
+If setup fails:
+
+1. Open **Diagnostics**.
+2. Run the available checks.
+3. Use **Fix** where available.
+
+Diagnostic errors include the underlying Podman output to help identify issues such as blocked downloads, Gatekeeper restrictions, or missing virtualization components.
 
 ## Local HTTPS
 
-Frappe Local uses Caddy to provide HTTPS for `*.localhost` sites. On first use, macOS or Windows may ask for permission to trust the Frappe Local certificate authority. If permission is denied or the trust store is unavailable, Frappe Local uses HTTP automatically instead of opening a site with an invalid certificate.
+Frappe Local uses Caddy to provide HTTPS for `*.localhost` sites. On first use, macOS or Windows may ask for permission to trust the Frappe Local certificate authority. If permission is denied or the system trust store is unavailable, Frappe Local automatically falls back to HTTP rather than opening the site with an invalid certificate.
 
 ## Development
 
-### Tech stack:
+### Tech Stack
+
 - Electron + Electron Forge
 - Vue 3 + Vite
 - TypeScript
-- Frappe UI (with Tailwind CSS)
-- Podman (Dedicated VM for Frappe containers)
-- Caddy (Local HTTPS reverse proxy)
+- Frappe UI + Tailwind CSS
+- Podman - dedicated VM for Frappe containers
+- Caddy - local HTTPS reverse proxy
 
-### Prerequisites:
-- Node.js (tested with Node 22)
+### Prerequisites
+
+- Node.js - tested with Node 22
 - npm
 
 ### Getting Started
@@ -122,7 +161,15 @@ npm start
 
 ### App Catalog
 
-Frappe Local dynamically fetches its list of available Frappe apps from the [Frappe Brewery](https://frappe-brewery.lubus.in/) (`https://frappe-brewery.lubus.in/index/apps.json`). The registry is automatically downloaded into the `bin/` directory as a build asset during `npm install` and is parsed at runtime. It is excluded from version control.
+Frappe Local dynamically fetches its list of available Frappe apps from [Frappe Brewery](https://frappe-brewery.lubus.in/).
+
+Registry:
+
+```text
+https://frappe-brewery.lubus.in/index/apps.json
+```
+
+The registry is automatically downloaded into the `bin/` directory as a build asset during `npm install` and parsed at runtime. The generated registry file is excluded from version control.
 
 ## Scripts
 
