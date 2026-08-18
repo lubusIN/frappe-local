@@ -363,10 +363,14 @@ export const ensureBenchDevcontainer = async (
       }
     }
 
-    const dockerBinName = process.platform === 'win32' ? 'docker.bat' : 'docker';
-    const composeBinName = process.platform === 'win32' ? 'docker-compose.bat' : 'docker-compose';
-    settings['dev.containers.dockerPath'] = path.join(devcontainerBinDir, dockerBinName);
-    settings['dev.containers.dockerComposePath'] = path.join(devcontainerBinDir, composeBinName);
+    // Dev Containers uses direct process spawning. Windows cannot spawn .bat
+    // wrappers this way (EINVAL), so use the bundled native executables there.
+    settings['dev.containers.dockerPath'] = process.platform === 'win32'
+      ? podmanPath
+      : path.join(devcontainerBinDir, 'docker');
+    settings['dev.containers.dockerComposePath'] = process.platform === 'win32'
+      ? composePath
+      : path.join(devcontainerBinDir, 'docker-compose');
 
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
   } catch (error) {
