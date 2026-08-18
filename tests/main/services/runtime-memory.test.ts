@@ -37,6 +37,7 @@ import {
   configurePodmanMemoryProvider,
   configureWslConfigPathProvider,
   ensureRuntimeRunning,
+  ensureWindowsDevContainerSupport,
   getLastRuntimeError,
   FRAPPE_LOCAL_MACHINE_NAME,
   updateWslConfigMemory,
@@ -147,6 +148,45 @@ describe('Podman machine memory configuration', () => {
 
     await expect(ensureRuntimeRunning()).resolves.toBe(false);
     expect(getLastRuntimeError()).toContain('helper binary vfkit was not found');
+  });
+
+  it('provisions Docker-compatible Dev Container support in the app-owned WSL distro', async () => {
+    await ensureWindowsDevContainerSupport();
+
+    if (process.platform === 'win32') {
+      expect(execPromiseMock).toHaveBeenCalledWith(
+        'wsl.exe',
+        [
+          '--distribution',
+          `podman-${FRAPPE_LOCAL_MACHINE_NAME}`,
+          '--user',
+          'root',
+          '--exec',
+          '/bin/sh',
+          '-c',
+          'compose_source="$(wslpath -u "$1")" && docker_cli_source="$(wslpath -u "$2")" && docker_wrapper_source="$(wslpath -u "$3")" && mkdir -p /usr/libexec/docker/cli-plugins /usr/libexec/frappe-local && if ! cmp -s "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; then install -m 0755 "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; fi && if ! cmp -s "$docker_cli_source" /usr/libexec/frappe-local/docker; then install -m 0755 "$docker_cli_source" /usr/libexec/frappe-local/docker; fi && if ! /usr/sbin/runuser -u user -- /usr/bin/podman --remote --url unix:///mnt/wsl/frappe-local-devcontainer.sock info >/dev/null 2>&1; then { /usr/bin/nsenter -m -p -t 16 --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemctl --user stop frappe-local-devcontainer-api.service >/dev/null 2>&1 || true; }; rm -f /mnt/wsl/frappe-local-devcontainer.sock; /usr/bin/nsenter -m -p -t 16 --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemd-run --user --unit=frappe-local-devcontainer-api --collect --property=Restart=always /usr/bin/podman --remote=false system service --time=0 unix:///mnt/wsl/frappe-local-devcontainer.sock; i=0; while [ ! -S /mnt/wsl/frappe-local-devcontainer.sock ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; test -S /mnt/wsl/frappe-local-devcontainer.sock; fi && rm -f /usr/bin/docker && install -m 0755 "$docker_wrapper_source" /usr/bin/docker && ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose',
+          'frappe-local-devcontainer-setup',
+          '/mock/docker-compose-linux.bin',
+          '/mock/docker-cli-linux.bin',
+          '/mock/docker-wsl-wrapper.sh',
+        ],
+        undefined,
+        undefined,
+        undefined,
+        { idleTimeout: 15000, maxTimeout: 30000 }
+      );
+    } else {
+      expect(execPromiseMock).not.toHaveBeenCalled();
+    }
+  });
+
+  it('provides actionable remediation when Dev Container support cannot be installed', async () => {
+    if (process.platform !== 'win32') return;
+    execPromiseMock.mockResolvedValueOnce({ stdout: '', stderr: 'permission denied', code: 1 });
+
+    await expect(ensureWindowsDevContainerSupport()).rejects.toThrow(
+      'Restart Frappe Local as administrator, then retry.'
+    );
   });
 
   it('formats DOCKER_HOST properly for Windows named pipes and unix sockets', async () => {
