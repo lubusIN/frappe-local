@@ -76,7 +76,7 @@ describe('site orchestration command execution', () => {
 
     getBinaryPathMock.mockReturnValue('/mock/docker-compose');
     getRuntimeEnvMock.mockResolvedValue({ DOCKER_HOST: 'unix:///tmp/mock.sock' });
-    execPromiseMock.mockResolvedValue({ stdout: 'healthy\n', stderr: '', code: 0 });
+    execPromiseMock.mockResolvedValue({ stdout: '', stderr: '', code: 0 });
     updateSiteMock.mockResolvedValue(createdSite);
 
     enqueueMock.mockImplementation((definition: { run: (ctx: TaskExecutionContext) => Promise<void> }) => {
