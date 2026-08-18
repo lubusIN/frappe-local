@@ -92,22 +92,35 @@ export const resolveEditorCommand = (commandName: string): { command: string; en
 export const createDevContainerFolderUri = (
   hostPath: string,
   workspaceFolder: string,
-  platform: NodeJS.Platform = process.platform
+  platform: NodeJS.Platform = process.platform,
+  windowsWslDistro = 'podman-frappe-local'
 ): string => {
   const remotePath = workspaceFolder.startsWith('/') ? workspaceFolder : `/${workspaceFolder}`;
-  const configPath = path.join(hostPath, '.devcontainer', 'devcontainer.json');
-  let configUriPath = configPath.replace(/\\/g, '/');
-  if (platform === 'win32' && /^[a-z]:\//i.test(configUriPath)) {
-    configUriPath = `/${configUriPath}`;
+  let descriptorHostPath = hostPath;
+  let configUriPath = path.join(hostPath, '.devcontainer', 'devcontainer.json').replace(/\\/g, '/');
+  let configScheme = 'file';
+  let localDocker = true;
+
+  if (platform === 'win32') {
+    const drivePath = hostPath.match(/^([a-z]):[\\/](.*)$/i);
+    if (drivePath) {
+      const drive = drivePath[1]!.toLowerCase();
+      const relativePath = drivePath[2]!.replace(/\\/g, '/');
+      const wslHostPath = `/mnt/${drive}/${relativePath}`;
+      descriptorHostPath = `\\\\wsl.localhost\\${windowsWslDistro}${wslHostPath.replace(/\//g, '\\')}`;
+      configUriPath = `${wslHostPath}/.devcontainer/devcontainer.json`;
+      configScheme = 'vscode-fileHost';
+      localDocker = false;
+    }
   }
 
   const authority = Buffer.from(JSON.stringify({
-    hostPath,
-    localDocker: true,
+    hostPath: descriptorHostPath,
+    localDocker,
     configFile: {
       $mid: 1,
       path: configUriPath,
-      scheme: 'file',
+      scheme: configScheme,
     },
   }), 'utf8').toString('hex');
   return `vscode-remote://dev-container+${authority}${encodeURI(remotePath)}`;
