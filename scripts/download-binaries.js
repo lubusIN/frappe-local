@@ -14,9 +14,14 @@ const require = createRequire(import.meta.url);
 // Constants
 const BIN_DIR = path.resolve(__dirname, '../bin');
 const DOCKER_COMPOSE_VERSION = 'v2.24.5';
+const DOCKER_CLI_VERSION = '27.5.1';
 const PODMAN_VERSION = 'v5.8.2';
 const CADDY_VERSION = 'v2.8.4';
 const BUNDLED_MACHINE_IMAGE_BASENAME = 'podman-machine-image';
+const WSL_DOCKER_WRAPPER = `#!/bin/sh
+export DOCKER_HOST=unix:///mnt/wsl/frappe-local-devcontainer.sock
+exec /usr/libexec/frappe-local/docker "$@"
+`;
 
 // Arch mapping for GitHub releases
 const getComposeArch = (arch) => {
@@ -44,6 +49,8 @@ const COMPOSE_URLS = {
   linux: `https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-linux-${getComposeArch(arch)}`,
   win32: `https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-windows-${getComposeArch(arch)}.exe`,
 };
+const WSL_COMPOSE_URL = `https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-linux-${getComposeArch(arch)}`;
+const WSL_DOCKER_CLI_URL = `https://download.docker.com/linux/static/stable/${getComposeArch(arch)}/docker-${DOCKER_CLI_VERSION}.tgz`;
 
 const PODMAN_URLS = {
   darwin: `https://github.com/containers/podman/releases/download/${PODMAN_VERSION}/podman-installer-macos-${arch === 'x64' ? 'amd64' : 'arm64'}.pkg`,
@@ -269,6 +276,23 @@ async function main() {
     await downloadFile(composeUrl, composeTarget);
     if (platform !== 'win32') {
       fs.chmodSync(composeTarget, 0o755);
+    }
+    if (platform === 'win32') {
+      await downloadFile(WSL_COMPOSE_URL, path.join(BIN_DIR, 'docker-compose-linux.bin'));
+      const dockerCliArchive = path.join(BIN_DIR, 'docker-cli-linux.tar.gz');
+      const dockerCliExtractDir = path.join(BIN_DIR, 'docker-cli-extract');
+      await downloadFile(WSL_DOCKER_CLI_URL, dockerCliArchive);
+      fs.rmSync(dockerCliExtractDir, { recursive: true, force: true });
+      fs.mkdirSync(dockerCliExtractDir, { recursive: true });
+      extractArchive(dockerCliArchive, dockerCliExtractDir);
+      const dockerCliExecutable = findBinary(dockerCliExtractDir, 'docker');
+      if (!dockerCliExecutable) {
+        throw new Error('Could not find extracted Linux Docker CLI binary');
+      }
+      copyFileWithMode(dockerCliExecutable, path.join(BIN_DIR, 'docker-cli-linux.bin'));
+      fs.rmSync(dockerCliExtractDir, { recursive: true, force: true });
+      fs.rmSync(dockerCliArchive, { force: true });
+      fs.writeFileSync(path.join(BIN_DIR, 'docker-wsl-wrapper.sh'), WSL_DOCKER_WRAPPER, 'utf8');
     }
 
     if (platform === 'darwin') {

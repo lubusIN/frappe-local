@@ -293,11 +293,16 @@ export const ensureBenchDevcontainer = async (
   const devcontainerBinDir = path.join(devcontainerDir, 'bin');
   const vscodeDir = path.join(benchPath, '.vscode');
   const devcontainerPath = path.join(devcontainerDir, 'devcontainer.json');
+  const composeProjectPath = path.join(devcontainerDir, 'compose-project.yml');
   const settingsPath = path.join(vscodeDir, 'settings.json');
+  const composeProjectName = benchId ? getComposeProjectName(benchId) : '';
 
   const content = JSON.stringify({
     name: 'Frappe Local Bench',
-    dockerComposeFile: ['../.frappe-local/docker-compose.yml'],
+    dockerComposeFile: [
+      '../.frappe-local/docker-compose.yml',
+      ...(composeProjectName ? ['./compose-project.yml'] : []),
+    ],
     service: 'frappe',
     workspaceFolder: '/workspace',
     customizations: {
@@ -328,14 +333,15 @@ export const ensureBenchDevcontainer = async (
     }
 
     fs.writeFileSync(devcontainerPath, content, 'utf8');
+    if (composeProjectName) {
+      fs.writeFileSync(composeProjectPath, `name: ${composeProjectName}\n`, 'utf8');
+    }
 
     const runtimeEnv: Record<string, string | undefined> = envOverride ?? (await getRuntimeEnv().catch(() => ({} as Record<string, string | undefined>)));
     const podmanPath = getBinaryPath('podman');
     const composePath = getBinaryPath('docker-compose');
     const dockerHost = runtimeEnv['DOCKER_HOST'] || process.env['DOCKER_HOST'] || '';
     const dockerConfig = runtimeEnv['DOCKER_CONFIG'] || process.env['DOCKER_CONFIG'] || '';
-    const composeProjectName = benchId ? getComposeProjectName(benchId) : '';
-
     if (process.platform === 'win32') {
       const composeProjectBat = composeProjectName ? `if not defined COMPOSE_PROJECT_NAME set COMPOSE_PROJECT_NAME=${composeProjectName}\r\n` : '';
       const dockerBat = `@echo off\r\nif not defined DOCKER_HOST set DOCKER_HOST=${dockerHost}\r\nif not defined CONTAINER_HOST set CONTAINER_HOST=%DOCKER_HOST%\r\nif not defined DOCKER_CONFIG set DOCKER_CONFIG=${dockerConfig}\r\n"${podmanPath}" %*\r\n`;

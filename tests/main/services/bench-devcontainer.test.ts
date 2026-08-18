@@ -60,12 +60,19 @@ describe('ensureBenchDevcontainer', () => {
     await ensureBenchDevcontainer(tmpDir, context as unknown as Parameters<typeof ensureBenchDevcontainer>[1], 'setup', { DOCKER_HOST: 'unix:///tmp/test.sock' }, 'bench-12345678-abc');
 
     const composeBin = path.join(tmpDir, '.devcontainer', 'bin', process.platform === 'win32' ? 'docker-compose.bat' : 'docker-compose');
+    const composeProjectFile = path.join(tmpDir, '.devcontainer', 'compose-project.yml');
     const content = fs.readFileSync(composeBin, 'utf8');
+    const parsed = JSON.parse(fs.readFileSync(path.join(tmpDir, '.devcontainer', 'devcontainer.json'), 'utf8'));
 
     if (process.platform === 'win32') {
       expect(content).toContain('COMPOSE_PROJECT_NAME=frappe-local-bench-12');
     } else {
       expect(content).toContain('COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-frappe-local-bench-12}"');
     }
+    expect(fs.readFileSync(composeProjectFile, 'utf8')).toBe('name: frappe-local-bench-12\n');
+    expect(parsed.dockerComposeFile).toEqual([
+      '../.frappe-local/docker-compose.yml',
+      './compose-project.yml',
+    ]);
   });
 });
