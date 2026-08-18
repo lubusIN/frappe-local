@@ -13,6 +13,40 @@ Frappe Local is a cross-platform desktop app that lets anyone create local Frapp
 > [!CAUTION]
 > Project is currently under active development.
 
+## System Requirements
+
+Frappe benches and app asset builds run inside Linux containers. Some apps with large frontend builds, such as Wiki, require substantially more memory than a basic Frappe bench.
+
+### Hardware
+
+| Resource | Minimum | Recommended |
+| --- | --- | --- |
+| Memory | 8 GB RAM | 16 GB RAM for multiple benches or frontend-heavy apps |
+| CPU | 4 cores with hardware virtualization | 6 or more cores |
+| Storage | 20 GB free SSD space | 40 GB or more for multiple benches and apps |
+
+Systems with less than 8 GB RAM are not supported. On macOS and Windows, Frappe Local configures its container environment to use approximately 75% of host memory while leaving memory available for the operating system.
+
+### Platform
+
+- **macOS:** Apple Silicon or Intel Mac with hardware virtualization available.
+- **Windows:** 64-bit Windows with hardware virtualization support. Frappe Local detects whether WSL2 and Virtual Machine Platform are ready and provides an in-app setup flow when they need to be enabled.
+
+### Network
+
+An internet connection is required during initial setup and when installing apps. The network must allow access to:
+
+- `quay.io` for the Podman machine image
+- Frappe and app Git repositories, including `github.com`
+- npm, Yarn, Python, and system package registries used by selected apps
+
+Corporate proxies, VPNs, firewalls, or antivirus software may need exceptions for Frappe Local, Podman, WSL, and the required registries.
+
+### Optional Development Tools
+
+- Visual Studio Code with the **Dev Containers** extension is required only for the **Open in Dev Container** feature.
+- Git and other Frappe build dependencies run inside the managed container and do not need to be installed separately on the host.
+
 ## Installation
 
 ### macOS
