@@ -14,7 +14,7 @@ import { PODMAN_RUNTIME_TIMEOUTS } from '@frappe-local/main/constants';
 const logger = createMainLogger('runtime');
 
 export const FRAPPE_LOCAL_MACHINE_NAME = 'frappe-local';
-const FRAPPE_LOCAL_WSL_DISTRO_NAME = `podman-machine-${FRAPPE_LOCAL_MACHINE_NAME}`;
+const FRAPPE_LOCAL_WSL_DISTRO_NAME = `podman-${FRAPPE_LOCAL_MACHINE_NAME}`;
 
 let podmanMemoryProvider = async (): Promise<number> => MIN_PODMAN_MEMORY_MB;
 let wslConfigPathProvider = (): string => path.join(os.homedir(), '.wslconfig');

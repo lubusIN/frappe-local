@@ -37,11 +37,11 @@ describe('editor utilities', () => {
     };
 
     expect(authority).toMatchObject({
-      hostPath: 'C:\\Users\\dev\\Frappe Local\\bench-one',
-      localDocker: true,
+      hostPath: '\\\\wsl.localhost\\podman-frappe-local\\mnt\\c\\Users\\dev\\Frappe Local\\bench-one',
+      localDocker: false,
       configFile: {
-        path: '/C:/Users/dev/Frappe Local/bench-one/.devcontainer/devcontainer.json',
-        scheme: 'file',
+        path: '/mnt/c/Users/dev/Frappe Local/bench-one/.devcontainer/devcontainer.json',
+        scheme: 'vscode-fileHost',
       },
     });
     expect(remotePath).toBe('/workspace/apps/wiki');
