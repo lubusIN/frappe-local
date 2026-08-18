@@ -45,11 +45,13 @@ describe('ensureBenchDevcontainer', () => {
 
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
     expect(settings['dev.containers.dockerPath']).toBe(
-      process.platform === 'win32' ? path.resolve('bin/podman.exe') : dockerBin
+      process.platform === 'win32' ? 'podman' : dockerBin
     );
-    expect(settings['dev.containers.dockerComposePath']).toBe(
-      process.platform === 'win32' ? path.resolve('bin/docker-compose.exe') : composeBin
-    );
+    if (process.platform === 'win32') {
+      expect(settings).not.toHaveProperty('dev.containers.dockerComposePath');
+    } else {
+      expect(settings['dev.containers.dockerComposePath']).toBe(composeBin);
+    }
     expect(logs).toHaveLength(0);
   });
 
