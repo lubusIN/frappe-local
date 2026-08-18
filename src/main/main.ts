@@ -7,6 +7,7 @@ import { getAppIconPath } from '@frappe-local/main/utils';
 import { stopCaddyFrontDoor } from '@frappe-local/main/services';
 
 let isQuitting = false;
+let shouldFocusMainWindow = false;
 const APP_DISPLAY_NAME = 'Frappe Local';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,31 @@ const binPath = isDev
 process.env.PATH = `${binPath}${path.delimiter}${process.env.PATH}`;
 process.title = APP_DISPLAY_NAME;
 app.setName(APP_DISPLAY_NAME);
+
+const focusMainWindow = (): boolean => {
+  const window = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
+  if (!window) {
+    return false;
+  }
+
+  if (window.isMinimized()) {
+    window.restore();
+  }
+  window.show();
+  window.focus();
+  return true;
+};
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // A shortcut can be opened while the primary instance is still booting.
+    // Remember that intent and focus the window as soon as bootstrap creates it.
+    shouldFocusMainWindow = !focusMainWindow();
+  });
+}
 
 const configureApplicationMenu = (): void => {
   if (process.platform !== 'darwin') {
@@ -199,7 +225,8 @@ const createMainWindow = async (): Promise<void> => {
   }
 };
 
-app.whenReady().then(async () => {
+if (hasSingleInstanceLock) {
+  void app.whenReady().then(async () => {
   const appIconPath = getAppIconPath();
 
   process.title = APP_DISPLAY_NAME;
@@ -226,15 +253,24 @@ app.whenReady().then(async () => {
   const bootstrapContext = createBootstrapContext(APP_DISPLAY_NAME, app.getVersion(), createMainWindow, app);
   await runApplicationBootstrap(bootstrapContext, ipcMain);
 
+  if (shouldFocusMainWindow) {
+    shouldFocusMainWindow = false;
+    focusMainWindow();
+  }
+
   app.on('activate', async () => {
     const windows = BrowserWindow.getAllWindows();
     if (windows.length === 0) {
       await createMainWindow();
     } else {
-      windows[0]?.show();
+      focusMainWindow();
     }
   });
-});
+  }).catch((error) => {
+    mainLogger.error(`application startup failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
+    app.quit();
+  });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
