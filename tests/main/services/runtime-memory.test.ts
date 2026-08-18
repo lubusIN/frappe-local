@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const execPromiseMock = vi.fn();
 const getPodmanMachinesMock = vi.fn();
@@ -32,17 +35,34 @@ vi.mock('../../../src/main/utils/podman/podman', () => ({
 import {
   applyPodmanMachineMemory,
   configurePodmanMemoryProvider,
+  configureWslConfigPathProvider,
   ensureRuntimeRunning,
   getLastRuntimeError,
   FRAPPE_LOCAL_MACHINE_NAME,
+  updateWslConfigMemory,
 } from '../../../src/main/services/runtime-service';
 
 describe('Podman machine memory configuration', () => {
+  const wslConfigPath = path.join(os.tmpdir(), `frappe-local-test-${process.pid}.wslconfig`);
+
   beforeEach(() => {
     execPromiseMock.mockReset();
     getPodmanMachinesMock.mockReset();
     execPromiseMock.mockResolvedValue({ stdout: '', stderr: '', code: 0 });
     configurePodmanMemoryProvider(async () => 4096);
+    configureWslConfigPathProvider(() => wslConfigPath);
+    fs.rmSync(wslConfigPath, { force: true });
+  });
+
+  it('preserves unrelated WSL settings while setting the memory limit', () => {
+    const existing = '[wsl2]\r\nprocessors=4\r\n\r\n[experimental]\r\nautoMemoryReclaim=gradual\r\n';
+
+    expect(updateWslConfigMemory(existing, 6144)).toBe(
+      '[wsl2]\r\nmemory=6144MB\r\nprocessors=4\r\n\r\n[experimental]\r\nautoMemoryReclaim=gradual\r\n'
+    );
+    expect(updateWslConfigMemory('[wsl2]\nmemory=4096MB\n', 6144)).toBe(
+      '[wsl2]\nmemory=6144MB\n'
+    );
   });
 
   it('uses configured memory when initializing the Frappe Local machine', async () => {
@@ -55,7 +75,9 @@ describe('Podman machine memory configuration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/podman',
-      ['machine', 'init', '--now', '--cpus', '4', '--memory', '8192', FRAPPE_LOCAL_MACHINE_NAME],
+      process.platform === 'win32'
+        ? ['machine', 'init', '--now', FRAPPE_LOCAL_MACHINE_NAME]
+        : ['machine', 'init', '--now', '--cpus', '4', '--memory', '8192', FRAPPE_LOCAL_MACHINE_NAME],
       undefined,
       expect.any(Function),
       expect.anything(),
@@ -64,6 +86,18 @@ describe('Podman machine memory configuration', () => {
         maxTimeout: 1800000,
       }
     );
+
+    if (process.platform === 'win32') {
+      expect(fs.readFileSync(wslConfigPath, 'utf8')).toContain('memory=8192MB');
+      expect(execPromiseMock).toHaveBeenCalledWith(
+        'wsl.exe',
+        ['--shutdown'],
+        undefined,
+        undefined,
+        undefined,
+        { idleTimeout: 60000, maxTimeout: 120000 }
+      );
+    }
   });
 
   it('restarts a running machine around a changed memory allocation', async () => {
@@ -80,14 +114,27 @@ describe('Podman machine memory configuration', () => {
     await applyPodmanMachineMemory(6144);
 
     const commands = execPromiseMock.mock.calls.map(([, args]) => args);
-    expect(commands).toContainEqual(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME]);
-    expect(commands).toContainEqual([
-      'machine',
-      'set',
-      '--memory',
-      '6144',
-      FRAPPE_LOCAL_MACHINE_NAME,
-    ]);
+    if (process.platform === 'win32') {
+      expect(fs.readFileSync(wslConfigPath, 'utf8')).toContain('memory=6144MB');
+      expect(execPromiseMock).toHaveBeenCalledWith(
+        'wsl.exe',
+        ['--shutdown'],
+        undefined,
+        undefined,
+        undefined,
+        { idleTimeout: 60000, maxTimeout: 120000 }
+      );
+      expect(commands).not.toContainEqual(expect.arrayContaining(['machine', 'set', '--memory']));
+    } else {
+      expect(commands).toContainEqual(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME]);
+      expect(commands).toContainEqual([
+        'machine',
+        'set',
+        '--memory',
+        '6144',
+        FRAPPE_LOCAL_MACHINE_NAME,
+      ]);
+    }
     expect(commands).toContainEqual(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME]);
   });
 

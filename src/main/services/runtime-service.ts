@@ -17,6 +17,7 @@ export const FRAPPE_LOCAL_MACHINE_NAME = 'frappe-local';
 const FRAPPE_LOCAL_WSL_DISTRO_NAME = `podman-machine-${FRAPPE_LOCAL_MACHINE_NAME}`;
 
 let podmanMemoryProvider = async (): Promise<number> => MIN_PODMAN_MEMORY_MB;
+let wslConfigPathProvider = (): string => path.join(os.homedir(), '.wslconfig');
 let lastRuntimeError: string | null = null;
 
 export const getLastRuntimeError = (): string | null => lastRuntimeError;
@@ -107,6 +108,10 @@ export const configurePodmanMemoryProvider = (
   podmanMemoryProvider = provider;
 };
 
+export const configureWslConfigPathProvider = (provider: () => string): void => {
+  wslConfigPathProvider = provider;
+};
+
 const normalizePodmanMemoryMb = (memoryMb: number): number => {
   const systemMemoryMb = Math.floor(os.totalmem() / (1024 * 1024));
   return Math.min(
@@ -122,6 +127,60 @@ const getConfiguredPodmanMemoryMb = async (): Promise<number> => {
     logger.warn(`Failed to read Podman memory setting: ${error}`);
     return MIN_PODMAN_MEMORY_MB;
   }
+};
+
+export const updateWslConfigMemory = (contents: string, memoryMb: number): string => {
+  const newline = contents.includes('\r\n') ? '\r\n' : '\n';
+  const lines = contents ? contents.split(/\r?\n/) : [];
+  const sectionStart = lines.findIndex((line) => /^\s*\[wsl2\]\s*$/i.test(line));
+  const memoryLine = `memory=${normalizePodmanMemoryMb(memoryMb)}MB`;
+
+  if (sectionStart === -1) {
+    const prefix = lines.filter((line, index) => line.length > 0 || index < lines.length - 1);
+    if (prefix.length > 0 && prefix[prefix.length - 1]?.trim()) {
+      prefix.push('');
+    }
+    return [...prefix, '[wsl2]', memoryLine, ''].join(newline);
+  }
+
+  const nextSectionOffset = lines
+    .slice(sectionStart + 1)
+    .findIndex((line) => /^\s*\[[^\]]+\]\s*$/.test(line));
+  const sectionEnd = nextSectionOffset === -1
+    ? lines.length
+    : sectionStart + 1 + nextSectionOffset;
+  const existingMemoryIndex = lines
+    .slice(sectionStart + 1, sectionEnd)
+    .findIndex((line) => /^\s*memory\s*=/i.test(line));
+
+  if (existingMemoryIndex >= 0) {
+    lines[sectionStart + 1 + existingMemoryIndex] = memoryLine;
+  } else {
+    lines.splice(sectionStart + 1, 0, memoryLine);
+  }
+
+  const result = lines.join(newline);
+  return result.endsWith(newline) ? result : `${result}${newline}`;
+};
+
+const writeWslMemoryConfig = (memoryMb: number): boolean => {
+  const configPath = wslConfigPathProvider();
+  const existing = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
+  const updated = updateWslConfigMemory(existing, memoryMb);
+  if (updated === existing) {
+    return false;
+  }
+
+  const temporaryPath = `${configPath}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, updated, 'utf8');
+    fs.renameSync(temporaryPath, configPath);
+  } finally {
+    if (fs.existsSync(temporaryPath)) {
+      fs.rmSync(temporaryPath, { force: true });
+    }
+  }
+  return true;
 };
 
 export async function ensureRuntimeRunning(onLog?: (message: string) => void): Promise<boolean> {
@@ -317,11 +376,42 @@ const applyPodmanMachineMemoryUnlocked = async (memoryMb: number, onLog?: (messa
 
   const machines = await getPodmanMachines();
   const machine = machines.find((entry) => entry.Name === FRAPPE_LOCAL_MACHINE_NAME);
+  const normalizedMemoryMb = normalizePodmanMemoryMb(memoryMb);
+
+  if (process.platform === 'win32') {
+    const wasChanged = writeWslMemoryConfig(normalizedMemoryMb);
+    if (!wasChanged) {
+      return;
+    }
+
+    const msg = `Setting WSL2 memory to ${normalizedMemoryMb} MiB. This restarts all WSL distributions...`;
+    logger.info(msg);
+    onLog?.(msg);
+    const shutdownResult = await execPromise(
+      'wsl.exe',
+      ['--shutdown'],
+      undefined,
+      undefined,
+      undefined,
+      { idleTimeout: 60000, maxTimeout: 120000 }
+    );
+    if (shutdownResult.code !== 0) {
+      throw new Error(commandFailureMessage('Restarting WSL after memory update', shutdownResult));
+    }
+
+    if (!machine) {
+      return;
+    }
+
+    await runPodman(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME], 'Restarting Podman machine', undefined, onLog);
+    await waitForPodmanEngine(onLog);
+    return;
+  }
+
   if (!machine) {
     return;
   }
 
-  const normalizedMemoryMb = normalizePodmanMemoryMb(memoryMb);
   const currentMemoryMb = await readMachineMemoryMb(onLog);
   if (currentMemoryMb === normalizedMemoryMb) {
     return;
@@ -443,8 +533,27 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
       if (!machine) {
         const memoryMb = await getConfiguredPodmanMemoryMb();
         logMsg(`No podman machine named ${FRAPPE_LOCAL_MACHINE_NAME} found, initializing...`);
+        if (process.platform === 'win32') {
+          const wslMemoryChanged = writeWslMemoryConfig(memoryMb);
+          if (wslMemoryChanged) {
+            logMsg(`Configured WSL2 to use ${memoryMb} MiB. Restarting WSL before initialization...`);
+            const shutdownResult = await execPromise(
+              'wsl.exe',
+              ['--shutdown'],
+              undefined,
+              undefined,
+              undefined,
+              { idleTimeout: 60000, maxTimeout: 120000 }
+            );
+            if (shutdownResult.code !== 0) {
+              throw new Error(commandFailureMessage('Restarting WSL after memory update', shutdownResult));
+            }
+          }
+        }
         await runPodman(
-          ['machine', 'init', '--now', '--cpus', '4', '--memory', String(memoryMb), FRAPPE_LOCAL_MACHINE_NAME],
+          process.platform === 'win32'
+            ? ['machine', 'init', '--now', FRAPPE_LOCAL_MACHINE_NAME]
+            : ['machine', 'init', '--now', '--cpus', '4', '--memory', String(memoryMb), FRAPPE_LOCAL_MACHINE_NAME],
           'Initializing Podman machine',
           {
             idleTimeout: PODMAN_RUNTIME_TIMEOUTS.MACHINE_INIT_IDLE,

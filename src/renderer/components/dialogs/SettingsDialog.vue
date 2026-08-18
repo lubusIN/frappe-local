@@ -222,7 +222,9 @@
                       Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
                     </p>
                     <p class="text-ink-gray-5">
-                      Applying a memory change will restart environment.
+                      {{ isWindows
+                        ? 'Applies globally to WSL2 and restarts all running WSL distributions.'
+                        : 'Applying a memory change will restart environment.' }}
                     </p>
                   </div>
                   <div class="flex items-center gap-2">
@@ -334,7 +336,7 @@ import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVers
 import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import { useSettings } from '@frappe-local/renderer/composables/data';
-import { useIpc, useSshKeys } from '@frappe-local/renderer/composables/system';
+import { useAppHealth, useIpc, useSshKeys } from '@frappe-local/renderer/composables/system';
 
 import { DEFAULT_BREWERY_URL, MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 
@@ -412,6 +414,8 @@ const systemResources = reactive({
   podmanMachineRequired: false,
 });
 const systemResourcesLoaded = ref(false);
+const { health } = useAppHealth();
+const isWindows = computed(() => health.value?.platform === 'win32');
 
 const pendingMemoryMb = ref<number | null>(null);
 
