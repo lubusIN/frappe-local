@@ -69,11 +69,13 @@ export const resolveEditorCommand = (commandName: string): { command: string; en
     } else if (process.platform === 'win32') {
       const progFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
       const localAppData = process.env['LOCALAPPDATA'] || '';
+      const applicationDirectory = cmd === 'code-insiders' ? 'Microsoft VS Code Insiders' : 'Microsoft VS Code';
+      const executableName = cmd === 'code-insiders' ? 'Code - Insiders.exe' : 'Code.exe';
       candidates.push(
-        path.join(progFiles, 'Microsoft VS Code\\bin\\code.cmd'),
-        path.join(progFiles, 'Microsoft VS Code\\bin\\code.exe'),
-        path.join(localAppData, 'Programs\\Microsoft VS Code\\bin\\code.cmd'),
-        path.join(localAppData, 'Programs\\Microsoft VS Code\\bin\\code.exe')
+        path.join(localAppData, 'Programs', applicationDirectory, executableName),
+        path.join(progFiles, applicationDirectory, executableName),
+        path.join(localAppData, 'Programs', applicationDirectory, 'bin', `${cmd}.cmd`),
+        path.join(progFiles, applicationDirectory, 'bin', `${cmd}.cmd`)
       );
     }
 
@@ -85,6 +87,30 @@ export const resolveEditorCommand = (commandName: string): { command: string; en
   }
 
   return { command: cmd, env };
+};
+
+export const createDevContainerFolderUri = (
+  hostPath: string,
+  workspaceFolder: string,
+  platform: NodeJS.Platform = process.platform
+): string => {
+  const remotePath = workspaceFolder.startsWith('/') ? workspaceFolder : `/${workspaceFolder}`;
+  const configPath = path.join(hostPath, '.devcontainer', 'devcontainer.json');
+  let configUriPath = configPath.replace(/\\/g, '/');
+  if (platform === 'win32' && /^[a-z]:\//i.test(configUriPath)) {
+    configUriPath = `/${configUriPath}`;
+  }
+
+  const authority = Buffer.from(JSON.stringify({
+    hostPath,
+    localDocker: true,
+    configFile: {
+      $mid: 1,
+      path: configUriPath,
+      scheme: 'file',
+    },
+  }), 'utf8').toString('hex');
+  return `vscode-remote://dev-container+${authority}${encodeURI(remotePath)}`;
 };
 
 export const isEditorInstalled = (commandName = 'code'): boolean => {
