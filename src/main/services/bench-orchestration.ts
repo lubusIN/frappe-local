@@ -363,14 +363,17 @@ export const ensureBenchDevcontainer = async (
       }
     }
 
-    // Dev Containers uses direct process spawning. Windows cannot spawn .bat
-    // wrappers this way (EINVAL), so use the bundled native executables there.
+    // Dev Containers switches into the Podman WSL distribution on Windows.
+    // Resolve `podman` in that Linux context instead of passing a Windows
+    // executable or .bat wrapper across the WSL process boundary.
     settings['dev.containers.dockerPath'] = process.platform === 'win32'
-      ? podmanPath
+      ? 'podman'
       : path.join(devcontainerBinDir, 'docker');
-    settings['dev.containers.dockerComposePath'] = process.platform === 'win32'
-      ? composePath
-      : path.join(devcontainerBinDir, 'docker-compose');
+    if (process.platform === 'win32') {
+      delete settings['dev.containers.dockerComposePath'];
+    } else {
+      settings['dev.containers.dockerComposePath'] = path.join(devcontainerBinDir, 'docker-compose');
+    }
 
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
   } catch (error) {
