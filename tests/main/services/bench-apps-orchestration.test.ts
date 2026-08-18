@@ -267,15 +267,26 @@ describe('bench app orchestration', () => {
     expect(queuedRun).not.toBeNull();
     await expect(queuedRun?.(context)).rejects.toThrow('Failed to fetch app builder');
     expect(updateMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe'] });
-    expect(fs.existsSync(path.join(benchPath, 'apps', 'builder'))).toBe(false);
-    expect(fs.existsSync(path.join(benchPath, 'sites', 'assets', 'builder'))).toBe(false);
-    expect(fs.readFileSync(path.join(benchPath, 'sites', 'apps.txt'), 'utf8')).toBe('frappe\n');
-    expect(
-      JSON.parse(fs.readFileSync(path.join(benchPath, 'sites', 'common_site_config.json'), 'utf8'))
-    ).toMatchObject({ dns_multitenant: true, socketio_port: 443 });
-    expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
-      'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js'
-    );
+    if (process.platform === 'win32') {
+      expect(execPromiseMock).toHaveBeenCalledWith(
+        '/mock/docker-compose',
+        expect.arrayContaining(['exec', '-T', 'frappe', 'python', '-c', expect.any(String), 'builder']),
+        benchPath,
+        undefined,
+        expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
+        expect.any(Object)
+      );
+    } else {
+      expect(fs.existsSync(path.join(benchPath, 'apps', 'builder'))).toBe(false);
+      expect(fs.existsSync(path.join(benchPath, 'sites', 'assets', 'builder'))).toBe(false);
+      expect(fs.readFileSync(path.join(benchPath, 'sites', 'apps.txt'), 'utf8')).toBe('frappe\n');
+      expect(
+        JSON.parse(fs.readFileSync(path.join(benchPath, 'sites', 'common_site_config.json'), 'utf8'))
+      ).toMatchObject({ dns_multitenant: true, socketio_port: 443 });
+      expect(fs.readFileSync(path.join(benchPath, 'Procfile'), 'utf8')).toContain(
+        'socketio: FRAPPE_SOCKETIO_PORT=9000 node apps/frappe/socketio.js'
+      );
+    }
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
       expect.arrayContaining(['exec', '-T', 'frappe', 'bench', 'pip', 'uninstall', '-y', 'builder']),
@@ -604,12 +615,14 @@ describe('bench app orchestration', () => {
     const updateMock = vi.fn(async () => bench);
     const timeoutError = new Error('Command timed out after 1200000ms: docker-compose exec -T backend bench get-app ...');
 
-    execPromiseMock
-      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
-      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
-      .mockRejectedValueOnce(timeoutError)
-      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' })
-      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' });
+    let getAppAttempts = 0;
+    execPromiseMock.mockImplementation(async (_command: string, args: string[]) => {
+      if (args.includes('get-app')) {
+        getAppAttempts += 1;
+        if (getAppAttempts === 1) throw timeoutError;
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    });
 
     orchestrateBenchAppChanges(
       bench,

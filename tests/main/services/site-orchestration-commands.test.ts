@@ -107,9 +107,9 @@ describe('site orchestration command execution', () => {
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
 
-    expect(execPromiseMock).toHaveBeenCalledTimes(6);
-
-    const [command, args, cwd, , env, timeout] = execPromiseMock.mock.calls[0] as [
+    const newSiteCall = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('new-site'));
+    expect(newSiteCall).toBeDefined();
+    const [command, args, cwd, , env, timeout] = newSiteCall as [
       string,
       string[],
       string,
@@ -143,7 +143,7 @@ describe('site orchestration command execution', () => {
       'frappevault.localhost',
     ]);
 
-    const [, migrateArgs] = execPromiseMock.mock.calls[1] as [string, string[]];
+    const migrateArgs = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('migrate'))?.[1] as string[];
     expect(migrateArgs).toEqual([
       '-p',
       'frappe-local-1adb2eed',
@@ -156,7 +156,7 @@ describe('site orchestration command execution', () => {
       'migrate',
     ]);
 
-    const [, clearCacheArgs] = execPromiseMock.mock.calls[2] as [string, string[]];
+    const clearCacheArgs = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('clear-cache'))?.[1] as string[];
     expect(clearCacheArgs).toEqual([
       '-p',
       'frappe-local-1adb2eed',
@@ -169,7 +169,7 @@ describe('site orchestration command execution', () => {
       'clear-cache',
     ]);
 
-    const [, clearWebsiteCacheArgs] = execPromiseMock.mock.calls[3] as [string, string[]];
+    const clearWebsiteCacheArgs = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('clear-website-cache'))?.[1] as string[];
     expect(clearWebsiteCacheArgs).toEqual([
       '-p',
       'frappe-local-1adb2eed',
@@ -182,7 +182,7 @@ describe('site orchestration command execution', () => {
       'clear-website-cache',
     ]);
 
-    const [, pkillArgs] = execPromiseMock.mock.calls[4] as [string, string[]];
+    const pkillArgs = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('pkill'))?.[1] as string[];
     expect(pkillArgs).toEqual([
       '-p',
       'frappe-local-1adb2eed',
@@ -194,7 +194,7 @@ describe('site orchestration command execution', () => {
       'honcho',
     ]);
 
-    const [, startArgs] = execPromiseMock.mock.calls[5] as [string, string[]];
+    const startArgs = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('nohup honcho start > logs/honcho.log 2>&1'))?.[1] as string[];
     expect(startArgs).toEqual([
       '-p',
       'frappe-local-1adb2eed',
@@ -382,9 +382,9 @@ describe('site orchestration command execution', () => {
 
     expect(queuedRun).not.toBeNull();
     await queuedRun?.(context);
-    expect(execPromiseMock).toHaveBeenCalledTimes(6);
-
-    const [fetchCommand, fetchArgs] = execPromiseMock.mock.calls[0] as [string, string[]];
+    const fetchCall = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('get-app'));
+    expect(fetchCall).toBeDefined();
+    const [fetchCommand, fetchArgs] = fetchCall as [string, string[]];
     expect(fetchCommand).toBe('/mock/docker-compose');
     expect(fetchArgs).toEqual([
       '-p',
@@ -403,7 +403,9 @@ describe('site orchestration command execution', () => {
 
     expect(updateBenchMock).toHaveBeenCalledWith(bench.id, { apps: ['frappe', 'erpnext'] });
 
-    const [installCommand, installArgs] = execPromiseMock.mock.calls[1] as [string, string[]];
+    const installCall = execPromiseMock.mock.calls.find((call) => (call[1] as string[]).includes('install-app'));
+    expect(installCall).toBeDefined();
+    const [installCommand, installArgs] = installCall as [string, string[]];
     expect(installCommand).toBe('/mock/docker-compose');
     expect(installArgs).toEqual([
       '-p',

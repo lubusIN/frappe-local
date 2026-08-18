@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import path from 'node:path';
 import type { Bench } from '../../../src/shared/domain/models';
 import type { TaskExecutionContext } from '../../../src/main/services/task-runner';
 import { orchestrateBenchDeletion } from '../../../src/main/services/bench-orchestration';
@@ -138,7 +139,7 @@ describe('bench delete orchestration cleanup', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-local-1adb2eed', '-f', '/Users/dev/frappe-bench-2/.frappe-local/docker-compose.yml', 'down', '-v', '--remove-orphans'],
+      ['-p', 'frappe-local-1adb2eed', '-f', path.join(bench.path, '.frappe-local', 'docker-compose.yml'), 'down', '-v', '--remove-orphans'],
       '/Users/dev/frappe-bench-2',
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

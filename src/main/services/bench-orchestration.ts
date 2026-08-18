@@ -720,7 +720,9 @@ export const fetchBenchApps = async (
   context.completeStep(stepId, stepCompleteDesc);
 
   if (process.platform === 'win32') {
-    return updateContainerAppsTxt(bench.path, containerEnv, 'normalize').catch(() => allTargetApps);
+    return updateContainerAppsTxt(bench.path, containerEnv, 'normalize')
+      .then((containerApps) => containerApps.length > 0 ? containerApps : allTargetApps)
+      .catch(() => allTargetApps);
   }
 
   if (fs.existsSync(appsTxtPath)) {
