@@ -305,6 +305,12 @@ export const ensureBenchDevcontainer = async (
     ],
     service: 'frappe',
     workspaceFolder: '/workspace',
+    // Bench lifecycle is owned by Frappe Local. Closing VS Code must not stop
+    // the Compose project (and its database/Redis containers).
+    shutdownAction: 'none',
+    // Avoid VS Code's extra login-shell exec on Windows, where it can overload
+    // Podman's concurrent stdin attaches. Preserve normal probing elsewhere.
+    ...(process.platform === 'win32' ? { userEnvProbe: 'none' } : {}),
     customizations: {
       vscode: {
         settings: {
@@ -369,11 +375,10 @@ export const ensureBenchDevcontainer = async (
       }
     }
 
-    // Dev Containers switches into the Podman WSL distribution on Windows.
-    // Resolve `podman` in that Linux context instead of passing a Windows
-    // executable or .bat wrapper across the WSL process boundary.
+    // Dev Containers switches into the Podman WSL distribution on Windows,
+    // where the app provisions a Docker CLI connected to Podman's API socket.
     settings['dev.containers.dockerPath'] = process.platform === 'win32'
-      ? 'podman'
+      ? 'docker'
       : path.join(devcontainerBinDir, 'docker');
     if (process.platform === 'win32') {
       delete settings['dev.containers.dockerComposePath'];
