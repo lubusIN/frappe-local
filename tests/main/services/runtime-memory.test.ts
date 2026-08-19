@@ -164,11 +164,12 @@ describe('Podman machine memory configuration', () => {
           '--exec',
           '/bin/sh',
           '-c',
-          'compose_source="$(wslpath -u "$1")" && docker_cli_source="$(wslpath -u "$2")" && docker_wrapper_source="$(wslpath -u "$3")" && mkdir -p /usr/libexec/docker/cli-plugins /usr/libexec/frappe-local && if ! cmp -s "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; then install -m 0755 "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; fi && if ! cmp -s "$docker_cli_source" /usr/libexec/frappe-local/docker; then install -m 0755 "$docker_cli_source" /usr/libexec/frappe-local/docker; fi && if ! /usr/sbin/runuser -u user -- /usr/bin/podman --remote --url unix:///mnt/wsl/frappe-local-devcontainer.sock info >/dev/null 2>&1; then { /usr/bin/nsenter -m -p -t 16 --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemctl --user stop frappe-local-devcontainer-api.service >/dev/null 2>&1 || true; }; rm -f /mnt/wsl/frappe-local-devcontainer.sock; /usr/bin/nsenter -m -p -t 16 --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemd-run --user --unit=frappe-local-devcontainer-api --collect --property=Restart=always /usr/bin/podman --remote=false system service --time=0 unix:///mnt/wsl/frappe-local-devcontainer.sock; i=0; while [ ! -S /mnt/wsl/frappe-local-devcontainer.sock ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; test -S /mnt/wsl/frappe-local-devcontainer.sock; fi && rm -f /usr/bin/docker && install -m 0755 "$docker_wrapper_source" /usr/bin/docker && ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose',
+          'compose_source="$(wslpath -u "$1")" && docker_cli_source="$(wslpath -u "$2")" && docker_wrapper_source="$(wslpath -u "$3")" && enterns_profile_source="$(wslpath -u "$4")" && mkdir -p /usr/libexec/docker/cli-plugins /usr/libexec/frappe-local && if ! cmp -s "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; then install -m 0755 "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; fi && if ! cmp -s "$docker_cli_source" /usr/libexec/frappe-local/docker; then install -m 0755 "$docker_cli_source" /usr/libexec/frappe-local/docker; fi && if ! cmp -s "$enterns_profile_source" /etc/profile.d/enterns.sh; then install -m 0644 "$enterns_profile_source" /etc/profile.d/enterns.sh; fi && systemd_pid="$(/usr/bin/pgrep -o -x systemd)" && test -n "$systemd_pid" && test -e "/proc/$systemd_pid/ns/pid" && if ! /usr/sbin/runuser -u user -- /usr/bin/podman --remote --url unix:///mnt/wsl/frappe-local-devcontainer.sock info >/dev/null 2>&1; then { /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemctl --user stop frappe-local-devcontainer-api.service >/dev/null 2>&1 || true; }; rm -f /mnt/wsl/frappe-local-devcontainer.sock; /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemd-run --user --unit=frappe-local-devcontainer-api --collect --property=Restart=always /usr/bin/podman --remote=false system service --time=0 unix:///mnt/wsl/frappe-local-devcontainer.sock; i=0; while [ ! -S /mnt/wsl/frappe-local-devcontainer.sock ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; test -S /mnt/wsl/frappe-local-devcontainer.sock; fi && rm -f /usr/bin/docker && install -m 0755 "$docker_wrapper_source" /usr/bin/docker && ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose',
           'frappe-local-devcontainer-setup',
           '/mock/docker-compose-linux.bin',
           '/mock/docker-cli-linux.bin',
           '/mock/docker-wsl-wrapper.sh',
+          '/mock/enterns-profile.sh',
         ],
         undefined,
         undefined,
@@ -185,7 +186,7 @@ describe('Podman machine memory configuration', () => {
     execPromiseMock.mockResolvedValueOnce({ stdout: '', stderr: 'permission denied', code: 1 });
 
     await expect(ensureWindowsDevContainerSupport()).rejects.toThrow(
-      'Restart Frappe Local as administrator, then retry.'
+      'Restart Frappe Local, then retry.'
     );
   });
 

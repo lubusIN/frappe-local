@@ -18,10 +18,8 @@ const DOCKER_CLI_VERSION = '27.5.1';
 const PODMAN_VERSION = 'v5.8.2';
 const CADDY_VERSION = 'v2.8.4';
 const BUNDLED_MACHINE_IMAGE_BASENAME = 'podman-machine-image';
-const WSL_DOCKER_WRAPPER = `#!/bin/sh
-export DOCKER_HOST=unix:///mnt/wsl/frappe-local-devcontainer.sock
-exec /usr/libexec/frappe-local/docker "$@"
-`;
+const WSL_DOCKER_WRAPPER_PATH = path.resolve(__dirname, 'assets/docker-wsl-wrapper.sh');
+const WSL_ENTERNS_PROFILE_PATH = path.resolve(__dirname, 'assets/enterns-profile.sh');
 
 // Arch mapping for GitHub releases
 const getComposeArch = (arch) => {
@@ -292,7 +290,8 @@ async function main() {
       copyFileWithMode(dockerCliExecutable, path.join(BIN_DIR, 'docker-cli-linux.bin'));
       fs.rmSync(dockerCliExtractDir, { recursive: true, force: true });
       fs.rmSync(dockerCliArchive, { force: true });
-      fs.writeFileSync(path.join(BIN_DIR, 'docker-wsl-wrapper.sh'), WSL_DOCKER_WRAPPER, 'utf8');
+      fs.copyFileSync(WSL_DOCKER_WRAPPER_PATH, path.join(BIN_DIR, 'docker-wsl-wrapper.sh'));
+      fs.copyFileSync(WSL_ENTERNS_PROFILE_PATH, path.join(BIN_DIR, 'enterns-profile.sh'));
     }
 
     if (platform === 'darwin') {

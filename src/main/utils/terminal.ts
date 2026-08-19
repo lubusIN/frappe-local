@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getBinaryPath } from '@frappe-local/main/utils';
 import type { AvailableTerminal } from '@frappe-local/shared/core';
@@ -17,6 +17,24 @@ const getShellsDir = (): string => {
 };
 
 const execAsync = promisify(exec);
+
+const launchDetached = async (
+  executable: string,
+  args: string[],
+  cwd?: string
+): Promise<void> => new Promise((resolve, reject) => {
+  const child = spawn(executable, args, {
+    cwd,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: false,
+  });
+  child.once('error', reject);
+  child.once('spawn', () => {
+    child.unref();
+    resolve();
+  });
+});
 
 export const detectAvailableTerminals = async (): Promise<AvailableTerminal[]> => {
   const terminals: AvailableTerminal[] = [{ id: 'default', name: 'System Default' }];
@@ -114,22 +132,24 @@ const launchShellScript = async (
     }
   } else if (process.platform === 'win32') {
     const scriptPath = join(getShellsDir(), `${scriptName}.bat`);
-    const script = `@echo off\n:: ${scriptComment}\n${command}\n`;
+    const script = `@echo off\r\n:: ${scriptComment}\r\n${command}\r\n`;
     writeFileSync(scriptPath, script);
 
     if (pref === 'default' || pref === 'cmd.exe') {
-      await execAsync(`start "" "${scriptPath}"`);
+      await launchDetached('cmd.exe', ['/d', '/k', 'call', scriptPath], benchPath);
     } else if (pref === 'wt.exe' || pref === 'wt') {
-      await execAsync(`wt.exe -d "${benchPath}" "${scriptPath}"`);
+      await launchDetached('wt.exe', ['-d', benchPath, 'cmd.exe', '/d', '/k', 'call', scriptPath], benchPath);
     } else if (pref === 'pwsh.exe' || pref === 'powershell.exe') {
-      await execAsync(`start "" ${pref} -NoExit -Command "${command}"`);
+      const escapedScriptPath = scriptPath.replace(/'/g, "''");
+      await launchDetached(pref, ['-NoExit', '-Command', `& '${escapedScriptPath}'`], benchPath);
     } else if (pref === 'git-bash.exe' || pref.includes('git-bash')) {
       const gitBashPath = existsSync('C:\\Program Files\\Git\\git-bash.exe')
         ? 'C:\\Program Files\\Git\\git-bash.exe'
         : pref;
-      await execAsync(`"${gitBashPath}" -c "${command}"`);
+      const escapedScriptPath = scriptPath.replace(/'/g, "'\\''");
+      await launchDetached(gitBashPath, ['-c', `exec cmd.exe /d /k call '${escapedScriptPath}'`], benchPath);
     } else {
-      await execAsync(`start "" "${pref}" "${scriptPath}"`);
+      await launchDetached(pref, [scriptPath], benchPath);
     }
   } else {
     const scriptPath = join(getShellsDir(), `${scriptName}.sh`);
@@ -163,8 +183,21 @@ const launchContainerShell = async (
   siteName?: string
 ): Promise<void> => {
   const composePath = getBinaryPath('docker-compose');
-  const envArg = siteName ? `-e FRAPPE_SITE="${siteName}" ` : '';
-  const command = `cd "${benchPath}" && DOCKER_HOST="${env.DOCKER_HOST || ''}" "${composePath}" -p ${projectName} exec ${envArg}frappe /bin/bash`;
+  let command: string;
+  if (process.platform === 'win32') {
+    const escapeBatchValue = (value: string): string => value.replace(/%/g, '%%').replace(/"/g, '""');
+    const siteArg = siteName ? ` -e "FRAPPE_SITE=${escapeBatchValue(siteName)}"` : '';
+    const containerName = `${escapeBatchValue(projectName)}-frappe-1`;
+    command = [
+      `cd /d "${escapeBatchValue(benchPath)}"`,
+      // Keep interactive shells off the Docker-compatible API used by VS Code.
+      // Podman's native WSL client supports concurrent TTY attaches reliably.
+      `wsl.exe -d podman-frappe-local -u user -- /usr/local/bin/enterns /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/podman exec -it${siteArg} "${containerName}" /bin/bash`,
+    ].join('\r\n');
+  } else {
+    const envArg = siteName ? `-e FRAPPE_SITE="${siteName}" ` : '';
+    command = `cd "${benchPath}" && DOCKER_HOST="${env.DOCKER_HOST || ''}" "${composePath}" -p ${projectName} exec ${envArg}frappe /bin/bash`;
+  }
 
   const scriptName = siteName ? `site-${siteName}-${projectName}` : `bench-${projectName}`;
   const scriptComment = siteName ? `Frappe Local - Site Shell (${siteName})` : `Frappe Local - Bench Shell (${projectName})`;

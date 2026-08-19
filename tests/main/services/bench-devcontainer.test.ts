@@ -40,12 +40,18 @@ describe('ensureBenchDevcontainer', () => {
     expect(parsed.name).toBe('Frappe Local Bench');
     expect(parsed.service).toBe('frappe');
     expect(parsed.workspaceFolder).toBe('/workspace');
+    expect(parsed.shutdownAction).toBe('none');
+    if (process.platform === 'win32') {
+      expect(parsed.userEnvProbe).toBe('none');
+    } else {
+      expect(parsed).not.toHaveProperty('userEnvProbe');
+    }
     expect(parsed.customizations.vscode.settings['python.defaultInterpreterPath']).toBe('/workspace/env/bin/python');
     expect(parsed.customizations.vscode.extensions).toContain('ms-python.python');
 
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
     expect(settings['dev.containers.dockerPath']).toBe(
-      process.platform === 'win32' ? 'podman' : dockerBin
+      process.platform === 'win32' ? 'docker' : dockerBin
     );
     if (process.platform === 'win32') {
       expect(settings).not.toHaveProperty('dev.containers.dockerComposePath');
