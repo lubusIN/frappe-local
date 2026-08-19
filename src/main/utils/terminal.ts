@@ -116,8 +116,7 @@ const launchShellScript = async (
     chmodSync(scriptPath, '755');
 
     if (pref === 'default' || pref === 'Terminal') {
-      const appleScript = `tell application "Terminal"\n  activate\n  do script "${scriptPath}"\nend tell`;
-      await execAsync(`osascript -e '${appleScript.replace(/'/g, "'\\''")}'`);
+      await execAsync(`open -a Terminal "${scriptPath}"`);
     } else if (pref === 'iTerm' || pref === 'iTerm2') {
       const appleScript = `tell application "iTerm"\n  activate\n  if (count of windows) = 0 then\n    create window with default profile command "${scriptPath}"\n  else\n    tell current window\n      create tab with default profile command "${scriptPath}"\n    end tell\n  end if\nend tell`;
       await execAsync(`osascript -e '${appleScript.replace(/'/g, "'\\''")}'`);
