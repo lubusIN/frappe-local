@@ -17,6 +17,7 @@ const unavailableBridge: RendererBridge = {
   onUpdateDownloaded: () => noopDispose,
   onUpdateError: () => noopDispose,
   runDiagnostics: () => rejectUnavailable(),
+  onDiagnosticsUpdated: () => noopDispose,
   getLastDiagnosticsReport: () => rejectUnavailable(),
   resetDevState: () => rejectUnavailable(),
   fixRuntime: () => rejectUnavailable(),

@@ -18,7 +18,7 @@ import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configur
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 
-import { getRecommendedPodmanMemoryMb } from '@frappe-local/shared/core';
+import { getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
 import { initializeUpdater } from '@frappe-local/main/updater';
 
 type BootstrapContext = {
@@ -226,6 +226,10 @@ export const runApplicationBootstrap = async (
         },
         appVersion: context.appVersion,
       }).then(async (report) => {
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+          windows[0]?.webContents.send(ipcChannels.diagnosticsUpdated, report);
+        }
         if (report.hasCriticalIssues) {
           const benches = await repositories.benches.findAll();
           for (const bench of benches) {

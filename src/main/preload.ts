@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CreateCustomAppInput, UpdateCustomAppInput } from '@frappe-local/shared/domain';
+import type { CreateCustomAppInput, DiagnosticsReport, UpdateCustomAppInput } from '@frappe-local/shared/domain';
 import type { RendererBridge } from '@frappe-local/shared/core';
 import { ipcChannels } from '@frappe-local/shared/core';
 
@@ -31,6 +31,11 @@ const rendererBridge: RendererBridge = {
 	},
 	runDiagnostics: async () => ipcRenderer.invoke(ipcChannels.diagnosticsRun),
 	getLastDiagnosticsReport: async () => ipcRenderer.invoke(ipcChannels.diagnosticsGetLast),
+	onDiagnosticsUpdated: (listener) => {
+		const internalListener = (_event: unknown, report: DiagnosticsReport) => listener(report);
+		ipcRenderer.on(ipcChannels.diagnosticsUpdated, internalListener);
+		return () => ipcRenderer.removeListener(ipcChannels.diagnosticsUpdated, internalListener);
+	},
 	resetDevState: async () => ipcRenderer.invoke(ipcChannels.diagnosticsResetDevState),
 	fixRuntime: async (checkType) => ipcRenderer.invoke(ipcChannels.runtimeFix, checkType),
 	listCatalog: async () => ipcRenderer.invoke(ipcChannels.catalogList),

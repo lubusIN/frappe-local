@@ -78,6 +78,10 @@ export const useDiagnostics = () => {
         report.value = last;
       }
     });
+
+    ipc.onDiagnosticsUpdated((newReport) => {
+      report.value = newReport;
+    });
   });
 
   return {
