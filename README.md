@@ -24,6 +24,16 @@ Frappe Local is a cross-platform desktop app for creating and managing local Fra
 - Open projects directly in Visual Studio Code Dev Containers
 - Cross-platform support for macOS and Windows
 
+## Supported Platforms
+
+| OS | Status | Architecture | Details |
+| :--- | :---: | :--- | :--- |
+| ![macOS](https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white) | ✅ Supported | Apple Silicon & Intel (with virtualization) | [Install Guide](#macos) |
+| ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white) | ✅ Supported | 64-bit (with hardware virtualization)* | [Install Guide](#windows) |
+| ![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black) | 🚧 Coming Soon | - | [Get Notified](https://lubus.in/frappe-local) |
+
+*\* Frappe Local detects whether WSL2 and Virtual Machine Platform are configured and provides an in-app setup flow when required.*
+
 ## System Requirements
 
 Frappe benches and app asset builds run inside Linux containers. Apps with large frontend builds may require significantly more memory than a basic Frappe bench.
@@ -39,11 +49,6 @@ Frappe benches and app asset builds run inside Linux containers. Apps with large
 Systems with less than **8 GB RAM are not supported**.
 
 On macOS and Windows, Frappe Local configures its container environment to use approximately 75% of host memory while leaving memory available for the operating system.
-
-### Platform
-
-- **macOS:** Apple Silicon or Intel Mac with hardware virtualization support.
-- **Windows:** 64-bit Windows with hardware virtualization support. Frappe Local detects whether WSL2 and Virtual Machine Platform are configured and provides an in-app setup flow when required.
 
 ### Network
 
@@ -66,8 +71,6 @@ Corporate proxies, VPNs, firewalls, or antivirus software may require exceptions
 
 ### macOS
 
-#### Download
-
 Download the latest `.dmg` from [GitHub Releases](https://github.com/lubusIN/frappe-local/releases). Choose the file matching your Mac architecture:
 
 - **Apple Silicon (M1/M2/M3/...):** `Frappe.Local-*-arm64.dmg`
@@ -77,58 +80,43 @@ Open the downloaded `.dmg` and drag **Frappe Local** into the **Applications** f
 
 #### Unblock Gatekeeper
 
-App is not currently signed by an Apple-trusted developer certificate, macOS may block it from opening. Open Terminal and run:
+Because the app is not currently signed with an Apple-trusted developer certificate, macOS may block it from opening. Open Terminal and run:
 
 ```shell
 xattr -rds com.apple.quarantine /Applications/Frappe\ Local.app
 ```
-This removes the quarantine attribute added by macOS. You should then be able to open Frappe Local normally.
+This removes the macOS quarantine attribute, allowing Frappe Local to open normally.
 
 ### Windows
 
-#### Download
-
 Download the latest `.exe` installer from [GitHub Releases](https://github.com/lubusIN/frappe-local/releases).
 
-#### Unblock Windows SmartScreen
+#### Unblock SmartScreen
 
-Because Frappe Local is not currently digitally signed, Windows SmartScreen may block the installer. Open PowerShell in your Downloads folder and run the following command, replacing the filename if necessary:
+Because the installer is not currently digitally signed, Windows SmartScreen may block it. Open PowerShell in your Downloads folder and run (replacing the filename if necessary):
 
 ```powershell
 Unblock-File -Path ".\Frappe Local Setup-*.exe"
 ```
-This removes the **Mark of the Web** from the installer.
-
-Alternatively:
-
-1. Right-click the installer.
-2. Select **Properties**.
-3. Check **Unblock**.
-4. Click **Apply**.
+This removes the **Mark of the Web**. Alternatively: Right-click the installer > **Properties** > check **Unblock** > **Apply**.
 
 > [!WARNING]
-> Windows Defender Antivirus may still quarantine the extracted `.exe` after installation.
-> If the desktop shortcut shows a blank white icon or displays a **Missing Shortcut** error, add an exclusion for:
-> `C:\Program Files\frappe-local`
-> Then run the installer again.
+> Windows Defender may still quarantine the extracted `.exe` after installation.
+> If the desktop shortcut shows a blank icon or a **Missing Shortcut** error, add an exclusion for `C:\Program Files\frappe-local` and run the installer again.
+
+### Linux
+
+Linux is not supported yet. [Show your interest and get notified when it's available!](https://lubus.in/frappe-local)
 
 ## First Bench Creation
 
-Creating your first bench on macOS or Windows initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`.
+Creating your first bench initializes a dedicated Podman virtual machine and downloads its Linux image from `quay.io`. This may take several minutes. Keep Frappe Local open until setup completes.
 
-Depending on your internet connection, this may take several minutes. Keep Frappe Local open until setup completes.
-
-If setup fails:
-
-1. Open **Diagnostics**.
-2. Run the available checks.
-3. Use **Fix** where available.
-
-Diagnostic errors include the underlying Podman output to help identify issues such as blocked downloads, Gatekeeper restrictions, or missing virtualization components.
+If setup fails: Open **Diagnostics**, run the checks, and use **Fix** where available. Diagnostic errors include the underlying Podman output to help identify issues like blocked downloads, Gatekeeper restrictions, or missing virtualization components.
 
 ## Local HTTPS
 
-Frappe Local uses Caddy to provide HTTPS for `*.localhost` sites. On first use, macOS or Windows may ask for permission to trust the Frappe Local certificate authority. If permission is denied or the system trust store is unavailable, Frappe Local automatically falls back to HTTP rather than opening the site with an invalid certificate.
+Frappe Local uses Caddy to provide HTTPS for `*.localhost` sites. On first use, your OS may ask for permission to trust the Frappe Local certificate authority. If denied or unavailable, Frappe Local automatically falls back to HTTP to avoid invalid certificate errors.
 
 ## Development
 
@@ -143,19 +131,13 @@ Frappe Local uses Caddy to provide HTTPS for `*.localhost` sites. On first use, 
 
 ### Prerequisites
 
-- Node.js - tested with Node 22
+- Node.js (tested with v22)
 - npm
 
 ### Getting Started
-#### Install dependencies:
 
 ```bash
 npm install
-```
-
-#### Run in development:
-
-```bash
 npm start
 ```
 
