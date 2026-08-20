@@ -172,6 +172,48 @@ The registry is automatically downloaded into the `bin/` directory as a build as
 - `src/shared` - shared contracts/types between processes
 - `tests` - unit/integration tests
 
+## More Frappe Tools
+
+Explore more open-source tools we're building for the Frappe ecosystem.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="https://github.com/lubusIN/frappe-playground">
+        <img src="https://raw.githubusercontent.com/lubusIN/frappe-playground/main/.github/logo.svg" alt="Frappe Playground" height="60">
+      </a>
+      <br>
+      Run Frappe entirely in your browser.
+    </td>
+    <td width="50%" valign="top">
+      <a href="https://github.com/lubusIN/frappe-brewery">
+        <img src="https://raw.githubusercontent.com/lubusIN/frappe-brewery/main/.github/assets/logo.svg" alt="Frappe Brewery" height="60">
+      </a>
+      <br>
+      Discover community-built apps for Frappe.
+    </td>
+  </tr>
+
+  <tr>
+    <td width="50%" valign="top">
+      <a href="https://github.com/lubusIN/frappe-vault">
+        <img src="https://raw.githubusercontent.com/lubusIN/frappe-vault/main/.github/assets/logo.svg" alt="Frappe Vault" height="60">
+      </a>
+      <br>
+      Manage secrets and passwords with Frappe.
+    </td>
+    <td width="50%" valign="top">
+      <a href="https://github.com/lubusIN/wp-frappe-data-store">
+        <img src="https://raw.githubusercontent.com/lubusIN/wp-frappe-data-store/main/.github/assets/logo.svg" alt="WP Frappe Data Store" height="60">
+      </a>
+      <br>
+      Connect WordPress and Frappe with a React data store.
+    </td>
+  </tr>
+</table>
+
+[Explore all LUBUS projects →](https://github.com/lubusIN)
+
 ## Meet Your Artisans
 
 [LUBUS](https://lubus.in/?utm_source=github&utm_medium=open-source&utm_campaign=frappe-local) is a web design agency based in Mumbai.
