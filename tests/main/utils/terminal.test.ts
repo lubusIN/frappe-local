@@ -65,7 +65,7 @@ describe('terminal utilities', () => {
   it('falls back to default terminal command when preference is default', async () => {
     if (process.platform === 'darwin') {
       await openBenchShell('/tmp/bench', 'test-proj', {}, 'default');
-      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('osascript'), expect.anything());
+      expect(mockExec).toHaveBeenCalledWith(expect.stringContaining('open -a Terminal'), expect.anything());
     }
     if (process.platform === 'win32') {
       await openBenchShell('C:\\Bench', 'test-proj', {}, 'default');
