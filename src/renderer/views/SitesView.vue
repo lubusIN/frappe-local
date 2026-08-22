@@ -100,7 +100,7 @@
               variant="outline"
             >
               <template #prefix>
-                <i class="lucide-search w-4 text-ink-gray-5" />
+                <span class="lucide-search w-4 text-ink-gray-5" aria-hidden="true" />
               </template>
             </FormControl>
           </div>
@@ -114,7 +114,7 @@
               variant="outline"
             >
               <template #prefix>
-                <i class="lucide-list-filter w-4 text-ink-gray-5" />
+                <span class="lucide-list-filter w-4 text-ink-gray-5" aria-hidden="true" />
               </template>
             </FormControl>
           </div>

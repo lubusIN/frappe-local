@@ -9,7 +9,7 @@
     <template #title>
       <div class="flex items-center min-w-0 gap-3">
         <div class="flex items-center justify-center rounded-6 size-9 shrink-0 bg-surface-gray-2 text-ink-gray-6">
-          <i class="lucide-terminal size-[18px]" />
+          <span class="lucide-terminal size-[18px]" aria-hidden="true" />
         </div>
         <div class="min-w-0">
           <div class="flex items-center min-w-0 gap-2">
@@ -58,7 +58,7 @@
                 variant="outline"
               >
                 <template #prefix>
-                  <i class="lucide-search w-3.5 text-ink-gray-5" />
+                  <span class="lucide-search w-3.5 text-ink-gray-5" aria-hidden="true" />
                 </template>
               </FormControl>
             </div>

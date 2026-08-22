@@ -16,25 +16,25 @@
       <SettingsNavGroup label="User Preferences">
         <SettingsNavItem value="general">
           <template #prefix>
-            <i class="lucide-settings size-4" />
+            <span class="lucide-settings size-4" aria-hidden="true" />
           </template>
           General
         </SettingsNavItem>
         <SettingsNavItem value="appearance">
           <template #prefix>
-            <i class="lucide-palette size-4" />
+            <span class="lucide-palette size-4" aria-hidden="true" />
           </template>
           Appearance
         </SettingsNavItem>
         <SettingsNavItem value="advanced">
           <template #prefix>
-            <i class="lucide-sliders-horizontal size-4" />
+            <span class="lucide-sliders-horizontal size-4" aria-hidden="true" />
           </template>
           Advanced
         </SettingsNavItem>
         <SettingsNavItem value="updates">
           <template #prefix>
-            <i class="lucide-download size-4" />
+            <span class="lucide-download size-4" aria-hidden="true" />
           </template>
           Updates
         </SettingsNavItem>

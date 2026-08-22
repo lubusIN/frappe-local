@@ -29,7 +29,7 @@
         <div class="flex flex-col gap-4 rounded-6 border border-outline-red-3 bg-surface-red-2 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex items-start gap-3">
             <div class="flex size-10 shrink-0 items-center justify-center rounded-6 text-ink-red-7">
-              <i class="lucide-rotate-ccw size-5" />
+              <span class="lucide-rotate-ccw size-5" aria-hidden="true" />
             </div>
             <div class="min-w-0">
               <h3 class="text-base-semibold text-ink-red-7">
