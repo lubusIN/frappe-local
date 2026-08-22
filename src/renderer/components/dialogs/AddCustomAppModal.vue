@@ -51,14 +51,20 @@
               v-else-if="!isRepoPrivate"
               class="text-xs text-ink-green-5 flex items-center gap-1"
             >
-              <span class="lucide-check w-3.5 h-3.5" aria-hidden="true" />
+              <span
+                class="lucide-check w-3.5 h-3.5"
+                aria-hidden="true"
+              />
               Repository is accessible.
             </p>
             <p
               v-else-if="isRepoPrivate && shareSshKeysEnabled"
               class="text-xs text-ink-green-5 flex items-center gap-1"
             >
-              <span class="lucide-check w-3.5 h-3.5" aria-hidden="true" />
+              <span
+                class="lucide-check w-3.5 h-3.5"
+                aria-hidden="true"
+              />
               Private repository ready (SSH enabled).
             </p>
           </div>
