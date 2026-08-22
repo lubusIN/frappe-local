@@ -8,7 +8,10 @@
     <template #title>
       <div class="flex items-center gap-3">
         <div class="flex items-center justify-center w-8 h-8 rounded-6 min-w-8 bg-surface-yellow-2 text-ink-yellow-7">
-          <span class="lucide-alert-triangle h-[18px] w-[18px]" aria-hidden="true" />
+          <span
+            class="lucide-alert-triangle h-[18px] w-[18px]"
+            aria-hidden="true"
+          />
         </div>
         <h3 class="m-0 text-sm-semibold text-ink-gray-9">
           {{ title }}
@@ -32,7 +35,10 @@
               :key="bench"
               class="text-sm text-ink-gray-6 flex items-center gap-2"
             >
-              <span class="lucide-box w-4 text-ink-gray-4" aria-hidden="true" />
+              <span
+                class="lucide-box w-4 text-ink-gray-4"
+                aria-hidden="true"
+              />
               {{ bench }}
             </li>
           </ul>
@@ -48,7 +54,10 @@
               :key="site"
               class="text-sm text-ink-gray-6 flex items-center gap-2"
             >
-              <span class="lucide-app-window w-4 text-ink-gray-4" aria-hidden="true" />
+              <span
+                class="lucide-app-window w-4 text-ink-gray-4"
+                aria-hidden="true"
+              />
               {{ site }}
             </li>
           </ul>

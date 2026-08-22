@@ -11,7 +11,10 @@
             @update:model-value="onSearch"
           >
             <template #prefix>
-              <span class="lucide-search w-4 text-ink-gray-6" aria-hidden="true" />
+              <span
+                class="lucide-search w-4 text-ink-gray-6"
+                aria-hidden="true"
+              />
             </template>
           </FormControl>
         </div>
@@ -31,7 +34,10 @@
           @click="syncCatalog"
         >
           <template #prefix>
-            <span class="lucide-refresh-cw w-4 text-ink-gray-6" aria-hidden="true" />
+            <span
+              class="lucide-refresh-cw w-4 text-ink-gray-6"
+              aria-hidden="true"
+            />
           </template>
           Sync
         </Button>

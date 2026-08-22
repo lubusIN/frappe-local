@@ -100,7 +100,10 @@
               variant="outline"
             >
               <template #prefix>
-                <span class="lucide-search w-4 text-ink-gray-5" aria-hidden="true" />
+                <span
+                  class="lucide-search w-4 text-ink-gray-5"
+                  aria-hidden="true"
+                />
               </template>
             </FormControl>
           </div>
@@ -114,7 +117,10 @@
               variant="outline"
             >
               <template #prefix>
-                <span class="lucide-list-filter w-4 text-ink-gray-5" aria-hidden="true" />
+                <span
+                  class="lucide-list-filter w-4 text-ink-gray-5"
+                  aria-hidden="true"
+                />
               </template>
             </FormControl>
           </div>
@@ -272,7 +278,10 @@
         </div>
 
         <template v-else>
-          <Tabs :tabs="[{ label: 'Overview', value: 'Overview' }, { label: 'Apps', value: 'Apps' }]" class="flex-1 min-h-0">
+          <Tabs
+            :tabs="[{ label: 'Overview', value: 'Overview' }, { label: 'Apps', value: 'Apps' }]"
+            class="flex-1 min-h-0"
+          >
             <template #tab-panel="{ tab }">
               <ScrollArea
                 v-if="tab.label === 'Overview'"
@@ -448,19 +457,6 @@
     />
   </div>
 </template>
-
-<style scoped>
-:deep([data-slot="tab-list"]) {
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-:deep([data-slot="tab-panel"]) {
-  flex: 1 1 0%;
-  min-height: 0;
-}
-</style>
 
 <script setup lang="ts">
 import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, Tabs, toast } from 'frappe-ui';
@@ -931,3 +927,16 @@ onMounted(() => {
   }
 });
 </script>
+
+<style scoped>
+:deep([data-slot="tab-list"]) {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+:deep([data-slot="tab-panel"]) {
+  flex: 1 1 0%;
+  min-height: 0;
+}
+</style>
