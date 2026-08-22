@@ -40,7 +40,7 @@
 
     <div
       v-if="(state.error || customAppsError) && displayedApps.length === 0"
-      class="px-2 py-3 text-xs text-center text-ink-red-8"
+      class="px-2 py-3 text-xs text-center text-ink-red-7"
     >
       {{ state.error || customAppsError }}
     </div>
@@ -65,7 +65,7 @@
         <div
           v-for="app in displayedApps"
           :key="app.appId"
-          class="flex flex-col relative bg-surface-base border rounded-xl p-4 transition-all duration-200 h-[190px]"
+          class="flex flex-col relative bg-surface-base border rounded-7 p-4 transition-all duration-200 h-[190px]"
           :class="[
             app.disabled ? 'opacity-60 cursor-not-allowed border-outline-gray-2' : 'border-outline-gray-2 hover:border-outline-gray-4'
           ]"
@@ -75,12 +75,12 @@
             <img
               v-if="app.icon && !imageErrors[app.appId]"
               :src="app.icon"
-              class="w-10 h-10 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-outline-gray-2"
+              class="w-10 h-10 shrink-0 rounded-6 object-cover shadow-sm ring-1 ring-outline-gray-2"
               @error="imageErrors[app.appId] = true"
             >
             <div
               v-else
-              class="flex w-10 h-10 shrink-0 items-center justify-center rounded-lg bg-surface-gray-2 text-sm-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
+              class="flex w-10 h-10 shrink-0 items-center justify-center rounded-6 bg-surface-gray-2 text-sm-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
             >
               {{ (app.appName || '').charAt(0).toUpperCase() }}
             </div>
@@ -179,8 +179,8 @@
               <span
                 class="text-[10px] font-medium"
                 :class="{
-                  'text-ink-amber-6': app.compatibilityStatus === 'warning',
-                  'text-ink-red-8': app.compatibilityStatus === 'blocked',
+                  'text-ink-amber-5': app.compatibilityStatus === 'warning',
+                  'text-ink-red-7': app.compatibilityStatus === 'blocked',
                   'text-ink-gray-6': app.compatibilityStatus !== 'warning' && app.compatibilityStatus !== 'blocked',
                 }"
               >

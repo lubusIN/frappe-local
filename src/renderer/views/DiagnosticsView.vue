@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-6">
     <PageHeader class="[-webkit-app-region:drag]">
-      <h1 class="text-xl-medium truncate text-ink-gray-9">
+      <h1 class="text-lg-medium truncate text-ink-gray-9">
         Diagnostics
       </h1>
       <div class="flex items-center gap-3 [-webkit-app-region:no-drag]">
@@ -26,13 +26,13 @@
       @fix="fix"
     >
       <template #summary-action>
-        <div class="flex flex-col gap-4 rounded-lg border border-outline-red-3 bg-surface-red-2 p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex flex-col gap-4 rounded-6 border border-outline-red-3 bg-surface-red-2 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div class="flex items-start gap-3">
-            <div class="flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-red-8">
+            <div class="flex size-10 shrink-0 items-center justify-center rounded-6 text-ink-red-7">
               <i class="lucide-rotate-ccw size-5" />
             </div>
             <div class="min-w-0">
-              <h3 class="text-base-semibold text-ink-red-8">
+              <h3 class="text-base-semibold text-ink-red-7">
                 Reset Environment
               </h3>
               <p class="mt-1 text-sm leading-5 text-ink-gray-6">
@@ -75,7 +75,7 @@
       >
         <Logo class="w-24 h-24 mb-6 text-ink-gray-9 animate-pulse" />
         <LoadingIndicator class="w-8 h-8 mb-4 text-ink-gray-9" />
-        <h2 class="text-3xl-semibold text-ink-gray-9">
+        <h2 class="text-2xl-semibold text-ink-gray-9">
           Resetting Frappe Local
         </h2>
         <p class="mt-2 text-ink-gray-6">

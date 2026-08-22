@@ -19,12 +19,12 @@ export interface ResolvedAppInfo {
   source?: string;
   type?: string;
   sourceBadgeLabel?: string;
-  sourceBadgeTheme?: 'blue' | 'orange' | 'gray';
+  sourceBadgeTheme?: 'blue' | 'amber' | 'gray';
 }
 
 export const getAppPresentationMeta = (type?: string) => {
   if (type === 'github') return { sourceBadgeLabel: 'GitHub', sourceBadgeTheme: 'blue' as const };
-  if (type === 'local') return { sourceBadgeLabel: 'Local', sourceBadgeTheme: 'orange' as const };
+  if (type === 'local') return { sourceBadgeLabel: 'Local', sourceBadgeTheme: 'amber' as const };
   return { sourceBadgeLabel: 'Registry', sourceBadgeTheme: 'gray' as const };
 };
 

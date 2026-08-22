@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col gap-6">
     <PageHeader class="[-webkit-app-region:drag]">
-      <h1 class="text-xl-medium truncate text-ink-gray-9">
+      <h1 class="text-lg-medium truncate text-ink-gray-9">
         My Apps
       </h1>
       <div
@@ -46,7 +46,7 @@
       <template #cell="{ column, row }">
         <template v-if="column.key === 'name'">
           <div class="flex items-center gap-3">
-            <div class="flex size-8 items-center justify-center overflow-hidden rounded bg-ink-gray-1 border border-ink-gray-2 text-ink-gray-5 flex-shrink-0">
+            <div class="flex size-8 items-center justify-center overflow-hidden rounded-4 bg-ink-gray-1 border border-ink-gray-2 text-ink-gray-5 flex-shrink-0">
               <img
                 v-if="row.icon && !imageErrors[row.id]"
                 :src="row.icon"
@@ -81,7 +81,7 @@
         <template v-else-if="column.key === 'type'">
           <Badge
             variant="subtle"
-            :theme="row.type === 'github' ? 'blue' : 'orange'"
+            :theme="row.type === 'github' ? 'blue' : 'amber'"
           >
             {{ row.type === 'github' ? 'GitHub' : 'Local' }}
           </Badge>
@@ -159,6 +159,7 @@
 
 <script setup lang="ts">
 import { Badge, Button, Dropdown, toast } from 'frappe-ui';
+import type { DropdownItem } from 'frappe-ui';
 import { ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
@@ -205,13 +206,7 @@ const {
 } = useConfirmAction();
 
 const getAppActions = (app: CustomAppListItem) => {
-  const actions: Array<{
-    label: string;
-    icon?: unknown;
-    theme?: 'red';
-    disabled?: boolean;
-    onClick: () => void;
-  }> = [];
+  const actions: DropdownItem[] = [];
 
   if (app.type === 'local') {
     actions.push({

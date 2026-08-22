@@ -1,7 +1,7 @@
 <template>
   <section
-    class="flex items-start gap-3 rounded-lg border p-4 select-text"
-    :class="tone === 'warning' ? 'border-outline-amber-3 bg-surface-amber-2 text-ink-amber-6' : 'border-outline-red-3 bg-surface-red-2 text-ink-red-8'"
+    class="flex items-start gap-3 rounded-6 border p-4 select-text"
+    :class="tone === 'warning' ? 'border-outline-amber-3 bg-surface-amber-2 text-ink-amber-5' : 'border-outline-red-3 bg-surface-red-2 text-ink-red-7'"
     role="alert"
     aria-live="polite"
     aria-atomic="true"
@@ -44,7 +44,7 @@
         >
           <RouterLink
             v-if="action.to"
-            class="inline-flex items-center rounded-md border border-current px-2.5 py-1 text-xs-medium no-underline hover:bg-surface-base/50"
+            class="inline-flex items-center rounded-5 border border-current px-2.5 py-1 text-xs-medium no-underline hover:bg-surface-base/50"
             :to="action.to"
             :aria-label="`${action.label}: navigate to resolve this error`"
           >

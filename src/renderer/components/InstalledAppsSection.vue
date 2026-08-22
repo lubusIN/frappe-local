@@ -27,17 +27,17 @@
       <div
         v-for="appId in displayAppIds"
         :key="appId"
-        class="flex items-center gap-3 p-2 bg-surface-base border border-outline-gray-2 hover:border-outline-gray-3 transition-colors rounded-md"
+        class="flex items-center gap-3 p-2 bg-surface-base border border-outline-gray-2 hover:border-outline-gray-3 transition-colors rounded-5"
       >
         <img
           v-if="getAppInfo(appId).icon && !imageErrors[appId]"
           :src="getAppInfo(appId).icon"
-          class="w-10 h-10 shrink-0 rounded-md object-cover shadow-sm ring-1 ring-outline-gray-2"
+          class="w-10 h-10 shrink-0 rounded-5 object-cover shadow-sm ring-1 ring-outline-gray-2"
           @error="imageErrors[appId] = true"
         >
         <div
           v-else
-          class="flex w-8 h-8 shrink-0 items-center justify-center rounded-md bg-surface-gray-2 text-xs font-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
+          class="flex w-8 h-8 shrink-0 items-center justify-center rounded-5 bg-surface-gray-2 text-xs font-semibold text-ink-gray-5 shadow-sm ring-1 ring-outline-gray-2"
         >
           {{ (getAppInfo(appId).title || getAppInfo(appId).name || appId).charAt(0).toUpperCase() }}
         </div>
@@ -72,6 +72,7 @@
 
 <script setup lang="ts">
 import { Badge, Button, Dropdown, toast } from 'frappe-ui';
+import type { DropdownItem } from 'frappe-ui';
 import { ref, computed } from 'vue';
 import { useAppCatalog, useBenches } from '@frappe-local/renderer/composables/data';
 import { useEditorStatus } from '@frappe-local/renderer/composables/system';
@@ -116,7 +117,7 @@ const isWindows = computed(() => health.value?.platform === 'win32');
 const imageErrors = ref<Record<string, boolean>>({});
 
 const getAppOpenOptions = (appId: string) => {
-  const editorOptions: Array<{ label: string; icon: string; disabled: boolean; onClick: () => Promise<void> }> = [];
+  const editorOptions: DropdownItem[] = [];
 
   if (!isWindows.value) {
     editorOptions.push({
