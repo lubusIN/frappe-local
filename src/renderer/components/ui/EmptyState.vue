@@ -1,10 +1,10 @@
 <template>
   <section
-    class="flex min-h-[60vh] flex-col items-center justify-center p-12 bg-surface-base text-center rounded-lg"
+    class="flex min-h-[60vh] flex-col items-center justify-center p-12 bg-surface-base text-center rounded-6"
   >
     <div
       v-if="icon"
-      class="mb-4 flex size-12 items-center justify-center rounded-xl bg-surface-gray-2 text-ink-gray-6"
+      class="mb-4 flex size-12 items-center justify-center rounded-7 bg-surface-gray-2 text-ink-gray-6"
     >
       <i
         :class="icon"
@@ -12,7 +12,7 @@
         aria-hidden="true"
       />
     </div>
-    <h2 class="m-0 text-xl-semibold text-ink-gray-9">
+    <h2 class="m-0 text-lg-semibold text-ink-gray-9">
       {{ title }}
     </h2>
     <p class="mt-2 mb-6 text-sm text-ink-gray-5">

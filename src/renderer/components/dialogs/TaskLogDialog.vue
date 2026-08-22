@@ -8,7 +8,7 @@
   >
     <template #title>
       <div class="flex items-center min-w-0 gap-3">
-        <div class="flex items-center justify-center rounded-lg size-9 shrink-0 bg-surface-gray-2 text-ink-gray-6">
+        <div class="flex items-center justify-center rounded-6 size-9 shrink-0 bg-surface-gray-2 text-ink-gray-6">
           <i class="lucide-terminal size-[18px]" />
         </div>
         <div class="min-w-0">
@@ -36,7 +36,7 @@
     </template>
 
     <template #default>
-      <div class="overflow-hidden border rounded-lg border-outline-gray-3 bg-surface-base flex flex-col">
+      <div class="overflow-hidden border rounded-6 border-outline-gray-3 bg-surface-base flex flex-col">
         <!-- Header Bar with Steps count & Search field -->
         <div class="flex flex-wrap items-center justify-between border-b border-outline-gray-2 px-4 py-2.5 gap-3 bg-surface-gray-1">
           <div class="flex items-center gap-2">
@@ -114,15 +114,15 @@
                 <span class="flex items-center justify-center shrink-0">
                   <i
                     v-if="group.status === 'success'"
-                    class="lucide-check-circle-2 size-4 text-ink-green-6"
+                    class="lucide-check-circle-2 size-4 text-ink-green-5"
                   />
                   <LoadingIndicator
                     v-else-if="group.status === 'running'"
-                    class="size-3.5 text-ink-blue-6"
+                    class="size-3.5 text-ink-blue-5"
                   />
                   <i
                     v-else-if="group.status === 'failure'"
-                    class="lucide-x-circle size-4 text-ink-red-6"
+                    class="lucide-x-circle size-4 text-ink-red-5"
                   />
                   <i
                     v-else
@@ -151,7 +151,7 @@
                   :running="group.status === 'running' && isBusy"
                   :show-label="false"
                   size-class="text-xs"
-                  :color-class="group.status === 'failure' ? 'text-ink-red-6 font-semibold' : 'text-ink-gray-5'"
+                  :color-class="group.status === 'failure' ? 'text-ink-red-5 font-semibold' : 'text-ink-gray-5'"
                 />
               </div>
             </div>
@@ -175,7 +175,7 @@
                 <div class="min-w-0 break-words whitespace-pre-wrap flex items-start gap-2">
                   <span
                     v-if="log.level && log.level !== 'info'"
-                    class="shrink-0 uppercase text-[10px] font-semibold px-1 rounded mt-0.5"
+                    class="shrink-0 uppercase text-[10px] font-semibold px-1 rounded-4 mt-0.5"
                     :class="levelBadgeClass(log.level)"
                   >
                     {{ log.level }}
@@ -612,14 +612,14 @@ const formatLevel = (level: TaskProgressEvent['logLevel']) => {
 };
 
 const levelBadgeClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'bg-surface-red-2 text-ink-red-6';
-  if (level === 'warning') return 'bg-surface-amber-2 text-ink-amber-6';
+  if (level === 'error') return 'bg-surface-red-2 text-ink-red-5';
+  if (level === 'warning') return 'bg-surface-amber-2 text-ink-amber-5';
   return 'bg-surface-gray-3 text-ink-gray-6';
 };
 
 const messageClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'text-ink-red-5';
-  if (level === 'warning') return 'text-ink-amber-5';
+  if (level === 'error') return 'text-ink-red-4';
+  if (level === 'warning') return 'text-ink-amber-4';
   return 'text-ink-gray-7';
 };
 

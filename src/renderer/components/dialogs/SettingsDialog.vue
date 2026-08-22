@@ -1,6 +1,6 @@
 <template>
   <SettingsDialog
-    v-model="isShowing"
+    v-model:open="isShowing"
     v-model:tab="activeTab"
     size="5xl"
   >
@@ -196,7 +196,7 @@
                   title="Memory"
                   description="Set the memory available to local benches and sites."
                 >
-                  <span class="shrink-0 rounded-md border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
+                  <span class="shrink-0 rounded-5 border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
                     {{ formatMemory(currentMemoryMb) }}
                   </span>
                 </SettingsRow>

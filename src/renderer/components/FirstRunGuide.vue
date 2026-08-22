@@ -1,10 +1,10 @@
 <template>
   <section
-    class="grid gap-3.5 rounded-lg border border-outline-blue-3 bg-surface-blue-2"
+    class="grid gap-3.5 rounded-6 border border-outline-blue-3 bg-surface-blue-2"
     :class="compact ? 'p-3.5' : 'p-4'"
   >
     <div class="flex items-start gap-2.5">
-      <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border border-outline-blue-3 bg-surface-base text-ink-blue-6">
+      <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-6 border border-outline-blue-3 bg-surface-base text-ink-blue-5">
         <i class="lucide-package h-4 w-4" />
       </div>
       <div>

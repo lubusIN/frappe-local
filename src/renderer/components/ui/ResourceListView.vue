@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ListView } from 'frappe-ui';
+import { ListView } from 'frappe-ui/experimental';
 import { computed } from 'vue';
 
 const props = defineProps<{

@@ -49,7 +49,7 @@
             </p>
             <p
               v-else-if="!isRepoPrivate"
-              class="text-xs text-ink-green-6 flex items-center gap-1"
+              class="text-xs text-ink-green-5 flex items-center gap-1"
             >
               <svg
                 class="w-3.5 h-3.5"
@@ -68,7 +68,7 @@
             </p>
             <p
               v-else-if="isRepoPrivate && shareSshKeysEnabled"
-              class="text-xs text-ink-green-6 flex items-center gap-1"
+              class="text-xs text-ink-green-5 flex items-center gap-1"
             >
               <svg
                 class="w-3.5 h-3.5"
@@ -93,7 +93,7 @@
           >
             <Alert
               title="This repository appears to be private or unreachable. You must enable SSH key sharing below to install it."
-              theme="yellow"
+              theme="amber"
               :dismissible="false"
             />
           </div>
