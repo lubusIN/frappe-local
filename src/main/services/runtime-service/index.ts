@@ -1,5 +1,4 @@
 import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
-import type { TaskExecutionContext } from '@frappe-local/main/services/task-runner';
 import { cleanupStaleMacPodmanProcesses, getPodmanMachines, isPodmanMachineRequired } from '@frappe-local/main/utils/podman';
 
 import { createMainLogger } from '@frappe-local/main/logger';
@@ -8,180 +7,26 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { exec as execCommand } from 'node:child_process';
 import type { PodmanMachineStatus } from '@frappe-local/main/utils/podman/podman';
-import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 import { PODMAN_RUNTIME_TIMEOUTS } from '@frappe-local/main/constants';
 
 const logger = createMainLogger('runtime');
+import { isWslInstalled, installWslTask } from './wsl';
+import { 
+  configurePodmanMemoryProvider, 
+  configureWslConfigPathProvider, 
+  updateWslConfigMemory,
+  normalizePodmanMemoryMb,
+  getConfiguredPodmanMemoryMb,
+  writeWslMemoryConfig
+} from './memory';
 
 export const FRAPPE_LOCAL_MACHINE_NAME = 'frappe-local';
 const FRAPPE_LOCAL_WSL_DISTRO_NAME = `podman-${FRAPPE_LOCAL_MACHINE_NAME}`;
 
-let podmanMemoryProvider = async (): Promise<number> => MIN_PODMAN_MEMORY_MB;
-let wslConfigPathProvider = (): string => path.join(os.homedir(), '.wslconfig');
 let lastRuntimeError: string | null = null;
 
 export const getLastRuntimeError = (): string | null => lastRuntimeError;
 
-export const isWslInstalled = async (): Promise<boolean> => {
-  if (process.platform !== 'win32') return true;
-  try {
-    const { code } = await execPromise('wsl.exe', ['--status'], undefined, undefined, undefined, { idleTimeout: 5000 });
-    return code === 0;
-  } catch {
-    return false;
-  }
-};
-
-export const installWslTask = async (context: TaskExecutionContext): Promise<void> => {
-  if (process.platform !== 'win32') return;
-
-  context.startStep('wsl-install', 'Installing Windows Subsystem for Linux (WSL2)');
-  context.log('info', 'Preparing WSL installation...', 'wsl-install');
-
-  const crypto = await import('node:crypto');
-  const logFile = path.join(os.tmpdir(), `wsl-install-${crypto.randomUUID()}.log`);
-  fs.writeFileSync(logFile, '', 'utf8');
-
-  let position = 0;
-  const pollLogs = () => {
-    try {
-      if (!fs.existsSync(logFile)) return;
-      const fd = fs.openSync(logFile, 'r');
-      const stat = fs.fstatSync(fd);
-      if (stat.size > position) {
-        const buffer = Buffer.alloc(stat.size - position);
-        fs.readSync(fd, buffer, 0, buffer.length, position);
-        position = stat.size;
-        fs.closeSync(fd);
-
-        // Remove null bytes which powershell sometimes outputs, and split lines
-        const text = buffer.toString('utf8').split('\0').join('');
-        const lines = text.split(/\r?\n/);
-        for (const line of lines) {
-          if (line.trim()) {
-            context.log('info', line.trim(), 'wsl-install');
-          }
-        }
-      } else {
-        fs.closeSync(fd);
-      }
-    } catch {
-      // ignore
-    }
-  };
-
-  const timer = setInterval(pollLogs, 500);
-
-  try {
-    context.log('info', 'Requesting elevated privileges. Please accept the UAC prompt if it appears...', 'wsl-install');
-
-    // Run powershell to spawn an elevated powershell that runs wsl and redirects output
-    const psCommand = `Start-Process powershell.exe -ArgumentList "-NoProfile -Command \`"wsl.exe --install *>&1 | Out-File -FilePath '${logFile}' -Encoding utf8\`"" -Verb RunAs -WindowStyle Hidden -Wait`;
-
-    const { code, stderr } = await execPromise('powershell.exe', [
-      '-NoProfile',
-      '-Command',
-      psCommand
-    ], undefined, undefined, undefined, { idleTimeout: 600000, maxTimeout: 1200000 });
-
-    clearInterval(timer);
-    pollLogs();
-
-    if (code !== 0) {
-      throw new Error(`Elevated WSL installation failed with exit code ${code}. ${stderr}`);
-    }
-
-    context.completeStep('wsl-install', 'Installing Windows Subsystem for Linux (WSL2)', 'WSL installation completed successfully.');
-  } finally {
-    clearInterval(timer);
-    try {
-      if (fs.existsSync(logFile)) fs.unlinkSync(logFile);
-    } catch {
-      // ignore
-    }
-  }
-};
-
-export const configurePodmanMemoryProvider = (
-  provider: () => Promise<number>
-): void => {
-  podmanMemoryProvider = provider;
-};
-
-export const configureWslConfigPathProvider = (provider: () => string): void => {
-  wslConfigPathProvider = provider;
-};
-
-const normalizePodmanMemoryMb = (memoryMb: number): number => {
-  const systemMemoryMb = Math.floor(os.totalmem() / (1024 * 1024));
-  return Math.min(
-    Math.max(Math.round(memoryMb), MIN_PODMAN_MEMORY_MB),
-    Math.max(systemMemoryMb, MIN_PODMAN_MEMORY_MB)
-  );
-};
-
-const getConfiguredPodmanMemoryMb = async (): Promise<number> => {
-  try {
-    return normalizePodmanMemoryMb(await podmanMemoryProvider());
-  } catch (error) {
-    logger.warn(`Failed to read Podman memory setting: ${error}`);
-    return MIN_PODMAN_MEMORY_MB;
-  }
-};
-
-export const updateWslConfigMemory = (contents: string, memoryMb: number): string => {
-  const newline = contents.includes('\r\n') ? '\r\n' : '\n';
-  const lines = contents ? contents.split(/\r?\n/) : [];
-  const sectionStart = lines.findIndex((line) => /^\s*\[wsl2\]\s*$/i.test(line));
-  const memoryLine = `memory=${normalizePodmanMemoryMb(memoryMb)}MB`;
-
-  if (sectionStart === -1) {
-    const prefix = lines.filter((line, index) => line.length > 0 || index < lines.length - 1);
-    if (prefix.length > 0 && prefix[prefix.length - 1]?.trim()) {
-      prefix.push('');
-    }
-    return [...prefix, '[wsl2]', memoryLine, ''].join(newline);
-  }
-
-  const nextSectionOffset = lines
-    .slice(sectionStart + 1)
-    .findIndex((line) => /^\s*\[[^\]]+\]\s*$/.test(line));
-  const sectionEnd = nextSectionOffset === -1
-    ? lines.length
-    : sectionStart + 1 + nextSectionOffset;
-  const existingMemoryIndex = lines
-    .slice(sectionStart + 1, sectionEnd)
-    .findIndex((line) => /^\s*memory\s*=/i.test(line));
-
-  if (existingMemoryIndex >= 0) {
-    lines[sectionStart + 1 + existingMemoryIndex] = memoryLine;
-  } else {
-    lines.splice(sectionStart + 1, 0, memoryLine);
-  }
-
-  const result = lines.join(newline);
-  return result.endsWith(newline) ? result : `${result}${newline}`;
-};
-
-const writeWslMemoryConfig = (memoryMb: number): boolean => {
-  const configPath = wslConfigPathProvider();
-  const existing = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
-  const updated = updateWslConfigMemory(existing, memoryMb);
-  if (updated === existing) {
-    return false;
-  }
-
-  const temporaryPath = `${configPath}.${process.pid}.tmp`;
-  try {
-    fs.writeFileSync(temporaryPath, updated, 'utf8');
-    fs.renameSync(temporaryPath, configPath);
-  } finally {
-    if (fs.existsSync(temporaryPath)) {
-      fs.rmSync(temporaryPath, { force: true });
-    }
-  }
-  return true;
-};
 
 export async function ensureRuntimeRunning(onLog?: (message: string) => void): Promise<boolean> {
   return ensurePodmanRunning(onLog);
@@ -749,3 +594,11 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
     release();
   }
 }
+
+export {
+  isWslInstalled,
+  installWslTask,
+  configurePodmanMemoryProvider,
+  configureWslConfigPathProvider,
+  updateWslConfigMemory
+};

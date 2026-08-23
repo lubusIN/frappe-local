@@ -20,6 +20,7 @@ import { getAppIconPath } from '@frappe-local/main/utils';
 
 import { getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/core';
 import { initializeUpdater } from '@frappe-local/main/updater';
+import { getTaskRunner } from '@frappe-local/main/services';
 
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
@@ -203,7 +204,7 @@ export const runApplicationBootstrap = async (
       installWslTask: (context) => installWslTask(context),
       trackBenchOperation: (id, op) => analytics.trackOperation(id, op),
       trackSiteOperation: (id, op) => analytics.trackOperation(id, op),
-    }, undefined, context.appVersion, context.runtimePaths);
+    }, getTaskRunner(), context.appVersion, context.runtimePaths);
     
     await context.createMainWindow();
 
