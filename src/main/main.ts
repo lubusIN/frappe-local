@@ -100,8 +100,21 @@ const configureApplicationMenu = (): void => {
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
+        ...(isDev
+          ? [
+              { role: 'reload' } as MenuItemConstructorOptions,
+              { role: 'forceReload' } as MenuItemConstructorOptions,
+            ]
+          : [
+              {
+                label: 'Reload Window',
+                click: (_item, focusedWindow) => {
+                  if (focusedWindow instanceof BrowserWindow) {
+                    focusedWindow.reload();
+                  }
+                },
+              } as MenuItemConstructorOptions,
+            ]),
         { type: 'separator' },
         ...(isDev ? [{ role: 'toggleDevTools' } as MenuItemConstructorOptions, { type: 'separator' } as MenuItemConstructorOptions] : []),
         { role: 'resetZoom' },
