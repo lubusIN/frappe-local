@@ -117,7 +117,7 @@ export const registerSystemIpc = (
     };
   });
 
-  ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async (event: unknown) => {
+  ipcMainLike.handle(ipcChannels.taskRunnerSubscribe, async () => {
     return true;
   });
 

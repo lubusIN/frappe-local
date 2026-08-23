@@ -71,167 +71,17 @@
     <!-- PANE CONTAINER BELOW HEADER -->
     <div class="flex min-h-0 flex-1 w-full overflow-hidden">
       <!-- Bench list pane (Master) -->
-      <section
+      <BenchListPane
         v-show="showList"
-        class="flex h-full min-h-0 w-80 sm:w-96 shrink-0 flex-col border-r border-outline-gray-1 bg-surface-base"
-      >
-        <!-- Search & Status Filter Bar pinned above list -->
-        <div
-          v-if="!error && benches.length > 0"
-          class="flex items-center gap-2 shrink-0 border-b border-outline-gray-1 px-4 py-2 bg-surface-base w-full min-w-0"
-        >
-          <div class="flex-1 min-w-0">
-            <FormControl
-              v-model="benchFilters.search"
-              type="text"
-              placeholder="Search benches..."
-              size="sm"
-              variant="outline"
-            >
-              <template #prefix>
-                <span
-                  class="lucide-search w-4 text-ink-gray-5"
-                  aria-hidden="true"
-                />
-              </template>
-            </FormControl>
-          </div>
-
-          <div class="w-36 shrink-0">
-            <FormControl
-              v-model="benchFilterSelection"
-              type="select"
-              :options="statusTabOptions"
-              size="sm"
-              variant="outline"
-            >
-              <template #prefix>
-                <span
-                  class="lucide-list-filter w-4 text-ink-gray-5"
-                  aria-hidden="true"
-                />
-              </template>
-            </FormControl>
-          </div>
-        </div>
-
-        <ScrollArea
-          class="min-h-0 flex-1"
-          viewport-class="p-1"
-        >
-          <StatePanel
-            v-if="error"
-            kind="error"
-            title="Unable to load benches"
-            :body="error"
-            action-label="Retry"
-            @action="refresh"
-          />
-
-          <StatePanel
-            v-else-if="loading && benches.length === 0"
-            kind="loading"
-            title="Loading benches"
-            body="Fetching benches and lifecycle metadata."
-          />
-
-          <div
-            v-else-if="benches.length === 0"
-            class="p-3"
-          >
-            <EmptyState
-              title="No benches yet"
-              description="Create your first bench to get started with Frappe applications and sites."
-              :icon="'lucide-boxes'"
-            >
-              <div class="mt-4">
-                <Button
-                  size="sm"
-                  variant="solid"
-                  @click="showCreateBenchModal = true"
-                >
-                  Create bench
-                </Button>
-              </div>
-            </EmptyState>
-          </div>
-
-          <div
-            v-else-if="filteredBenches.length === 0"
-            class="p-3"
-          >
-            <EmptyState
-              title="No matching benches"
-              description="No benches match the current status or search filters."
-              :icon="'lucide-search'"
-            >
-              <Button
-                size="sm"
-                variant="subtle"
-                class="mt-2"
-                @click="clearBenchFilters"
-              >
-                Clear filters
-              </Button>
-            </EmptyState>
-          </div>
-
-          <template v-else>
-            <List
-              v-model:active="selectedBenchId"
-              :columns="['minmax(0,1fr)', 'auto']"
-              :style="{ '--list-row-padding-x': '1rem' }"
-            >
-              <ListRows
-                v-slot="{ item: bench, value }"
-                :items="filteredBenches"
-                row-key="id"
-              >
-                <ListRow
-                  :value="value"
-                  @click="selectBench(bench.id)"
-                >
-                  <ListCell>
-                    <div class="min-w-0 py-3">
-                      <div
-                        class="truncate inline-flex items-center text-sm text-ink-gray-8"
-                        :class="selectedBenchId === bench.id && 'font-semibold text-ink-gray-9'"
-                      >
-                        <span
-                          class="mr-2 inline-block size-2 rounded-full align-middle shrink-0"
-                          :class="bench.status === 'running' ? 'bg-surface-green-7' : (bench.status === 'stopped' || bench.status === 'success') ? 'bg-surface-gray-5' : bench.status === 'queued' ? 'bg-surface-yellow-7 animate-pulse' : 'bg-surface-red-7'"
-                        />
-                        <span class="truncate">{{ bench.name }}</span>
-                      </div>
-                      <div
-                        class="truncate text-xs text-ink-gray-5 mt-0.5 pl-4"
-                        :title="bench.path"
-                      >
-                        {{ formatPath(bench.path) }}
-                      </div>
-                    </div>
-                  </ListCell>
-                  <ListCell class="self-start justify-end pt-3.5">
-                    <div class="flex items-center gap-1.5 shrink-0">
-                      <Spinner
-                        v-if="isResourceBusy(bench.id)"
-                        size="xs"
-                        class="text-ink-gray-6"
-                      />
-                      <span
-                        v-else-if="bench.frappeVersion"
-                        class="text-xs font-mono text-ink-gray-5"
-                      >
-                        {{ bench.frappeVersion }}
-                      </span>
-                    </div>
-                  </ListCell>
-                </ListRow>
-              </ListRows>
-            </List>
-          </template>
-        </ScrollArea>
-      </section>
+        v-model="selectedBenchId"
+        :benches="benches"
+        :loading="loading"
+        :error="error"
+        :is-resource-busy="isResourceBusy"
+        @select="selectBench"
+        @refresh="refresh"
+        @create="showCreateBenchModal = true"
+      />
 
       <!-- Reading / Detail Pane -->
       <section class="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface-base">
@@ -248,165 +98,40 @@
             class="flex-1 min-h-0"
           >
             <template #tab-panel="{ tab }">
-              <ScrollArea
+              <BenchOverviewTab
                 v-if="tab.label === 'Overview'"
-                class="h-full"
-              >
-                <div class="space-y-8 px-6 py-5 w-full max-w-3xl">
-                  <!-- Manage Section -->
-                  <div class="flex flex-col gap-3">
-                    <h3 class="text-base-semibold text-ink-gray-9">
-                      Manage
-                    </h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-                      <Button
-                        v-if="selectedBench.status !== 'running'"
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-play"
-                        label="Start"
-                        class="!justify-start w-full"
-                        :disabled="updating || isResourceBusy(selectedBench.id) || selectedBench.status === 'queued'"
-                        @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
-                      />
-                      <Button
-                        v-else
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-rotate-cw"
-                        label="Restart"
-                        class="!justify-start w-full"
-                        :disabled="updating || isResourceBusy(selectedBench.id)"
-                        @click="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-square"
-                        label="Stop"
-                        class="!justify-start w-full"
-                        :disabled="updating || selectedBench.status === 'stopped' || selectedBench.status === 'queued' || isResourceBusy(selectedBench.id)"
-                        @click="onStopBench(selectedBench.id)"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-hammer"
-                        label="Build"
-                        class="!justify-start w-full"
-                        :disabled="updating || deleting || selectedBench.status !== 'running' || isResourceBusy(selectedBench.id)"
-                        @click="onBuildBench(selectedBench.id)"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-activity"
-                        label="Task Logs"
-                        class="!justify-start w-full"
-                        @click="onStatusClick(selectedBench.id)"
-                      />
-                    </div>
-                  </div>
+                :bench="selectedBench"
+                :health="health"
+                :updating="updating"
+                :deleting="deleting"
+                :opening-folder="openingFolder"
+                :is-editor-installed="isEditorInstalled"
+                :is-busy="isResourceBusy(selectedBench.id)"
+                @start="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
+                @restart="onSetBenchStatus(selectedBench.id, 'running', selectedBench.status)"
+                @stop="onStopBench(selectedBench.id)"
+                @build="onBuildBench(selectedBench.id)"
+                @logs="onStatusClick(selectedBench.id)"
+                @open-folder="onOpenBenchFolder(selectedBench.id)"
+                @open-shell="onOpenBenchShell(selectedBench.id)"
+                @open-editor="openInEditor(selectedBench.id, $event)"
+                @remove-app="onRequestRemoveBenchApp"
+              />
 
-                  <!-- Open in Section -->
-                  <div class="flex flex-col gap-3">
-                    <h3 class="text-base-semibold text-ink-gray-9">
-                      Open in
-                    </h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-                      <Button
-                        v-if="health?.platform !== 'win32'"
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-folder-open"
-                        label="Folder"
-                        class="!justify-start w-full"
-                        :disabled="openingFolder"
-                        @click="onOpenBenchFolder(selectedBench.id)"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-terminal"
-                        label="Terminal"
-                        class="!justify-start w-full"
-                        :disabled="selectedBench.status !== 'running'"
-                        @click="onOpenBenchShell(selectedBench.id)"
-                      />
-                      <Button
-                        v-if="health?.platform !== 'win32'"
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-code"
-                        label="VS Code"
-                        class="!justify-start w-full"
-                        :disabled="!isEditorInstalled"
-                        @click="openInEditor(selectedBench.id, false)"
-                      />
-                      <Button
-                        variant="outline"
-                        size="md"
-                        icon-left="lucide-box"
-                        :label="health?.platform === 'win32' ? 'VS Code' : 'Dev Container'"
-                        class="!justify-start w-full"
-                        :disabled="!isEditorInstalled || selectedBench.status !== 'running'"
-                        @click="openInEditor(selectedBench.id, true)"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Installed Apps Section -->
-                  <InstalledAppsSection
-                    :app-ids="selectedBench.apps || []"
-                    :bench-id="selectedBench.id"
-                    :bench-status="selectedBench.status"
-                    context="bench"
-                    @remove-app="onRequestRemoveBenchApp"
-                  />
-                </div>
-              </ScrollArea>
-
-              <ScrollArea
+              <BenchAppsTab
                 v-else-if="tab.label === 'Apps'"
-                class="h-full"
-              >
-                <div class="space-y-6 px-6 py-5 w-full">
-                  <!-- APPS Section -->
-                  <div class="flex flex-col gap-4">
-                    <div
-                      v-if="benchAppsWarningMessage"
-                      class="pt-2"
-                    >
-                      <Alert 
-                        theme="amber" 
-                        :title="benchAppsWarningMessage" 
-                        :dismissible="false" 
-                      />
-                    </div>
-
-                    <AppManager
-                      class="pt-1 w-full"
-                      container-class="flex flex-col gap-1 w-full"
-                      :resource-id="selectedBench.id"
-                      :resource-name="selectedBench.name"
-                      :bench-status="selectedBench.status"
-                      context="bench"
-                      :active-app-ids="selectedBench.apps || []"
-                      :disabled="!canMutateApps || updating"
-                      :frappe-version="selectedBench.frappeVersion"
-                      :loading-app-id="updating ? pendingRemoveBenchAppId || 'adding' : null"
-                      @add-app="onAddBenchApp"
-                      @remove-app="onRequestRemoveBenchApp"
-                      @install-app="onAddBenchApp"
-                      @uninstall-app="onRequestRemoveBenchApp"
-                    />
-                  </div>
-                </div>
-              </ScrollArea>
+                :bench="selectedBench"
+                :warning-message="benchAppsWarningMessage"
+                :can-mutate="canMutateApps"
+                :updating="updating"
+                :pending-remove-id="pendingRemoveBenchAppId"
+                @add-app="onAddBenchApp"
+                @remove-app="onRequestRemoveBenchApp"
+              />
             </template>
           </Tabs>
 
-          <!-- Footer Actions Bar pinned at bottom of reading pane -->
+          <!-- Footer Actions Bar -->
           <footer class="flex shrink-0 items-center justify-between gap-2 border-t border-outline-gray-1 px-5 py-3 bg-surface-base">
             <div class="flex items-center gap-2">
               <Button
@@ -440,18 +165,15 @@
       @cancel="cancelDeleteBench"
       @confirm="onConfirmDeleteBench"
     />
-
     <BenchWizardDialog
       v-model:open="showCreateBenchModal"
       @created="onBenchCreated"
     />
-
     <SiteWizardDialog
       v-model:open="showCreateSiteModal"
       :fixed-bench-id="selectedBench?.id"
       @created="onSiteCreated"
     />
-
     <ConfirmationDialog
       :open="removeAppConfirmOpen"
       title="Remove app"
@@ -460,7 +182,6 @@
       @cancel="onCancelRemoveBenchApp"
       @confirm="onConfirmRemoveBenchApp"
     />
-
     <AppUsageDialog
       v-model:open="usageDialogOpen"
       :app-name="usageAppTitle"
@@ -471,15 +192,13 @@
 </template>
 
 <script setup lang="ts">
-import { Alert, Badge, Button, Dropdown, FormControl, PageHeaderBase, PageHeaderTitle, ScrollArea, Tabs, Spinner, toast } from 'frappe-ui';
-import { List, ListCell, ListRow, ListRows } from 'frappe-ui/list';
-import { computed, reactive, ref, watch } from 'vue';
+import { Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, Tabs, Spinner, toast } from 'frappe-ui';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
-import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
-import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
-import AppManager from '@frappe-local/renderer/components/AppManager.vue';
-import InstalledAppsSection from '@frappe-local/renderer/components/InstalledAppsSection.vue';
+import BenchListPane from '@frappe-local/renderer/components/benches/BenchListPane.vue';
+import BenchOverviewTab from '@frappe-local/renderer/components/benches/BenchOverviewTab.vue';
+import BenchAppsTab from '@frappe-local/renderer/components/benches/BenchAppsTab.vue';
 import { useConfirmAction, trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
 import { useProgressCenter, useResourceTaskState, runAndWaitForTask, useEditorStatus, useDiagnostics } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
@@ -516,6 +235,22 @@ const {
 const { sites, refresh: refreshSites } = useSites();
 
 const showCreateSiteModal = ref(false);
+
+const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
+const { run: runDiagnostics } = useDiagnostics();
+
+const {
+  setPendingAction: setPendingBenchAction,
+  clearPendingAction: clearPendingBenchAction,
+  isResourceBusy,
+  formatStatusLabel,
+  getStatusTheme,
+  getLatestRelevantTaskId,
+} = useResourceTaskState('bench', computed(() => tasks.value || []));
+
+const {
+  getLatestRelevantTaskId: getLatestRelevantSiteTaskId,
+} = useResourceTaskState('site', computed(() => tasks.value || []));
 
 const onSiteCreated = (site: { id: string, name: string }) => {
   trackSiteCreationToast(site, {
@@ -555,62 +290,16 @@ const selectBench = (id: string) => {
   selectedBenchId.value = id;
 };
 
-const formatPath = (path: string) => {
-  if (!path) return '';
-  return path.replace(/^\/Users\/[^/]+/, '~');
-};
-
-const benchFilters = reactive({
-  status: '',
-  search: '',
-});
-
-const SELECT_ALL = '__all__';
-
-const statusTabOptions = computed(() => [
-  { label: 'All statuses', value: SELECT_ALL },
-  { label: 'Running', value: 'running' },
-  { label: 'Stopped', value: 'stopped' },
-  { label: 'Error', value: 'failure' },
-]);
-
-const benchFilterSelection = computed({
-  get: () => benchFilters.status || SELECT_ALL,
-  set: (value: string) => {
-    benchFilters.status = value === SELECT_ALL ? '' : value;
-  },
-});
-
-const filteredBenches = computed(() => {
-  return benches.value.filter((bench) => {
-    if (benchFilters.status) {
-      if (benchFilters.status === 'running' && bench.status !== 'running') return false;
-      if (benchFilters.status === 'stopped' && bench.status !== 'stopped' && bench.status !== 'success') return false;
-      if (benchFilters.status === 'failure' && bench.status !== 'failure') return false;
-    }
-    if (benchFilters.search) {
-      const q = benchFilters.search.toLowerCase();
-      return bench.name.toLowerCase().includes(q) || bench.path.toLowerCase().includes(q) || (bench.frappeVersion || '').toLowerCase().includes(q);
-    }
-    return true;
-  });
-});
-
-const clearBenchFilters = () => {
-  benchFilters.status = '';
-  benchFilters.search = '';
-};
-
 const selectedBench = computed(() => {
   if (selectedBenchId.value) {
     const found = benches.value.find((b) => b.id === selectedBenchId.value);
     if (found) return found;
   }
-  return filteredBenches.value[0] ?? benches.value[0] ?? null;
+  return benches.value[0] ?? null;
 });
 
 watch(
-  () => filteredBenches.value,
+  () => benches.value,
   (list) => {
     if (list.length > 0 && (!selectedBenchId.value || !benches.value.some((b) => b.id === selectedBenchId.value))) {
       selectedBenchId.value = list[0]?.id;
@@ -784,21 +473,6 @@ const getBenchSiteCount = (benchId: string) => {
   return sites.value.filter((s) => s.benchId === benchId).length;
 };
 
-const { tasks, activeLogTaskId: selectedTaskId } = useProgressCenter();
-const { run: runDiagnostics } = useDiagnostics();
-
-const {
-  setPendingAction: setPendingBenchAction,
-  clearPendingAction: clearPendingBenchAction,
-  isResourceBusy,
-  formatStatusLabel,
-  getStatusTheme,
-  getLatestRelevantTaskId,
-} = useResourceTaskState('bench', computed(() => tasks.value || []));
-
-const {
-  getLatestRelevantTaskId: getLatestRelevantSiteTaskId,
-} = useResourceTaskState('site', computed(() => tasks.value || []));
 
 const {
   isOpen: confirmDeleteBenchOpen,
