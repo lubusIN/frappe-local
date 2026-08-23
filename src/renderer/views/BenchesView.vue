@@ -630,9 +630,11 @@ const onOpenBenchFolder = async (id: string) => {
 const onBenchCreated = async (bench: BenchListItem) => {
   const benchStartTime = Date.now();
   void refresh(true);
+  
   const benchPromise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
-  toastTask(benchPromise, {
-    loading: `Creating bench ${bench.name}`,
+  
+  const benchToast = toastTask(benchPromise, {
+    loading: `Creating bench ${bench.name}...`,
     success: `Bench ${bench.name} created.`,
     error: `Failed to create bench ${bench.name}.`,
     action: {
@@ -648,14 +650,28 @@ const onBenchCreated = async (bench: BenchListItem) => {
     await refreshSites(true);
     const initialSite = sites.value.find(s => s.benchId === bench.id && s.status === 'queued');
     if (initialSite) {
-      trackSiteCreationToast(initialSite, {
-        refreshSites,
-        selectedTaskId,
-        getLatestRelevantTaskId: getLatestRelevantSiteTaskId,
-        startTime: benchStartTime
+      // Switch task log view to the site creation task automatically
+      selectedTaskId.value = getLatestRelevantSiteTaskId(initialSite.id);
+      
+      const sitePromise = runAndWaitForTask(() => Promise.resolve(), 'site', initialSite.id, /^Create Site/i, { startTime: benchStartTime }).then(() => refreshSites(true));
+      
+      toastTask(sitePromise, {
+        id: benchToast.toastId, // Chain to the existing toast
+        loading: `Bench ${bench.name} created. Creating initial site ${initialSite.name}...`,
+        success: `Bench and site created successfully.`,
+        error: `Failed to create site ${initialSite.name}.`,
+        action: {
+          label: 'View logs',
+          onClick: (e?: Event) => {
+            e?.preventDefault();
+            selectedTaskId.value = getLatestRelevantSiteTaskId(initialSite.id);
+          }
+        }
       });
     }
-  }).catch(() => {});
+  }).catch(() => {
+    // Error is already handled by the first toastTask
+  });
 };
 
 const onOpenBenchShell = async (id: string) => {
