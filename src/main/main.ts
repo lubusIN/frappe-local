@@ -332,7 +332,8 @@ app.on('before-quit', (event) => {
       defaultId: 0,
       cancelId: 2,
       title: 'Quit Frappe Local',
-      message: 'Do you want to stop the background benches to free up memory?',
+      message: 'Do you want to stop the local enviornment and services?',
+      icon: getAppIconPath(),
     }).then(async ({ response }) => {
       isPromptingQuit = false;
       if (response === 2) {
