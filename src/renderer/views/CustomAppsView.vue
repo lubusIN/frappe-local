@@ -158,7 +158,8 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dropdown, toast } from 'frappe-ui';
+import { Badge, Button, Dropdown, toast, PageHeader } from 'frappe-ui';
+import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 import type { DropdownItem } from 'frappe-ui';
 import { ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -169,7 +170,6 @@ import AddCustomAppModal from '@frappe-local/renderer/components/dialogs/AddCust
 import AppUsageDialog from '@frappe-local/renderer/components/dialogs/AppUsageDialog.vue';
 
 import { useConfirmAction } from '@frappe-local/renderer/composables/ui';
-import { PageHeader } from 'frappe-ui';
 
 import { useCustomApps } from '@frappe-local/renderer/composables/data';
 import { useEditorStatus } from '@frappe-local/renderer/composables/system';
@@ -255,7 +255,7 @@ const onConfirmDelete = async () => {
   cancelDelete();
   try {
     const promise = deleteApp(id);
-    toast.promise(promise, {
+    toastTask(promise, {
       loading: `Removing app ${name}...`,
       success: `Removed app ${name}`,
       error: `Failed to remove app ${name}`
