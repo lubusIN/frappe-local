@@ -6,7 +6,7 @@ import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 import type { SiteCreateInput } from '@frappe-local/shared/core';
 import { canAttachSiteToBench } from '@frappe-local/shared/domain';
-import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner } from '@frappe-local/main/services';
+import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner, restartBenchProcesses } from '@frappe-local/main/services';
 import { fetchBenchApps } from '../bench-orchestration';
 
 import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
@@ -15,8 +15,7 @@ import { composeBenchArgs, composeBenchSiteArgs, composeExecArgs, getComposeProj
 /** Shared execution context for running bench commands against a site. */
 import {
   clearSiteCaches,
-  migrateSite,
-  restartBenchServices
+  migrateSite
 } from './utils';
 import type { SiteCommandEnv } from './utils';
 export type { SiteCommandEnv };
@@ -181,7 +180,7 @@ export const orchestrateSiteCreation = async (
         await migrateSite(context, input.name, siteEnv);
         await clearSiteCaches(context, input.name, siteEnv);
         await ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'new-site', { projectName, runtimeCmd, runtimeEnv });
-        await restartBenchServices(context, siteEnv);
+        await restartBenchProcesses(siteEnv, context);
 
         const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'ready' });
         
@@ -315,8 +314,8 @@ export const orchestrateSiteDeletion = async (
           await ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'rm-dir', { projectName, runtimeCmd, runtimeEnv });
           if (bench.status === 'running') {
             const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
-            await restartBenchServices(context, siteEnv).catch((err) =>
-              context.log('warning', `Failed to restart bench services: ${errorMessage(err)}`)
+            await restartBenchProcesses(siteEnv, context).catch((err) =>
+              context.log('warning', `Failed to restart bench processes: ${errorMessage(err)}`)
             );
           }
           context.completeStep('rm-dir', `Site directory removed`);
@@ -608,7 +607,7 @@ export const orchestrateSiteAppsUpdate = (
         await clearSiteCaches(context, site.name, siteEnv);
 
         if (installDelta.length > 0 || uninstallDelta.length > 0) {
-          await restartBenchServices(context, siteEnv);
+          await restartBenchProcesses(siteEnv, context);
         }
 
         const updatedSite = await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'ready' });

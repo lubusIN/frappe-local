@@ -113,6 +113,26 @@ export class TaskRunner {
     return taskId;
   }
 
+  public async awaitTask(taskId: string): Promise<void> {
+    const task = this.tasks.get(taskId);
+    if (!task) return;
+    if (task.status === 'success' || task.status === 'failure' || task.status === 'cancelled') {
+      if (task.status === 'success') return;
+      throw new Error(`Task ${task.status}`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const listener = (event: TaskProgressEvent) => {
+        if (event.taskId === taskId && (event.type === 'task.completed' || event.type === 'task.failed' || event.type === 'task.cancelled')) {
+          this.listeners.delete(listener);
+          if (event.type === 'task.completed') resolve();
+          else reject(new Error(event.message || `Task ${event.status}`));
+        }
+      };
+      this.listeners.add(listener);
+    });
+  }
+
   public cancelTask(taskId: string): boolean {
     const queuedIndex = this.queue.indexOf(taskId);
     if (queuedIndex >= 0 && this.activeTaskId !== taskId) {

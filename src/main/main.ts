@@ -1,13 +1,21 @@
 import { BrowserWindow, Menu, app, dialog, ipcMain, powerMonitor, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBootstrapContext, runApplicationBootstrap } from '@frappe-local/main/bootstrap';
+import { ipcChannels } from '@frappe-local/shared/core';
+import { createBootstrapContext, runApplicationBootstrap, currentAppLifecycleState } from '@frappe-local/main/bootstrap';
 import { createMainLogger } from '@frappe-local/main/logger';
 import { getAppIconPath } from '@frappe-local/main/utils';
 import { stopCaddyFrontDoor } from '@frappe-local/main/services';
+import { setupTray } from '@frappe-local/main/tray';
+import {
+  isRuntimeRunning,
+  stopRuntime,
+} from '@frappe-local/main/services/runtime-service';
 
 let isQuitting = false;
 let shouldFocusMainWindow = false;
+let forceQuit = false;
+let isPromptingQuit = false;
 const APP_DISPLAY_NAME = 'Frappe Local';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -160,6 +168,7 @@ const createMainWindow = async (): Promise<void> => {
 
   ipcMain.handle('app:ui-ready', () => {
     window.show();
+    window.webContents.send(ipcChannels.appLifecycleState, { state: currentAppLifecycleState });
   });
 
   window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
@@ -167,7 +176,7 @@ const createMainWindow = async (): Promise<void> => {
   });
 
   window.on('close', (event) => {
-    if (!isQuitting && process.platform === 'darwin') {
+    if (!isQuitting) {
       event.preventDefault();
       window.hide();
     }
@@ -236,6 +245,10 @@ const createMainWindow = async (): Promise<void> => {
   } else {
     await window.loadFile(path.join(currentDirectory, '../renderer/main_window/index.html'));
   }
+
+  if (appIconPath) {
+    setupTray(appIconPath, window);
+  }
 };
 
 if (hasSingleInstanceLock) {
@@ -286,14 +299,67 @@ if (hasSingleInstanceLock) {
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    mainLogger.info('all windows closed, quitting application');
-    void stopCaddyFrontDoor();
-    app.quit();
-  }
+  mainLogger.info('all windows closed, but application will continue running in the background tray');
 });
 
-app.on('before-quit', () => {
-  isQuitting = true;
-  void stopCaddyFrontDoor();
+let shouldStopBenchesOnQuit = true;
+
+app.on('before-quit', (event) => {
+  if (forceQuit) {
+    isQuitting = true;
+    if (shouldStopBenchesOnQuit) {
+      void stopCaddyFrontDoor();
+    }
+    return;
+  }
+
+  event.preventDefault();
+
+  if (isPromptingQuit) return;
+  isPromptingQuit = true;
+
+  isRuntimeRunning().then((isRunning) => {
+    if (!isRunning) {
+      isPromptingQuit = false;
+      forceQuit = true;
+      app.quit();
+      return;
+    }
+
+    dialog.showMessageBox({
+      type: 'question',
+      buttons: ['Stop Benches & Quit', 'Keep Running & Quit', 'Cancel'],
+      defaultId: 0,
+      cancelId: 2,
+      title: 'Quit Frappe Local',
+      message: 'Do you want to stop the background benches to free up memory?',
+    }).then(async ({ response }) => {
+      isPromptingQuit = false;
+      if (response === 2) {
+        return;
+      }
+      
+      if (response === 0) {
+        mainLogger.info('User chose to stop benches on quit');
+        shouldStopBenchesOnQuit = true;
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+          windows[0]?.show();
+          windows[0]?.webContents.send(ipcChannels.appLifecycleState, { state: 'stopping' });
+        }
+        await stopRuntime();
+      } else {
+        mainLogger.info('User chose to keep benches running on quit');
+        shouldStopBenchesOnQuit = false;
+      }
+
+      forceQuit = true;
+      app.quit();
+    }).catch((err) => {
+      isPromptingQuit = false;
+      mainLogger.error('Failed to show quit dialog: ' + err);
+      forceQuit = true;
+      app.quit();
+    });
+  });
 });

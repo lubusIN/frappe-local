@@ -64,6 +64,7 @@ export const ipcChannels = {
   utilsCheckEditorInstalled: 'utils:check-editor-installed',
   uiReady: 'app:ui-ready',
   frontDoorStatus: 'app:front-door-status',
+  appLifecycleState: 'app:lifecycle-state',
 } as const;
 
 export type AppHealthResponse = {
@@ -208,6 +209,11 @@ export type AvailableTerminal = {
   readonly name: string;
 };
 
+export type AppLifecycleStateEvent = {
+  readonly state: 'starting' | 'ready' | 'stopping' | 'resetting';
+  readonly message?: string;
+};
+
 export type RendererBridge = {
   readonly checkAppHealth: () => Promise<AppHealthResponse>;
 
@@ -274,6 +280,7 @@ export type RendererBridge = {
   readonly checkEditorInstalled: (commandName?: string) => Promise<boolean>;
   readonly uiReady: () => Promise<void>;
   readonly getFrontDoorStatus: () => Promise<{ available: boolean; secure: boolean }>;
+  readonly onAppLifecycleStateChange: (listener: (event: AppLifecycleStateEvent) => void) => () => void;
 };
 
 export const isAppHealthResponse = (value: unknown): value is AppHealthResponse => {

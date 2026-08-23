@@ -13,8 +13,9 @@ import { JsonStorageAdapter, initializeStorage } from '@frappe-local/main/storag
 import { resolveEditorCommand } from '@frappe-local/main/utils';
 
 import { AppCatalogRepository, BenchRepository, CustomAppsRepository, SettingsRepository, SiteRepository } from '@frappe-local/main/storage/repositories';
+import { waitForBenchContainers } from '@frappe-local/main/services/bench-orchestration';
 
-import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, installWslTask, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
+import { APP_CATALOG_SEED_VERSION, analytics, applyPodmanMachineMemory, configurePodmanMemoryProvider, getDefaultAppCatalogSeed, initializeCaddyFrontDoor, installWslTask, isCaddyFrontDoorAvailable, isCaddyFrontDoorSecure, ensureRuntimeRunning, runDiagnostics, syncAppCatalogFromBrewery } from '@frappe-local/main/services';
 
 import { getAppIconPath } from '@frappe-local/main/utils';
 
@@ -22,6 +23,7 @@ import { getRecommendedPodmanMemoryMb, ipcChannels } from '@frappe-local/shared/
 import { initializeUpdater } from '@frappe-local/main/updater';
 import { getTaskRunner } from '@frappe-local/main/services';
 
+export let currentAppLifecycleState: 'starting' | 'ready' | 'stopping' = 'ready';
 type BootstrapContext = {
   readonly registerHandlers: typeof registerIpcHandlers;
   readonly createMainWindow: () => Promise<void>;
@@ -168,6 +170,64 @@ export const runApplicationBootstrap = async (
       bootstrapLogger.warn(`Caddy front door background initialization failed: ${error}`);
     });
 
+    // Start the VM in the background if it's not already running
+    const windows = BrowserWindow.getAllWindows();
+    currentAppLifecycleState = 'starting';
+    if (windows.length > 0) {
+      windows[0]?.webContents.send(ipcChannels.appLifecycleState, { state: currentAppLifecycleState });
+    }
+    const triggerStartupDiagnostics = () => {
+      runDiagnostics({
+        runtimePaths: context.runtimePaths,
+        settingsRepository: {
+          get: async () => {
+            const settings = await settingsRepository.findAll();
+            return settings[0] || null;
+          },
+        },
+        appVersion: context.appVersion,
+      }).then(async (report) => {
+        const windows = BrowserWindow.getAllWindows();
+        if (windows.length > 0) {
+          windows[0]?.webContents.send(ipcChannels.diagnosticsUpdated, report);
+        }
+        if (report.hasCriticalIssues) {
+          // Intentionally do not reset bench status to 'stopped'.
+          // With 'restart: unless-stopped', benches retain their state across VM reboots.
+        }
+      }).catch((err) => bootstrapLogger.error('Initial background diagnostics failed', err));
+    };
+
+    ensureRuntimeRunning().then(async () => {
+      // Once VM is running, ensure all benches marked as 'running' in the database have their processes started
+      const benches = await repositories.benches.findAll();
+      const taskPromises: Promise<void>[] = [];
+      for (const bench of benches) {
+        if (bench.status === 'running') {
+          bootstrapLogger.info(`Waiting for bench ${bench.name} (${bench.id}) containers to resume...`);
+          taskPromises.push(waitForBenchContainers(bench));
+        }
+      }
+      if (taskPromises.length > 0) {
+        bootstrapLogger.info(`Waiting for ${taskPromises.length} bench(es) to become healthy...`);
+        await Promise.allSettled(taskPromises);
+      }
+      currentAppLifecycleState = 'ready';
+      const currentWindows = BrowserWindow.getAllWindows();
+      if (currentWindows.length > 0) {
+        currentWindows[0]?.webContents.send(ipcChannels.appLifecycleState, { state: currentAppLifecycleState });
+      }
+    }).catch((error) => {
+      bootstrapLogger.warn(`Failed to start VM on startup: ${error}`);
+      currentAppLifecycleState = 'ready';
+      const currentWindows = BrowserWindow.getAllWindows();
+      if (currentWindows.length > 0) {
+        currentWindows[0]?.webContents.send(ipcChannels.appLifecycleState, { state: currentAppLifecycleState });
+      }
+    }).finally(() => {
+      triggerStartupDiagnostics();
+    });
+
     syncAppCatalogFromBrewery(currentSettings?.breweryUrl, repositories.appCatalog).catch((error) => {
       bootstrapLogger.warn(`Brewery catalog background initialization failed: ${error}`);
     });
@@ -215,32 +275,6 @@ export const runApplicationBootstrap = async (
 
     bootstrapLogger.info('startup sequence completed');
 
-    // Run initial diagnostics in background after a short delay
-    setTimeout(() => {
-      runDiagnostics({
-        runtimePaths: context.runtimePaths,
-        settingsRepository: {
-          get: async () => {
-            const settings = await settingsRepository.findAll();
-            return settings[0] || null;
-          },
-        },
-        appVersion: context.appVersion,
-      }).then(async (report) => {
-        const windows = BrowserWindow.getAllWindows();
-        if (windows.length > 0) {
-          windows[0]?.webContents.send(ipcChannels.diagnosticsUpdated, report);
-        }
-        if (report.hasCriticalIssues) {
-          const benches = await repositories.benches.findAll();
-          for (const bench of benches) {
-            if (bench.status === 'running' || bench.status === 'queued') {
-              await repositories.benches.update(bench.id, { status: 'stopped' });
-            }
-          }
-        }
-      }).catch((err) => bootstrapLogger.error('Initial background diagnostics failed', err));
-    }, 1000);
   } catch (error) {
     bootstrapLogger.error('startup sequence failed', error);
     const appIconPath = getAppIconPath();

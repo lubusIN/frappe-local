@@ -6,6 +6,7 @@ import { getRuntimeEnv } from '../runtime-service';
 import { getDefaultAppCatalogSeed } from '../catalog-provider';
 import type { AppCatalogItem, Bench, CustomAppItem } from '@frappe-local/shared/domain';
 import { composeExecArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
+import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
 
 export const resolveAndPersistBenchPort = async (
   bench: Bench,
@@ -530,4 +531,44 @@ export const getAppDelta = (previousApps: readonly string[], nextApps: readonly 
     install: filterNonCoreApps(next).filter((app) => !previous.includes(app)),
     remove: filterNonCoreApps(previous).filter((app) => !next.includes(app)),
   };
+};
+
+export const restartBenchProcesses = async (
+  env: {
+    projectName: string;
+    benchPath: string;
+    runtimeCmd: string;
+    runtimeEnv: NodeJS.ProcessEnv;
+  },
+  context?: import('@frappe-local/main/services').TaskExecutionContext
+) => {
+  if (context) context.startStep('restart', 'Restarting bench processes');
+  
+  // Kill existing honcho/bench start process
+  await execPromise(
+    env.runtimeCmd,
+    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', 'honcho'],
+    env.benchPath,
+    undefined,
+    env.runtimeEnv,
+    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+  ).catch(() => ({ code: 0 })); // Ignore error if it's not running
+
+  // Start it again using bench start
+  const restartResult = await execPromise(
+    env.runtimeCmd,
+    ['-p', env.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+    env.benchPath,
+    context ? (out) => context.log('info', out, 'restart') : undefined,
+    env.runtimeEnv,
+    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+  );
+
+  if (restartResult.code !== 0) {
+    throw new Error(`Failed to restart bench processes: ${restartResult.stderr}`);
+  }
+
+  // Brief delay to let processes initialize
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  if (context) context.completeStep('restart', 'Bench processes restarted');
 };

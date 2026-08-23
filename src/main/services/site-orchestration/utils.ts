@@ -96,37 +96,3 @@ export const migrateSite = async (
     timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
   });
 };
-
-export const restartBenchServices = async (
-  context: TaskExecutionContext,
-  env: SiteCommandEnv
-) => {
-  context.startStep('restart', 'Restarting bench processes');
-  
-  // Kill existing honcho/bench start process
-  await execPromise(
-    env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
-    env.benchPath,
-    undefined,
-    env.runtimeEnv,
-    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  ).catch(() => ({ code: 0 })); // Ignore error if it's not running
-
-  // Start it again
-  const restartResult = await execPromise(
-    env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
-    env.benchPath,
-    (out) => context.log('info', out, 'restart'),
-    env.runtimeEnv,
-    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  );
-
-  if (restartResult.code !== 0) {
-    throw new Error(`Failed to restart bench processes: ${restartResult.stderr}`);
-  }
-
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  context.completeStep('restart', 'Bench processes restarted');
-};
