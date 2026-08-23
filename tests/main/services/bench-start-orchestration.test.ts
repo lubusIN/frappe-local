@@ -90,8 +90,9 @@ describe('bench start/restart orchestration', () => {
     fs.mkdirSync(path.join(benchPath, 'sites', 'frappe.localhost'), { recursive: true });
     execPromiseMock
       .mockRejectedValueOnce(new Error('Command timed out after 300000ms: /mock/docker-compose ...'))
-      .mockResolvedValueOnce({ code: 0, stdout: 'frappe\n', stderr: '' })
-      .mockResolvedValueOnce({ code: 0, stdout: 'healthy\n', stderr: '' });
+      .mockResolvedValueOnce({ code: 0, stdout: 'frappe\n', stderr: '' }) // ps --services
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // pkill
+      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // bench start
 
     orchestrateBenchStart(
       bench,
@@ -126,7 +127,7 @@ describe('bench start/restart orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-local-3689f4f1', '-f', expect.any(String), 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
+      ['-p', 'frappe-local-3689f4f1', 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),

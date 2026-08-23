@@ -1,5 +1,5 @@
 import type { Ref } from 'vue';
-import { runAndWaitForTask, useIpc } from '@frappe-local/renderer/composables/system';
+import { runAndWaitForTask } from '@frappe-local/renderer/composables/system';
 import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 
 export const trackSiteCreationToast = (
@@ -11,7 +11,6 @@ export const trackSiteCreationToast = (
     startTime?: number;
   }
 ) => {
-  const ipc = useIpc();
   const { refreshSites, selectedTaskId, getLatestRelevantTaskId, startTime } = options;
 
   void refreshSites(true);

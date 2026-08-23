@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { getTaskRunner, type TaskExecutionContext } from '../task-runner';
 import { ensureRuntimeRunning, getRuntimeEnv, getLastRuntimeError } from '../runtime-service';
 import type { AppCatalogItem, Bench, CustomAppItem } from '@frappe-local/shared/domain';
-import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
+import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS, QUICK_IDLE_TIMEOUT_MS, QUICK_MAX_TIMEOUT_MS, TASK_CANCELLABLE_AFTER_MS } from '@frappe-local/main/constants';
 import { benchComposeArgs, composeBenchArgs, composeExecArgs, ensureBenchComposeWritten, getBenchComposePath, getComposeProjectName } from '@frappe-local/main/utils/podman';
 import {
   resolveBenchBranch,
@@ -261,16 +261,102 @@ export const orchestrateBenchAppChanges = (
   const appName = delta.install[0] || delta.remove[0] || 'apps';
   const actionVerb = delta.install.length > 0 ? 'Get' : 'Remove';
 
+  let attemptedInstallAppIds: string[] = [];
+  let recoveryEnv: {
+    command: string;
+    projectName: string;
+    runtimeEnv: NodeJS.ProcessEnv;
+  } | null = null;
+
+  const cleanupFailedBenchAppInstall = async (context: TaskExecutionContext) => {
+    if (attemptedInstallAppIds.length > 0) {
+      try {
+        if (!context.signal.aborted) {
+          context.startStep('rollback-apps', 'Restoring bench after failed app installation');
+        }
+
+        if (recoveryEnv) {
+          for (const app of attemptedInstallAppIds) {
+            const uninstallResult = await execPromise(
+              recoveryEnv.command,
+              composeBenchArgs(recoveryEnv.projectName, ['pip', 'uninstall', '-y', app]),
+              bench.path,
+              context.signal.aborted
+                ? undefined
+                : (out) => context.log('info', out, 'rollback-apps'),
+              recoveryEnv.runtimeEnv,
+              { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+            );
+
+            if (uninstallResult.code !== 0 && !context.signal.aborted) {
+              context.log(
+                'warning',
+                `Could not uninstall partial Python package ${app}: ${uninstallResult.stderr || uninstallResult.stdout || `exit code ${uninstallResult.code}`
+                }`,
+                'rollback-apps'
+              );
+            }
+          }
+        }
+
+        await cleanupBenchAppArtifacts(
+          bench.path,
+          attemptedInstallAppIds,
+          context.signal.aborted ? { log: () => undefined } : context,
+          'rollback-apps',
+          recoveryEnv ? { projectName: recoveryEnv.projectName, runtimeCmd: recoveryEnv.command, runtimeEnv: recoveryEnv.runtimeEnv } : undefined
+        );
+
+        if (recoveryEnv) {
+          const rebuildResult = await execPromise(
+            recoveryEnv.command,
+            composeBenchArgs(recoveryEnv.projectName, ['build']),
+            bench.path,
+            context.signal.aborted
+              ? undefined
+              : (out) => context.log('info', out, 'rollback-apps'),
+            recoveryEnv.runtimeEnv,
+            { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+          );
+
+          if (rebuildResult.code !== 0 && !context.signal.aborted) {
+            context.log(
+              'warning',
+              `Could not rebuild remaining bench assets: ${rebuildResult.stderr || rebuildResult.stdout || `exit code ${rebuildResult.code}`
+              }`,
+              'rollback-apps'
+            );
+          }
+        }
+
+        if (!context.signal.aborted) {
+          context.completeStep('rollback-apps', 'Bench restored after failed app installation');
+        }
+      } catch (cleanupError) {
+        if (!context.signal.aborted) {
+          context.log('error', `Failed to restore bench state: ${errorMessage(cleanupError)}`, 'rollback-apps');
+        }
+      }
+    }
+
+    // Explicitly revert the DB state to the existing apps to ensure the UI removes the failed app
+    try {
+      await benchesRepo.update(bench.id, { apps: [...previousApps] });
+    } catch (dbCleanupError) {
+      context.log('warning', `Failed to revert bench apps in DB: ${errorMessage(dbCleanupError)}`, 'apps');
+    }
+  };
+
   taskRunner.enqueue({
     name: `${actionVerb} app ${appName} on ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling app installation and cleaning up partial state...', 'rollback-apps');
+      await cleanupFailedBenchAppInstall(context);
+    },
     run: async (context) => {
-      let attemptedInstallAppIds: string[] = [];
-      let recoveryEnv: {
-        command: string;
-        projectName: string;
-        runtimeEnv: NodeJS.ProcessEnv;
-      } | null = null;
       try {
         if (bench.status !== 'running') {
           throw new Error(`Bench ${bench.name} must be running before installed apps can be changed.`);
@@ -330,7 +416,7 @@ export const orchestrateBenchAppChanges = (
             bench.path,
             (out) => context.log('info', out, 'pause-bench'),
             runtimeEnv,
-            { idleTimeout: 30000, maxTimeout: 60000 }
+            { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
           );
 
           if (pauseResult.code === 0) {
@@ -412,82 +498,7 @@ export const orchestrateBenchAppChanges = (
 
         context.completeStep('apps', 'Bench apps updated');
       } catch (error) {
-        if (attemptedInstallAppIds.length > 0) {
-          try {
-            if (!context.signal.aborted) {
-              context.startStep('rollback-apps', 'Restoring bench after failed app installation');
-            }
-
-            if (recoveryEnv) {
-              for (const app of attemptedInstallAppIds) {
-                const uninstallResult = await execPromise(
-                  recoveryEnv.command,
-                  composeBenchArgs(recoveryEnv.projectName, ['pip', 'uninstall', '-y', app]),
-                  bench.path,
-                  context.signal.aborted
-                    ? undefined
-                    : (out) => context.log('info', out, 'rollback-apps'),
-                  recoveryEnv.runtimeEnv,
-                  { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-                );
-
-                if (uninstallResult.code !== 0 && !context.signal.aborted) {
-                  context.log(
-                    'warning',
-                    `Could not uninstall partial Python package ${app}: ${uninstallResult.stderr || uninstallResult.stdout || `exit code ${uninstallResult.code}`
-                    }`,
-                    'rollback-apps'
-                  );
-                }
-              }
-            }
-
-            await cleanupBenchAppArtifacts(
-              bench.path,
-              attemptedInstallAppIds,
-              context.signal.aborted ? { log: () => undefined } : context,
-              'rollback-apps',
-              recoveryEnv ? { projectName: recoveryEnv.projectName, runtimeCmd: recoveryEnv.command, runtimeEnv: recoveryEnv.runtimeEnv } : undefined
-            );
-
-            if (recoveryEnv) {
-              const rebuildResult = await execPromise(
-                recoveryEnv.command,
-                composeBenchArgs(recoveryEnv.projectName, ['build']),
-                bench.path,
-                context.signal.aborted
-                  ? undefined
-                  : (out) => context.log('info', out, 'rollback-apps'),
-                recoveryEnv.runtimeEnv,
-                { idleTimeout: 30 * 60 * 1000, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-              );
-
-              if (rebuildResult.code !== 0 && !context.signal.aborted) {
-                context.log(
-                  'warning',
-                  `Could not rebuild remaining bench assets: ${rebuildResult.stderr || rebuildResult.stdout || `exit code ${rebuildResult.code}`
-                  }`,
-                  'rollback-apps'
-                );
-              }
-            }
-
-            if (!context.signal.aborted) {
-              context.completeStep('rollback-apps', 'Bench restored after failed app installation');
-            }
-          } catch (cleanupError) {
-            if (!context.signal.aborted) {
-              context.log('error', `Failed to restore bench state: ${errorMessage(cleanupError)}`, 'rollback-apps');
-            }
-          }
-        }
-
-        // Explicitly revert the DB state to the existing apps to ensure the UI removes the failed app
-        try {
-          await benchesRepo.update(bench.id, { apps: [...previousApps] });
-        } catch (dbCleanupError) {
-          context.log('warning', `Failed to revert bench apps in DB: ${errorMessage(dbCleanupError)}`, 'apps');
-        }
+        await cleanupFailedBenchAppInstall(context);
 
         if (!context.signal.aborted) {
           context.log('error', errorMessage(error), 'apps');
@@ -507,7 +518,7 @@ export const orchestrateBenchAppChanges = (
                 ? undefined
                 : (out) => context.log('info', out, 'resume-bench'),
               recoveryEnv.runtimeEnv,
-              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
+              { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS, signal: null }
             );
 
             if (restartResult.code !== 0 && !context.signal.aborted) {
@@ -534,8 +545,3 @@ export const orchestrateBenchAppChanges = (
     }
   });
 };
-
-/**
- * Boots up an existing stopped bench.
- * This function waits for the backend to become healthy before marking it running.
- */

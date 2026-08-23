@@ -5,10 +5,10 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { ensureRuntimeRunning, getRuntimeEnv, getLastRuntimeError } from '../runtime-service';
-import { getTaskRunner } from '../task-runner';
+import { getTaskRunner, type TaskExecutionContext } from '../task-runner';
 import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 
-import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
+import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS, TASK_CANCELLABLE_AFTER_MS, QUICK_IDLE_TIMEOUT_MS, QUICK_MAX_TIMEOUT_MS } from '@frappe-local/main/constants';
 
 import { benchComposeArgs, cleanupPodmanResources, composeBenchArgs, composeExecArgs, ensureBenchComposeWritten, getBenchComposePath, getComposeProjectName, nameFilterArgs, projectFilterArgs } from '@frappe-local/main/utils/podman';
 import { orchestrateSiteCreation } from '../site-orchestration';
@@ -78,13 +78,62 @@ export const orchestrateBenchCreation = (
 ): void => {
   const taskRunner = getTaskRunner();
 
+  let attemptedCreateAppInstalls: string[] = [];
+  let runtimeReadyForCleanup = false;
+
+  const cleanupFailedBenchCreate = async (context: TaskExecutionContext) => {
+    try {
+      context.startStep('cleanup', 'Cleaning up partial bench resources');
+
+      if (attemptedCreateAppInstalls.length > 0) {
+        await cleanupBenchAppArtifacts(bench.path, attemptedCreateAppInstalls, context, 'cleanup');
+      }
+
+      if (runtimeReadyForCleanup) {
+        const runtimeEnv = await getRuntimeEnv();
+        await execPromise(
+          getBinaryPath('docker-compose'),
+          ['-p', getComposeProjectName(bench.id), 'down', '-v', '--remove-orphans'],
+          bench.path,
+          (out) => context.log('info', out, 'cleanup'),
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+        );
+      } else {
+        context.log('warning', 'Runtime setup did not complete. Skipping container cleanup.', 'cleanup');
+      }
+
+      if (fs.existsSync(bench.path)) {
+        try {
+          await fs.promises.rm(bench.path, { recursive: true, force: true });
+          context.log('info', `Deleted bench directory at ${bench.path}`, 'cleanup');
+        } catch (rmError) {
+          context.log('warning', `Failed to delete bench directory: ${errorMessage(rmError)}`, 'cleanup');
+        }
+      }
+
+      context.completeStep('cleanup', 'Partial resources cleaned up');
+    } catch (cleanupError) {
+      context.log('warning', `Cleanup after failed create did not complete: ${errorMessage(cleanupError)}`, 'cleanup');
+    }
+
+    if (benchesRepo.delete) {
+      await benchesRepo.delete(bench.id);
+      context.log('warning', 'Removed failed bench record after create failure.', 'cleanup');
+    } else {
+      await benchesRepo.update(bench.id, { status: 'failure' });
+    }
+  };
+
   taskRunner.enqueue({
     name: `Create Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    onCancel: async (context) => {
+      context.log('info', `Rolling back incomplete bench creation...`, 'rollback');
+      await cleanupFailedBenchCreate(context);
+    },
     run: async (context) => {
-      let attemptedCreateAppInstalls: string[] = [];
       let failingStepId = 'start';
-      let runtimeReadyForCleanup = false;
       try {
         await benchesRepo.update(bench.id, { status: 'queued' });
 
@@ -310,47 +359,7 @@ export const orchestrateBenchCreation = (
           );
         }
 
-        try {
-          context.startStep('cleanup', 'Cleaning up partial bench resources');
-
-          if (attemptedCreateAppInstalls.length > 0) {
-            await cleanupBenchAppArtifacts(bench.path, attemptedCreateAppInstalls, context, 'cleanup');
-          }
-
-          if (runtimeReadyForCleanup) {
-            const runtimeEnv = await getRuntimeEnv();
-            await execPromise(
-              getBinaryPath('docker-compose'),
-              ['-p', getComposeProjectName(bench.id), 'down', '-v', '--remove-orphans'],
-              bench.path,
-              (out) => context.log('info', out, 'cleanup'),
-              runtimeEnv,
-              { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-            );
-          } else {
-            context.log('warning', 'Runtime setup did not complete. Skipping container cleanup.', 'cleanup');
-          }
-
-          if (fs.existsSync(bench.path)) {
-            try {
-              await fs.promises.rm(bench.path, { recursive: true, force: true });
-              context.log('info', `Deleted bench directory at ${bench.path}`, 'cleanup');
-            } catch (rmError) {
-              context.log('warning', `Failed to delete bench directory: ${errorMessage(rmError)}`, 'cleanup');
-            }
-          }
-
-          context.completeStep('cleanup', 'Partial resources cleaned up');
-        } catch (cleanupError) {
-          context.log('warning', `Cleanup after failed create did not complete: ${errorMessage(cleanupError)}`, 'cleanup');
-        }
-
-        if (benchesRepo.delete) {
-          await benchesRepo.delete(bench.id);
-          context.log('warning', 'Removed failed bench record after create failure.', 'cleanup');
-        } else {
-          await benchesRepo.update(bench.id, { status: 'failure' });
-        }
+        await cleanupFailedBenchCreate(context);
 
         throw new Error(message);
       }
@@ -413,18 +422,18 @@ export const waitForBenchContainers = async (bench: Bench): Promise<void> => {
               runtimeCmd: command,
               runtimeEnv
             });
-          } catch (e) {
+          } catch {
             // Ignore if it fails, it might just be starting up
           }
           return;
         }
-      } catch (error) {
+      } catch {
         // Ignore execution errors and keep polling
       }
       
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-  } catch (err) {
+  } catch {
     // runtimeEnv failed or something else
   }
 };
@@ -433,6 +442,39 @@ export const waitForBenchContainers = async (bench: Bench): Promise<void> => {
  * Orchestrates fetching, installing, or building apps against an existing bench.
  * Used when adding or updating apps after bench creation.
  */
+const cleanupFailedBenchStartOrStop = async (
+  bench: Bench,
+  benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
+  context: TaskExecutionContext,
+  stepId: string
+) => {
+  try {
+    if (!context.signal.aborted) {
+      context.startStep(stepId, 'Forcefully stopping bench to ensure clean state');
+    }
+    const command = getBinaryPath('docker-compose');
+    const projectName = getComposeProjectName(bench.id);
+    const runtimeEnv = await getRuntimeEnv();
+
+    await execPromise(
+      command,
+      ['-p', projectName, 'down', '--remove-orphans', '--timeout', '5'],
+      bench.path,
+      context.signal.aborted ? undefined : (out) => context.log('info', out, stepId),
+      runtimeEnv,
+      { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+    );
+    await benchesRepo.update(bench.id, { status: 'stopped' });
+    if (!context.signal.aborted) {
+      context.completeStep(stepId, 'Bench forcefully stopped');
+    }
+  } catch (error) {
+    if (!context.signal.aborted) {
+      context.log('error', `Failed to forcefully stop bench: ${errorMessage(error)}`, stepId);
+    }
+  }
+};
+
 export const orchestrateBenchStart = (
   bench: Bench,
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
@@ -460,6 +502,12 @@ export const orchestrateBenchStart = (
   return taskRunner.enqueue({
     name: isRestart ? `Restart Bench ${bench.name}` : `Start Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling start operation...', 'start');
+      await cleanupFailedBenchStartOrStop(bench, benchesRepo, context, 'rollback-start');
+    },
     run: async (context) => {
       try {
         // Precondition checks
@@ -626,6 +674,12 @@ export const orchestrateBenchStop = (
   taskRunner.enqueue({
     name: `Stop Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling stop operation...', 'stop');
+      await cleanupFailedBenchStartOrStop(bench, benchesRepo, context, 'rollback-stop');
+    },
     run: async (context) => {
       try {
         await benchesRepo.update(bench.id, { status: 'queued' });
@@ -684,6 +738,11 @@ export const orchestrateBenchBuild = (bench: Bench): void => {
   taskRunner.enqueue({
     name: `Build Bench: ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling build operation...', 'build');
+    },
     run: async (context) => {
       try {
         context.startStep('runtime', 'Ensuring container runtime is available');
@@ -726,6 +785,8 @@ export const orchestrateBenchCleaning = (
   taskRunner.enqueue({
     name: `Clean Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
     run: async (context) => {
       try {
         context.startStep('scan', 'Scanning for sites');
@@ -747,7 +808,7 @@ export const orchestrateBenchCleaning = (
             bench.path,
             undefined,
             runtimeEnv,
-            { idleTimeout: 30000, maxTimeout: 60000 }
+            { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
           );
           if (listResult.code === 0) {
             diskSites = listResult.stdout.split(/\r?\n/).map((name) => name.trim()).filter((name) => name && !['assets', 'languages'].includes(name));
@@ -847,6 +908,8 @@ export const orchestrateBenchDeletion = (
   taskRunner.enqueue({
     name: `Delete Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
     run: async (context) => {
       const removeBenchDirectoryBestEffort = async () => {
         context.startStep('fs', 'Removing bench directory');
@@ -1012,7 +1075,7 @@ export const resetAllBenchContainers = async (
     podmanBinary,
     nameFilterArgs('frappe-local-'),
     runtimeEnv,
-    { idleTimeout: 60000 },
+    { idleTimeout: QUICK_MAX_TIMEOUT_MS },
     { info: () => { }, warn: (msg) => logger.warn(msg) }
   );
 };
