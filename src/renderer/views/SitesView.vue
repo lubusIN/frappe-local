@@ -195,6 +195,7 @@ import SiteAppsTab from '@frappe-local/renderer/components/sites/SiteAppsTab.vue
 
 import SiteWizardDialog from '@frappe-local/renderer/components/dialogs/SiteWizardDialog.vue';
 import { useIpc, useProgressCenter, useResourceTaskState, runAndWaitForTask } from '@frappe-local/renderer/composables/system';
+import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 import { useAppCatalog, useBenches, useSites } from '@frappe-local/renderer/composables/data';
 
 import type { SiteListItem } from '@frappe-local/shared/core';
@@ -306,7 +307,7 @@ const onCleanCache = async (id: string, name: string) => {
     'site', id, /^Clean Cache/i
   );
   
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: `Cleaning cache for ${name}...`,
     success: `Cache cleaned for ${name}.`,
     error: `Failed to clean cache for ${name}.`,
@@ -326,7 +327,7 @@ const onMigrate = async (id: string, name: string) => {
     'site', id, /^Migrate/i
   );
   
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: `Migrating site ${name}...`,
     success: `Site ${name} migrated successfully.`,
     error: `Failed to migrate site ${name}.`,
@@ -336,7 +337,7 @@ const onMigrate = async (id: string, name: string) => {
         e?.preventDefault();
         selectedTaskId.value = getLatestRelevantTaskId(id);
       }
-    }
+    },
   });
 };
 
@@ -364,7 +365,7 @@ const onConfirmDeleteSite = async () => {
       'site', id, /^Delete site/i
     );
     
-    toast.promise(promise, {
+    toastTask(promise, {
       loading: `Deleting site ${name}...`,
       success: `Site ${name} deleted successfully.`,
       error: `Failed to delete site ${name}.`,
@@ -374,7 +375,7 @@ const onConfirmDeleteSite = async () => {
           e?.preventDefault();
           selectedTaskId.value = getLatestRelevantTaskId(id);
         }
-      }
+      },
     });
     
     await promise;
@@ -493,17 +494,17 @@ const onActivateSiteApp = async (appId: string) => {
     return res;
   });
 
-  toast.promise(promise, {
-    loading: `Installing app ${appTitle} on ${site.name}`,
-    success: `Installed app ${appTitle} on ${site.name}`,
+  toastTask(promise, {
+    loading: `Installing app ${appTitle} on site ${site.name}`,
+    success: `Installed app ${appTitle} on site ${site.name}`,
     error: `Failed to install app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
         e?.preventDefault();
         selectedTaskId.value = getLatestRelevantTaskId(site.id);
-      },
-    },
+      }
+    }
   });
 
   try {
@@ -561,17 +562,17 @@ const onConfirmDeactivateSiteApp = async () => {
     return res;
   });
 
-  toast.promise(promise, {
-    loading: `Uninstalling app ${appTitle} from ${site.name}`,
-    success: `Uninstalled app ${appTitle} from ${site.name}`,
+  toastTask(promise, {
+    loading: `Uninstalling app ${appTitle} from site ${site.name}`,
+    success: `Uninstalled app ${appTitle} from site ${site.name}`,
     error: `Failed to uninstall app ${appTitle}`,
     action: {
       label: 'View logs',
       onClick: (e?: Event) => {
         e?.preventDefault();
         selectedTaskId.value = getLatestRelevantTaskId(site.id);
-      },
-    },
+      }
+    }
   });
 };
 </script>

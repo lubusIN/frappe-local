@@ -10,6 +10,13 @@ export class TaskFailedError extends Error {
   }
 }
 
+export class TaskCancelledError extends Error {
+  constructor(public task: ProgressTaskSummary) {
+    super(`${task.taskName} cancelled`);
+    this.name = 'TaskCancelledError';
+  }
+}
+
 /**
  * Runs an action and returns a promise that resolves when a background task matching the criteria completes successfully,
  * or rejects if the task fails.
@@ -50,6 +57,8 @@ export const runAndWaitForTask = async <T>(
     if (existing) {
       if (existing.status === 'success') {
         resolve(existing);
+      } else if (existing.status === 'cancelled') {
+        reject(new TaskCancelledError(existing));
       } else {
         handledFailureTaskIds.add(existing.taskId);
         reject(new TaskFailedError(existing));
@@ -66,6 +75,8 @@ export const runAndWaitForTask = async <T>(
           stop();
           if (matching.status === 'success') {
             resolve(matching);
+          } else if (matching.status === 'cancelled') {
+            reject(new TaskCancelledError(matching));
           } else {
             handledFailureTaskIds.add(matching.taskId);
             reject(new TaskFailedError(matching));

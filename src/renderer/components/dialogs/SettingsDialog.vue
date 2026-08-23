@@ -85,6 +85,7 @@ import SettingsAppearanceTab from '@frappe-local/renderer/components/settings/Se
 import SettingsAdvancedTab from '@frappe-local/renderer/components/settings/SettingsAdvancedTab.vue';
 import SettingsUpdatesTab from '@frappe-local/renderer/components/settings/SettingsUpdatesTab.vue';
 import { Button, SettingsContent, SettingsDialog, SettingsNavGroup, SettingsNavItem, SettingsPanel, SettingsSidebar, Spinner, toast } from 'frappe-ui';
+import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 import { markRaw, computed, onMounted, reactive, ref, watch, type Component } from 'vue';
 
 interface TabDefinition {
@@ -339,10 +340,10 @@ const onApplyMemory = async () => {
     pendingMemoryMb.value = null;
   });
   
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: 'Updating memory and restarting environment',
     success: 'Memory updated and environment restarted.',
-    error: (err: Error) => `Failed to apply memory changes: ${err.message}`,
+    error: (err: any) => `Failed to apply memory changes: ${err?.message || err}`,
   });
 };
 

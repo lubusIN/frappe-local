@@ -156,6 +156,7 @@ import TaskLogHeader from '@frappe-local/renderer/components/task-logs/TaskLogHe
 import TaskLogStepGroup from '@frappe-local/renderer/components/task-logs/TaskLogStepGroup.vue';
 import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
+import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domain';
@@ -589,10 +590,8 @@ const onCancelTask = async () => {
   isCancelling.value = true;
   try {
     const cancelled = await ipc.cancelTask(props.task.taskId);
-    if (cancelled) {
-      toast.info('Cancelling task...');
-    } else {
-      toast.error('Could not cancel task (it may have already completed)');
+    if (!cancelled) {
+      toast.error('Could not cancel task');
     }
   } catch (error) {
     toast.error('Failed to cancel task: ' + (error instanceof Error ? error.message : String(error)));

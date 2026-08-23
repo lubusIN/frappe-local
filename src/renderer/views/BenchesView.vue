@@ -195,6 +195,7 @@
 import { Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, Tabs, Spinner, toast } from 'frappe-ui';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import BenchListPane from '@frappe-local/renderer/components/benches/BenchListPane.vue';
 import BenchOverviewTab from '@frappe-local/renderer/components/benches/BenchOverviewTab.vue';
@@ -366,7 +367,7 @@ const onAddBenchApp = async (appId: string) => {
   });
 
   const appTitle = getAppTitle(appId);
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: `Getting app ${appTitle} for bench ${bench.name}`,
     success: `Got app ${appTitle} on bench ${bench.name}`,
     error: `Failed to get app ${appTitle}`,
@@ -451,7 +452,7 @@ const onConfirmRemoveBenchApp = async () => {
     return res;
   });
 
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: `Removing app ${appTitle} from bench ${bench.name}`,
     success: `Removed app ${appTitle} from bench ${bench.name}`,
     error: `Failed to remove app ${appTitle}`,
@@ -521,7 +522,7 @@ const onBuildBench = async (id: string) => {
     /^Build bench/i
   ).then(() => refresh(true));
 
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: `Building bench ${name}...`,
     success: `Bench ${name} build complete.`,
     error: `Failed to build bench ${name}.`,
@@ -570,7 +571,7 @@ const onSetBenchStatus = async (id: string, status: 'running' | 'stopped', curre
     () => update(id, { status }),
     'bench', id, actionMatch
   );
-  toast.promise(promise, {
+  toastTask(promise, {
     loading: loadingMsg,
     success: successMsg,
     error: errorMsg,
@@ -603,7 +604,7 @@ const onConfirmDeleteBench = async () => {
       () => deleteBench(id),
       'bench', id, /^Delete bench/i
     );
-    toast.promise(promise, {
+    toastTask(promise, {
       loading: `Deleting bench ${name}`,
       success: `Bench ${name} deleted.`,
       error: `Failed to delete bench ${name}.`,
@@ -630,7 +631,7 @@ const onBenchCreated = async (bench: BenchListItem) => {
   const benchStartTime = Date.now();
   void refresh(true);
   const benchPromise = runAndWaitForTask(() => Promise.resolve(), 'bench', bench.id, /^Create bench/i).then(() => refresh(true));
-  toast.promise(benchPromise, {
+  toastTask(benchPromise, {
     loading: `Creating bench ${bench.name}`,
     success: `Bench ${bench.name} created.`,
     error: `Failed to create bench ${bench.name}.`,
