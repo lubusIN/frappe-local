@@ -41,42 +41,13 @@
     <template #default>
       <div class="overflow-hidden border rounded-6 border-outline-gray-3 bg-surface-base flex flex-col">
         <!-- Header Bar with Steps count & Search field -->
-        <div class="flex flex-wrap items-center justify-between border-b border-outline-gray-2 px-4 py-2.5 gap-3 bg-surface-gray-1">
-          <div class="flex items-center gap-2">
-            <span class="text-xs-medium text-ink-gray-7">
-              {{ filteredStepGroups.length }} {{ filteredStepGroups.length === 1 ? 'step' : 'steps' }}
-            </span>
-            <span class="text-ink-gray-3">•</span>
-            <span class="text-xs text-ink-gray-5">
-              {{ entryCountLabel }}
-            </span>
-          </div>
-
-          <div class="flex items-center gap-2 flex-1 justify-end min-w-[220px]">
-            <div class="w-64 max-w-full">
-              <FormControl
-                v-model="searchQuery"
-                type="text"
-                placeholder="Search logs…"
-                variant="outline"
-              >
-                <template #prefix>
-                  <span
-                    class="lucide-search w-3.5 text-ink-gray-5"
-                    aria-hidden="true"
-                  />
-                </template>
-              </FormControl>
-            </div>
-            <Button
-              size="sm"
-              variant="subtle"
-              @click="toggleExpandAll"
-            >
-              {{ allExpanded ? 'Collapse all' : 'Expand all' }}
-            </Button>
-          </div>
-        </div>
+        <TaskLogHeader
+          v-model:search-query="searchQuery"
+          :step-count="filteredStepGroups.length"
+          :entry-count-label="entryCountLabel"
+          :all-expanded="allExpanded"
+          @toggle-expand-all="toggleExpandAll"
+        />
 
         <!-- Grouped Steps Container -->
         <div
@@ -92,105 +63,15 @@
             {{ searchQuery ? 'No log lines match your search.' : 'Waiting for log output...' }}
           </div>
 
-          <div
+          <TaskLogStepGroup
             v-for="group in filteredStepGroups"
             :key="group.id"
-            class="flex flex-col"
-          >
-            <!-- Step Header -->
-            <div
-              class="flex items-center justify-between px-4 py-2.5 cursor-pointer select-none transition-colors sticky top-0 z-10"
-              :class="[
-                isStepExpanded(group.id)
-                  ? 'bg-surface-gray-2 font-medium text-ink-gray-9 border-b border-outline-gray-2 shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
-                  : 'bg-surface-base hover:bg-surface-gray-1 text-ink-gray-8'
-              ]"
-              @click="toggleStep(group.id)"
-            >
-              <div class="flex items-center min-w-0 gap-2.5">
-                <i
-                  v-if="isStepExpanded(group.id)"
-                  class="lucide-chevron-down size-4 shrink-0 text-ink-gray-5 transition-transform"
-                />
-                <i
-                  v-else
-                  class="lucide-chevron-right size-4 shrink-0 text-ink-gray-5 transition-transform"
-                />
-
-                <span class="flex items-center justify-center shrink-0">
-                  <i
-                    v-if="group.status === 'success'"
-                    class="lucide-check-circle-2 size-4 text-ink-green-5"
-                  />
-                  <LoadingIndicator
-                    v-else-if="group.status === 'running'"
-                    class="size-3.5 text-ink-blue-5"
-                  />
-                  <i
-                    v-else-if="group.status === 'failure'"
-                    class="lucide-x-circle size-4 text-ink-red-5"
-                  />
-                  <i
-                    v-else
-                    class="lucide-circle size-4 text-ink-gray-4"
-                  />
-                </span>
-
-                <span class="text-xs-medium truncate">
-                  {{ group.name }}
-                </span>
-
-                <Badge
-                  v-if="searchQuery && group.matchCount !== undefined"
-                  variant="subtle"
-                  theme="gray"
-                  class="text-[10px]"
-                >
-                  {{ group.matchCount }} {{ group.matchCount === 1 ? 'match' : 'matches' }}
-                </Badge>
-              </div>
-
-              <div class="flex items-center gap-3 shrink-0 ml-2">
-                <TaskTimer
-                  :start-time="group.startTime"
-                  :end-time="group.endTime"
-                  :running="group.status === 'running' && isBusy"
-                  :show-label="false"
-                  size-class="text-xs"
-                  :color-class="group.status === 'failure' ? 'text-ink-red-5 font-semibold' : 'text-ink-gray-5'"
-                />
-              </div>
-            </div>
-
-            <!-- Step Log Lines (when expanded) -->
-            <div
-              v-if="isStepExpanded(group.id)"
-              class="bg-surface-base py-1.5 overflow-x-auto font-mono text-xs leading-5 cursor-text select-text"
-            >
-              <div
-                v-for="log in group.displayLogs"
-                :key="`${group.id}-${log.lineNumber}`"
-                class="grid grid-cols-[48px_minmax(0,1fr)] gap-3 px-4 py-0.5 hover:bg-surface-gray-1 transition-colors"
-              >
-                <span
-                  class="text-right tabular-nums text-ink-gray-4 select-none pr-2.5 border-r border-outline-gray-2"
-                  :title="formatFullTime(log.timestamp)"
-                >
-                  {{ log.lineNumber }}
-                </span>
-                <div class="min-w-0 break-words whitespace-pre-wrap flex items-start gap-2">
-                  <span
-                    v-if="log.level && log.level !== 'info'"
-                    class="shrink-0 uppercase text-[10px] font-semibold px-1 rounded-4 mt-0.5"
-                    :class="levelBadgeClass(log.level)"
-                  >
-                    {{ log.level }}
-                  </span>
-                  <span :class="messageClass(log.level)">{{ log.message }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+            :group="group"
+            :is-expanded="isStepExpanded(group.id)"
+            :is-busy="isBusy"
+            :search-query="searchQuery"
+            @toggle="toggleStep(group.id)"
+          />
         </div>
 
         <div
@@ -271,7 +152,9 @@
 </template>
 
 <script setup lang="ts">
-import { Badge, Button, Dialog, FormControl, LoadingIndicator, Switch, toast } from 'frappe-ui';
+import TaskLogHeader from '@frappe-local/renderer/components/task-logs/TaskLogHeader.vue';
+import TaskLogStepGroup from '@frappe-local/renderer/components/task-logs/TaskLogStepGroup.vue';
+import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
@@ -279,7 +162,6 @@ import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domai
 import { formatStatus, statusTheme } from '@frappe-local/renderer/utils';
 import { useIpc } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog } from '@frappe-local/renderer/composables/data';
-import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
 
 const { formatTaskTitle } = useAppCatalog();
 
@@ -324,7 +206,7 @@ type StepGroup = {
     readonly lineNumber: number;
     readonly message: string;
     readonly timestamp: string;
-    readonly level: TaskLogLevel | null;
+    readonly logLevel: TaskLogLevel | null;
   }>;
 };
 
@@ -445,7 +327,7 @@ const stepGroups = computed(() => {
         lineNumber: lineNumber++,
         message: log.message,
         timestamp: log.timestamp,
-        level: log.level ?? null,
+        logLevel: log.level ?? null,
       });
       currentGroup.endTime = log.timestamp;
     }
@@ -456,7 +338,7 @@ const stepGroups = computed(() => {
 
   return groups.map((g, index) => {
     const isLast = index === groups.length - 1;
-    const hasError = g.logs.some((l) => l.level === 'error');
+    const hasError = g.logs.some((l) => l.logLevel === 'error');
 
     let status: StepGroup['status'] = 'success';
     if (hasError || (isLast && isTaskFailed)) {
@@ -470,7 +352,7 @@ const stepGroups = computed(() => {
         lineNumber: 1,
         message: g.completionSummary || (status === 'success' ? `${g.name} completed.` : status === 'running' ? `Running ${g.name}...` : `${g.name} failed.`),
         timestamp: g.endTime || g.startTime,
-        level: status === 'failure' ? ('error' as const) : null,
+        logLevel: status === 'failure' ? ('error' as const) : null,
       }
     ];
 
@@ -608,7 +490,7 @@ const formatTime = (timestamp: string) =>
     second: '2-digit',
   });
 
-const formatFullTime = (timestamp: string) => new Date(timestamp).toLocaleString();
+
 
 const formatLevel = (level: TaskProgressEvent['logLevel']) => {
   if (level === 'error') return 'ERROR';
@@ -617,17 +499,7 @@ const formatLevel = (level: TaskProgressEvent['logLevel']) => {
   return 'EVENT';
 };
 
-const levelBadgeClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'bg-surface-red-2 text-ink-red-5';
-  if (level === 'warning') return 'bg-surface-amber-2 text-ink-amber-5';
-  return 'bg-surface-gray-3 text-ink-gray-6';
-};
 
-const messageClass = (level: TaskProgressEvent['logLevel']) => {
-  if (level === 'error') return 'text-ink-red-4';
-  if (level === 'warning') return 'text-ink-amber-4';
-  return 'text-ink-gray-7';
-};
 
 const scrollToBottom = () => {
   if (logsContainer.value) {
@@ -694,7 +566,7 @@ const onCopyLogs = async () => {
     : stepGroups.value
       .map((g) => {
         const header = `=== ${g.name} (${g.status.toUpperCase()}) ===`;
-        const lines = g.logs.map((log) => `${log.lineNumber}\t[${formatTime(log.timestamp)}] [${formatLevel(log.level)}] ${log.message}`).join('\n');
+        const lines = g.logs.map((log) => `${log.lineNumber}\t[${formatTime(log.timestamp)}] [${formatLevel(log.logLevel)}] ${log.message}`).join('\n');
         return `${header}\n${lines}`;
       })
       .join('\n\n');

@@ -13,42 +13,23 @@
 
     <!-- Sidebar -->
     <SettingsSidebar>
-      <SettingsNavGroup label="User Preferences">
-        <SettingsNavItem value="general">
+      <SettingsNavGroup
+        v-for="group in groups"
+        :key="group.label"
+        :label="group.label"
+      >
+        <SettingsNavItem
+          v-for="tab in group.tabs"
+          :key="tab.value"
+          :value="tab.value"
+        >
           <template #prefix>
             <span
-              class="lucide-settings size-4"
+              :class="[tab.icon, 'size-4 shrink-0']"
               aria-hidden="true"
             />
           </template>
-          General
-        </SettingsNavItem>
-        <SettingsNavItem value="appearance">
-          <template #prefix>
-            <span
-              class="lucide-palette size-4"
-              aria-hidden="true"
-            />
-          </template>
-          Appearance
-        </SettingsNavItem>
-        <SettingsNavItem value="advanced">
-          <template #prefix>
-            <span
-              class="lucide-sliders-horizontal size-4"
-              aria-hidden="true"
-            />
-          </template>
-          Advanced
-        </SettingsNavItem>
-        <SettingsNavItem value="updates">
-          <template #prefix>
-            <span
-              class="lucide-download size-4"
-              aria-hidden="true"
-            />
-          </template>
-          Updates
+          {{ tab.label }}
         </SettingsNavItem>
       </SettingsNavGroup>
     </SettingsSidebar>
@@ -56,297 +37,155 @@
     <!-- Content Pane with Footer -->
     <div class="flex flex-1 flex-col min-w-0 min-h-0">
       <SettingsContent class="flex-1">
-        <!-- General Tab -->
-        <SettingsPanel value="general">
-          <SettingsHeader
-            title="Preferences"
-            description="Choose how you want to use the application by setting your preferences."
+        <SettingsPanel
+          v-for="tab in tabsList"
+          :key="tab.value"
+          :value="tab.value"
+        >
+          <component
+            :is="tab.component"
+            v-bind="tab.props"
+            v-on="tab.events || {}"
           />
-          <SettingsBody>
-            <div>
-              <StatePanel
-                v-if="error"
-                kind="error"
-                title="Unable to load settings"
-                :body="error"
-                action-label="Retry"
-                @action="refresh"
-              />
-              <StatePanel
-                v-else-if="loading"
-                kind="loading"
-                title="Loading settings"
-                body="Reading current preferences and runtime defaults."
-              />
-              <div
-                v-else
-                class="divide-y divide-outline-gray-2"
-              >
-                <SettingsRow
-                  title="Default Frappe Version"
-                  description="Select the Frappe version to use when creating new benches."
-                >
-                  <FrappeVersionSelect v-model="form.defaultFrappeVersion" />
-                </SettingsRow>
-
-                <SettingsRow
-                  title="Storage Path"
-                  description="The directory where all your local benches and sites will be stored."
-                >
-                  <div class="flex gap-2 w-full sm:w-80">
-                    <FormControl
-                      v-model="form.storagePath"
-                      type="text"
-                      placeholder="/path/to/storage"
-                      required
-                      class="flex-1"
-                    />
-                    <Button
-                      size="md"
-                      variant="subtle"
-                      @click="onPickStoragePath"
-                    >
-                      Browse
-                    </Button>
-                  </div>
-                </SettingsRow>
-
-                <SettingsRow
-                  title="Terminal"
-                  description="Select the terminal application to use when opening bench shells."
-                >
-                  <div class="flex flex-col gap-2 w-full sm:w-80">
-                    <FormControl
-                      v-model="selectedTerminalOption"
-                      type="select"
-                      :options="terminalOptions"
-                    />
-                    <FormControl
-                      v-if="selectedTerminalOption === 'custom'"
-                      v-model="form.terminalPreference"
-                      type="text"
-                      placeholder="Custom command or binary path (e.g., /usr/local/bin/my-term)"
-                    />
-                  </div>
-                </SettingsRow>
-              </div>
-            </div>
-          </SettingsBody>
-        </SettingsPanel>
-
-        <!-- Appearance Tab -->
-        <SettingsPanel value="appearance">
-          <SettingsHeader
-            title="Appearance"
-            description="Customize the look and feel of the application."
-          />
-          <SettingsBody>
-            <div class="py-4">
-              <ThemeSwitcher
-                v-model="form.theme"
-                name="Local"
-                :logo="AppLogo"
-              />
-            </div>
-          </SettingsBody>
-        </SettingsPanel>
-
-        <!-- Advanced Tab -->
-        <SettingsPanel value="advanced">
-          <SettingsHeader
-            title="Advanced"
-            description="Manage technical and resource settings."
-          />
-          <SettingsBody>
-            <div class="divide-y divide-outline-gray-2">
-              <SettingsRow title="App Registry URL">
-                <template #description>
-                  Custom brewery URL to fetch apps from.
-                  <span
-                    v-if="breweryValidationMessage"
-                    class="block mt-1 font-medium"
-                    :class="breweryValidationSuccess ? 'text-green-600' : 'text-red-600'"
-                  >
-                    {{ breweryValidationMessage }}
-                  </span>
-                </template>
-                <div class="flex items-center gap-2 w-full sm:w-80">
-                  <FormControl
-                    v-model="form.breweryUrl"
-                    type="text"
-                    placeholder="https://frappe-brewery.lubus.in/"
-                    class="flex-1"
-                    :disabled="saving || validatingBrewery"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="!form.breweryUrl || form.breweryUrl === DEFAULT_BREWERY_URL || saving || validatingBrewery"
-                    @click="resetToDefaultBrewery"
-                  >
-                    Use Default
-                  </Button>
-                </div>
-              </SettingsRow>
-
-              <SettingsRow
-                title="Share SSH Keys with Benches"
-                description="Mounts your local ~/.ssh directory into benches to fetch private GitHub repos."
-              >
-                <Switch
-                  v-model="form.shareSshKeys"
-                  size="sm"
-                  :disabled="saving || isRestartingSsh"
-                />
-              </SettingsRow>
-
-              <div
-                v-if="systemResources.podmanMachineRequired"
-                class="pb-3.5 space-y-3"
-              >
-                <SettingsRow
-                  title="Memory"
-                  description="Set the memory available to local benches and sites."
-                >
-                  <span class="shrink-0 rounded-5 border border-outline-gray-2 bg-surface-base px-2.5 py-1 text-sm-semibold text-ink-gray-8">
-                    {{ formatMemory(currentMemoryMb) }}
-                  </span>
-                </SettingsRow>
-
-                <div class="mt-2">
-                  <Slider
-                    v-model="memorySliderValue"
-                    class="cursor-pointer [&_[role=slider]]:cursor-pointer"
-                    :disabled="saving"
-                    :min="MIN_PODMAN_MEMORY_MB"
-                    :max="systemResources.totalMemoryMb"
-                    :step="1024"
-                  />
-                  <div class="mt-2 flex justify-between text-[11px] text-ink-gray-5">
-                    <span>{{ formatMemory(MIN_PODMAN_MEMORY_MB) }}</span>
-                    <span>{{ formatMemory(systemResources.totalMemoryMb) }}</span>
-                  </div>
-                </div>
-
-                <div class="flex flex-col gap-3 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div class="text-xs leading-5">
-                    <p class="font-medium text-ink-gray-7">
-                      Recommended: {{ formatMemory(systemResources.recommendedPodmanMemoryMb) }}
-                    </p>
-                    <p class="text-ink-gray-5">
-                      {{ isWindows
-                        ? 'Applies globally to WSL2 and restarts all running WSL distributions.'
-                        : 'Applying a memory change will restart environment.' }}
-                    </p>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="subtle"
-                      class="shrink-0"
-                      :disabled="saving"
-                      @click="useRecommendedMemory"
-                    >
-                      Use recommended
-                    </Button>
-                    <Button
-                      v-if="memoryHasChanged"
-                      size="sm"
-                      variant="solid"
-                      :loading="saving"
-                      @click="onApplyMemory"
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SettingsBody>
-        </SettingsPanel>
-
-        <!-- Updates Tab -->
-        <SettingsPanel value="updates">
-          <SettingsHeader
-            title="Updates"
-            description="Manage how Frappe Local receives updates."
-          />
-          <SettingsBody>
-            <div class="divide-y divide-outline-gray-2">
-              <SettingsRow
-                title="Auto Update"
-                description="Automatically check for and download updates in the background."
-              >
-                <Switch
-                  v-model="form.autoUpdateEnabled"
-                  size="sm"
-                />
-              </SettingsRow>
-
-              <SettingsRow
-                title="Update Channel"
-                description="Choose how early you'd like to receive new updates."
-              >
-                <FormControl
-                  v-model="form.updateChannel"
-                  type="select"
-                  :options="[
-                    { label: 'Stable', value: 'stable' },
-                    { label: 'Dev', value: 'dev' }
-                  ]"
-                />
-              </SettingsRow>
-
-              <SettingsRow
-                title="Check for Updates"
-                :description="`Last checked: ${formattedLastChecked}${updateMessage ? ' - ' + updateMessage : ''}`"
-              >
-                <div class="flex items-center gap-2">
-                  <Button
-                    v-if="isUpdateAvailable"
-                    size="sm"
-                    variant="solid"
-                    :loading="isDownloadingUpdate"
-                    @click="onDownloadUpdate"
-                  >
-                    Download & Install
-                  </Button>
-                  <Button
-                    v-else
-                    size="sm"
-                    variant="subtle"
-                    :loading="isCheckingForUpdates"
-                    @click="onCheckForUpdates"
-                  >
-                    Check Now
-                  </Button>
-                </div>
-              </SettingsRow>
-            </div>
-          </SettingsBody>
         </SettingsPanel>
       </SettingsContent>
+
+      <footer class="flex items-center justify-between shrink-0 border-t border-outline-gray-2 px-6 py-4 bg-surface-gray-1">
+        <div class="text-sm text-ink-gray-5">
+          <span
+            v-if="saving"
+            class="flex items-center gap-2"
+          >
+            <Spinner size="sm" />
+            Saving...
+          </span>
+          <span
+            v-else-if="error"
+            class="text-ink-red-5 truncate max-w-64"
+            :title="error"
+          >
+            {{ error }}
+          </span>
+          <span v-else>Changes are saved automatically</span>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          label="Close"
+          @click="isShowing = false"
+        />
+      </footer>
     </div>
   </SettingsDialog>
-
-  <ConfirmationDialog
-    :open="showSshConfirmation"
-    title="Restart Running Benches?"
-    message="Changing SSH Key sharing requires a restart of all running benches."
-    confirm-label="Proceed"
-    @confirm="onConfirmSshSave"
-    @cancel="onCancelSshSave"
-  />
 </template>
 
 <script setup lang="ts">
-import { Button, FormControl, SettingsBody, SettingsContent, SettingsDialog, SettingsHeader, SettingsNavGroup, SettingsNavItem, SettingsPanel, SettingsRow, SettingsSidebar, Slider, Switch, ThemeSwitcher, toast } from 'frappe-ui';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import SettingsGeneralTab from '@frappe-local/renderer/components/settings/SettingsGeneralTab.vue';
+import SettingsAppearanceTab from '@frappe-local/renderer/components/settings/SettingsAppearanceTab.vue';
+import SettingsAdvancedTab from '@frappe-local/renderer/components/settings/SettingsAdvancedTab.vue';
+import SettingsUpdatesTab from '@frappe-local/renderer/components/settings/SettingsUpdatesTab.vue';
+import { Button, SettingsContent, SettingsDialog, SettingsNavGroup, SettingsNavItem, SettingsPanel, SettingsSidebar, Spinner, toast } from 'frappe-ui';
+import { markRaw, computed, onMounted, reactive, ref, watch, type Component } from 'vue';
+
+interface TabDefinition {
+  label: string;
+  value: string;
+  icon: string;
+  component: Component;
+  props?: Record<string, unknown>;
+  events?: Record<string, unknown>;
+}
+
+interface GroupDefinition {
+  label: string;
+  tabs: TabDefinition[];
+}
+
+const groups = computed<GroupDefinition[]>(() => [
+  {
+    label: 'User Preferences',
+    tabs: [
+      {
+        label: 'General',
+        value: 'general',
+        icon: 'lucide-settings',
+        component: markRaw(SettingsGeneralTab),
+        props: {
+          form: form.value,
+          loading: loading.value,
+          error: error.value,
+          terminalOptions: terminalOptions.value,
+          selectedTerminalOption: selectedTerminalOption.value,
+        },
+        events: {
+          'update:selectedTerminalOption': (v: string) => (selectedTerminalOption.value = v),
+          refresh,
+          pickStoragePath: onPickStoragePath,
+        },
+      },
+      {
+        label: 'Appearance',
+        value: 'appearance',
+        icon: 'lucide-palette',
+        component: markRaw(SettingsAppearanceTab),
+        props: { form: form.value },
+      },
+      {
+        label: 'Advanced',
+        value: 'advanced',
+        icon: 'lucide-sliders-horizontal',
+        component: markRaw(SettingsAdvancedTab),
+        props: {
+          form: form.value,
+          saving: saving.value,
+          systemResources,
+          isRestartingSsh: isRestartingSsh.value,
+          isWindows: isWindows.value,
+          systemResourcesLoaded: systemResourcesLoaded.value,
+          currentMemoryMb: currentMemoryMb.value,
+          memorySliderValue: memorySliderValue.value,
+          memoryHasChanged: memoryHasChanged.value,
+          formatMemory,
+          showSshConfirmation: showSshConfirmation.value,
+          validatingBrewery: validatingBrewery.value,
+          breweryValidationMessage: breweryValidationMessage.value,
+          breweryValidationSuccess: breweryValidationSuccess.value,
+        },
+        events: {
+          'update:memorySliderValue': (v: number[]) => (memorySliderValue.value = v),
+          'update:showSshConfirmation': (v: boolean) => (showSshConfirmation.value = v),
+          useRecommendedMemory,
+          applyMemory: onApplyMemory,
+          confirmSshSave: onConfirmSshSave,
+          cancelSshSave: onCancelSshSave,
+          resetBrewery: resetToDefaultBrewery,
+        },
+      },
+      {
+        label: 'Updates',
+        value: 'updates',
+        icon: 'lucide-download',
+        component: markRaw(SettingsUpdatesTab),
+        props: {
+          form: form.value,
+          updateMessage: updateMessage.value,
+          isUpdateAvailable: isUpdateAvailable.value,
+          isCheckingForUpdates: isCheckingForUpdates.value,
+          isDownloadingUpdate: isDownloadingUpdate.value,
+          formattedLastChecked: formattedLastChecked.value,
+        },
+        events: {
+          checkForUpdates: onCheckForUpdates,
+          downloadUpdate: onDownloadUpdate,
+        },
+      },
+    ],
+  },
+]);
+
+const tabsList = computed(() => groups.value.flatMap((g) => g.tabs));
+
 import type { AvailableTerminal } from '@frappe-local/shared/core';
-import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
-import FrappeVersionSelect from '@frappe-local/renderer/components/ui/FrappeVersionSelect.vue';
-import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
-import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import { useSettings } from '@frappe-local/renderer/composables/data';
 import { useAppHealth, useIpc, useSshKeys } from '@frappe-local/renderer/composables/system';
 
