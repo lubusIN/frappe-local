@@ -343,7 +343,7 @@ const onApplyMemory = async () => {
   toastTask(promise, {
     loading: 'Updating memory and restarting environment',
     success: 'Memory updated and environment restarted.',
-    error: (err: any) => `Failed to apply memory changes: ${err?.message || err}`,
+    error: (err: unknown) => `Failed to apply memory changes: ${(err as Error)?.message || err}`,
   });
 };
 

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { exec as execCommand } from 'node:child_process';
 import type { PodmanMachineStatus } from '@frappe-local/main/utils/podman/podman';
-import { PODMAN_RUNTIME_TIMEOUTS } from '@frappe-local/main/constants';
+import { PODMAN_RUNTIME_TIMEOUTS, STANDARD_IDLE_TIMEOUT_MS, STANDARD_MAX_TIMEOUT_MS, QUICK_IDLE_TIMEOUT_MS } from '@frappe-local/main/constants';
 
 const logger = createMainLogger('runtime');
 import { isWslInstalled, installWslTask } from './wsl';
@@ -171,7 +171,7 @@ export const ensureWindowsDevContainerSupport = async (
     undefined,
     undefined,
     undefined,
-    { idleTimeout: 15000, maxTimeout: 30000 }
+    { idleTimeout: 15000, maxTimeout: QUICK_IDLE_TIMEOUT_MS }
   );
 
   if (result.code !== 0) {
@@ -332,7 +332,7 @@ const applyPodmanMachineMemoryUnlocked = async (memoryMb: number, onLog?: (messa
       undefined,
       undefined,
       undefined,
-      { idleTimeout: 60000, maxTimeout: 120000 }
+      { idleTimeout: STANDARD_IDLE_TIMEOUT_MS, maxTimeout: STANDARD_MAX_TIMEOUT_MS }
     );
     if (shutdownResult.code !== 0) {
       throw new Error(commandFailureMessage('Restarting WSL after memory update', shutdownResult));
@@ -482,7 +482,7 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
               undefined,
               undefined,
               undefined,
-              { idleTimeout: 60000, maxTimeout: 120000 }
+              { idleTimeout: STANDARD_IDLE_TIMEOUT_MS, maxTimeout: STANDARD_MAX_TIMEOUT_MS }
             );
             if (shutdownResult.code !== 0) {
               throw new Error(commandFailureMessage('Restarting WSL after memory update', shutdownResult));

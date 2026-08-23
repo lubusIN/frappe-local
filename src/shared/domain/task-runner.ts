@@ -34,6 +34,8 @@ export type TaskSnapshot = {
   readonly completedAt: string | null;
   readonly currentStepId: string | null;
   readonly currentStepName: string | null;
+  readonly cancellable?: boolean;
+  readonly cancellableAfterMs?: number;
 };
 
 export type TaskProgressEvent = {
@@ -48,4 +50,6 @@ export type TaskProgressEvent = {
   readonly timestamp: string;
   readonly logLevel: TaskLogLevel | null;
   readonly errorCode: string | null;
+  readonly cancellable?: boolean;
+  readonly cancellableAfterMs?: number;
 };

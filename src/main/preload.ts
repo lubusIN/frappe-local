@@ -95,7 +95,7 @@ const rendererBridge: RendererBridge = {
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 	getFrontDoorStatus: async () => ipcRenderer.invoke(ipcChannels.frontDoorStatus),
 	onAppLifecycleStateChange: (listener) => {
-		const callback = (_: unknown, event: unknown) => listener(event as any);
+		const callback = (_: unknown, event: unknown) => listener(event as Parameters<typeof listener>[0]);
 		ipcRenderer.on(ipcChannels.appLifecycleState, callback);
 		return () => ipcRenderer.removeListener(ipcChannels.appLifecycleState, callback);
 	},

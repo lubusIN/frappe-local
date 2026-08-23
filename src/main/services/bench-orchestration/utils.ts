@@ -6,7 +6,7 @@ import { getRuntimeEnv } from '../runtime-service';
 import { getDefaultAppCatalogSeed } from '../catalog-provider';
 import type { AppCatalogItem, Bench, CustomAppItem } from '@frappe-local/shared/domain';
 import { composeExecArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
-import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
+import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS, QUICK_IDLE_TIMEOUT_MS, QUICK_MAX_TIMEOUT_MS, STANDARD_IDLE_TIMEOUT_MS, STANDARD_MAX_TIMEOUT_MS } from '@frappe-local/main/constants';
 
 export const resolveAndPersistBenchPort = async (
   bench: Bench,
@@ -158,7 +158,7 @@ export const cleanupBenchAppArtifacts = async (
       benchPath,
       undefined,
       containerEnv.runtimeEnv,
-      { idleTimeout: 60000, maxTimeout: 120000 }
+      { idleTimeout: STANDARD_IDLE_TIMEOUT_MS, maxTimeout: STANDARD_MAX_TIMEOUT_MS }
     );
     if (result.code !== 0) {
       context.log('warning', `Failed to clean container workspace app artifacts: ${result.stderr || result.stdout}`, stepId);
@@ -230,7 +230,7 @@ export const updateContainerAppsTxt = async (
     benchPath,
     undefined,
     containerEnv.runtimeEnv,
-    { idleTimeout: 30000, maxTimeout: 60000 }
+    { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
   );
   if (result.code !== 0) throw new Error(result.stderr || result.stdout);
   return result.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
@@ -265,7 +265,7 @@ export const ensureBenchProcfile = async (
         benchPath,
         undefined,
         containerEnv.runtimeEnv,
-        { idleTimeout: 30000, maxTimeout: 60000 }
+        { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
       );
       if (result.code !== 0) throw new Error(result.stderr || result.stdout);
       return;
@@ -437,7 +437,7 @@ export const ensureBenchSocketioPort = async (
         benchPath,
         undefined,
         containerEnv.runtimeEnv,
-        { idleTimeout: 30000, maxTimeout: 60000 }
+        { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
       );
       if (result.code !== 0) throw new Error(result.stderr || result.stdout);
       return;
@@ -547,7 +547,7 @@ export const restartBenchProcesses = async (
   // Kill existing honcho/bench start process
   await execPromise(
     env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', 'honcho'],
+    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
     env.benchPath,
     undefined,
     env.runtimeEnv,
@@ -557,7 +557,7 @@ export const restartBenchProcesses = async (
   // Start it again using bench start
   const restartResult = await execPromise(
     env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-d', 'frappe', 'bench', 'start'],
+    ['-p', env.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
     env.benchPath,
     context ? (out) => context.log('info', out, 'restart') : undefined,
     env.runtimeEnv,

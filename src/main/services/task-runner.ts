@@ -17,6 +17,9 @@ type ManagedTask = {
   readonly status: TaskSnapshot['status'];
   readonly currentStepId: string | null;
   readonly currentStepName: string | null;
+  readonly cancellable?: boolean;
+  readonly cancellableAfterMs?: number;
+  readonly onCancel?: (context: TaskExecutionContext) => Promise<void>;
 };
 
 export type TaskExecutionContext = {
@@ -33,6 +36,9 @@ export type TaskDefinition = {
   readonly name: string;
   readonly resource?: TaskResourceContext;
   readonly run: (context: TaskExecutionContext) => Promise<void>;
+  readonly cancellable?: boolean;
+  readonly cancellableAfterMs?: number;
+  readonly onCancel?: (context: TaskExecutionContext) => Promise<void>;
 };
 
 type TaskRunnerListener = (event: TaskProgressEvent) => void;
@@ -55,6 +61,8 @@ const toSnapshot = (task: ManagedTask): TaskSnapshot => ({
   completedAt: task.completedAt,
   currentStepId: task.currentStepId,
   currentStepName: task.currentStepName,
+  cancellable: task.cancellable,
+  cancellableAfterMs: task.cancellableAfterMs,
 });
 
 export class TaskRunner {
@@ -90,6 +98,9 @@ export class TaskRunner {
       status: 'queued',
       currentStepId: null,
       currentStepName: null,
+      cancellable: definition.cancellable ?? true,
+      cancellableAfterMs: definition.cancellableAfterMs,
+      onCancel: definition.onCancel,
     };
 
     this.tasks.set(taskId, task);
@@ -134,20 +145,29 @@ export class TaskRunner {
   }
 
   public cancelTask(taskId: string): boolean {
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      return false;
+    }
+
+    if (task.cancellable === false) {
+      if (task.cancellableAfterMs == null) {
+        return false; // Strictly non-cancellable
+      }
+      const elapsedMs = task.startedAt ? Date.now() - new Date(task.startedAt).getTime() : 0;
+      if (elapsedMs < task.cancellableAfterMs) {
+        return false; // Not yet cancellable
+      }
+    }
+
     const queuedIndex = this.queue.indexOf(taskId);
     if (queuedIndex >= 0 && this.activeTaskId !== taskId) {
       this.queue.splice(queuedIndex, 1);
-      const task = this.tasks.get(taskId);
-      if (!task) {
-        return false;
-      }
-
       this.finishTask(taskId, 'cancelled', 'Task was cancelled before it started.', null, cancellationErrorCode);
       return true;
     }
 
-    const task = this.tasks.get(taskId);
-    if (!task || this.activeTaskId !== taskId) {
+    if (this.activeTaskId !== taskId) {
       return false;
     }
 
@@ -229,6 +249,8 @@ export class TaskRunner {
       timestamp: now(),
       logLevel: null,
       errorCode: null,
+      cancellable: task.cancellable,
+      cancellableAfterMs: task.cancellableAfterMs,
     });
 
     try {
@@ -247,6 +269,23 @@ export class TaskRunner {
           ? error.message
           : 'Task failed due to an unknown error.';
 
+      if (wasCancelled && task.onCancel) {
+        try {
+          // Use a fresh execution context so that the cleanup logic isn't instantly aborted
+          const cleanupContext = this.createExecutionContext(nextTaskId, new AbortController());
+          cleanupContext.log('info', 'Executing cancellation cleanup routine...');
+          await task.onCancel(cleanupContext);
+          cleanupContext.log('info', 'Cancellation cleanup routine completed.');
+        } catch (cleanupError) {
+          this.emitTaskEvent(nextTaskId, 'task.step.completed', 'cancelling', {
+            stepId: null,
+            stepName: null,
+            message: `Cleanup failed: ${cleanupError}`,
+            logLevel: 'error',
+          });
+        }
+      }
+
       task.controller.abort();
       this.finishTask(nextTaskId, finalStatus, message, error instanceof Error ? error : null, errorCode);
     } finally {
@@ -255,15 +294,17 @@ export class TaskRunner {
     }
   }
 
-  private createExecutionContext(taskId: string): TaskExecutionContext {
+  private createExecutionContext(taskId: string, overrideController?: AbortController): TaskExecutionContext {
     const task = this.tasks.get(taskId);
     if (!task) {
-      throw new Error('Task not found.');
+      throw new Error(`Task ${taskId} not found`);
     }
+
+    const controller = overrideController ?? task.controller;
 
     return {
       taskId,
-      signal: task.controller.signal,
+      signal: controller.signal,
       startStep: (stepId, stepName, message) => {
         this.updateTask(taskId, {
           currentStepId: stepId,
@@ -325,6 +366,8 @@ export class TaskRunner {
       timestamp: now(),
       logLevel: details.logLevel ?? null,
       errorCode: details.errorCode ?? null,
+      cancellable: task.cancellable,
+      cancellableAfterMs: task.cancellableAfterMs,
     });
   }
 

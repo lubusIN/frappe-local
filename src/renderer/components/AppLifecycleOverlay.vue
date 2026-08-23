@@ -41,13 +41,23 @@ onUnmounted(() => {
       <Logo class="w-24 h-24 mb-6 text-ink-gray-9 animate-pulse" />
       <LoadingIndicator class="w-8 h-8 mb-4 text-ink-gray-9" />
       <h2 class="text-2xl-semibold text-ink-gray-9">
-        <template v-if="state === 'starting'">Starting Frappe Local</template>
-        <template v-else-if="state === 'stopping'">Stopping Frappe Local</template>
-        <template v-else-if="state === 'resetting'">Resetting Frappe Local</template>
+        <template v-if="state === 'starting'">
+          Starting Frappe Local
+        </template>
+        <template v-else-if="state === 'stopping'">
+          Stopping Frappe Local
+        </template>
+        <template v-else-if="state === 'resetting'">
+          Resetting Frappe Local
+        </template>
       </h2>
       <p class="mt-2 text-ink-gray-6">
-        <template v-if="message">{{ message }}</template>
-        <template v-else>This may take a few moments. Please keep the application open.</template>
+        <template v-if="message">
+          {{ message }}
+        </template>
+        <template v-else>
+          This may take a few moments. Please keep the application open.
+        </template>
       </p>
       <div class="mt-6">
         <TaskTimer

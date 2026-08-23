@@ -405,18 +405,12 @@ export const registerBenchesIpc = (
       return false;
     }
 
-    taskRunner.enqueue({
-      name: `Clean Bench: ${bench.name}`,
-      resource: { type: 'bench', id: bench.id },
-      run: async () => {
-        try {
-          await orchestrateBenchCleaning(bench, repositories.sites);
-        } catch (error) {
-          mainLogger.error('Failed to clean bench:', error);
-          throw error;
-        }
-      },
-    });
+    try {
+      orchestrateBenchCleaning(bench, repositories.sites);
+    } catch (error) {
+      mainLogger.error('Failed to clean bench:', error);
+      throw error;
+    }
 
     operations.trackBenchOperation?.(id, 'update');
     return true;

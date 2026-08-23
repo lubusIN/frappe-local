@@ -102,7 +102,7 @@
         </div>
         <div class="flex justify-end gap-2">
           <Button
-            v-if="isBusy"
+            v-if="isBusy && isCancellable"
             size="md"
             variant="outline"
             theme="red"
@@ -157,7 +157,7 @@ import TaskLogStepGroup from '@frappe-local/renderer/components/task-logs/TaskLo
 import { Badge, Button, Dialog, LoadingIndicator, Switch, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import TaskTimer from '@frappe-local/renderer/components/ui/TaskTimer.vue';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import type { TaskLogLevel, TaskProgressEvent } from '@frappe-local/shared/domain';
 import { formatStatus, statusTheme } from '@frappe-local/renderer/utils';
@@ -229,6 +229,27 @@ const isOpen = computed({
 });
 
 const isBusy = computed(() => props.task?.status === 'running' || props.task?.status === 'queued');
+
+const nowMs = ref(Date.now());
+let timerId: ReturnType<typeof setInterval>;
+onMounted(() => {
+  timerId = setInterval(() => {
+    nowMs.value = Date.now();
+  }, 1000);
+});
+onUnmounted(() => {
+  clearInterval(timerId);
+});
+
+const isCancellable = computed(() => {
+  if (!props.task) return false;
+  if (props.task.cancellable !== false) return true;
+  if (props.task.cancellableAfterMs == null) return false;
+
+  const elapsed = nowMs.value - new Date(props.task.createdAt).getTime();
+  return elapsed >= props.task.cancellableAfterMs;
+});
+
 const fullLogLoaded = computed(() => fullLogText.value !== null);
 
 const parseFullLogLine = (line: string): DisplayLog => {

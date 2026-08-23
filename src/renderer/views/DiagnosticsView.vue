@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { Button, LoadingIndicator, toast } from 'frappe-ui';
+import { Button, toast } from 'frappe-ui';
 import { ref } from 'vue';
 import DiagnosticsPanel from '@frappe-local/renderer/components/DiagnosticsPanel.vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
