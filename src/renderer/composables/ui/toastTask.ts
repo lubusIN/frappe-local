@@ -3,13 +3,17 @@ import { toast } from 'frappe-ui';
 export function toastTask<T>(
   promise: Promise<T>,
   options: {
+    id?: string | number;
     loading: string;
     success: string;
     error: string | ((err: unknown) => string);
     action?: { label: string; onClick: (e?: Event) => void };
   }
 ) {
-  const toastId = toast.loading(options.loading, { action: options.action });
+  const toastId = options.id ?? toast.loading(options.loading, { action: options.action });
+  if (options.id) {
+    toast.loading(options.loading, { id: toastId, action: options.action });
+  }
   
   promise.then(() => {
     toast.success(options.success, { id: toastId, action: options.action });
@@ -22,5 +26,7 @@ export function toastTask<T>(
     }
   });
   
-  return promise;
+  const returnPromise = promise as Promise<T> & { toastId: string | number };
+  returnPromise.toastId = toastId;
+  return returnPromise;
 }
