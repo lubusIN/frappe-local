@@ -24,7 +24,8 @@ import {
   ensureBenchSocketioPort,
   normalizeBenchApps,
   getLocalAppVolumes,
-  getAppDelta
+  getAppDelta,
+  restartBenchProcesses
 } from './utils';
 
 export {
@@ -38,7 +39,8 @@ export {
   ensureBenchSocketioPort,
   normalizeBenchApps,
   getLocalAppVolumes,
-  getAppDelta
+  getAppDelta,
+  restartBenchProcesses
 };
 
 import { fetchBenchApps, orchestrateBenchAppChanges } from './apps';
@@ -357,6 +359,77 @@ export const orchestrateBenchCreation = (
 };
 
 /**
+ * Wait for bench containers to be fully running natively.
+ * Does not spawn a TaskRunner task or restart the containers.
+ */
+export const waitForBenchContainers = async (bench: Bench): Promise<void> => {
+  const CORE_BENCH_SERVICES = ['frappe'] as const;
+
+  const parseRunningServices = (stdout: string): Set<string> => {
+    return new Set(
+      stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+    );
+  };
+
+  const hasCoreBenchServicesRunning = (runningServices: Set<string>): boolean => {
+    return CORE_BENCH_SERVICES.every((service) => runningServices.has(service));
+  };
+
+  if (!bench.path || !fs.existsSync(bench.path)) {
+    return;
+  }
+
+  const command = getBinaryPath('docker-compose');
+  const projectName = getComposeProjectName(bench.id);
+  const composePath = getBenchComposePath(bench.path);
+  const commonArgs = benchComposeArgs(projectName, composePath);
+  
+  try {
+    const runtimeEnv = await getRuntimeEnv();
+    const maxAttempts = 30; // 30 seconds
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const psResult = await execPromise(
+          command,
+          [...commonArgs, 'ps', '--services', '--status', 'running'],
+          bench.path,
+          undefined,
+          runtimeEnv,
+          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
+        );
+        
+        const runningServices = parseRunningServices(psResult.stdout);
+        if (hasCoreBenchServicesRunning(runningServices)) {
+          // Containers are up, but since the frappe container runs 'sleep infinity',
+          // we must ensure the bench processes are actually running.
+          try {
+            await restartBenchProcesses({
+              projectName,
+              benchPath: bench.path,
+              runtimeCmd: command,
+              runtimeEnv
+            });
+          } catch (e) {
+            // Ignore if it fails, it might just be starting up
+          }
+          return;
+        }
+      } catch (error) {
+        // Ignore execution errors and keep polling
+      }
+      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  } catch (err) {
+    // runtimeEnv failed or something else
+  }
+};
+
+/**
  * Orchestrates fetching, installing, or building apps against an existing bench.
  * Used when adding or updating apps after bench creation.
  */
@@ -366,7 +439,7 @@ export const orchestrateBenchStart = (
   customAppsRepo?: { findAll?: () => Promise<CustomAppItem[]> },
   shareSshKeys: boolean = false,
   isRestart = false
-): void => {
+): string => {
   const taskRunner = getTaskRunner();
 
   const CORE_BENCH_SERVICES = ['frappe'] as const;
@@ -384,7 +457,7 @@ export const orchestrateBenchStart = (
     return CORE_BENCH_SERVICES.every((service) => runningServices.has(service));
   };
 
-  taskRunner.enqueue({
+  return taskRunner.enqueue({
     name: isRestart ? `Restart Bench ${bench.name}` : `Start Bench ${bench.name}`,
     resource: { type: 'bench', id: bench.id },
     run: async (context) => {
@@ -512,16 +585,12 @@ export const orchestrateBenchStart = (
         }
         context.completeStep('start', 'Containers are running');
 
-        context.startStep('run', 'Starting bench processes');
-        await execPromise(
-          command,
-          [...commonArgs, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
-          bench.path,
-          (out) => context.log('info', out, 'run'),
-          runtimeEnv,
-          { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-        );
-        context.completeStep('run', 'Bench processes started');
+        await restartBenchProcesses({
+          projectName,
+          benchPath: bench.path,
+          runtimeCmd: command,
+          runtimeEnv
+        }, context);
         await benchesRepo.update(bench.id, { status: 'running' });
       } catch (error) {
         context.log('error', errorMessage(error));

@@ -192,12 +192,8 @@ export const registerSystemIpc = (
     });
 
     if (report.hasCriticalIssues) {
-      const benches = await repositories.benches.findAll();
-      for (const bench of benches) {
-        if (bench.status === 'running' || bench.status === 'queued') {
-          await repositories.benches.update(bench.id, { status: 'stopped' });
-        }
-      }
+      // Intentionally do not reset bench status to 'stopped'.
+      // With 'restart: unless-stopped', benches retain their state across VM reboots.
     }
 
     return report;
@@ -208,6 +204,9 @@ export const registerSystemIpc = (
   });
 
   ipcMainLike.handle(ipcChannels.diagnosticsResetDevState, async (): Promise<boolean> => {
+    BrowserWindow.getAllWindows()[0]?.webContents.send(ipcChannels.appLifecycleState, {
+      state: 'resetting'
+    });
     mainLogger.info('RESET initiated. Evaluating system state...');
     const benches = await repositories.benches.findAll();
     let podmanMachineRemovalError: Error | null = null;

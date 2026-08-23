@@ -70,6 +70,7 @@ const unavailableBridge: RendererBridge = {
   getAvailableTerminals: () => rejectUnavailable(),
   checkEditorInstalled: () => rejectUnavailable(),
   getFrontDoorStatus: () => rejectUnavailable(),
+  onAppLifecycleStateChange: () => noopDispose,
 };
 
 export const isIpcBridgeAvailable = (): boolean => {

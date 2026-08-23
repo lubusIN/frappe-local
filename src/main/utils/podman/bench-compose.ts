@@ -43,6 +43,7 @@ services:
   frappe:
     image: ${image}
     command: sleep infinity
+    restart: unless-stopped
     user: frappe
     environment:
       SHELL: /bin/bash
@@ -62,6 +63,7 @@ ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.
 
   mariadb:
     image: docker.io/mariadb:10.6
+    restart: unless-stopped
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -79,6 +81,7 @@ ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.
 
   redis:
     image: docker.io/redis:alpine
+    restart: unless-stopped
 
 volumes:
   mariadb-data:${platform === 'win32' ? `

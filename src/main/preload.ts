@@ -94,6 +94,11 @@ const rendererBridge: RendererBridge = {
 	checkEditorInstalled: async (commandName?: string) => ipcRenderer.invoke(ipcChannels.utilsCheckEditorInstalled, commandName),
 	uiReady: async () => ipcRenderer.invoke(ipcChannels.uiReady),
 	getFrontDoorStatus: async () => ipcRenderer.invoke(ipcChannels.frontDoorStatus),
+	onAppLifecycleStateChange: (listener) => {
+		const callback = (_: unknown, event: unknown) => listener(event as any);
+		ipcRenderer.on(ipcChannels.appLifecycleState, callback);
+		return () => ipcRenderer.removeListener(ipcChannels.appLifecycleState, callback);
+	},
 };
 
 contextBridge.exposeInMainWorld('frappeLocal', rendererBridge);

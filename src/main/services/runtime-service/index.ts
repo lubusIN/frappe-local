@@ -32,6 +32,24 @@ export async function ensureRuntimeRunning(onLog?: (message: string) => void): P
   return ensurePodmanRunning(onLog);
 }
 
+export async function stopRuntime(onLog?: (message: string) => void): Promise<void> {
+  try {
+    await runPodman(['machine', 'stop', FRAPPE_LOCAL_MACHINE_NAME], 'Stopping Podman machine', undefined, onLog);
+  } catch (error) {
+    logger.error(`Failed to stop runtime: ${errorMessage(error)}`);
+  }
+}
+
+export async function isRuntimeRunning(): Promise<boolean> {
+  try {
+    const machines = await getPodmanMachines();
+    const machine = machines.find((m) => m.Name === FRAPPE_LOCAL_MACHINE_NAME);
+    return machine?.Running || machine?.CurrentlyRunning || machine?.State === 'running' || false;
+  } catch {
+    return false;
+  }
+}
+
 const errorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
@@ -88,6 +106,21 @@ const runPodman = async (
     throw new Error(commandFailureMessage(operation, result));
   }
   return result;
+};
+
+const ensurePodmanRestartService = async (onLog?: (message: string) => void): Promise<void> => {
+  if (process.platform === 'win32' || process.platform === 'darwin') {
+    try {
+      await runPodman(
+        ['machine', 'ssh', FRAPPE_LOCAL_MACHINE_NAME, 'systemctl --user enable --now podman-restart.service'],
+        'Enabling podman-restart service',
+        undefined,
+        onLog
+      );
+    } catch (err) {
+      logger.warn(`Failed to enable podman-restart.service: ${err}`);
+    }
+  }
 };
 
 export const ensureWindowsDevContainerSupport = async (
@@ -489,6 +522,7 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
           if (pollState === 'running') {
             logMsg('Podman machine is now running.');
             await waitForPodmanEngine(onLog);
+            await ensurePodmanRestartService(onLog);
             await ensureWindowsDevContainerSupport(onLog);
             return true;
           }
@@ -561,6 +595,7 @@ async function ensurePodmanRunning(onLog?: (message: string) => void): Promise<b
           }
         }
       }
+      await ensurePodmanRestartService(onLog);
       await ensureWindowsDevContainerSupport(onLog);
       return true;
     }
