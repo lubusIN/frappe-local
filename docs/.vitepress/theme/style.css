@@ -1,0 +1,5 @@
+/* Plain text and unstyled syntax tokens inherit this color. The prose preset's
+   inverse code color is unreadable on the docs theme's dark surface. */
+.prose pre.shiki {
+  color: var(--ink-gray-9);
+}

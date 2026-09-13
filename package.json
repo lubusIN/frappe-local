@@ -13,6 +13,9 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && node scripts/typecheck-renderer.js",
     "test": "vitest run",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "dev:reset-state": "node scripts/reset-dev-state.js",
     "postinstall": "node scripts/download-binaries.js"
   },
@@ -20,8 +23,11 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.25.1",
+    "@floating-ui/vue": "^2.0.1",
     "@iconify-json/lucide": "^1.2.103",
     "@iconify/json": "^2.2.478",
+    "@popperjs/core": "^2.11.8",
+    "@shikijs/transformers": "^1.29.2",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^24.6.0",
@@ -31,6 +37,7 @@
     "electron-builder": "^26.15.3",
     "eslint": "^9.25.1",
     "eslint-plugin-vue": "^9.33.0",
+    "frappe-ui": "^1.0.0-beta.55",
     "globals": "^15.15.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
@@ -39,10 +46,10 @@
     "unplugin-icons": "^23.0.1",
     "vite": "^5.4.21",
     "vite-plugin-electron": "^1.1.0",
+    "vitepress": "^1.6.4",
     "vitest": "^3.1.2",
-    "vue-router": "^4.6.4",
-    "frappe-ui": "^1.0.0-beta.55",
     "vue": "^3.5.13",
+    "vue-router": "^4.6.4",
     "zod": "^3.24.2"
   },
   "dependencies": {

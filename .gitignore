@@ -6,3 +6,14 @@ bin/
 .DS_Store
 scratch
 vite.config.*.mjs
+# Generated documentation files
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+docs/.vitepress/.temp/
+docs/.vitepress/config.*.timestamp-*.mjs
+docs/auto-imports.d.ts
+docs/components.d.ts
+
+# Browser verification artifacts
+.playwright-cli/
+output/playwright/
