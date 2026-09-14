@@ -11,22 +11,32 @@ Operations such as creating a bench, installing an app, or migrating a site can 
 
 You can also select a bench or site and choose **Overview → Task Logs**. If Activity appears empty, clear both filters before assuming no work has run.
 
+![Activity screen with status and resource filters and a successful example site migration.](/images/activity.png)
+
+*Example completed migration on macOS. Select the row to inspect its steps.*
+
 ## Understand progress
 
 | State | What to do |
 | --- | --- |
-| Queued / In Progress | Wait for earlier work to finish |
-| Running | Follow the current step; downloads and builds can take time |
+| Queued | Wait for earlier work to finish |
+| In Progress | Follow the current step; downloads and builds can take time |
 | Cancelling | Wait for cancellation to finish |
 | Success | Return to the resource and confirm the expected result |
 | Failure | Read the failed step before retrying |
 | Cancelled | Check the resource's state before starting again |
 
-A ready site still needs its parent bench running before it can serve requests. Task success and browser availability answer different questions.
+A successful task does not guarantee browser access: the site’s parent bench must also be running.
 
 ## Read and copy logs
 
 Use **Search logs…** to find an error, repository name, or step message. **Expand all** and **Collapse all** control the step groups. Start with the first failed step rather than only the last line.
+
+![Task log dialog with an expanded migration step, search field, and Copy control.](/images/task-logs.png)
+
+*Illustrative migration output with its step expanded. Actual output depends on the operation and Frappe version.*
+
+If the displayed output is incomplete, choose **Load full logs** to read the saved task log file. If it is not available yet, wait for more task output and retry.
 
 Choose **Copy** to put the task log on your clipboard. Search narrows what is displayed, but Copy can include the full task log; review the copied text before sharing it. Remove credentials, private repository details, and sensitive paths.
 

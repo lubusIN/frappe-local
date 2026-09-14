@@ -2,7 +2,11 @@
 
 Open **Settings** from the app navigation. Most changes save automatically after a brief pause; watch for an error before closing the dialog. Memory changes use **Apply**, and SSH sharing can request restart confirmation.
 
-## Preferences
+## General {#preferences}
+
+![General preferences showing default Frappe version, storage path, and terminal selection.](/images/settings.png)
+
+*General preferences with an example storage path on macOS.*
 
 | Setting | Purpose |
 | --- | --- |
@@ -18,6 +22,10 @@ Use the appearance controls to choose the app's color scheme. The documentation 
 
 ## Advanced
 
+![Advanced settings showing App Registry URL, SSH key sharing, and the memory slider.](/images/settings-advanced.png)
+
+*Example macOS memory allocation. The available memory and recommended value depend on your computer.*
+
 **App Registry URL** selects the Frappe Brewery registry used to discover apps. Use **Use Default** to restore the default service.
 
 **Share SSH Keys with Benches** mounts your host `~/.ssh` directory read-only into containers for private repositories. Review the restart confirmation when changing it.
@@ -27,6 +35,10 @@ Use the appearance controls to choose the app's color scheme. The documentation 
 Finish running tasks and save terminal/editor work before applying a memory change.
 
 ## Updates
+
+![Updates settings showing Auto Update, the Stable update channel, and Check Now.](/images/settings-updates.png)
+
+*Example update preferences on macOS. Check Now checks for desktop app updates; it does not update apps inside your benches.*
 
 - **Auto Update** enables or disables automatic downloading. The app still checks for updates during startup in the current implementation; **Check Now** remains available.
 - **Update Channel** selects Stable or the rolling Dev build. Dev follows ongoing development and may be less predictable.

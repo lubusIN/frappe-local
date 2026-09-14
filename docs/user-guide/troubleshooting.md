@@ -4,11 +4,15 @@
 
 1. Open **Activity**, or select the affected bench/site and choose **Task Logs**.
 2. Find the failed step and read its underlying command output.
-3. Open **Diagnostics** and run the checks.
+3. Open **Diagnostics** and choose **Run**.
 4. Use **Fix** for the relevant failing check when offered, then rerun the checks.
 5. Retry the original action after the cause is resolved.
 
 See [Activity and task logs](./activity) for filters, searching, copying output, and cancellation.
+
+![Diagnostics screen with Run, example passed checks, and the separate Reset Environment control.](/images/diagnostics.png)
+
+*Illustrative diagnostics results on macOS. Run the checks to see your own results; Reset Environment removes data and is not the Run action.*
 
 Tasks run through a queue. A queued operation may simply be waiting for another task. Cancellation is available only when the task exposes it; some operations delay cancellation while a critical step runs.
 
@@ -36,9 +40,13 @@ Read the first failing dependency, build, or migration step. **Build** rebuilds 
 
 ## VS Code or terminal actions are unavailable
 
-Install VS Code and its Dev Containers extension for container editing, then restart or refresh the app's environment detection. Start the bench before opening a container or terminal. Review the configured terminal in **Settings → Preferences** if launching it fails.
+Install VS Code and its Dev Containers extension for container editing, then restart or refresh the app's environment detection. Start the bench before opening a container or terminal. Review the configured terminal in **Settings → General** if launching it fails.
 
 Windows bench source lives in a container volume, so use the container-based VS Code action rather than expecting the full workspace in the host folder.
+
+## A button is disabled
+
+Wait for queued/running work to finish and confirm the parent bench is running. Site creation requires an eligible bench; app management, builds, migrations, and terminals have additional readiness requirements. If the action is still unavailable, inspect the most recent failed task rather than using Reset Environment to unlock it.
 
 ## Reset is destructive
 
@@ -47,7 +55,3 @@ Windows bench source lives in a container volume, so use the container-based VS 
 ## Report a problem
 
 Include the app version, OS and architecture, Frappe version, action performed, expected result, and failed task output. Include the diagnostics results and whether the issue occurs with a new bench. Remove passwords, private repository details, and other sensitive values from logs before sharing them in a [GitHub issue](https://github.com/lubusIN/frappe-local/issues).
-
-## A button is disabled
-
-Wait for queued/running work to finish and confirm the parent bench is running. Site creation requires an eligible bench; app management, builds, migrations, and terminals have additional readiness requirements. If the action is still unavailable, inspect the most recent failed task rather than using Reset Environment to unlock it.

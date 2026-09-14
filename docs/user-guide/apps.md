@@ -5,15 +5,23 @@
 1. Start the target bench.
 2. Select it in **Benches** and open **Apps**.
 3. Browse or search the app catalog and review compatibility with the bench's Frappe version.
-4. Add the app and follow its task output until the download and build complete.
+4. Choose **Get** for the app and follow its task output until the download and build complete.
+
+![Bench Apps tab showing an example ERPNext catalog entry with the Get action.](/images/bench-apps.png)
+
+*Example catalog entry on macOS. Get adds app source to this bench; catalog contents and compatibility vary.*
 
 The catalog comes from Frappe Brewery. Compatibility information helps select an app, but installation still depends on its repository, branch, dependencies, and support for your Frappe version.
 
 ## Install an app on a site
 
 1. Select the target in **Sites** and open **Apps**.
-2. Install the desired app for that site.
+2. Choose **Install** for the desired app on that site.
 3. Wait for the task to complete before opening or refreshing the site.
+
+![Site Apps tab showing an example ERPNext entry with the Install action.](/images/site-apps.png)
+
+*Example second stage: ERPNext source is already on the parent bench and is ready to install on this site.*
 
 App source code and site installation are separate. An app added to a bench is not automatically enabled on every site in it. If installation fails, inspect the site task logs for the first dependency or migration error.
 
@@ -21,8 +29,16 @@ App source code and site installation are separate. An app added to a bench is n
 
 Open **My Apps**. On the empty screen, choose **Add Custom App**; if apps are already listed, choose **Add**.
 
+![Add Custom App dialog with GitHub and Local source options and SSH key sharing.](/images/custom-app.png)
+
+*The GitHub source form. Choose Local to register an app folder instead.*
+
 - **GitHub**: enter the repository URL. The app extracts metadata to create a reusable catalog entry.
 - **Local**: select an existing Frappe app folder on your computer. This registers existing source code; it does not scaffold a new Frappe application.
+
+![Add Custom App dialog with Local selected and an example folder path.](/images/local-app.png)
+
+*The Local source form with an example path. Browse to your existing Frappe app folder.*
 
 Choose **Add App** and wait for the entry to appear in **My Apps**. Then use the bench and site app workflows above. Local apps are mounted into the container, so changes to their source can affect the running environment. Keep the original folder available and save work in version control.
 

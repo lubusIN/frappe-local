@@ -1,6 +1,6 @@
 # First steps
 
-This guide takes you from an installed Frappe Local app to a working site. See [Installation](./installation) first if the app is not installed.
+Create your first bench and open a working site. If you have not installed Frappe Local, start with [Installation](./installation).
 
 ## Understand benches, sites, and apps
 
@@ -20,10 +20,14 @@ Adding an app to a bench makes its code available. Installing it on a site enabl
 
 ## Create your first bench
 
+![New bench dialog with name, Frappe version, and storage path fields.](/images/new-bench.png)
+
+*The Environment step with example values. Screenshots show the app’s macOS layout in light mode with example data; paths and platform-specific actions may differ on your computer.*
+
 1. Open **Benches** and choose **Create**.
 2. Enter a unique bench name, choose a Frappe version, and choose its storage path. Bench names use lowercase letters, numbers, dots, and hyphens, starting with a letter or number.
 3. Enter an initial site name, such as `demo`. Use letters, numbers, and hyphens without a leading or trailing hyphen. Frappe Local adds `.localhost` automatically.
-4. Review the wizard and create the bench.
+4. Review the settings and choose **Create bench**.
 5. Follow progress in **Activity** or **Task Logs**. Wait for both the bench and initial site creation tasks to finish.
 
 First use initializes the container environment and may download a Linux machine image and container images. This can take several minutes. On Windows, follow the setup prompts if WSL2 or Virtual Machine Platform needs enabling. Keep the app open during setup.
@@ -43,7 +47,7 @@ Use the app's **Browser** action to obtain the correct address. The app normally
 
 ## Install another app
 
-Open the bench's **Apps** tab to add a compatible app, wait for the task to complete, then open the site's **Apps** tab to install it there. A bench must be running for app operations. See [Managing apps](./apps) for custom apps and removal.
+Open the bench's **Apps** tab and choose **Get** for a compatible app. Wait for completion, then open the site's **Apps** tab and choose **Install**. A bench must be running for app operations. See [Managing apps](./apps) for custom apps and removal.
 
 ## Finish a session
 

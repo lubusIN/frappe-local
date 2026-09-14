@@ -17,7 +17,8 @@ const preset = defineDocsConfig({
     {
       text: 'Get started',
       items: [
-        { text: 'Overview', link: '/user-guide/features' },
+        { text: 'Overview', link: '/' },
+        { text: 'Features', link: '/user-guide/features' },
         { text: 'Installation', link: '/user-guide/installation' },
         { text: 'First steps', link: '/user-guide/how-to-use' },
       ],

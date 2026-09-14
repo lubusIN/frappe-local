@@ -6,7 +6,7 @@ This page follows startup, user operations, and shutdown through the services de
 
 Electron initializes the bootstrap context, resolves application paths, loads metadata, registers services/IPC, and creates the renderer. Storage bootstrap applies migrations and changes queued benches/sites to failure, with updated timestamps. It leaves other recorded statuses unchanged. Caddy initialization, runtime startup, and catalog synchronization run in the background rather than blocking window creation. Benches recorded as running have container-readiness checks. The app sets its lifecycle to ready after the runtime attempt, including its failure path; ready is an application lifecycle state, not proof that every service passed diagnostics.
 
-The app can encounter three different truths: recorded metadata, the current Podman resources, and running Frappe processes. Recovery must inspect the relevant layer; a saved `running` state alone is not proof that a site responds.
+Recorded metadata, Podman resources, and running Frappe processes can disagree. Recovery must inspect the relevant layer; a saved `running` state alone is not proof that a site responds.
 
 ## Operation ownership
 
@@ -52,8 +52,6 @@ Desktop updates are managed by `electron-updater`, separate from Frappe code ins
 ## Extending behavior safely
 
 For a new operation, define its input checks, affected resources, queued/busy behavior, progress steps, final state, partial-failure cleanup, cancellation policy, and relaunch outcome. Add tests around the meaningful failure boundary and run live platform checks when the change touches machines, volumes, ports, certificates, or installer resources.
-
-This makes the recovery behavior reviewable before the UI exposes the new action.
 
 ## Single-instance and settings behavior
 

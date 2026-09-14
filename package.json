@@ -17,7 +17,8 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "dev:reset-state": "node scripts/reset-dev-state.js",
-    "postinstall": "node scripts/download-binaries.js"
+    "postinstall": "node scripts/download-binaries.js",
+    "docs:screenshots": "node scripts/docs/screenshots.js"
   },
   "author": "lubus <ajit@lubus.in>",
   "license": "MIT",
@@ -39,6 +40,7 @@
     "eslint-plugin-vue": "^9.33.0",
     "frappe-ui": "^1.0.0-beta.55",
     "globals": "^15.15.0",
+    "playwright": "1.63.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.8.3",

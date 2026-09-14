@@ -4,6 +4,10 @@
 
 Open **Benches**, select a bench, and use its **Overview** tab.
 
+![Running development bench with Restart, Stop, Build, Task Logs, and workspace actions.](/images/bench-overview.png)
+
+*Example running bench on macOS. Core Frappe is omitted from the Installed Apps count.*
+
 | Action | Behavior |
 | --- | --- |
 | Start | Starts the bench environment so its sites can serve requests |
@@ -23,15 +27,23 @@ On Windows, **VS Code** uses the container workflow. On macOS, **VS Code** opens
 
 1. Open **Sites** and choose **Create**.
 2. Select the parent bench.
-3. Enter a unique site slug and review the suggested path.
-4. Review the wizard and create the site.
+3. Enter a unique site slug.
+4. Review the settings and choose **Create site**.
 5. Wait for creation to finish, then choose **Browser** in the site's **Overview** tab.
 
 Site names must be unique across the app, including sites on other benches. The app turns `demo` into `demo.localhost`; enter the slug in the wizard, not the full URL.
 
+![New site dialog with sandbox entered and the .localhost suffix supplied automatically.](/images/new-site.png)
+
+*Example Site Name step after selecting a parent bench on macOS.*
+
 ## Maintain a site
 
 Select the site and open **Overview**.
+
+![Ready demo.localhost site with Clean Cache, Migrate, Task Logs, and Browser actions.](/images/site-overview.png)
+
+*Example site on macOS, with its parent bench running.*
 
 - **Clean Cache** clears the site's cache after configuration or application changes.
 - **Migrate** runs the site's migrations after code or schema changes. It changes the database; preserve important data before running it.

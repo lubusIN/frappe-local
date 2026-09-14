@@ -51,7 +51,7 @@ Desktop commands control environments through IPC, while browser requests reach 
 | `src/renderer/composables/` | IPC data access, polling, progress, health, and UI state |
 | `src/shared/core/` | IPC channels, bridge contracts, request/response types, runtime errors |
 | `src/shared/domain/` | Persisted models and lifecycle, diagnostics, and task types |
-| `scripts/` | Binary/catalog download, renderer type checks, development reset |
+| `scripts/` | Binary/catalog download, renderer type checks, docs screenshot capture, development reset |
 | `tests/` | Main-process, storage, IPC, and renderer logic coverage |
 
 ## Process boundary

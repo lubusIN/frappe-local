@@ -47,7 +47,7 @@ At bootstrap, the app loads or initializes storage, applies migrations and catal
 | Custom local-app source | Its original host directory |
 | Operational logs | App log paths and configured task log directory |
 
-Copying `storage.json` alone does not back up a site. Preserving a working environment requires its database and files as well as source changes. The UI currently has no documented end-to-end backup/restore workflow; use Frappe's backup tools from the bench terminal and copy backups out of any volume that may be deleted.
+Copying `storage.json` alone does not back up a site. Preserving a working environment requires its database and files as well as source changes. The UI does not provide a complete backup/restore workflow; use Frappe's backup tools from the bench terminal and copy backups out of any volume that may be deleted.
 
 ## Destructive operations
 

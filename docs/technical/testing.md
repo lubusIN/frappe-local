@@ -52,7 +52,7 @@ npm run docs:build
 npm run docs:preview
 ```
 
-Check sidebar links, search navigation, code blocks, tables, and mobile navigation in the browser. Plain-text and highlighted code blocks should remain readable in Light and Dark modes.
+Check sidebar links, search navigation, code blocks, tables, screenshots, and mobile navigation in the browser. When app UI changes affect screenshots, [refresh the captures](./development#refresh-screenshots) before building the docs. Plain-text and highlighted code blocks should remain readable in Light and Dark modes.
 
 ## Release validation
 

@@ -3,3 +3,15 @@
 .prose pre.shiki {
   color: var(--ink-gray-9);
 }
+
+/* Shared framing for user-guide screenshots, including future captures. */
+.prose img[src*="/images/"] {
+  box-sizing: border-box;
+  border: 1px solid var(--outline-gray-2);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 4%);
+}
+
+.dark .prose img[src*="/images/"] {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 16%), 0 8px 24px rgb(0 0 0 / 12%);
+}

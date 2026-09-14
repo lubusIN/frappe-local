@@ -31,7 +31,7 @@ Install VS Code and its **Dev Containers** extension first.
 4. On Windows, choose **VS Code** to open the container workspace.
 5. Wait for the editor to attach, then edit your app source.
 
-Use **Terminal** in the bench Overview when you need a shell in the environment. Select your preferred terminal in **Settings → Preferences** if needed.
+Use **Terminal** in the bench Overview when you need a shell in the environment. Select your preferred terminal in **Settings → General** if needed.
 
 Closing VS Code does not stop the bench. On Windows, the workspace is inside the managed environment, so the host bench folder is not a complete copy of the app's source and site data. For an existing local app, register its folder through [My Apps](./apps#custom-apps).
 
