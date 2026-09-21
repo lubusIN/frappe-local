@@ -1,6 +1,7 @@
+import { getCurrentSettings, byCreatedAtDesc, toLifecycleLogs } from './helpers';
 import type { IpcMainLike, AppRepositories, IpcOperations } from '../ipc';
 
-import type { LifecycleLogItem, SiteCreateInput, SiteListItem, SiteUpdateInput } from '@frappe-local/shared/core';
+import type { SiteCreateInput, SiteListItem, SiteUpdateInput } from '@frappe-local/shared/core';
 import { getRuntimeEnv, orchestrateSiteAppsUpdate, orchestrateSiteCreation, orchestrateSiteDeletion } from '@frappe-local/main/services';
 
 import { filterNonCoreApps, ipcChannels } from '@frappe-local/shared/core';
@@ -13,7 +14,7 @@ import { normalizeSiteHost } from '@frappe-local/shared/utils/site-hostname';
 const mainLogger = createMainLogger('ipc');
 
 import fs from 'node:fs';
-import { CreateSiteInputSchema, UpdateSiteInputSchema, canTransitionSiteStatus, isBenchReadyForSiteStatus, type Settings, type Site } from '@frappe-local/shared/domain';
+import { CreateSiteInputSchema, UpdateSiteInputSchema, canTransitionSiteStatus, isBenchReadyForSiteStatus, type Site } from '@frappe-local/shared/domain';
 
 const toSiteListItem = (site: Site): SiteListItem => ({
   id: site.id,
@@ -26,9 +27,6 @@ const toSiteListItem = (site: Site): SiteListItem => ({
   createdAt: site.timestamps.createdAt,
   updatedAt: site.timestamps.updatedAt,
 });
-
-const byCreatedAtDesc = <T extends { timestamps: { createdAt: string } }>(left: T, right: T): number =>
-  right.timestamps.createdAt.localeCompare(left.timestamps.createdAt);
 
 const hasDuplicateSiteHost = (
   sites: Site[],
@@ -48,46 +46,6 @@ const hasDuplicateSiteHost = (
     return normalizeSiteHost(site.name) === candidateHost;
   });
 };
-
-
-const toLifecycleLogs = (
-  entityId: string,
-  entityName: string,
-  status: 'queued' | 'running' | 'stopped' | 'success' | 'failure' | 'ready',
-  path: string,
-  createdAt: string,
-  updatedAt: string
-): LifecycleLogItem[] => {
-  const logs: LifecycleLogItem[] = [
-    {
-      id: `${entityId}-created`,
-      entityId,
-      level: 'info',
-      message: `Entity "${entityName}" created at ${path}`,
-      timestamp: createdAt,
-    },
-    {
-      id: `${entityId}-status-${status}`,
-      entityId,
-      level: 'info',
-      message: `Status of "${entityName}" updated to ${status}`,
-      timestamp: updatedAt,
-    },
-  ];
-
-  return logs;
-};
-
-const getCurrentSettings = async (repository: AppRepositories['settings']): Promise<Settings | null> => {
-  if (repository.get) {
-    return repository.get();
-  }
-
-  const settings = await repository.findAll?.();
-  return settings?.[0] ?? null;
-};
-
-
 
 export const registerSitesIpc = (
   ipcMainLike: IpcMainLike,

@@ -1,3 +1,4 @@
+import { getCurrentSettings } from './helpers';
 import type { IpcMainLike, AppRepositories, IpcOperations } from '../ipc';
 
 import type { SettingsItem } from '@frappe-local/shared/core';
@@ -6,7 +7,6 @@ import { fetchBreweryCatalog, syncAppCatalogFromBrewery } from '@frappe-local/ma
 import { ipcChannels } from '@frappe-local/shared/core';
 
 import { createMainLogger } from '@frappe-local/main/logger';
-
 
 const mainLogger = createMainLogger('ipc');
 
@@ -29,16 +29,6 @@ const toSettingsItem = (settings: Settings): SettingsItem => ({
   theme: settings.theme,
   breweryUrl: settings.breweryUrl,
 });
-
-
-const getCurrentSettings = async (repository: AppRepositories['settings']): Promise<Settings | null> => {
-  if (repository.get) {
-    return repository.get();
-  }
-
-  const settings = await repository.findAll?.();
-  return settings?.[0] ?? null;
-};
 
 const updateSettings = async (
   repository: AppRepositories['settings'],

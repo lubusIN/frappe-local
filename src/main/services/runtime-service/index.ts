@@ -301,8 +301,14 @@ const readMachineMemoryMb = async (onLog?: (message: string) => void): Promise<n
       { idleTimeout: 10000 },
       onLog
     );
-    const memoryMb = Number.parseInt(stdout.trim(), 10);
-    return Number.isInteger(memoryMb) ? memoryMb : null;
+    const memoryMb = Number(stdout.trim());
+    if (!Number.isInteger(memoryMb) || memoryMb <= 0) {
+      return null;
+    }
+    const message = `Current ${FRAPPE_LOCAL_MACHINE_NAME} memory: ${memoryMb} MiB`;
+    logger.info(message);
+    onLog?.(message);
+    return memoryMb;
   } catch {
     return null;
   }

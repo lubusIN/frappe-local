@@ -1,3 +1,4 @@
+import { resolveUserPath, getCurrentSettings } from './helpers';
 
 import type { IpcMainLike, AppRepositories, IpcOperations, TaskRunnerLike } from '../ipc';
 
@@ -11,50 +12,17 @@ import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 
 import { createMainLogger } from '@frappe-local/main/logger';
 
-
 const mainLogger = createMainLogger('ipc');
 
 import type { AppRuntimePaths } from '@frappe-local/main/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { MIN_PODMAN_MEMORY_MB, type Settings } from '@frappe-local/shared/domain';
+import { MIN_PODMAN_MEMORY_MB } from '@frappe-local/shared/domain';
 
 import { createDefaultStorageSnapshot } from '@frappe-local/main/storage';
 
 import { triggerManualUpdateCheck, triggerUpdateDownload, triggerUpdateInstall } from '@frappe-local/main/updater';
-
-
-const resolveUserPath = (untrimmedPath: string): string => {
-  if (typeof untrimmedPath !== 'string') {
-    return '';
-  }
-  const trimmedPath = untrimmedPath.trim();
-  if (trimmedPath.startsWith('~')) {
-    return path.join(os.homedir(), trimmedPath.slice(1));
-  }
-
-  return path.resolve(trimmedPath);
-};
-
-
-
-
-
-
-
-
-
-const getCurrentSettings = async (repository: AppRepositories['settings']): Promise<Settings | null> => {
-  if (repository.get) {
-    return repository.get();
-  }
-
-  const settings = await repository.findAll?.();
-  return settings?.[0] ?? null;
-};
-
-
 
 import { BrowserWindow } from 'electron';
 

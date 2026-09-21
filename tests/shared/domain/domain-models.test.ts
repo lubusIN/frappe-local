@@ -4,6 +4,7 @@ import {
   CreateBenchInputSchema,
   mapBenchDomainToRecord,
   mapBenchRecordToDomain,
+  mapCustomAppRecordToDomain,
   normalizeId,
   normalizeTimestamp,
 } from '../../../src/shared/domain/models';
@@ -80,8 +81,27 @@ describe('domain mappers', () => {
     expect(record.updated_at).toBe('2026-04-18T09:30:00.000Z');
   });
 
+  it('maps custom app record to domain item', () => {
+    const record = {
+      id: 'app-1',
+      name: 'my_app',
+      title: 'My App',
+      description: 'Custom Frappe App',
+      type: 'github' as const,
+      source: 'https://github.com/example/my_app',
+      branch: 'main',
+      created_at: '2026-06-26T10:00:00Z',
+      updated_at: '2026-06-26T11:00:00Z',
+    };
+
+    const domain = mapCustomAppRecordToDomain(record);
+    expect(domain.name).toBe('my_app');
+    expect(domain.title).toBe('My App');
+    expect(domain.source).toBe('https://github.com/example/my_app');
+  });
+
   it('normalizes ids and timestamps consistently', () => {
     expect(normalizeId('  abc  ')).toBe('abc');
-    expect(normalizeTimestamp('2026-04-18T09:00:00.000Z')).toBe('2026-04-18T09:00:00.000Z');
+    expect(normalizeTimestamp('2026-04-18T09:00:00Z')).toBe('2026-04-18T09:00:00.000Z');
   });
 });

@@ -36,9 +36,6 @@ export const useSites = () => {
         }
       }
 
-      // Remove the queued status transition checks, as the UI already shows specific
-      // task completion toasts (like "Site created" or "App installed") via task watchers.
-
       sites.value = newList;
       if (!isInitialLoad) {
         // Clear stale load errors after successful background refresh.

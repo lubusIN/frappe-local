@@ -98,7 +98,7 @@ export const registerIpcHandlers = (
     storagePath: ''
   }
 ) => {
-  registerBenchesIpc(ipcMainLike, repositories, operations, taskRunner);
+  registerBenchesIpc(ipcMainLike, repositories, operations);
   registerSitesIpc(ipcMainLike, repositories, operations);
   registerAppsIpc(ipcMainLike, repositories, operations);
   registerSettingsIpc(ipcMainLike, repositories, operations);

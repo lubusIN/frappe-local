@@ -1,7 +1,8 @@
+import { resolveUserPath, getCurrentSettings, byCreatedAtDesc, toLifecycleLogs } from './helpers';
 
-import type { IpcMainLike, AppRepositories, IpcOperations, TaskRunnerLike } from '../ipc';
+import type { IpcMainLike, AppRepositories, IpcOperations } from '../ipc';
 
-import type { BenchCreateInput, BenchListItem, BenchUpdateInput, LifecycleLogItem } from '@frappe-local/shared/core';
+import type { BenchCreateInput, BenchListItem, BenchUpdateInput } from '@frappe-local/shared/core';
 import { getRuntimeEnv, orchestrateBenchAppChanges, orchestrateBenchBuild, orchestrateBenchCleaning, orchestrateBenchCreation, orchestrateBenchDeletion, orchestrateBenchStart, orchestrateBenchStop } from '@frappe-local/main/services';
 
 import { filterNonCoreApps, ipcChannels } from '@frappe-local/shared/core';
@@ -15,21 +16,8 @@ const mainLogger = createMainLogger('ipc');
 
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { dialog } from 'electron';
-import { CreateBenchInputSchema, UpdateBenchInputSchema, type Bench, type Settings } from '@frappe-local/shared/domain';
-
-const resolveUserPath = (untrimmedPath: string): string => {
-  if (typeof untrimmedPath !== 'string') {
-    return '';
-  }
-  const trimmedPath = untrimmedPath.trim();
-  if (trimmedPath.startsWith('~')) {
-    return path.join(os.homedir(), trimmedPath.slice(1));
-  }
-
-  return path.resolve(trimmedPath);
-};
+import { CreateBenchInputSchema, UpdateBenchInputSchema, type Bench } from '@frappe-local/shared/domain';
 
 const deriveUsedBenchPorts = (benches: Bench[]): Set<number> => {
   return new Set(
@@ -38,7 +26,6 @@ const deriveUsedBenchPorts = (benches: Bench[]): Set<number> => {
       .filter((port) => Number.isInteger(port) && port >= 1024 && port <= 65535)
   );
 };
-
 
 const toBenchListItem = (bench: Bench): BenchListItem => ({
   id: bench.id,
@@ -53,52 +40,10 @@ const toBenchListItem = (bench: Bench): BenchListItem => ({
   updatedAt: bench.timestamps.updatedAt,
 });
 
-
-const byCreatedAtDesc = <T extends { timestamps: { createdAt: string } }>(left: T, right: T): number =>
-  right.timestamps.createdAt.localeCompare(left.timestamps.createdAt);
-
-const toLifecycleLogs = (
-  entityId: string,
-  entityName: string,
-  status: 'queued' | 'running' | 'stopped' | 'success' | 'failure' | 'ready',
-  path: string,
-  createdAt: string,
-  updatedAt: string
-): LifecycleLogItem[] => {
-  const logs: LifecycleLogItem[] = [
-    {
-      id: `${entityId}-created`,
-      entityId,
-      level: 'info',
-      message: `Entity "${entityName}" created at ${path}`,
-      timestamp: createdAt,
-    },
-    {
-      id: `${entityId}-status-${status}`,
-      entityId,
-      level: 'info',
-      message: `Status of "${entityName}" updated to ${status}`,
-      timestamp: updatedAt,
-    },
-  ];
-
-  return logs;
-};
-
-const getCurrentSettings = async (repository: AppRepositories['settings']): Promise<Settings | null> => {
-  if (repository.get) {
-    return repository.get();
-  }
-
-  const settings = await repository.findAll?.();
-  return settings?.[0] ?? null;
-};
-
 export const registerBenchesIpc = (
   ipcMainLike: IpcMainLike,
   repositories: AppRepositories,
-  operations: IpcOperations,
-  taskRunner: TaskRunnerLike) => {
+  operations: IpcOperations) => {
   ipcMainLike.handle(ipcChannels.benchesPickFolder, async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],

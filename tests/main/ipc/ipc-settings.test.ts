@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerIpcHandlers } from '../../../src/main/ipc';
 import { ipcChannels } from '../../../src/shared/core/ipc';
 import type { AppCatalogItem, Settings } from '../../../src/shared/domain/models';
@@ -6,6 +6,13 @@ import { makeStubCustomAppsRepo } from './helpers';
 
 import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
 import { getRecommendedPodmanMemoryMb } from '../../../src/shared/core/system-resources';
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+    apps: [{ slug: 'frappe', title: 'Frappe', repository: 'https://github.com/frappe/frappe' }],
+  }), { status: 200 })));
+});
+afterEach(() => vi.unstubAllGlobals());
 
 const seedSettings: Settings = {
   ...DEFAULT_SETTINGS,
