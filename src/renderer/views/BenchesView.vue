@@ -337,17 +337,17 @@ const normalizeSelection = (selectedIds: readonly string[]): string[] =>
 const queueBenchAppsUpdate = async (nextApps: readonly string[]) => {
   const bench = selectedBenchForApps.value;
   if (!bench) {
-    return;
+    return false;
   }
 
   const normalizedNextApps = normalizeSelection(nextApps);
   const currentApps = normalizeSelection(bench.apps);
   const sameApps = normalizedNextApps.length === currentApps.length && normalizedNextApps.every((appId, index) => appId === currentApps[index]);
   if (sameApps) {
-    return;
+    return false;
   }
 
-  await update(bench.id, { apps: normalizedNextApps });
+  return update(bench.id, { apps: normalizedNextApps });
 };
 
 const onAddBenchApp = async (appId: string) => {

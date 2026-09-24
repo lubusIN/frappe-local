@@ -1,5 +1,5 @@
 import { watch } from 'vue';
-import { useProgressCenter, handledFailureTaskIds } from './useProgressCenter';
+import { getProgressTasks, handledFailureTaskIds } from './useProgressCenter';
 import type { ResourceType } from './useResourceTaskState';
 import type { ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 
@@ -33,11 +33,14 @@ export const runAndWaitForTask = async <T>(
   taskNamePattern?: RegExp,
   options?: { startTime?: number }
 ): Promise<ProgressTaskSummary> => {
-  const { tasks } = useProgressCenter();
+  const tasks = getProgressTasks();
   const startTime = options?.startTime ?? Date.now();
 
   // Execute the action that triggers the task
-  await action();
+  const started = await action();
+  if (started === false || started === null) {
+    throw new Error('The background operation could not be started.');
+  }
 
   return new Promise((resolve, reject) => {
     // Helper to check if a task matches our criteria
@@ -52,17 +55,20 @@ export const runAndWaitForTask = async <T>(
       return t.status === 'success' || t.status === 'failure' || t.status === 'cancelled';
     };
 
-    // First check if it's already in the list
+    const settle = (task: ProgressTaskSummary) => {
+      if (task.status === 'success') {
+        resolve(task);
+      } else if (task.status === 'cancelled') {
+        reject(new TaskCancelledError(task));
+      } else {
+        handledFailureTaskIds.add(task.taskId);
+        reject(new TaskFailedError(task));
+      }
+    };
+
     const existing = tasks.value.find(matches);
     if (existing) {
-      if (existing.status === 'success') {
-        resolve(existing);
-      } else if (existing.status === 'cancelled') {
-        reject(new TaskCancelledError(existing));
-      } else {
-        handledFailureTaskIds.add(existing.taskId);
-        reject(new TaskFailedError(existing));
-      }
+      settle(existing);
       return;
     }
 
@@ -73,17 +79,10 @@ export const runAndWaitForTask = async <T>(
         const matching = currentTasks.find(matches);
         if (matching) {
           stop();
-          if (matching.status === 'success') {
-            resolve(matching);
-          } else if (matching.status === 'cancelled') {
-            reject(new TaskCancelledError(matching));
-          } else {
-            handledFailureTaskIds.add(matching.taskId);
-            reject(new TaskFailedError(matching));
-          }
+          settle(matching);
         }
       },
-      { deep: true, immediate: true }
+      { deep: true }
     );
   });
 };

@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, reactive, ref, toRefs, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, toRef, toRefs, watch } from 'vue';
 import { createDefaultProgressCenterState, createProgressCenterController, filterProgressTasks, reconcileSavedProgressTasks, type ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
@@ -70,6 +70,9 @@ let globalController: ReturnType<typeof createProgressCenterController> | null =
 let connectionCount = 0;
 
 const activeLogTaskId = ref<string | null>(null);
+
+// Task waiters also run from event handlers, outside component setup.
+export const getProgressTasks = () => toRef(globalState, 'tasks');
 
 export const useProgressCenter = () => {
   if (!globalController) {

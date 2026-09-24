@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AppCatalogItem } from '../../../src/shared/domain/models';
 import { JsonStorageAdapter } from '../../../src/main/storage/adapter';
 import { initializeStorage } from '../../../src/main/storage/bootstrap';
@@ -53,6 +53,31 @@ describe('storage bootstrap', () => {
     expect(snapshot.metadata.appCatalogSeedVersion).toBe(1);
     expect(snapshot.appCatalog).toHaveLength(1);
     expect(snapshot.appCatalog[0]?.id).toBe('erpnext');
+  });
+
+  it('preserves corrupt storage instead of replacing it with an empty snapshot', async () => {
+    const storageFilePath = await createTemporaryStorageFilePath();
+    const originalContents = '{"benches": [';
+    await fs.writeFile(storageFilePath, originalContents);
+    const adapter = new JsonStorageAdapter(storageFilePath);
+
+    await expect(initializeStorage(adapter, storageFilePath, {
+      appCatalogSeed: [], appCatalogSeedVersion: 1,
+    })).rejects.toBeInstanceOf(SyntaxError);
+    expect(await fs.readFile(storageFilePath, 'utf8')).toBe(originalContents);
+  });
+
+  it('propagates read failures without writing a new snapshot', async () => {
+    const storageFilePath = await createTemporaryStorageFilePath();
+    const adapter = new JsonStorageAdapter(storageFilePath);
+    const error = Object.assign(new Error('Permission denied'), { code: 'EACCES' });
+    vi.spyOn(adapter, 'readSnapshot').mockRejectedValue(error);
+    const write = vi.spyOn(adapter, 'writeSnapshot');
+
+    await expect(initializeStorage(adapter, storageFilePath, {
+      appCatalogSeed: [], appCatalogSeedVersion: 1,
+    })).rejects.toBe(error);
+    expect(write).not.toHaveBeenCalled();
   });
 
   it('updates catalog seed when newer seed version is provided', async () => {

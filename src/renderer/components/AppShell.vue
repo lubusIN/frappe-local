@@ -294,7 +294,7 @@ import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDi
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import { handledFailureTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter, useDiagnostics } from '@frappe-local/renderer/composables/system';
-import { useAppCatalog, useBenches, useCustomApps, useSites } from '@frappe-local/renderer/composables/data';
+import { useAppCatalog, useBenches, useBenchesPolling, useCustomApps, useSites, useSitesPolling } from '@frappe-local/renderer/composables/data';
 import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
 import { navigationItems } from '@frappe-local/renderer/router/routes';
@@ -302,6 +302,8 @@ import { navigationItems } from '@frappe-local/renderer/router/routes';
 import { findUnhandledCancelledTask, findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
 
 const { formatTaskTitle } = useAppCatalog();
+useBenchesPolling();
+useSitesPolling();
 const { sites } = useSites();
 const { benches } = useBenches();
 const { customApps } = useCustomApps();

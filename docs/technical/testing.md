@@ -16,7 +16,11 @@ For a targeted service change, pass its test path to Vitest:
 npm test -- tests/main/services/site-orchestration.test.ts
 ```
 
-`vitest.config.ts` uses a Node environment, maps `electron` to `tests/mocks/electron.ts`, and resolves the `@frappe-local` source alias. Passing these tests does not prove that a real Podman machine, WSL distribution, OS certificate store, or installer works.
+`vitest.config.ts` defaults to a Node environment, maps `electron` to `tests/mocks/electron.ts`, and resolves the `@frappe-local` source alias. Passing these tests does not prove that a real Podman machine, WSL distribution, OS certificate store, or installer works.
+
+UI tests opt into jsdom and mount the real Vue components with Vue Test Utils. They exercise confirmation phrases, focus, explicit cancellation, Escape behavior, and rendered status/error labels. Confirmation dialogs currently disable Escape dismissal. These tests do not replace browser or screen-reader checks.
+
+Resource tests verify that the app shell owns polling while views and dialogs share data without starting additional loops. Storage bootstrap tests cover preserving corrupt or unreadable snapshots; task-waiting tests cover rejected starts and terminal task states.
 
 ## Coverage map
 
