@@ -38,7 +38,7 @@
                 :key="item.path"
                 :label="item.label"
                 :icon="iconComponentMap[item.path] || 'lucide-globe'"
-                :to="item.path"
+                :route="item.path"
                 :active="item.path === '/sites' ? (route.path === '/' || route.path.startsWith('/sites')) : route.path.startsWith(item.path)"
               >
                 <template

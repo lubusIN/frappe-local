@@ -39,7 +39,7 @@
     "electron-builder": "^26.15.3",
     "eslint": "^9.25.1",
     "eslint-plugin-vue": "^9.33.0",
-    "frappe-ui": "^1.0.0-beta.55",
+    "frappe-ui": "^1.0.0-rc.1",
     "globals": "^15.15.0",
     "jsdom": "^26.1.0",
     "playwright": "1.63.0",
