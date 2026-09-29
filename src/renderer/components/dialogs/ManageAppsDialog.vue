@@ -13,7 +13,7 @@
           class="pt-6"
         >
           <Alert 
-            theme="yellow" 
+            theme="amber" 
             :title="warningMessage" 
             :dismissible="false" 
           />

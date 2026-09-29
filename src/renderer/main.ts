@@ -1,6 +1,5 @@
 import { createApp } from 'vue';
 import 'frappe-ui/style.css';
-import 'frappe-ui/list-style.css';
 
 const renderFatalScreen = (title: string, detail: unknown): void => {
 	const target = document.getElementById('app');
@@ -11,10 +10,10 @@ const renderFatalScreen = (title: string, detail: unknown): void => {
 	const detailText = detail instanceof Error ? `${detail.message}\n\n${detail.stack ?? ''}` : String(detail);
 
 	target.innerHTML = `
-		<section class="max-w-[860px] mx-auto my-10 p-5 rounded-lg border border-red-200 dark:border-red-800 bg-surface-red-2 text-ink-red-8 font-sans">
-			<h1 class="m-0 mb-2.5 text-xl-semibold">${title}</h1>
+		<section class="max-w-[860px] mx-auto my-10 p-5 rounded-6 border border-red-200 dark:border-red-800 bg-surface-red-2 text-ink-red-7 font-sans">
+			<h1 class="m-0 mb-2.5 text-lg-semibold">${title}</h1>
 			<p class="m-0 mb-3.5 text-[13px] leading-relaxed">The renderer crashed before it could render the app shell.</p>
-			<pre class="select-text m-0 p-3 rounded-lg bg-surface-base border border-red-200 dark:border-red-800 whitespace-pre-wrap break-words text-xs leading-snug">${detailText}</pre>
+			<pre class="select-text m-0 p-3 rounded-6 bg-surface-base border border-red-200 dark:border-red-800 whitespace-pre-wrap break-words text-xs leading-snug">${detailText}</pre>
 		</section>
 	`;
 };

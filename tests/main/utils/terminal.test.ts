@@ -2,6 +2,18 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { detectAvailableTerminals, openBenchShell, openSiteShell } from '../../../src/main/utils/terminal';
 
+const shellFiles = vi.hoisted(() => new Map<string, string>());
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    mkdirSync: vi.fn(),
+    chmodSync: vi.fn(),
+    writeFileSync: (file: string, content: string) => { shellFiles.set(file, content); },
+    readFileSync: (file: string, encoding: 'utf8') => shellFiles.get(file) ?? actual.readFileSync(file, encoding),
+  };
+});
+
 const mockExec = vi.fn((cmd: string, cb?: ((error: unknown, result: { stdout: string; stderr: string }) => void)) => {
   if (typeof cb === 'function') cb(null, { stdout: '', stderr: '' });
   return {} as unknown as ReturnType<typeof import('node:child_process')['exec']>;
@@ -27,6 +39,7 @@ vi.mock('node:child_process', () => ({
 
 describe('terminal utilities', () => {
   beforeEach(() => {
+    shellFiles.clear();
     mockExec.mockClear();
     mockSpawn.mockClear();
   });

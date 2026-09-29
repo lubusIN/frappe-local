@@ -38,7 +38,7 @@
                 :key="item.path"
                 :label="item.label"
                 :icon="iconComponentMap[item.path] || 'lucide-globe'"
-                :to="item.path"
+                :route="item.path"
                 :active="item.path === '/sites' ? (route.path === '/' || route.path.startsWith('/sites')) : route.path.startsWith(item.path)"
               >
                 <template
@@ -80,7 +80,7 @@
               v-if="!isFrontDoorAvailable"
               class="mb-2 transition-all duration-300"
               :class="isCollapsed ? 'hidden' : 'block'"
-              theme="yellow"
+              theme="amber"
               title="Port 80 Unavailable"
               variant="outline"
               :dismissible="false"
@@ -167,7 +167,9 @@
       <ErrorNotice
         :notice="{
           title: 'Desktop services unavailable',
-          message: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
+          reason: 'Preload bridge failed. Runtime actions will be unavailable until the connection is restored.',
+          steps: [],
+          actions: [],
         }"
       />
     </div>
@@ -216,7 +218,7 @@
 
               <p
                 v-if="wslError"
-                class="text-xs text-ink-red-8 bg-surface-red-1 p-2 rounded border border-outline-red-2 break-words"
+                class="text-xs text-ink-red-7 bg-surface-red-1 p-2 rounded-4 border border-outline-red-2 break-words"
               >
                 {{ wslError }}
               </p>
@@ -236,13 +238,13 @@
 
               <div
                 v-if="wslInstallTask"
-                class="mt-2 w-full overflow-hidden rounded-md bg-surface-base border border-outline-gray-2 flex flex-col text-left"
+                class="mt-2 w-full overflow-hidden rounded-5 bg-surface-base border border-outline-gray-2 flex flex-col text-left"
               >
                 <div class="px-3 py-1.5 border-b border-outline-gray-2 bg-surface-gray-1 flex items-center justify-between">
                   <span class="text-[11px] font-medium text-ink-gray-6 uppercase tracking-wider">Installation Log</span>
                   <LoadingIndicator
                     v-if="wslInstallTask.status === 'running' || wslInstallTask.status === 'queued'"
-                    class="size-3 text-ink-blue-5"
+                    class="size-3 text-ink-blue-4"
                   />
                 </div>
                 <div
@@ -252,7 +254,7 @@
                   <div
                     v-for="(log, idx) in wslInstallTask.logs"
                     :key="idx"
-                    :class="{'text-ink-red-6': log.level === 'error'}"
+                    :class="{'text-ink-red-5': log.level === 'error'}"
                   >
                     {{ log.message }}
                   </div>
@@ -292,7 +294,7 @@ import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDi
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
 import { handledFailureTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter, useDiagnostics } from '@frappe-local/renderer/composables/system';
-import { useAppCatalog, useBenches, useCustomApps, useSites } from '@frappe-local/renderer/composables/data';
+import { useAppCatalog, useBenches, useBenchesPolling, useCustomApps, useSites, useSitesPolling } from '@frappe-local/renderer/composables/data';
 import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
 import { navigationItems } from '@frappe-local/renderer/router/routes';
@@ -300,6 +302,8 @@ import { navigationItems } from '@frappe-local/renderer/router/routes';
 import { findUnhandledCancelledTask, findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
 
 const { formatTaskTitle } = useAppCatalog();
+useBenchesPolling();
+useSitesPolling();
 const { sites } = useSites();
 const { benches } = useBenches();
 const { customApps } = useCustomApps();

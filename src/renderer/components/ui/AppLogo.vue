@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-md shadow-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 shrink-0">
+  <div class="flex items-center justify-center w-8 h-8 overflow-hidden rounded-5 shadow-sm bg-gray-900 dark:bg-white text-white dark:text-gray-900 shrink-0">
     <Logo class="text-current" />
   </div>
 </template>

@@ -36,9 +36,6 @@ export const useSites = () => {
         }
       }
 
-      // Remove the queued status transition checks, as the UI already shows specific
-      // task completion toasts (like "Site created" or "App installed") via task watchers.
-
       sites.value = newList;
       if (!isInitialLoad) {
         // Clear stale load errors after successful background refresh.
@@ -87,7 +84,7 @@ export const useSites = () => {
 
       if (!updated) {
         error.value = 'Unable to update site.';
-        return;
+        return false;
       }
 
       sites.value = sites.value.map((site) => (site.id === id ? updated : site));
@@ -101,8 +98,10 @@ export const useSites = () => {
       if (!isAppsOnlyUpdate && input.status !== 'ready') {
         successMessage.value = `Updated site ${updated.name}.`;
       }
+      return true;
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
+      return false;
     } finally {
       updating.value = false;
     }
@@ -120,12 +119,18 @@ export const useSites = () => {
         deletingIds.value.set(id, site.name);
       }
 
-      await ipc.deleteSite(id);
+      const deleted = await ipc.deleteSite(id);
+      if (!deleted) {
+        deletingIds.value.delete(id);
+        return false;
+      }
       await load();
+      return true;
     } catch (err) {
       deletingIds.value.delete(id);
       const message = err instanceof Error ? err.message : String(err);
       error.value = stripIpcPrefix(message);
+      return false;
     } finally {
       deleting.value = false;
     }
@@ -221,8 +226,6 @@ export const useSites = () => {
     }
   };
 
-  useStatusPolling(sites, deletingIds, load);
-
   return {
     sites,
     loading,
@@ -243,4 +246,10 @@ export const useSites = () => {
     openShell,
     refresh: load,
   };
+};
+
+// AppShell owns polling; other consumers only access the shared state.
+export const useSitesPolling = () => {
+  const { refresh } = useSites();
+  useStatusPolling(sites, deletingIds, refresh);
 };

@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col gap-6">
     <PageHeader class="[-webkit-app-region:drag]">
-      <h1 class="text-xl-medium truncate text-ink-gray-9">
+      <h1 class="text-lg-medium truncate text-ink-gray-9">
         Activity
       </h1>
       <div

@@ -38,8 +38,10 @@ export const useBenches = () => {
 
       benches.value = newList;
     } catch (err) {
-      error.value = String(err);
-      benches.value = [];
+      // Keep existing rows visible during background refresh failures.
+      if (!silent || benches.value.length === 0) {
+        error.value = String(err);
+      }
     } finally {
       if (!silent) {
         loading.value = false;
@@ -77,7 +79,7 @@ export const useBenches = () => {
 
       if (!updated) {
         error.value = 'Unable to update bench.';
-        return;
+        return false;
       }
 
       benches.value = benches.value.map((bench) => (bench.id === id ? updated : bench));
@@ -92,8 +94,10 @@ export const useBenches = () => {
       if (!isAppsOnlyUpdate && input.status !== 'running' && input.status !== 'stopped') {
         successMessage.value = `Updated bench ${updated.name}.`;
       }
+      return true;
     } catch (err) {
       error.value = stripIpcPrefix(String(err));
+      return false;
     } finally {
       updating.value = false;
     }
@@ -124,12 +128,15 @@ export const useBenches = () => {
       const deleted = await ipc.deleteBench(id);
       if (deleted) {
         await load(true);
+        return true;
       } else {
         deletingIds.value.delete(id);
+        return false;
       }
     } catch (err) {
       deletingIds.value.delete(id);
       error.value = stripIpcPrefix(String(err));
+      return false;
     } finally {
       deleting.value = false;
     }
@@ -274,8 +281,6 @@ export const useBenches = () => {
     }
   };
 
-  useStatusPolling(benches, deletingIds, load);
-
   return {
     benches,
     loading,
@@ -299,4 +304,10 @@ export const useBenches = () => {
     cleanSites,
     refresh: load,
   };
+};
+
+// AppShell owns polling; other consumers only access the shared state.
+export const useBenchesPolling = () => {
+  const { refresh } = useBenches();
+  useStatusPolling(benches, deletingIds, refresh);
 };

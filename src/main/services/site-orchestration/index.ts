@@ -6,139 +6,20 @@ import { execPromise, getBinaryPath } from '@frappe-local/main/utils';
 import type { AppCatalogItem, Bench, CustomAppItem, Site } from '@frappe-local/shared/domain';
 import type { SiteCreateInput } from '@frappe-local/shared/core';
 import { canAttachSiteToBench } from '@frappe-local/shared/domain';
-import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner, ensureRuntimeRunning, type TaskExecutionContext } from '@frappe-local/main/services';
-import { fetchBenchApps } from './bench-orchestration';
+import { ensureBenchSocketioPort, getRuntimeEnv, getTaskRunner, restartBenchProcesses, type TaskExecutionContext } from '@frappe-local/main/services';
+import { fetchBenchApps } from '../bench-orchestration';
 
-import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS } from '@frappe-local/main/constants';
+import { DATABASE_CREDENTIALS, IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS, QUICK_IDLE_TIMEOUT_MS, QUICK_MAX_TIMEOUT_MS, TASK_CANCELLABLE_AFTER_MS, MIGRATE_TASK_CANCELLABLE_AFTER_MS } from '@frappe-local/main/constants';
 import { composeBenchArgs, composeBenchSiteArgs, composeExecArgs, getComposeProjectName } from '@frappe-local/main/utils/podman';
 
 /** Shared execution context for running bench commands against a site. */
-export type SiteCommandEnv = {
-  projectName: string;
-  benchPath: string;
-  runtimeCmd: string;
-  runtimeEnv: NodeJS.ProcessEnv;
-};
+import {
+  clearSiteCaches,
+  migrateSite
+} from './utils';
+import type { SiteCommandEnv } from './utils';
+export type { SiteCommandEnv };
 
-const executeSiteCommand = async (
-  context: TaskExecutionContext,
-  options: {
-    stepId: string;
-    description: string;
-    successMessage: string;
-    commandName: string;
-    siteName: string;
-    env: SiteCommandEnv;
-    timeout: { idleTimeout?: number; maxTimeout?: number };
-  }
-) => {
-  context.startStep('runtime', 'Ensuring container runtime is available');
-  await ensureRuntimeRunning((msg) => context.log('info', msg, 'runtime'));
-  context.completeStep('runtime', 'Container runtime is ready');
-
-  context.startStep(options.stepId, options.description);
-  const args = composeBenchSiteArgs(options.env.projectName, options.siteName, [options.commandName]);
-
-  let result;
-  try {
-    result = await execPromise(
-      options.env.runtimeCmd,
-      args,
-      options.env.benchPath,
-      (out) => context.log('info', out, options.stepId),
-      options.env.runtimeEnv,
-      options.timeout
-    );
-  } catch (err) {
-    throw new Error(`Command execution failed. Please ensure the bench container is running. Error: ${errorMessage(err)}`);
-  }
-
-  if (result.code !== 0) {
-    const errorOutput = (result.stderr || result.stdout || '').toLowerCase();
-    if (errorOutput.includes('no such container') || errorOutput.includes('is not running') || errorOutput.includes('cannot connect to the docker daemon') || errorOutput.includes('no such service')) {
-      throw new Error(`Please start the bench before running this action. Underlying error: ${result.stderr}`);
-    }
-    throw new Error(`Failed to ${options.commandName} for site ${options.siteName}: ${result.stderr}`);
-  }
-
-  context.completeStep(options.stepId, options.successMessage);
-};
-
-const clearSiteCaches = async (
-  context: TaskExecutionContext,
-  siteName: string,
-  env: SiteCommandEnv
-) => {
-  await executeSiteCommand(context, {
-    stepId: 'cache',
-    description: `Clearing cache for ${siteName}`,
-    successMessage: 'Site cache cleared',
-    commandName: 'clear-cache',
-    siteName,
-    env,
-    timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  });
-
-  await executeSiteCommand(context, {
-    stepId: 'website-cache',
-    description: `Clearing website cache for ${siteName}`,
-    successMessage: 'Site website cache cleared',
-    commandName: 'clear-website-cache',
-    siteName,
-    env,
-    timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  });
-};
-
-const migrateSite = async (
-  context: TaskExecutionContext,
-  siteName: string,
-  env: SiteCommandEnv
-) => {
-  await executeSiteCommand(context, {
-    stepId: 'migrate',
-    description: `Running migrate for ${siteName}`,
-    successMessage: 'Site migration completed',
-    commandName: 'migrate',
-    siteName,
-    env,
-    timeout: { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  });
-};
-
-const restartBenchServices = async (
-  context: TaskExecutionContext,
-  env: SiteCommandEnv
-) => {
-  context.startStep('restart', 'Restarting bench processes');
-  
-  // Kill existing honcho/bench start process
-  await execPromise(
-    env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
-    env.benchPath,
-    undefined,
-    env.runtimeEnv,
-    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  ).catch(() => ({ code: 0 })); // Ignore error if it's not running
-
-  // Start it again
-  const restartResult = await execPromise(
-    env.runtimeCmd,
-    ['-p', env.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
-    env.benchPath,
-    (out) => context.log('info', out, 'restart'),
-    env.runtimeEnv,
-    { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS }
-  );
-
-  if (restartResult.code !== 0) {
-    throw new Error(`Failed to restart bench processes: ${restartResult.stderr}`);
-  }
-
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  context.completeStep('restart', 'Bench processes restarted');
-};
 export type SiteCreationDependencies = {
   readonly benches: {
     findById: (id: string) => Promise<Bench | null>;
@@ -190,62 +71,68 @@ export const orchestrateSiteCreation = async (
   // Background orchestration
   const taskRunner = getTaskRunner();
 
+  const projectName = getComposeProjectName(bench.id);
+
+  const cleanupFailedCreate = async (context: TaskExecutionContext) => {
+    context.startStep('cleanup', 'Cleaning up partial site resources');
+    const runtimeCmd = getBinaryPath('docker-compose');
+    const runtimeEnv = await getRuntimeEnv();
+
+    try {
+      const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
+      const dropArgs = composeBenchArgs(projectName, [
+        'drop-site',
+        '--no-backup',
+        '--db-root-username', 'root',
+        '--db-root-password', dbPassword,
+        '--force',
+        input.name,
+      ]);
+
+      await execPromise(
+        runtimeCmd,
+        dropArgs,
+        bench.path,
+        (out) => context.log('info', out, 'cleanup'),
+        runtimeEnv,
+        { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+      );
+    } catch (cleanupError) {
+      context.log('warning', `Database cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
+    }
+
+    try {
+      if (process.platform === 'win32') {
+        await execPromise(
+          runtimeCmd,
+          composeExecArgs(projectName, 'frappe', ['rm', '-rf', `/workspace/sites/${input.name}`]),
+          bench.path,
+          undefined,
+          runtimeEnv,
+          { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS, signal: null }
+        );
+      } else {
+        const siteFolderPath = path.join(bench.path, 'sites', input.name);
+        if (fs.existsSync(siteFolderPath)) {
+          await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
+        }
+      }
+    } catch (cleanupError) {
+      context.log('warning', `Filesystem cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
+    }
+
+    context.completeStep('cleanup', 'Partial resources cleaned up');
+  };
+
   taskRunner.enqueue({
     name: `Create Site ${input.name}`,
     resource: { type: 'site', id: createdSite.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      await cleanupFailedCreate(context);
+    },
     run: async (context) => {
-      const projectName = getComposeProjectName(bench.id);
-
-      const cleanupFailedCreate = async () => {
-        context.startStep('cleanup', 'Cleaning up partial site resources');
-        const runtimeCmd = getBinaryPath('docker-compose');
-        const runtimeEnv = await getRuntimeEnv();
-
-        try {
-          const dbPassword = DATABASE_CREDENTIALS.DB_PASSWORD;
-          const dropArgs = composeBenchArgs(projectName, [
-            'drop-site',
-            '--no-backup',
-            '--db-root-username', 'root',
-            '--db-root-password', dbPassword,
-            '--force',
-            input.name,
-          ]);
-
-          await execPromise(
-            runtimeCmd,
-            dropArgs,
-            bench.path,
-            (out) => context.log('info', out, 'cleanup'),
-            runtimeEnv,
-            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-          );
-        } catch (cleanupError) {
-          context.log('warning', `Database cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
-        }
-
-        try {
-          if (process.platform === 'win32') {
-            await execPromise(
-              runtimeCmd,
-              composeExecArgs(projectName, 'frappe', ['rm', '-rf', `/workspace/sites/${input.name}`]),
-              bench.path,
-              undefined,
-              runtimeEnv,
-              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
-            );
-          } else {
-            const siteFolderPath = path.join(bench.path, 'sites', input.name);
-            if (fs.existsSync(siteFolderPath)) {
-              await fs.promises.rm(siteFolderPath, { recursive: true, force: true });
-            }
-          }
-        } catch (cleanupError) {
-          context.log('warning', `Filesystem cleanup skipped: ${errorMessage(cleanupError)}`, 'cleanup');
-        }
-
-        context.completeStep('cleanup', 'Partial resources cleaned up');
-      };
 
       try {
         context.startStep('init', 'Preparing site environment');
@@ -299,7 +186,7 @@ export const orchestrateSiteCreation = async (
         await migrateSite(context, input.name, siteEnv);
         await clearSiteCaches(context, input.name, siteEnv);
         await ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'new-site', { projectName, runtimeCmd, runtimeEnv });
-        await restartBenchServices(context, siteEnv);
+        await restartBenchProcesses(siteEnv, context);
 
         const updatedSite = await dependencies.sites.update(createdSite.id, { status: 'ready' });
         
@@ -323,7 +210,7 @@ export const orchestrateSiteCreation = async (
           );
         }
 
-        await cleanupFailedCreate();
+        await cleanupFailedCreate(context);
 
         if (dependencies.sites.delete) {
           await dependencies.sites.delete(createdSite.id);
@@ -374,6 +261,12 @@ export const orchestrateSiteDeletion = async (
   taskRunner.enqueue({
     name: `Delete Site ${site.name}`,
     resource: { type: 'site', id: siteId },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling site deletion...', 'drop-site');
+      await dependencies.sites.update(siteId, { status: site.status });
+    },
     run: async (context) => {
       try {
         context.startStep('drop-site', `Dropping site ${site.name}`);
@@ -422,7 +315,7 @@ export const orchestrateSiteDeletion = async (
               bench.path,
               undefined,
               runtimeEnv,
-              { idleTimeout: 30000, maxTimeout: 60000 }
+              { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
             );
           } else {
             const siteFolderPath = path.join(bench.path, 'sites', site.name);
@@ -433,8 +326,8 @@ export const orchestrateSiteDeletion = async (
           await ensureBenchSocketioPort(bench.path, bench.httpPort ?? 8000, context, 'rm-dir', { projectName, runtimeCmd, runtimeEnv });
           if (bench.status === 'running') {
             const siteEnv: SiteCommandEnv = { projectName, benchPath: bench.path, runtimeCmd, runtimeEnv };
-            await restartBenchServices(context, siteEnv).catch((err) =>
-              context.log('warning', `Failed to restart bench services: ${errorMessage(err)}`)
+            await restartBenchProcesses(siteEnv, context).catch((err) =>
+              context.log('warning', `Failed to restart bench processes: ${errorMessage(err)}`)
             );
           }
           context.completeStep('rm-dir', `Site directory removed`);
@@ -479,6 +372,11 @@ export const orchestrateSiteCleanCache = async (
   taskRunner.enqueue({
     name: `Clean Cache: ${site.name}`,
     resource: { type: 'site', id: site.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling site cache cleaning...', 'clear-cache');
+    },
     run: async (context) => {
       try {
         const projectName = getComposeProjectName(bench.id);
@@ -528,6 +426,11 @@ export const orchestrateSiteMigrate = async (
   taskRunner.enqueue({
     name: `Migrate Site: ${site.name}`,
     resource: { type: 'site', id: site.id },
+    cancellable: false,
+    cancellableAfterMs: MIGRATE_TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling site migration...', 'migrate');
+    },
     run: async (context) => {
       try {
         const projectName = getComposeProjectName(bench.id);
@@ -589,13 +492,114 @@ export const orchestrateSiteAppsUpdate = (
   const appName = installDelta[0] || uninstallDelta[0] || 'apps';
   const actionVerb = installDelta.length > 0 ? 'Install' : 'Uninstall';
   
+  let recoveryEnv: SiteCommandEnv | null = null;
+  const attemptedInstalls: string[] = [];
+  const attemptedUninstalls: string[] = [];
+
+  const cleanupFailedSiteAppUpdate = async (context: TaskExecutionContext) => {
+    if (recoveryEnv && (attemptedInstalls.length > 0 || attemptedUninstalls.length > 0)) {
+      const logRecovery = (level: 'info' | 'warning', message: string) => {
+        if (!context.signal.aborted) {
+          context.log(level, message, 'rollback-apps');
+        }
+      };
+
+      try {
+        if (!context.signal.aborted) {
+          context.startStep('rollback-apps', 'Restoring previous site apps');
+        }
+
+        for (const app of [...attemptedInstalls].reverse()) {
+          const rollbackResult = await execPromise(
+            recoveryEnv.runtimeCmd,
+            composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['uninstall-app', app, '--yes']),
+            recoveryEnv.benchPath,
+            undefined,
+            recoveryEnv.runtimeEnv,
+            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+          );
+          if (rollbackResult.code !== 0) {
+            logRecovery('warning', `Could not rollback app ${app}: ${rollbackResult.stderr || rollbackResult.stdout}`);
+          }
+        }
+
+        for (const app of [...attemptedUninstalls].reverse()) {
+          const rollbackResult = await execPromise(
+            recoveryEnv.runtimeCmd,
+            composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['install-app', app]),
+            recoveryEnv.benchPath,
+            undefined,
+            recoveryEnv.runtimeEnv,
+            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+          );
+          if (rollbackResult.code !== 0) {
+            logRecovery('warning', `Could not restore app ${app}: ${rollbackResult.stderr || rollbackResult.stdout}`);
+          }
+        }
+
+        const recoveryCommands = ['migrate', 'clear-cache', 'clear-website-cache'];
+        for (const commandName of recoveryCommands) {
+          const recoveryResult = await execPromise(
+            recoveryEnv.runtimeCmd,
+            composeBenchSiteArgs(recoveryEnv.projectName, site.name, [commandName]),
+            recoveryEnv.benchPath,
+            undefined,
+            recoveryEnv.runtimeEnv,
+            { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
+          );
+          if (recoveryResult.code !== 0) {
+            logRecovery(
+              'warning',
+              `Site recovery command ${commandName} failed: ${recoveryResult.stderr || recoveryResult.stdout}`
+            );
+          }
+        }
+
+        await execPromise(
+          recoveryEnv.runtimeCmd,
+          ['-p', recoveryEnv.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
+          recoveryEnv.benchPath,
+          undefined,
+          recoveryEnv.runtimeEnv,
+          { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS, signal: null }
+        ).catch(() => ({ code: 0, stdout: '', stderr: '' }));
+
+        const restartResult = await execPromise(
+          recoveryEnv.runtimeCmd,
+          ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
+          recoveryEnv.benchPath,
+          undefined,
+          recoveryEnv.runtimeEnv,
+          { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS, signal: null }
+        );
+        if (restartResult.code !== 0) {
+          logRecovery(
+            'warning',
+            `Could not restart bench processes after rollback: ${restartResult.stderr || restartResult.stdout}`
+          );
+        }
+
+        if (!context.signal.aborted) {
+          context.completeStep('rollback-apps', 'Previous site apps restored');
+        }
+      } catch (rollbackError) {
+        logRecovery('warning', `Site app rollback did not complete: ${errorMessage(rollbackError)}`);
+      }
+    }
+
+    await dependencies.sites.update(site.id, { status: site.status });
+  };
+
   taskRunner.enqueue({
     name: `${actionVerb} app ${appName} on ${site.name}`,
     resource: { type: 'site', id: site.id },
+    cancellable: false,
+    cancellableAfterMs: TASK_CANCELLABLE_AFTER_MS,
+    onCancel: async (context) => {
+      context.log('info', 'Cancelling app installation and cleaning up partial state...', 'rollback-apps');
+      await cleanupFailedSiteAppUpdate(context);
+    },
     run: async (context) => {
-      let recoveryEnv: SiteCommandEnv | null = null;
-      const attemptedInstalls: string[] = [];
-      const attemptedUninstalls: string[] = [];
       try {
         context.startStep('apps', 'Updating site apps');
         let bench = await dependencies.benches.findById(site.benchId);
@@ -726,7 +730,7 @@ export const orchestrateSiteAppsUpdate = (
         await clearSiteCaches(context, site.name, siteEnv);
 
         if (installDelta.length > 0 || uninstallDelta.length > 0) {
-          await restartBenchServices(context, siteEnv);
+          await restartBenchProcesses(siteEnv, context);
         }
 
         const updatedSite = await dependencies.sites.update(site.id, { apps: [...targetApps], status: 'ready' });
@@ -741,95 +745,7 @@ export const orchestrateSiteAppsUpdate = (
         
         context.completeStep('apps', 'Site apps updated');
       } catch (error) {
-        if (recoveryEnv && (attemptedInstalls.length > 0 || attemptedUninstalls.length > 0)) {
-          const logRecovery = (level: 'info' | 'warning', message: string) => {
-            if (!context.signal.aborted) {
-              context.log(level, message, 'rollback-apps');
-            }
-          };
-
-          try {
-            if (!context.signal.aborted) {
-              context.startStep('rollback-apps', 'Restoring previous site apps');
-            }
-
-            for (const app of [...attemptedInstalls].reverse()) {
-              const rollbackResult = await execPromise(
-                recoveryEnv.runtimeCmd,
-                composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['uninstall-app', app, '--yes']),
-                recoveryEnv.benchPath,
-                undefined,
-                recoveryEnv.runtimeEnv,
-                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-              );
-              if (rollbackResult.code !== 0) {
-                logRecovery('warning', `Could not rollback app ${app}: ${rollbackResult.stderr || rollbackResult.stdout}`);
-              }
-            }
-
-            for (const app of [...attemptedUninstalls].reverse()) {
-              const rollbackResult = await execPromise(
-                recoveryEnv.runtimeCmd,
-                composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['install-app', app]),
-                recoveryEnv.benchPath,
-                undefined,
-                recoveryEnv.runtimeEnv,
-                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-              );
-              if (rollbackResult.code !== 0) {
-                logRecovery('warning', `Could not restore app ${app}: ${rollbackResult.stderr || rollbackResult.stdout}`);
-              }
-            }
-
-            const recoveryCommands = ['migrate', 'clear-cache', 'clear-website-cache'];
-            for (const commandName of recoveryCommands) {
-              const recoveryResult = await execPromise(
-                recoveryEnv.runtimeCmd,
-                composeBenchSiteArgs(recoveryEnv.projectName, site.name, [commandName]),
-                recoveryEnv.benchPath,
-                undefined,
-                recoveryEnv.runtimeEnv,
-                { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS, signal: null }
-              );
-              if (recoveryResult.code !== 0) {
-                logRecovery(
-                  'warning',
-                  `Site recovery command ${commandName} failed: ${recoveryResult.stderr || recoveryResult.stdout}`
-                );
-              }
-            }
-
-            await execPromise(
-              recoveryEnv.runtimeCmd,
-              ['-p', recoveryEnv.projectName, 'exec', '-T', 'frappe', 'pkill', '-f', 'honcho'],
-              recoveryEnv.benchPath,
-              undefined,
-              recoveryEnv.runtimeEnv,
-              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
-            ).catch(() => ({ code: 0, stdout: '', stderr: '' }));
-
-            const restartResult = await execPromise(
-              recoveryEnv.runtimeCmd,
-              ['-p', recoveryEnv.projectName, 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
-              recoveryEnv.benchPath,
-              undefined,
-              recoveryEnv.runtimeEnv,
-              { idleTimeout: 30000, maxTimeout: 60000, signal: null }
-            );
-            if (restartResult.code !== 0) {
-              logRecovery(
-                'warning',
-                `Could not restart bench processes after rollback: ${restartResult.stderr || restartResult.stdout}`
-              );
-            }
-
-            if (!context.signal.aborted) {
-              context.completeStep('rollback-apps', 'Previous site apps restored');
-            }
-          } catch (rollbackError) {
-            logRecovery('warning', `Site app rollback did not complete: ${errorMessage(rollbackError)}`);
-          }
-        }
+        await cleanupFailedSiteAppUpdate(context);
 
         if (!context.signal.aborted) {
           context.log('error', `Failed to update site apps: ${errorMessage(error)}`, 'apps');

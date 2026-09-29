@@ -139,6 +139,39 @@ describe('Podman machine memory configuration', () => {
     expect(commands).toContainEqual(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME]);
   });
 
+  it.skipIf(process.platform === 'win32')('logs the inspected memory even when no allocation change is needed', async () => {
+    getPodmanMachinesMock.mockResolvedValue([
+      { Name: FRAPPE_LOCAL_MACHINE_NAME, State: 'running' },
+    ]);
+    execPromiseMock.mockResolvedValue({ stdout: '4096\n', stderr: '', code: 0 });
+    const onLog = vi.fn();
+
+    await applyPodmanMachineMemory(4096, onLog);
+
+    expect(onLog).toHaveBeenCalledWith(`Current ${FRAPPE_LOCAL_MACHINE_NAME} memory: 4096 MiB`);
+    expect(execPromiseMock).toHaveBeenCalledTimes(1);
+    expect(execPromiseMock.mock.calls[0]?.[1]).toEqual([
+      'machine', 'inspect', FRAPPE_LOCAL_MACHINE_NAME, '--format', '{{.Resources.Memory}}',
+    ]);
+  });
+
+  it.skipIf(process.platform === 'win32').each(['', '{{.Resources.Memory}}', '4096invalid', '0'])(
+    'does not report invalid inspection output %j as a memory value', async (stdout) => {
+      getPodmanMachinesMock.mockResolvedValue([
+        { Name: FRAPPE_LOCAL_MACHINE_NAME, State: 'stopped' },
+      ]);
+      execPromiseMock.mockResolvedValue({ stdout, stderr: '', code: 0 });
+      const onLog = vi.fn();
+
+      await applyPodmanMachineMemory(4096, onLog);
+
+      expect(onLog).not.toHaveBeenCalledWith(expect.stringContaining('Current frappe-local memory:'));
+      expect(execPromiseMock.mock.calls.map(([, args]) => args)).toContainEqual([
+        'machine', 'set', '--memory', '4096', FRAPPE_LOCAL_MACHINE_NAME,
+      ]);
+    }
+  );
+
   it('retains stderr from non-zero Podman commands', async () => {
     execPromiseMock.mockResolvedValueOnce({
       stdout: '',
