@@ -90,9 +90,7 @@ describe('bench start/restart orchestration', () => {
     fs.mkdirSync(path.join(benchPath, 'sites', 'frappe.localhost'), { recursive: true });
     execPromiseMock
       .mockRejectedValueOnce(new Error('Command timed out after 300000ms: /mock/docker-compose ...'))
-      .mockResolvedValueOnce({ code: 0, stdout: 'frappe\n', stderr: '' }) // ps --services
-      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }) // pkill
-      .mockResolvedValueOnce({ code: 0, stdout: '', stderr: '' }); // bench start
+      .mockResolvedValue({ code: 0, stdout: 'frappe\n', stderr: '' });
 
     orchestrateBenchStart(
       bench,
