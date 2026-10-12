@@ -136,21 +136,38 @@ export const ensureWindowsDevContainerSupport = async (
   const dockerWrapperPath = getBinaryPath('docker-wsl-wrapper.sh');
   const enternsProfilePath = getBinaryPath('enterns-profile.sh');
   const setupScript = [
+    'echo "[frappe-local] Preparing Dev Container environment"',
     'compose_source="$(wslpath -u "$1")"',
     'docker_cli_source="$(wslpath -u "$2")"',
     'docker_wrapper_source="$(wslpath -u "$3")"',
     'enterns_profile_source="$(wslpath -u "$4")"',
     'mkdir -p /usr/libexec/docker/cli-plugins /usr/libexec/frappe-local',
+    'echo "[frappe-local] Installing Docker Compose plugin"',
     'if ! cmp -s "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; then install -m 0755 "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; fi',
+    'echo "[frappe-local] Installing Docker CLI binary"',
     'if ! cmp -s "$docker_cli_source" /usr/libexec/frappe-local/docker; then install -m 0755 "$docker_cli_source" /usr/libexec/frappe-local/docker; fi',
+    'echo "[frappe-local] Configuring enterns profile"',
     'if ! cmp -s "$enterns_profile_source" /etc/profile.d/enterns.sh; then install -m 0644 "$enterns_profile_source" /etc/profile.d/enterns.sh; fi',
+    'echo "[frappe-local] Verifying systemd process"',
     'systemd_pid="$(/usr/bin/pgrep -o -x systemd)"',
     'test -n "$systemd_pid" && test -e "/proc/$systemd_pid/ns/pid"',
+    'echo "[frappe-local] Checking Dev Container API service"',
     'if ! /usr/sbin/runuser -u user -- /usr/bin/podman --remote --url unix:///mnt/wsl/frappe-local-devcontainer.sock info >/dev/null 2>&1; then { /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemctl --user stop frappe-local-devcontainer-api.service >/dev/null 2>&1 || true; }; rm -f /mnt/wsl/frappe-local-devcontainer.sock; /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemd-run --user --unit=frappe-local-devcontainer-api --collect --property=Restart=always /usr/bin/podman --remote=false system service --time=0 unix:///mnt/wsl/frappe-local-devcontainer.sock; i=0; while [ ! -S /mnt/wsl/frappe-local-devcontainer.sock ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; test -S /mnt/wsl/frappe-local-devcontainer.sock; fi',
+    'echo "[frappe-local] Configuring Docker wrapper and symlinks"',
     'rm -f /usr/bin/docker',
     'install -m 0755 "$docker_wrapper_source" /usr/bin/docker',
     'ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose',
+    'echo "[frappe-local] Dev Container support configured"',
   ].join(' && ');
+  const logHandler = onLog
+    ? (output: string) => {
+        const message = output.trim();
+        if (message) {
+          logger.info(message);
+          onLog(message);
+        }
+      }
+    : undefined;
   const result = await execPromise(
     'wsl.exe',
     [
@@ -169,9 +186,9 @@ export const ensureWindowsDevContainerSupport = async (
       enternsProfilePath,
     ],
     undefined,
+    logHandler,
     undefined,
-    undefined,
-    { idleTimeout: 15000, maxTimeout: QUICK_IDLE_TIMEOUT_MS }
+    { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: STANDARD_MAX_TIMEOUT_MS }
   );
 
   if (result.code !== 0) {
