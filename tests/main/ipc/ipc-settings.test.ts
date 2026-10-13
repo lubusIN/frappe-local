@@ -7,10 +7,19 @@ import { makeStubCustomAppsRepo } from './helpers';
 import { DEFAULT_SETTINGS } from '../../../src/shared/domain/models';
 import { getRecommendedPodmanMemoryMb } from '../../../src/shared/core/system-resources';
 
+const mockFetch = vi.fn();
+
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
-    apps: [{ slug: 'frappe', title: 'Frappe', repository: 'https://github.com/frappe/frappe' }],
-  }), { status: 200 })));
+  mockFetch.mockReset();
+  mockFetch.mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        apps: [{ slug: 'frappe', title: 'Frappe', repository: 'https://github.com/frappe/frappe' }],
+      }),
+      { status: 200 }
+    )
+  );
+  vi.stubGlobal('fetch', mockFetch);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -170,36 +179,30 @@ describe('settings IPC handlers', () => {
   });
 
   it('settings:set rejects saving a custom breweryUrl if fetching apps from that URL fails', async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Connection refused'));
+    mockFetch.mockRejectedValue(new Error('Connection refused'));
 
-    try {
-      const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
-      registerIpcHandlers(
-        { handle: (channel, listener) => { handlers.set(channel, listener); } },
-        {
-          appCatalog: makeStubCatalogRepo(),
-          benches: makeStubBenchRepo(),
-          sites: makeStubSiteRepo(),
-          settings: makeStubSettingsRepo(seedSettings),
-          customApps: makeStubCustomAppsRepo(),
-        }
-      );
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(seedSettings),
+        customApps: makeStubCustomAppsRepo(),
+      }
+    );
 
-      const saveHandler = handlers.get(ipcChannels.settingsSet);
+    const saveHandler = handlers.get(ipcChannels.settingsSet);
 
-      await expect(
-        saveHandler?.(undefined, { ...seedSettings, breweryUrl: 'https://broken-registry.test/' })
-      ).rejects.toThrow('Cannot save settings: registry endpoint "https://broken-registry.test/" is invalid or failed to fetch apps');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    await expect(
+      saveHandler?.(undefined, { ...seedSettings, breweryUrl: 'https://broken-registry.test/' })
+    ).rejects.toThrow('Cannot save settings: registry endpoint "https://broken-registry.test/" is invalid or failed to fetch apps');
   });
 
   it('settings:set allows saving a custom breweryUrl if fetching apps from that URL succeeds', async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn().mockResolvedValue(
+    mockFetch.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           apps: [
@@ -214,30 +217,26 @@ describe('settings IPC handlers', () => {
       )
     );
 
-    try {
-      const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
+    const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
 
-      registerIpcHandlers(
-        { handle: (channel, listener) => { handlers.set(channel, listener); } },
-        {
-          appCatalog: makeStubCatalogRepo(),
-          benches: makeStubBenchRepo(),
-          sites: makeStubSiteRepo(),
-          settings: makeStubSettingsRepo(seedSettings),
-          customApps: makeStubCustomAppsRepo(),
-        }
-      );
+    registerIpcHandlers(
+      { handle: (channel, listener) => { handlers.set(channel, listener); } },
+      {
+        appCatalog: makeStubCatalogRepo(),
+        benches: makeStubBenchRepo(),
+        sites: makeStubSiteRepo(),
+        settings: makeStubSettingsRepo(seedSettings),
+        customApps: makeStubCustomAppsRepo(),
+      }
+    );
 
-      const saveHandler = handlers.get(ipcChannels.settingsSet);
-      const getHandler = handlers.get(ipcChannels.settingsGet);
+    const saveHandler = handlers.get(ipcChannels.settingsSet);
+    const getHandler = handlers.get(ipcChannels.settingsGet);
 
-      await saveHandler?.(undefined, { ...seedSettings, breweryUrl: 'https://valid-registry.test/' });
-      const loaded = (await getHandler?.()) as Settings;
+    await saveHandler?.(undefined, { ...seedSettings, breweryUrl: 'https://valid-registry.test/' });
+    const loaded = (await getHandler?.()) as Settings;
 
-      expect(loaded.breweryUrl).toBe('https://valid-registry.test/');
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    expect(loaded.breweryUrl).toBe('https://valid-registry.test/');
   });
 
   it('reports host memory limits and a 75 percent recommendation', async () => {
@@ -292,7 +291,9 @@ describe('settings IPC handlers', () => {
   it('applies a changed Podman memory allocation before persisting it', async () => {
     const handlers = new Map<string, (...args: unknown[]) => Promise<unknown> | unknown>();
     const applyRuntimeMemory = vi.fn(async () => undefined);
-    const settings = makeStubSettingsRepo(null);
+    const initialMemoryMb = 2048;
+    const changedMemoryMb = 4096;
+    const settings = makeStubSettingsRepo({ ...seedSettings, podmanMemoryMb: initialMemoryMb });
 
     registerIpcHandlers(
       { handle: (channel, listener) => { handlers.set(channel, listener); } },
@@ -312,10 +313,16 @@ describe('settings IPC handlers', () => {
       }
     );
 
-    await handlers.get(ipcChannels.settingsSet)?.(undefined, seedSettings);
+    await handlers.get(ipcChannels.settingsSet)?.(undefined, {
+      ...seedSettings,
+      podmanMemoryMb: changedMemoryMb,
+    });
 
-    expect(applyRuntimeMemory).toHaveBeenCalledWith(seedSettings.podmanMemoryMb);
-    expect(await settings.get()).toMatchObject(seedSettings);
+    expect(applyRuntimeMemory).toHaveBeenCalledWith(changedMemoryMb);
+    expect(await settings.get()).toMatchObject({
+      ...seedSettings,
+      podmanMemoryMb: changedMemoryMb,
+    });
   });
 
   it('update:check-now returns error when updater fails in test environment', async () => {

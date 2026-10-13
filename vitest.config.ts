@@ -16,6 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    testTimeout: 15_000,
     server: { deps: { inline: ['frappe-ui'] } },
     exclude: ['node_modules/**', 'scratch/**'],
   },

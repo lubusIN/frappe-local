@@ -184,9 +184,11 @@ describe('Podman machine memory configuration', () => {
   });
 
   it('provisions Docker-compatible Dev Container support in the app-owned WSL distro', async () => {
-    await ensureWindowsDevContainerSupport();
+    const originalPlatform = process.platform;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      await ensureWindowsDevContainerSupport();
 
-    if (process.platform === 'win32') {
       expect(execPromiseMock).toHaveBeenCalledWith(
         'wsl.exe',
         [
@@ -207,20 +209,36 @@ describe('Podman machine memory configuration', () => {
         undefined,
         undefined,
         undefined,
-        { idleTimeout: 30000, maxTimeout: 120000 }
+        { idleTimeout: 60000, maxTimeout: 120000 }
       );
-    } else {
-      expect(execPromiseMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
     }
   });
 
   it('provides actionable remediation when Dev Container support cannot be installed', async () => {
-    if (process.platform !== 'win32') return;
-    execPromiseMock.mockResolvedValueOnce({ stdout: '', stderr: 'permission denied', code: 1 });
+    const originalPlatform = process.platform;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      execPromiseMock.mockResolvedValueOnce({ stdout: '', stderr: 'permission denied', code: 1 });
 
-    await expect(ensureWindowsDevContainerSupport()).rejects.toThrow(
-      'Restart Frappe Local, then retry.'
-    );
+      await expect(ensureWindowsDevContainerSupport()).rejects.toThrow(
+        'Restart Frappe Local, then retry.'
+      );
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+    }
+  });
+
+  it('skips Dev Container support on non-Windows platforms', async () => {
+    const originalPlatform = process.platform;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'darwin' });
+      await ensureWindowsDevContainerSupport();
+      expect(execPromiseMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+    }
   });
 
   it('formats DOCKER_HOST properly for Windows named pipes and unix sockets', async () => {

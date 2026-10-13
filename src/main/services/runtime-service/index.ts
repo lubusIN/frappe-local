@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { exec as execCommand } from 'node:child_process';
 import type { PodmanMachineStatus } from '@frappe-local/main/utils/podman/podman';
-import { PODMAN_RUNTIME_TIMEOUTS, STANDARD_IDLE_TIMEOUT_MS, STANDARD_MAX_TIMEOUT_MS, QUICK_IDLE_TIMEOUT_MS } from '@frappe-local/main/constants';
+import { PODMAN_RUNTIME_TIMEOUTS, STANDARD_IDLE_TIMEOUT_MS, STANDARD_MAX_TIMEOUT_MS } from '@frappe-local/main/constants';
 
 const logger = createMainLogger('runtime');
 import { isWslInstalled, installWslTask } from './wsl';
@@ -188,7 +188,7 @@ export const ensureWindowsDevContainerSupport = async (
     undefined,
     logHandler,
     undefined,
-    { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: STANDARD_MAX_TIMEOUT_MS }
+    { idleTimeout: STANDARD_IDLE_TIMEOUT_MS, maxTimeout: STANDARD_MAX_TIMEOUT_MS }
   );
 
   if (result.code !== 0) {
