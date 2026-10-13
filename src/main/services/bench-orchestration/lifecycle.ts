@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { ensureRuntimeRunning, getRuntimeEnv, getLastRuntimeError } from '../runtime-service';
 import { getTaskRunner, type TaskExecutionContext } from '../task-runner';
 import type { Bench, CustomAppItem } from '@frappe-local/shared/domain';
-import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS, TASK_CANCELLABLE_AFTER_MS } from '@frappe-local/main/constants';
+import { IDLE_TIMEOUT_MS, MAX_WALL_CLOCK_MS, QUICK_IDLE_TIMEOUT_MS, QUICK_MAX_TIMEOUT_MS, TASK_CANCELLABLE_AFTER_MS } from '@frappe-local/main/constants';
 import { benchComposeArgs, ensureBenchComposeWritten, getBenchComposePath, getComposeProjectName } from '@frappe-local/main/utils/podman';
 import { resolveAndPersistBenchPort, ensureBenchProcfile, ensureBenchDevcontainer, ensureBenchSocketioPort, getLocalAppVolumes, restartBenchProcesses } from './utils';
 
@@ -117,7 +117,10 @@ export const orchestrateBenchStart = (
   benchesRepo: { update: (id: string, payload: Partial<Bench>) => Promise<Bench | null> },
   customAppsRepo?: { findAll?: () => Promise<CustomAppItem[]> },
   shareSshKeys: boolean = false,
-  isRestart = false
+  isRestart = false,
+  options?: {
+    onCompleted?: () => Promise<void>;
+  }
 ): string => {
   const taskRunner = getTaskRunner();
 
@@ -194,12 +197,6 @@ export const orchestrateBenchStart = (
         const commonArgs = benchComposeArgs(projectName, composePath);
         const runtimeEnv = await getRuntimeEnv();
 
-        if (!isRestart) {
-          context.startStep('pull', 'Checking for image updates');
-          await execPromise(command, [...commonArgs, 'pull'], bench.path, (out) => context.log('info', out, 'pull'), runtimeEnv, { idleTimeout: IDLE_TIMEOUT_MS, maxTimeout: MAX_WALL_CLOCK_MS });
-          context.completeStep('pull', 'Images updated');
-        }
-
         context.startStep('start', isRestart ? 'Restarting containers' : 'Starting containers');
         const upArgs = [
           ...commonArgs,
@@ -270,6 +267,16 @@ export const orchestrateBenchStart = (
         }
         context.completeStep('start', 'Containers are running');
 
+        // Ensure bench virtualenv Python interpreter is valid; auto-heal if base Python updated
+        await execPromise(
+          command,
+          ['-p', projectName, 'exec', '-T', 'frappe', 'sh', '-c', 'env/bin/python --version >/dev/null 2>&1 || uv venv --allow-existing env || python3 -m venv --upgrade env'],
+          bench.path,
+          undefined,
+          runtimeEnv,
+          { idleTimeout: QUICK_IDLE_TIMEOUT_MS, maxTimeout: QUICK_MAX_TIMEOUT_MS }
+        ).catch(() => ({ code: 0 }));
+
         await restartBenchProcesses({
           projectName,
           benchPath: bench.path,
@@ -277,6 +284,7 @@ export const orchestrateBenchStart = (
           runtimeEnv
         }, context);
         await benchesRepo.update(bench.id, { status: 'running' });
+        await options?.onCompleted?.();
       } catch (error) {
         context.log('error', errorMessage(error));
         await benchesRepo.update(bench.id, {

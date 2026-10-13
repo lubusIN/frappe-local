@@ -172,4 +172,24 @@ describe('bench start/restart orchestration', () => {
     await expect(queuedRun?.(context)).rejects.toThrow('core services did not come up');
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
   });
+
+  it('invokes onCompleted callback when start succeeds', async () => {
+    const onCompleted = vi.fn(async () => undefined);
+    execPromiseMock.mockResolvedValue({ code: 0, stdout: 'frappe\n', stderr: '' });
+
+    orchestrateBenchStart(
+      bench,
+      { update: updateMock },
+      undefined,
+      false,
+      false,
+      { onCompleted }
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(onCompleted).toHaveBeenCalledTimes(1);
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
+  });
 });

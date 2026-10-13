@@ -166,7 +166,18 @@ export const registerBenchesIpc = (
       if (status === 'running') {
         const isRestart = existing.status === 'running';
         const settings = await getCurrentSettings(repositories.settings);
-        orchestrateBenchStart(updated, repositories.benches, repositories.customApps, settings?.shareSshKeys ?? false, isRestart);
+        orchestrateBenchStart(
+          updated,
+          repositories.benches,
+          repositories.customApps,
+          settings?.shareSshKeys ?? false,
+          isRestart,
+          {
+            onCompleted: async () => {
+              await operations.refreshFrontDoorHosts?.();
+            },
+          }
+        );
       } else if (status === 'stopped') {
         orchestrateBenchStop(updated, repositories.benches);
       }
