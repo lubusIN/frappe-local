@@ -512,7 +512,7 @@ export const orchestrateSiteAppsUpdate = (
         for (const app of [...attemptedInstalls].reverse()) {
           const rollbackResult = await execPromise(
             recoveryEnv.runtimeCmd,
-            composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['uninstall-app', app, '--yes']),
+            composeBenchSiteArgs(recoveryEnv.projectName, site.name, ['uninstall-app', app, '--yes', '--no-backup']),
             recoveryEnv.benchPath,
             undefined,
             recoveryEnv.runtimeEnv,
@@ -706,7 +706,7 @@ export const orchestrateSiteAppsUpdate = (
               context.log('warning', `Failed to purge jobs: ${String(err)}`, 'uninstall-apps');
             }
 
-            const args = composeBenchSiteArgs(projectName, site.name, ['uninstall-app', appSlug, '--yes']);
+            const args = composeBenchSiteArgs(projectName, site.name, ['uninstall-app', appSlug, '--yes', '--no-backup']);
 
             const { code, stderr } = await execPromise(
               runtimeCmd,
