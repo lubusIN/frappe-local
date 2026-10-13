@@ -206,6 +206,16 @@ export const findUnhandledCancelledTask = (
   ) ?? null;
 };
 
+export const findUnhandledSuccessfulTasks = (
+  tasks: readonly ProgressTaskSummary[],
+  handledTaskIds: ReadonlySet<string>
+): ProgressTaskSummary[] => {
+  return tasks.filter((task) =>
+    (task.status === 'success' || task.type === 'task.completed')
+    && !handledTaskIds.has(task.taskId)
+  );
+};
+
 export const createProgressCenterController = (
   ipc: ProgressCenterBridge,
   state: ProgressCenterState = createDefaultProgressCenterState()

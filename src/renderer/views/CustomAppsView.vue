@@ -161,7 +161,7 @@
 import { Badge, Button, Dropdown, toast, PageHeader } from 'frappe-ui';
 import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 import type { DropdownItem } from 'frappe-ui';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import StatePanel from '@frappe-local/renderer/components/ui/StatePanel.vue';
 import EmptyState from '@frappe-local/renderer/components/ui/EmptyState.vue';
@@ -186,6 +186,10 @@ const {
   checkAppUsage,
   openInEditor,
 } = useCustomApps();
+
+onMounted(() => {
+  void refresh(true);
+});
 
 const showAddModal = ref(false);
 const imageErrors = ref<Record<string, boolean>>({});

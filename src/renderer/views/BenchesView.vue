@@ -193,7 +193,7 @@
 
 <script setup lang="ts">
 import { Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, Tabs, Spinner, toast } from 'frappe-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
@@ -234,6 +234,11 @@ const {
 } = useBenches();
 
 const { sites, refresh: refreshSites } = useSites();
+
+onMounted(() => {
+  void refresh(true);
+  void refreshSites(true);
+});
 
 const showCreateSiteModal = ref(false);
 
@@ -362,7 +367,7 @@ const onAddBenchApp = async (appId: string) => {
     () => queueBenchAppsUpdate(nextApps),
     'bench', bench.id, /^(Get) app .* on /i
   ).then(async (res) => {
-    await refresh(true);
+    await Promise.all([refresh(true), refreshSites(true)]);
     return res;
   });
 
@@ -448,7 +453,7 @@ const onConfirmRemoveBenchApp = async () => {
     () => queueBenchAppsUpdate(nextApps),
     'bench', bench.id, /^(Remove) app .* on /i
   ).then(async (res) => {
-    await refresh(true);
+    await Promise.all([refresh(true), refreshSites(true)]);
     return res;
   });
 

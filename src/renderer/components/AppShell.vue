@@ -293,19 +293,19 @@ import AppLogo from '@frappe-local/renderer/components/ui/AppLogo.vue';
 import SettingsDialog from '@frappe-local/renderer/components/dialogs/SettingsDialog.vue';
 import TaskLogDialog from '@frappe-local/renderer/components/dialogs/TaskLogDialog.vue';
 import ErrorNotice from '@frappe-local/renderer/components/ui/ErrorNotice.vue';
-import { handledFailureTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter, useDiagnostics } from '@frappe-local/renderer/composables/system';
+import { handledFailureTaskIds, handledSuccessTaskIds, isIpcBridgeAvailable, useFrontDoorStatus, useProgressCenter, useDiagnostics } from '@frappe-local/renderer/composables/system';
 import { useAppCatalog, useBenches, useBenchesPolling, useCustomApps, useSites, useSitesPolling } from '@frappe-local/renderer/composables/data';
 import { useSettingsDialog } from '@frappe-local/renderer/composables/ui';
 
 import { navigationItems } from '@frappe-local/renderer/router/routes';
 
-import { findUnhandledCancelledTask, findUnhandledFailedTask } from '@frappe-local/renderer/controllers';
+import { findUnhandledCancelledTask, findUnhandledFailedTask, findUnhandledSuccessfulTasks } from '@frappe-local/renderer/controllers';
 
 const { formatTaskTitle } = useAppCatalog();
 useBenchesPolling();
 useSitesPolling();
-const { sites } = useSites();
-const { benches } = useBenches();
+const { sites, refresh: refreshSites } = useSites();
+const { benches, refresh: refreshBenches } = useBenches();
 const { customApps } = useCustomApps();
 const { report } = useDiagnostics();
 
@@ -443,6 +443,25 @@ watch(
     if (cancelledTask) {
       handledFailureTaskIds.add(`cancelled:${cancelledTask.taskId}`);
       toast.info(`${formatTaskTitle(cancelledTask.taskName)} cancelled.`);
+    }
+
+    const successfulTasks = findUnhandledSuccessfulTasks(items, handledSuccessTaskIds);
+    if (successfulTasks.length > 0) {
+      let shouldRefreshBenches = false;
+      let shouldRefreshSites = false;
+      for (const task of successfulTasks) {
+        handledSuccessTaskIds.add(task.taskId);
+        if (task.resource === 'bench' || task.resource === 'site') {
+          shouldRefreshBenches = true;
+          shouldRefreshSites = true;
+        }
+      }
+      if (shouldRefreshBenches) {
+        void refreshBenches(true);
+      }
+      if (shouldRefreshSites) {
+        void refreshSites(true);
+      }
     }
   },
   { deep: true }

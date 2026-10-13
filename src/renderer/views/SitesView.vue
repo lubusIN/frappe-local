@@ -184,7 +184,7 @@
 
 <script setup lang="ts">
 import { Badge, Button, Dropdown, PageHeaderBase, PageHeaderTitle, Tabs, toast } from 'frappe-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
 import { trackSiteCreationToast } from '@frappe-local/renderer/composables/ui';
@@ -263,7 +263,13 @@ const onStatusClick = (resourceId: string) => {
 const {
   benches: allBenches,
   loading: benchLoading,
+  refresh: refreshBenches,
 } = useBenches();
+
+onMounted(() => {
+  void refresh(true);
+  void refreshBenches(true);
+});
 
 const getDisplayTheme = (row: SiteListItem) => {
   if (row.status === 'ready') {
@@ -379,7 +385,7 @@ const onConfirmDeleteSite = async () => {
     });
     
     await promise;
-    await refresh(true);
+    await Promise.all([refresh(true), refreshBenches(true)]);
   } catch {
     // Error is handled by toast
   }
@@ -490,7 +496,7 @@ const onActivateSiteApp = async (appId: string) => {
     () => update(site.id, { apps: nextApps }),
     'site', site.id, /^Install app/i
   ).then(async (res) => {
-    await load(true);
+    await Promise.all([load(true), refreshBenches(true)]);
     return res;
   });
 
@@ -558,7 +564,7 @@ const onConfirmDeactivateSiteApp = async () => {
     () => update(site.id, { apps: nextApps }),
     'site', site.id, /^Uninstall app/i
   ).then(async (res) => {
-    await load(true);
+    await Promise.all([load(true), refreshBenches(true)]);
     return res;
   });
 

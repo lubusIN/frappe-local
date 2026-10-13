@@ -66,6 +66,12 @@ export const handledFailureTaskIds = new Set<string>([
     .map((task) => `cancelled:${task.taskId}`)
 ]);
 
+export const handledSuccessTaskIds = new Set<string>([
+  ...initialState.tasks
+    .filter((task) => task.status === 'success' || task.type === 'task.completed')
+    .map((task) => task.taskId)
+]);
+
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
 
@@ -103,6 +109,7 @@ export const useProgressCenter = () => {
   const clearTasks = () => {
     globalState.tasks = [];
     acknowledgedTasks.clear();
+    handledSuccessTaskIds.clear();
     localStorage.removeItem(ACTIVITIES_STORAGE_KEY);
     localStorage.removeItem(ACKNOWLEDGED_TASKS_KEY);
   };
