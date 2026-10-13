@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, reactive, ref, toRefs, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, toRef, toRefs, watch } from 'vue';
 import { createDefaultProgressCenterState, createProgressCenterController, filterProgressTasks, reconcileSavedProgressTasks, type ProgressTaskSummary } from '@frappe-local/renderer/controllers';
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 
@@ -66,10 +66,19 @@ export const handledFailureTaskIds = new Set<string>([
     .map((task) => `cancelled:${task.taskId}`)
 ]);
 
+export const handledSuccessTaskIds = new Set<string>([
+  ...initialState.tasks
+    .filter((task) => task.status === 'success' || task.type === 'task.completed')
+    .map((task) => task.taskId)
+]);
+
 let globalController: ReturnType<typeof createProgressCenterController> | null = null;
 let connectionCount = 0;
 
 const activeLogTaskId = ref<string | null>(null);
+
+// Task waiters also run from event handlers, outside component setup.
+export const getProgressTasks = () => toRef(globalState, 'tasks');
 
 export const useProgressCenter = () => {
   if (!globalController) {
@@ -100,6 +109,7 @@ export const useProgressCenter = () => {
   const clearTasks = () => {
     globalState.tasks = [];
     acknowledgedTasks.clear();
+    handledSuccessTaskIds.clear();
     localStorage.removeItem(ACTIVITIES_STORAGE_KEY);
     localStorage.removeItem(ACKNOWLEDGED_TASKS_KEY);
   };

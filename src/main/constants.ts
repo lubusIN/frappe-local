@@ -29,6 +29,24 @@ export const IDLE_TIMEOUT_MS = 10 * MINUTE_MS; // 10 minutes of silence
 export const MAX_WALL_CLOCK_MS = 45 * MINUTE_MS; // 45 minutes absolute limit
 
 /**
+ * Short-running operations (like quick file ops or quick health checks)
+ */
+export const QUICK_IDLE_TIMEOUT_MS = 30_000; // 30s
+export const QUICK_MAX_TIMEOUT_MS = 60_000; // 1m
+
+/**
+ * Standard-running operations (like pip install or migrations)
+ */
+export const STANDARD_IDLE_TIMEOUT_MS = 60_000; // 1m
+export const STANDARD_MAX_TIMEOUT_MS = 120_000; // 2m
+
+/**
+ * Task cancellation ceilings (after this point, a stuck task can be force-killed via UI)
+ */
+export const TASK_CANCELLABLE_AFTER_MS = 30_000; // 30s
+export const MIGRATE_TASK_CANCELLABLE_AFTER_MS = 120_000; // 2m
+
+/**
  * Timeouts used while initializing and checking the Podman runtime.
  */
 export const PODMAN_RUNTIME_TIMEOUTS = {

@@ -12,7 +12,7 @@
           <TabButtons
             v-model="appType"
             :options="[
-              { label: 'GitHub', value: 'github', iconLeft: 'github' },
+              { label: 'GitHub', value: 'github', iconLeft: markRaw(GithubIcon) },
               { label: 'Local', value: 'local', iconLeft: 'lucide-folder' }
             ]"
           />
@@ -49,40 +49,22 @@
             </p>
             <p
               v-else-if="!isRepoPrivate"
-              class="text-xs text-ink-green-6 flex items-center gap-1"
+              class="text-xs text-ink-green-5 flex items-center gap-1"
             >
-              <svg
-                class="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+              <span
+                class="lucide-check w-3.5 h-3.5"
+                aria-hidden="true"
+              />
               Repository is accessible.
             </p>
             <p
               v-else-if="isRepoPrivate && shareSshKeysEnabled"
-              class="text-xs text-ink-green-6 flex items-center gap-1"
+              class="text-xs text-ink-green-5 flex items-center gap-1"
             >
-              <svg
-                class="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+              <span
+                class="lucide-check w-3.5 h-3.5"
+                aria-hidden="true"
+              />
               Private repository ready (SSH enabled).
             </p>
           </div>
@@ -93,7 +75,7 @@
           >
             <Alert
               title="This repository appears to be private or unreachable. You must enable SSH key sharing below to install it."
-              theme="yellow"
+              theme="amber"
               :dismissible="false"
             />
           </div>
@@ -176,9 +158,10 @@
 <script setup lang="ts">
 import { Alert, Button, Dialog, Switch, TabButtons, FormControl, ErrorMessage, debounce, toast } from 'frappe-ui';
 import ConfirmationDialog from '@frappe-local/renderer/components/dialogs/ConfirmationDialog.vue';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, markRaw } from 'vue';
 import type { CustomAppListItem, ExtractedCustomAppMetadata } from '@frappe-local/shared/core';
 import { useSshKeys } from '@frappe-local/renderer/composables/system';
+import GithubIcon from '../icons/GithubIcon.vue';
 
 const emit = defineEmits<{
   (e: 'close'): void;

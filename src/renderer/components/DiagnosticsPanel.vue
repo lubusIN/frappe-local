@@ -29,12 +29,12 @@
     >
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section
-          class="flex flex-col gap-4 rounded-lg border bg-surface-base p-4 sm:flex-row sm:items-start sm:justify-between"
+          class="flex flex-col gap-4 rounded-6 border bg-surface-base p-4 sm:flex-row sm:items-start sm:justify-between"
           :class="summaryCardClass"
         >
           <div class="flex items-start gap-3">
             <div
-              class="flex size-10 shrink-0 items-center justify-center rounded-lg"
+              class="flex size-10 shrink-0 items-center justify-center rounded-6"
               :class="summaryIconClass"
             >
               <i
@@ -79,7 +79,7 @@
           <article
             v-for="check in sortedChecks"
             :key="`${check.type}-${check.title}`"
-            class="flex flex-col rounded-lg border bg-surface-base p-3 transition-colors"
+            class="flex flex-col rounded-6 border bg-surface-base p-3 transition-colors"
             :class="cardClass(check.status)"
           >
             <div class="flex items-start gap-3">
@@ -156,7 +156,7 @@
                   variant="solid"
                   size="sm"
                   theme="red"
-                  :icon="IconWrench"
+                  :icon="'lucide-wrench'"
                   :loading="fixing"
                   @click="$emit('fix', 'wsl')"
                 >
@@ -256,11 +256,11 @@ const summaryCardClass = computed(() => {
 });
 
 const summaryIconClass = computed(() => {
-  if (props.running) return 'bg-surface-blue-2 text-ink-blue-6';
+  if (props.running) return 'bg-surface-blue-2 text-ink-blue-5';
   if (!props.report) return 'bg-surface-gray-2 text-ink-gray-6';
-  if (props.report.hasCriticalIssues) return 'bg-surface-red-2 text-ink-red-8';
-  if (props.report.hasWarnings) return 'bg-surface-amber-2 text-ink-amber-6';
-  return 'bg-surface-green-2 text-ink-green-7';
+  if (props.report.hasCriticalIssues) return 'bg-surface-red-2 text-ink-red-7';
+  if (props.report.hasWarnings) return 'bg-surface-amber-2 text-ink-amber-5';
+  return 'bg-surface-green-2 text-ink-green-6';
 });
 
 const statusPriority: Record<DiagnosticsCheckStatus, number> = {
@@ -440,9 +440,9 @@ const cardClass = (status: DiagnosticsCheckStatus): string => {
 
 const statusIconClass = (status: DiagnosticsCheckStatus): string => {
   const classes: Record<DiagnosticsCheckStatus, string> = {
-    passed: 'bg-surface-green-2 text-ink-green-7',
-    warning: 'bg-surface-amber-2 text-ink-amber-6',
-    failed: 'bg-surface-red-2 text-ink-red-8',
+    passed: 'bg-surface-green-2 text-ink-green-6',
+    warning: 'bg-surface-amber-2 text-ink-amber-5',
+    failed: 'bg-surface-red-2 text-ink-red-7',
     skipped: 'bg-surface-gray-2 text-ink-gray-5',
   };
 

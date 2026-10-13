@@ -23,6 +23,8 @@ export type ProgressTaskSummary = {
   readonly errorCode: string | null;
   readonly resource: ProgressTaskResource;
   readonly resourceId: string | null;
+  readonly cancellable?: boolean;
+  readonly cancellableAfterMs?: number;
 };
 
 export type ProgressCenterState = {
@@ -65,6 +67,8 @@ export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[
         message: 'Task was cancelled.',
         logs,
         errorCode: 'cancelled',
+        cancellable: task.cancellable,
+        cancellableAfterMs: task.cancellableAfterMs,
       };
     }
 
@@ -73,6 +77,8 @@ export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[
         ...task,
         createdAt,
         logs,
+        cancellable: task.cancellable,
+        cancellableAfterMs: task.cancellableAfterMs,
       };
     }
 
@@ -94,6 +100,8 @@ export const reconcileSavedProgressTasks = (tasks: readonly ProgressTaskSummary[
         },
       ].slice(-MAX_LOGS_PER_TASK),
       errorCode: 'task-interrupted',
+      cancellable: task.cancellable,
+      cancellableAfterMs: task.cancellableAfterMs,
     };
   });
 
@@ -145,6 +153,8 @@ export const upsertProgressTask = (
     errorCode: event.errorCode ?? existing?.errorCode ?? null,
     resource: payloadResource ?? detectProgressTaskResource(event.taskName),
     resourceId: event.resource?.id ?? null,
+    cancellable: event.cancellable,
+    cancellableAfterMs: event.cancellableAfterMs,
   };
 
   const withoutCurrent = tasks.filter((item) => item.taskId !== event.taskId);
@@ -194,6 +204,16 @@ export const findUnhandledCancelledTask = (
     (task.type === 'task.cancelled' || (task.type === 'task.failed' && task.errorCode === 'cancelled'))
     && !handledTaskIds.has(`cancelled:${task.taskId}`)
   ) ?? null;
+};
+
+export const findUnhandledSuccessfulTasks = (
+  tasks: readonly ProgressTaskSummary[],
+  handledTaskIds: ReadonlySet<string>
+): ProgressTaskSummary[] => {
+  return tasks.filter((task) =>
+    (task.status === 'success' || task.type === 'task.completed')
+    && !handledTaskIds.has(task.taskId)
+  );
 };
 
 export const createProgressCenterController = (

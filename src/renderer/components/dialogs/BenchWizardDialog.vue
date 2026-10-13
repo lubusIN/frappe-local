@@ -87,7 +87,7 @@
 
     <div
       v-if="wizardStep === 3"
-      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px] text-ink-gray-9"
+      class="flex flex-col gap-2 p-4 rounded-4 bg-surface-gray-2 text-[13px] text-ink-gray-9"
     >
       <div class="mb-2 flex justify-between text-ink-gray-5">
         <span>Name</span><strong class="font-semibold text-ink-gray-9">{{ createForm.name }}</strong>

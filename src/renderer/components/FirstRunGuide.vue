@@ -1,11 +1,14 @@
 <template>
   <section
-    class="grid gap-3.5 rounded-lg border border-outline-blue-3 bg-surface-blue-2"
+    class="grid gap-3.5 rounded-6 border border-outline-blue-3 bg-surface-blue-2"
     :class="compact ? 'p-3.5' : 'p-4'"
   >
     <div class="flex items-start gap-2.5">
-      <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-lg border border-outline-blue-3 bg-surface-base text-ink-blue-6">
-        <i class="lucide-package h-4 w-4" />
+      <div class="flex h-8 w-8 min-w-8 items-center justify-center rounded-6 border border-outline-blue-3 bg-surface-base text-ink-blue-5">
+        <span
+          class="lucide-package h-4 w-4"
+          aria-hidden="true"
+        />
       </div>
       <div>
         <h4 class="m-0 text-sm-semibold text-ink-gray-9">
@@ -42,7 +45,10 @@
       >
         <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span>{{ link.label }}</span>
-          <i class="lucide-chevron-right h-3 w-3 shrink-0" />
+          <span
+            class="lucide-chevron-right h-3 w-3 shrink-0"
+            aria-hidden="true"
+          />
         </span>
       </Button>
     </div>

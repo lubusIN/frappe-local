@@ -90,8 +90,7 @@ describe('bench start/restart orchestration', () => {
     fs.mkdirSync(path.join(benchPath, 'sites', 'frappe.localhost'), { recursive: true });
     execPromiseMock
       .mockRejectedValueOnce(new Error('Command timed out after 300000ms: /mock/docker-compose ...'))
-      .mockResolvedValueOnce({ code: 0, stdout: 'frappe\n', stderr: '' })
-      .mockResolvedValueOnce({ code: 0, stdout: 'healthy\n', stderr: '' });
+      .mockResolvedValue({ code: 0, stdout: 'frappe\n', stderr: '' });
 
     orchestrateBenchStart(
       bench,
@@ -126,7 +125,7 @@ describe('bench start/restart orchestration', () => {
 
     expect(execPromiseMock).toHaveBeenCalledWith(
       '/mock/docker-compose',
-      ['-p', 'frappe-local-3689f4f1', '-f', expect.any(String), 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
+      ['-p', 'frappe-local-3689f4f1', 'exec', '-d', 'frappe', 'sh', '-c', 'nohup honcho start > logs/honcho.log 2>&1'],
       benchPath,
       expect.any(Function),
       expect.objectContaining({ DOCKER_HOST: 'unix:///tmp/mock.sock' }),
@@ -171,6 +170,26 @@ describe('bench start/restart orchestration', () => {
 
     expect(queuedRun).not.toBeNull();
     await expect(queuedRun?.(context)).rejects.toThrow('core services did not come up');
+    expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
+  });
+
+  it('invokes onCompleted callback when start succeeds', async () => {
+    const onCompleted = vi.fn(async () => undefined);
+    execPromiseMock.mockResolvedValue({ code: 0, stdout: 'frappe\n', stderr: '' });
+
+    orchestrateBenchStart(
+      bench,
+      { update: updateMock },
+      undefined,
+      false,
+      false,
+      { onCompleted }
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    expect(onCompleted).toHaveBeenCalledTimes(1);
     expect(updateMock).toHaveBeenCalledWith(bench.id, { status: 'running' });
   });
 });

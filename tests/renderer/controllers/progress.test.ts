@@ -4,6 +4,7 @@ import {
   detectProgressTaskResource,
   filterProgressTasks,
   findUnhandledFailedTask,
+  findUnhandledSuccessfulTasks,
   MAX_LOGS_PER_TASK,
   reconcileSavedProgressTasks,
   upsertProgressTask,
@@ -172,5 +173,57 @@ describe('progress', () => {
     const filtered = filterProgressTasks(state, now);
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.taskId).toBe('recent-runtime');
+  });
+
+  it('identifies unhandled successful tasks', () => {
+    const tasks: ProgressTaskSummary[] = [
+      {
+        taskId: 'task-success-1',
+        taskName: 'Install app on site',
+        status: 'success',
+        type: 'task.completed',
+        message: 'Installed',
+        logs: [],
+        stepName: null,
+        createdAt: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        errorCode: null,
+        resource: 'site',
+        resourceId: 'site-1',
+      },
+      {
+        taskId: 'task-success-2',
+        taskName: 'Create bench',
+        status: 'success',
+        type: 'task.completed',
+        message: 'Created',
+        logs: [],
+        stepName: null,
+        createdAt: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        errorCode: null,
+        resource: 'bench',
+        resourceId: 'bench-1',
+      },
+      {
+        taskId: 'task-running',
+        taskName: 'Running task',
+        status: 'running',
+        type: 'task.started',
+        message: 'Running',
+        logs: [],
+        stepName: null,
+        createdAt: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+        errorCode: null,
+        resource: 'site',
+        resourceId: 'site-1',
+      },
+    ];
+
+    const handledIds = new Set<string>(['task-success-1']);
+    const unhandled = findUnhandledSuccessfulTasks(tasks, handledIds);
+    expect(unhandled).toHaveLength(1);
+    expect(unhandled[0]?.taskId).toBe('task-success-2');
   });
 });
