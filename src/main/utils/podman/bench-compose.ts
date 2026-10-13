@@ -5,6 +5,22 @@ import { DATABASE_CREDENTIALS } from '@frappe-local/main/constants';
 /** Hidden folder inside the bench directory that stores infrastructure files. */
 export const FRAPPE_LOCAL_DIR = '.frappe-local';
 
+/** Filename of the MariaDB client configuration mounted into the frappe container. */
+export const MARIADB_CLIENT_CONFIG_FILENAME = 'mariadb-client.cnf';
+
+/**
+ * MariaDB client configuration disabling SSL.
+ * Needed because frappe/bench image contains MariaDB 11.4+ client libraries which
+ * require TLS by default, whereas the local development MariaDB server container
+ * does not use TLS.
+ */
+export const MARIADB_CLIENT_CONFIG_CONTENT = `[client]
+skip-ssl = true
+
+[mariadb-dump]
+skip-ssl = true
+`;
+
 /**
  * Returns the path to the docker-compose file for a given bench.
  */
@@ -50,6 +66,7 @@ services:
     volumes:${platform === 'win32' ? `
       - bench-workspace:/workspace` : `
       - ../:/workspace:cached`}
+      - ./${MARIADB_CLIENT_CONFIG_FILENAME}:/etc/mysql/conf.d/${MARIADB_CLIENT_CONFIG_FILENAME}:ro
 ${options.shareSshKeys ? '      - ~/.ssh:/home/frappe/.ssh:ro\n' : ''}${options.localVolumes ? options.localVolumes.map(v => `      - ${v.source}:${v.target}`).join('\n') : ''}
     ports:
       - "127.0.0.1:${httpPort}:8000"
@@ -91,7 +108,7 @@ volumes:
 
 /**
  * Ensures the .frappe-local directory exists and writes (or overwrites)
- * the docker-compose.yml for the given bench configuration.
+ * the docker-compose.yml and mariadb-client.cnf for the given bench configuration.
  *
  * @returns The absolute path to the written compose file.
  */
@@ -106,6 +123,9 @@ export const ensureBenchComposeWritten = (
   if (!fs.existsSync(frappeLocalDir)) {
     fs.mkdirSync(frappeLocalDir, { recursive: true });
   }
+
+  const clientConfigPath = path.join(frappeLocalDir, MARIADB_CLIENT_CONFIG_FILENAME);
+  fs.writeFileSync(clientConfigPath, MARIADB_CLIENT_CONFIG_CONTENT, 'utf8');
 
   const composePath = getBenchComposePath(benchPath);
   const content = generateBenchCompose({ frappeVersion, httpPort, shareSshKeys, localVolumes });
