@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import type { AppCatalogItem } from '@frappe-local/shared/domain';
 import { createMainLogger } from '@frappe-local/main/logger';
 import type { StorageAdapter } from '@frappe-local/main/storage';
@@ -44,10 +43,12 @@ export const initializeStorage = async (
   let snapshot: StorageSnapshot;
 
   try {
-    await fs.access(storageFilePath);
     snapshot = await adapter.readSnapshot();
     storageLogger.info(`loaded existing storage snapshot from ${storageFilePath}`);
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
     snapshot = createDefaultStorageSnapshot(options.appCatalogSeed, options.appCatalogSeedVersion);
     await adapter.writeSnapshot(snapshot);
     storageLogger.info(`created new storage snapshot at ${storageFilePath}`);

@@ -7,16 +7,17 @@ export const useStatusPolling = <T extends { status: string }>(
 ) => {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let isPolling = false;
+  let generation = 0;
 
-  const poll = async () => {
-    if (!isPolling) return;
+  const poll = async (pollGeneration: number) => {
+    if (!isPolling || pollGeneration !== generation) return;
     try {
       await loadFn(true);
     } catch {
       // ignore
     } finally {
-      if (isPolling) {
-        timer = setTimeout(poll, 3000);
+      if (isPolling && pollGeneration === generation) {
+        timer = setTimeout(() => poll(pollGeneration), 3000);
       }
     }
   };
@@ -24,11 +25,12 @@ export const useStatusPolling = <T extends { status: string }>(
   const startPolling = () => {
     if (isPolling) return;
     isPolling = true;
-    poll();
+    void poll(++generation);
   };
 
   const stopPolling = () => {
     isPolling = false;
+    generation += 1;
     if (timer) {
       clearTimeout(timer);
       timer = null;

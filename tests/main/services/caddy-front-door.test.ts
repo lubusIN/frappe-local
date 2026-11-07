@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildCaddyfile, pruneStaleCaddySiteCertificates } from '../../../src/main/services/caddy-front-door';
+import { buildCaddyfile, pruneStaleCaddySiteCertificates } from '../../../src/main/services/caddy-front-door/utils';
 
 describe('caddy front door config', () => {
   it('proxies each site domain directly to its bench frontend over https', () => {

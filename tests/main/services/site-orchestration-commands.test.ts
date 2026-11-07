@@ -461,6 +461,7 @@ describe('site orchestration command execution', () => {
       'uninstall-app',
       'erpnext',
       '--yes',
+      '--no-backup',
     ]);
     expect(calledArgs).toContainEqual([
       '-p',
@@ -469,13 +470,53 @@ describe('site orchestration command execution', () => {
       '-d',
       'frappe',
       'sh',
+      '--login',
       '-c',
       'nohup honcho start > logs/honcho.log 2>&1',
-    ]);
+    ].filter((arg) => arg !== '--login') as string[]);
     expect(updateSiteMock).toHaveBeenLastCalledWith('site-001', { status: 'ready' });
     expect(updateSiteMock).not.toHaveBeenCalledWith(
       'site-001',
       expect.objectContaining({ apps: ['frappe', 'erpnext'] })
     );
+  });
+
+  it('uninstalls removed apps with --no-backup and clears site caches', async () => {
+    orchestrateSiteAppsUpdate(
+      {
+        benches: {
+          findById: async () => ({ ...bench, apps: ['frappe', 'newsletter'] }),
+        },
+        sites: {
+          update: updateSiteMock,
+        },
+      },
+      {
+        ...createdSite,
+        apps: ['frappe', 'newsletter'],
+        status: 'ready',
+      },
+      ['frappe']
+    );
+
+    expect(queuedRun).not.toBeNull();
+    await queuedRun?.(context);
+
+    const calledArgs = execPromiseMock.mock.calls.map((call) => call[1] as string[]);
+    expect(calledArgs).toContainEqual([
+      '-p',
+      'frappe-local-1adb2eed',
+      'exec',
+      '-T',
+      'frappe',
+      'bench',
+      '--site',
+      'frappevault.localhost',
+      'uninstall-app',
+      'newsletter',
+      '--yes',
+      '--no-backup',
+    ]);
+    expect(updateSiteMock).toHaveBeenCalledWith('site-001', { apps: ['frappe'], status: 'ready' });
   });
 });

@@ -139,6 +139,39 @@ describe('Podman machine memory configuration', () => {
     expect(commands).toContainEqual(['machine', 'start', FRAPPE_LOCAL_MACHINE_NAME]);
   });
 
+  it.skipIf(process.platform === 'win32')('logs the inspected memory even when no allocation change is needed', async () => {
+    getPodmanMachinesMock.mockResolvedValue([
+      { Name: FRAPPE_LOCAL_MACHINE_NAME, State: 'running' },
+    ]);
+    execPromiseMock.mockResolvedValue({ stdout: '4096\n', stderr: '', code: 0 });
+    const onLog = vi.fn();
+
+    await applyPodmanMachineMemory(4096, onLog);
+
+    expect(onLog).toHaveBeenCalledWith(`Current ${FRAPPE_LOCAL_MACHINE_NAME} memory: 4096 MiB`);
+    expect(execPromiseMock).toHaveBeenCalledTimes(1);
+    expect(execPromiseMock.mock.calls[0]?.[1]).toEqual([
+      'machine', 'inspect', FRAPPE_LOCAL_MACHINE_NAME, '--format', '{{.Resources.Memory}}',
+    ]);
+  });
+
+  it.skipIf(process.platform === 'win32').each(['', '{{.Resources.Memory}}', '4096invalid', '0'])(
+    'does not report invalid inspection output %j as a memory value', async (stdout) => {
+      getPodmanMachinesMock.mockResolvedValue([
+        { Name: FRAPPE_LOCAL_MACHINE_NAME, State: 'stopped' },
+      ]);
+      execPromiseMock.mockResolvedValue({ stdout, stderr: '', code: 0 });
+      const onLog = vi.fn();
+
+      await applyPodmanMachineMemory(4096, onLog);
+
+      expect(onLog).not.toHaveBeenCalledWith(expect.stringContaining('Current frappe-local memory:'));
+      expect(execPromiseMock.mock.calls.map(([, args]) => args)).toContainEqual([
+        'machine', 'set', '--memory', '4096', FRAPPE_LOCAL_MACHINE_NAME,
+      ]);
+    }
+  );
+
   it('retains stderr from non-zero Podman commands', async () => {
     execPromiseMock.mockResolvedValueOnce({
       stdout: '',
@@ -151,9 +184,11 @@ describe('Podman machine memory configuration', () => {
   });
 
   it('provisions Docker-compatible Dev Container support in the app-owned WSL distro', async () => {
-    await ensureWindowsDevContainerSupport();
+    const originalPlatform = process.platform;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      await ensureWindowsDevContainerSupport();
 
-    if (process.platform === 'win32') {
       expect(execPromiseMock).toHaveBeenCalledWith(
         'wsl.exe',
         [
@@ -164,7 +199,7 @@ describe('Podman machine memory configuration', () => {
           '--exec',
           '/bin/sh',
           '-c',
-          'compose_source="$(wslpath -u "$1")" && docker_cli_source="$(wslpath -u "$2")" && docker_wrapper_source="$(wslpath -u "$3")" && enterns_profile_source="$(wslpath -u "$4")" && mkdir -p /usr/libexec/docker/cli-plugins /usr/libexec/frappe-local && if ! cmp -s "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; then install -m 0755 "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; fi && if ! cmp -s "$docker_cli_source" /usr/libexec/frappe-local/docker; then install -m 0755 "$docker_cli_source" /usr/libexec/frappe-local/docker; fi && if ! cmp -s "$enterns_profile_source" /etc/profile.d/enterns.sh; then install -m 0644 "$enterns_profile_source" /etc/profile.d/enterns.sh; fi && systemd_pid="$(/usr/bin/pgrep -o -x systemd)" && test -n "$systemd_pid" && test -e "/proc/$systemd_pid/ns/pid" && if ! /usr/sbin/runuser -u user -- /usr/bin/podman --remote --url unix:///mnt/wsl/frappe-local-devcontainer.sock info >/dev/null 2>&1; then { /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemctl --user stop frappe-local-devcontainer-api.service >/dev/null 2>&1 || true; }; rm -f /mnt/wsl/frappe-local-devcontainer.sock; /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemd-run --user --unit=frappe-local-devcontainer-api --collect --property=Restart=always /usr/bin/podman --remote=false system service --time=0 unix:///mnt/wsl/frappe-local-devcontainer.sock; i=0; while [ ! -S /mnt/wsl/frappe-local-devcontainer.sock ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; test -S /mnt/wsl/frappe-local-devcontainer.sock; fi && rm -f /usr/bin/docker && install -m 0755 "$docker_wrapper_source" /usr/bin/docker && ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose',
+          'echo "[frappe-local] Preparing Dev Container environment" && compose_source="$(wslpath -u "$1")" && docker_cli_source="$(wslpath -u "$2")" && docker_wrapper_source="$(wslpath -u "$3")" && enterns_profile_source="$(wslpath -u "$4")" && mkdir -p /usr/libexec/docker/cli-plugins /usr/libexec/frappe-local && echo "[frappe-local] Installing Docker Compose plugin" && if ! cmp -s "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; then install -m 0755 "$compose_source" /usr/libexec/docker/cli-plugins/docker-compose; fi && echo "[frappe-local] Installing Docker CLI binary" && if ! cmp -s "$docker_cli_source" /usr/libexec/frappe-local/docker; then install -m 0755 "$docker_cli_source" /usr/libexec/frappe-local/docker; fi && echo "[frappe-local] Configuring enterns profile" && if ! cmp -s "$enterns_profile_source" /etc/profile.d/enterns.sh; then install -m 0644 "$enterns_profile_source" /etc/profile.d/enterns.sh; fi && echo "[frappe-local] Verifying systemd process" && systemd_pid="$(/usr/bin/pgrep -o -x systemd)" && test -n "$systemd_pid" && test -e "/proc/$systemd_pid/ns/pid" && echo "[frappe-local] Checking Dev Container API service" && if ! /usr/sbin/runuser -u user -- /usr/bin/podman --remote --url unix:///mnt/wsl/frappe-local-devcontainer.sock info >/dev/null 2>&1; then { /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemctl --user stop frappe-local-devcontainer-api.service >/dev/null 2>&1 || true; }; rm -f /mnt/wsl/frappe-local-devcontainer.sock; /usr/bin/nsenter -m -p -t "$systemd_pid" --wdns=/tmp /usr/sbin/runuser -u user -- /usr/bin/env XDG_RUNTIME_DIR=/run/user/1000 /usr/bin/systemd-run --user --unit=frappe-local-devcontainer-api --collect --property=Restart=always /usr/bin/podman --remote=false system service --time=0 unix:///mnt/wsl/frappe-local-devcontainer.sock; i=0; while [ ! -S /mnt/wsl/frappe-local-devcontainer.sock ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done; test -S /mnt/wsl/frappe-local-devcontainer.sock; fi && echo "[frappe-local] Configuring Docker wrapper and symlinks" && rm -f /usr/bin/docker && install -m 0755 "$docker_wrapper_source" /usr/bin/docker && ln -sfn /usr/libexec/docker/cli-plugins/docker-compose /usr/bin/docker-compose && echo "[frappe-local] Dev Container support configured"',
           'frappe-local-devcontainer-setup',
           '/mock/docker-compose-linux.bin',
           '/mock/docker-cli-linux.bin',
@@ -174,20 +209,36 @@ describe('Podman machine memory configuration', () => {
         undefined,
         undefined,
         undefined,
-        { idleTimeout: 15000, maxTimeout: 30000 }
+        { idleTimeout: 60000, maxTimeout: 120000 }
       );
-    } else {
-      expect(execPromiseMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
     }
   });
 
   it('provides actionable remediation when Dev Container support cannot be installed', async () => {
-    if (process.platform !== 'win32') return;
-    execPromiseMock.mockResolvedValueOnce({ stdout: '', stderr: 'permission denied', code: 1 });
+    const originalPlatform = process.platform;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+      execPromiseMock.mockResolvedValueOnce({ stdout: '', stderr: 'permission denied', code: 1 });
 
-    await expect(ensureWindowsDevContainerSupport()).rejects.toThrow(
-      'Restart Frappe Local, then retry.'
-    );
+      await expect(ensureWindowsDevContainerSupport()).rejects.toThrow(
+        'Restart Frappe Local, then retry.'
+      );
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+    }
+  });
+
+  it('skips Dev Container support on non-Windows platforms', async () => {
+    const originalPlatform = process.platform;
+    try {
+      Object.defineProperty(process, 'platform', { value: 'darwin' });
+      await ensureWindowsDevContainerSupport();
+      expect(execPromiseMock).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform });
+    }
   });
 
   it('formats DOCKER_HOST properly for Windows named pipes and unix sockets', async () => {

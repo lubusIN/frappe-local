@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
 console.log('Running typecheck for renderer...');
-const result = spawnSync('npx', ['tsc', '--noEmit', '-p', 'tsconfig.renderer.json'], { 
+const result = spawnSync('npx', ['tsc', '--pretty', 'false', '--noEmit', '-p', 'tsconfig.renderer.json'], {
   encoding: 'utf-8',
   shell: process.platform === 'win32',
 });
@@ -15,31 +15,38 @@ if (result.status !== 0) {
   const output = (result.stdout || '') + (result.stderr || '');
   const lines = output.split('\n');
   const actualErrors = [];
-  
+
+  let diagnosticCount = 0;
   let currentError = [];
   let isFrappeUiError = false;
 
   for (const line of lines) {
     if (!line.trim()) continue;
-    
+
     // Check if line starts a new error
     const isNewError = /error TS[0-9]+:/.test(line);
-    
+
     if (isNewError) {
+      diagnosticCount += 1;
       if (currentError.length > 0 && !isFrappeUiError) {
         actualErrors.push(...currentError);
       }
       currentError = [line];
-      isFrappeUiError = line.includes('node_modules/frappe-ui');
+      isFrappeUiError = line.replaceAll('\\', '/').includes('node_modules/frappe-ui/');
     } else {
       if (currentError.length > 0) {
         currentError.push(line);
       }
     }
   }
-  
+
   if (currentError.length > 0 && !isFrappeUiError) {
     actualErrors.push(...currentError);
+  }
+
+  if (result.signal || diagnosticCount === 0) {
+    console.error(output || `Renderer compiler failed (${result.signal ?? result.status}).`);
+    process.exit(1);
   }
 
   if (actualErrors.length > 0) {

@@ -42,7 +42,7 @@
             <button
               v-for="bench in allBenches"
               :key="bench.id"
-              class="flex items-center justify-between p-2 rounded-lg text-left transition-colors focus:outline-none"
+              class="flex items-center justify-between p-2 rounded-6 text-left transition-colors focus:outline-none"
               :class="[
                 createForm.benchId === bench.id 
                   ? 'bg-surface-gray-2' 
@@ -70,7 +70,7 @@
 
         <div
           v-if="wizardErrors.benchId"
-          class="text-p-sm text-ink-red-6 mt-1"
+          class="text-p-sm text-ink-red-5 mt-1"
         >
           {{ wizardErrors.benchId }}
         </div>
@@ -97,7 +97,7 @@
 
     <div
       v-if="wizardStep === 3"
-      class="flex flex-col gap-2 p-4 rounded bg-surface-gray-2 text-[13px] text-ink-gray-9"
+      class="flex flex-col gap-2 p-4 rounded-4 bg-surface-gray-2 text-[13px] text-ink-gray-9"
     >
       <div class="flex justify-between mb-2 text-ink-gray-5">
         <span>Bench</span><strong class="font-semibold text-ink-gray-9">{{ selectedBench?.name ?? createForm.benchId }}</strong>

@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { toast } from 'frappe-ui';
+import { toastTask } from '@frappe-local/renderer/composables/ui/toastTask';
 
 import { useIpc } from '@frappe-local/renderer/composables/system/useIpc';
 import { runAndWaitForTask } from '@frappe-local/renderer/composables/system/waitForTask';
@@ -53,7 +53,7 @@ export const useSshKeys = () => {
       }
     })();
 
-    toast.promise(promise, {
+    toastTask(promise, {
       loading: restartBenches ? 'Applying SSH settings and restarting benches...' : 'Applying SSH settings...',
       success: `SSH Key sharing ${newValue ? 'enabled' : 'disabled'}.`,
       error: 'Failed to update SSH settings.',

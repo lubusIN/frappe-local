@@ -62,4 +62,14 @@ describe('bench compose generation', () => {
 
     expect(content).toContain('mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} || exit 1');
   });
+
+  it('mounts MariaDB client config to disable SSL on client connections', () => {
+    const content = generateBenchCompose({
+      frappeVersion: 'version-16',
+      httpPort: 8080,
+      shareSshKeys: false,
+    });
+
+    expect(content).toContain('- ./mariadb-client.cnf:/etc/mysql/conf.d/mariadb-client.cnf:ro');
+  });
 });
