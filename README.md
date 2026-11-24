@@ -218,7 +218,7 @@ Explore more open-source tools we're building for the Frappe ecosystem.
 
 [LUBUS](https://lubus.in/?utm_source=github&utm_medium=open-source&utm_campaign=frappe-local) is a web design agency based in Mumbai.
 
-<a href="https://cal.com/lubus">
+<a href="https://book.lubus.in/">
 <img src="https://raw.githubusercontent.com/lubusIN/.github/refs/heads/main/profile/banner.png" />
 </a>
 
